@@ -2549,8 +2549,8 @@ and insert_holes at ts es =
 
   let implicits_n = List.to_seq ts |> Seq.filter_map as_implicit |> Seq.length in
   if List.length ts <> List.length es + implicits_n then
-    let () = Printf.printf "+arity mismatch: %d <> %d + %d\n" (List.length ts) (List.length es) implicits_n in
-    es
+    (* let () = Printf.printf "+arity mismatch: %d <> %d + %d\n" (List.length ts) (List.length es) implicits_n in *)
+    None, implicits_n
   else
 
   let mk_hole pos hole_id =
@@ -2562,8 +2562,8 @@ and insert_holes at ts es =
   let rec go n ts es =
     match ts with
     | [] ->
-      if es <> [] then
-        Printf.printf "+extra arguments: %s\n" (String.concat ", " (List.map (fun e -> Source.read_region_with_markers e.at |> Option.value ~default:"") es));
+      (* if es <> [] then
+        Printf.printf "+extra arguments: %s\n" (String.concat ", " (List.map (fun e -> Source.read_region_with_markers e.at |> Option.value ~default:"") es)); *)
       (* Error here? extra arguments? *)
       es
     | t :: ts1 ->
@@ -2575,28 +2575,13 @@ and insert_holes at ts es =
         | e :: es1 -> e :: go (n + 1) ts1 es1
         | [] ->
           (* Error here? missing arguments? *)
-          if ts <> [] then
-            Printf.printf "+missing arguments for types: %s\n" (String.concat ", " (List.map T.string_of_typ ts));
+          (* if ts <> [] then
+            Printf.printf "+missing arguments for types: %s\n" (String.concat ", " (List.map T.string_of_typ ts)); *)
           []
   in
-  go 0 ts es
+  Some (go 0 ts es), implicits_n
 
 and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
-  (* Syntax situations (exp1 = f)
-    1. f()
-    2. f(e)  same as  f e
-    3. f(e1 .. en)
-
-    With ctx_dot: (exp1 = o.f)
-    1. o.f()  ~>  f(o)
-    2. o.f(e)  ~>  f(o, e)
-    3. o.f(e1 .. en)  ~>  f(o, e1 .. en)
-
-    With implicits: (exp1 = f)
-    1. f()  ~>  f(i1 .. ik)
-    2. f(e)  ~>  f(.. i .. e .. i ..)  (implicits inserted where implicit parameters)
-    3. f(e1 .. en)  ~>  f(.. i .. e1 .. i .. .. i .. en .. i ..)  (implicits inserted where implicit parameters)
-   *)
   let exp2 = !ref_exp2 in
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
   let (t1, ctx_dot) = infer_callee env exp1 in
@@ -2611,6 +2596,19 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
           "this looks like an unintended function call, perhaps a missing ';'?";
       T.as_func_sub T.Local n T.Non
   in
+  (* Syntactic arguments:
+    - exp1(e1 .. en) => [e1 .. en]
+    - exp1((e1 .. en)) => [(e1 .. en)] (single argument! parenthesized)
+   *)
+  let syntax_args = match exp2.it with
+    | TupE es when not parenthesized -> es
+    | _ -> [exp2]
+  in
+
+  (* Contextual dot:
+    - r.f(e1 .. en)  when  f : (R, I1 .. Ik) -> O
+    - Pop the head t_args that matches R, already checked.
+   *)
   let t_args, extra_subtype_problems = match ctx_dot with
     | None -> t_args, []
     | Some(e, t) -> begin
@@ -2623,16 +2621,43 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
         (* T.unit, [(t, T.unit)] *)
     end
   in
-  let exp2 =
-    let es = match exp2.it with
-      | TupE es when not parenthesized -> es
-      | _ -> [exp2] in
-    let e' = match insert_holes at t_args es with
-      | [e] -> e.it
-      | es -> TupE es in
-    { exp2 with it = e'}
+  let ctx_holes, implicit_t_args_n = insert_holes at t_args syntax_args in
+  let exp2, args =
+    (* When there is only one argument syntactically, e.g. `f(x)`
+      And when function has more arguments, e.g. f : (T1, (implicit : T2)) -> R
+      We need to decide whether:
+      1. `x` is the 1st argument, the rest needs to be inserted as implicit arguments
+      2. `x` is a tuple with all arguments, no implicit needs to be inserted
+
+      But it is hard to distinguish. Maybe impossible:
+        f<A,B>(_ : A, _ : (implicit : B)): (A, B)
+        x : (Int, String)
+      with this f(x) would fit both situations to produce:
+        ((Int, String), B)
+        (Int, String)
+      I think we should disallow the 2nd case (where x is treated as a list of all arguments) when there are implicits involved.
+    *)
+    match ctx_holes with
+    | None -> exp2, syntax_args
+    | Some args ->
+      (* TODO: Is this correct? Should we detect a single argument? *)
+      let e' = match args with
+        | [e] -> e.it
+        | es -> TupE es
+      in
+      let exp2 = { exp2 with it = e'} in
+      exp2, args
   in
-  let t_arg = T.seq t_args in
+
+  (* Match the arguments against the parameter types *)
+  let t_arg =
+    if (ctx_dot = None && ctx_holes = None) || List.length t_args = List.length args then T.seq t_args else
+      (* TODO: include actual types and expected types *)
+      error env exp2.at "M0233"
+      "wrong number of arguments: expected %d but got %d"
+      (List.length t_args - implicit_t_args_n)
+      (List.length syntax_args)
+  in
   if not env.pre then ref_exp2 := exp2; (* TODO: is this good enough *)
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
@@ -2651,9 +2676,6 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
             warn env inst.at "M0223" "redundant type instantiation";
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
-      (* Before bimatching, validate the number of arguments *)
-      (* TODO: try to move it to the decompose so that it is closer to the bimatching *)
-      validate_call_arg env exp2 t_args;
       infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
   inst.note <- ts;

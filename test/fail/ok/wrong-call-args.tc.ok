@@ -1,0 +1,56 @@
+wrong-call-args.mo:21.12-21.14: type error [M0233], wrong number of arguments: expected 1 but got 0
+wrong-call-args.mo:25.5-25.31: type error [M0098], cannot implicitly instantiate function of type
+  <K, V>(map : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K,
+         value : V) ->
+    ()
+to argument of type
+  (compare : (implicit : (K, K) -> Order), (t1 : Text, t2 : Text) -> Order,
+   Text)
+to produce result of type
+  ()
+because implicit instantiation of type parameter K is over-constrained with
+  Any  <:  K  <:  Text
+where
+  Any  </:  Text
+so that no valid instantiation exists
+wrong-call-args.mo:31.5-31.17: type error [M0098], cannot implicitly instantiate function of type
+  <K, V>(map : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K) ->
+    ?V
+to argument of type
+  {var root : Node<Text, Text>; var size_ : Nat}
+to produce result of type
+  ()
+because no instantiation of K, V makes
+  ?V  <:  ()
+and
+  {var root : Node<Text, Text>; var size_ : Nat}  <: 
+    (map : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K)
+wrong-call-args.mo:34.27-34.39: type error [M0096], expression of type
+  (t1 : Text, t2 : Text) -> Order
+cannot produce expected type
+  ()
+wrong-call-args.mo:37.5-37.28: type error [M0098], cannot implicitly instantiate function of type
+  <K, V>() -> Map<K, V>
+to argument of type
+  (t1 : Text, t2 : Text) -> Order
+to produce result of type
+  {var root : Node<Text, Text>; var size_ : Nat}
+because no instantiation of K, V makes
+  Map<K, V>  <:  {var root : Node<Text, Text>; var size_ : Nat}
+and
+  (t1 : Text, t2 : Text) -> Order  <:  ()
+wrong-call-args.mo:41.5-41.36: type error [M0098], cannot implicitly instantiate function of type
+  <K, V>(map : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K,
+         value : V) ->
+    ()
+to argument of type
+  ({var root : Node<Text, Text>; var size_ : Nat},
+   compare : (implicit : (K, K) -> Order), (t1 : Text, t2 : Text) -> Order,
+   Text)
+to produce result of type
+  ()
+because implicit instantiation of type parameter K is over-constrained with
+  Any  <:  K  <:  Text
+where
+  Any  </:  Text
+so that no valid instantiation exists

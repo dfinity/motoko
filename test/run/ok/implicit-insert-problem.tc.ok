@@ -6,6 +6,3 @@ implicit-insert-problem.mo:15.13-15.22: type error [M0096], expression of type
   (Nat, Nat, Nat)
 cannot produce expected type
   (a : Nat, b : (implicit : Nat), c : Nat, d : (implicit : Nat))
-+arity mismatch: 4 <> 4 + 2
-+arity mismatch: 4 <> 3 + 2
-+arity mismatch: 4 <> 3 + 2
