@@ -83,7 +83,7 @@ jobs:
 
   # cleanups:
       - name: Automatically closing successful trials
-        if: matrix.os == 'ubuntu-24-large' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'autoclose')
+        if: matrix.os == 'ubuntu-24-large' && matrix.build_type == 'release' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository # && contains(github.event.pull_request.labels.*.name, 'autoclose')
         run: gh pr view
 
         # gh pr checks -q '.[] | select(.state=="SUCCESS" and (.name=="verify-common-gc" or .name=="verify-main-tests"))' --json='name,state' | jq -n '[inputs] | length'
