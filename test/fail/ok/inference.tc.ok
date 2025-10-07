@@ -8,6 +8,8 @@ cannot produce expected type
   Any -> Any
 inference.mo:67.1-67.40: type error [M0098], cannot implicitly instantiate function of type
   <T>(f : T -> T) -> ()
+with parameters
+  (f : T -> T)
 to argument of type
   (x : None) -> Any
 to produce result of type
@@ -20,6 +22,8 @@ so that no valid instantiation exists
 inference.mo:87.20-87.27: warning [M0146], this pattern is never matched
 inference.mo:94.8-94.20: type error [M0098], cannot implicitly instantiate function of type
   <T <: U, U>(x : T, y : T) -> (U, U)
+with parameters
+  (x : T, y : T)
 to argument of type
   (Nat, Nat)
 to produce result of type
@@ -29,6 +33,8 @@ because type parameter T has an open bound
 mentioning another type parameter, so that explicit type instantiation is required due to limitation of inference
 inference.mo:95.8-95.26: type error [M0098], cannot implicitly instantiate function of type
   <T <: U, U>(x : T, y : T) -> (U, U)
+with parameters
+  (x : T, y : T)
 to argument of type
   (Nat, Int)
 to produce result of type
@@ -38,6 +44,8 @@ because type parameter T has an open bound
 mentioning another type parameter, so that explicit type instantiation is required due to limitation of inference
 inference.mo:96.8-96.23: type error [M0098], cannot implicitly instantiate function of type
   <T <: U, U>(x : T, y : T) -> (U, U)
+with parameters
+  (x : T, y : T)
 to argument of type
   (Nat, Bool)
 to produce result of type
@@ -47,6 +55,8 @@ because type parameter T has an open bound
 mentioning another type parameter, so that explicit type instantiation is required due to limitation of inference
 inference.mo:111.8-111.17: type error [M0098], cannot implicitly instantiate function of type
   <T <: Int>(x : T) -> T
+with parameters
+  (x : T)
 to argument of type
   Bool
 to produce result of type
@@ -58,6 +68,8 @@ where
 so that no valid instantiation exists
 inference.mo:112.1-112.10: type error [M0098], cannot implicitly instantiate function of type
   <T <: Int>(x : T) -> T
+with parameters
+  (x : T)
 to argument of type
   Bool
 to produce result of type
@@ -69,6 +81,8 @@ where
 so that no valid instantiation exists
 inference.mo:116.1-116.27: type error [M0098], cannot implicitly instantiate function of type
   <T>(f : <U>T -> U) -> ()
+with parameters
+  (f : <U>T -> U)
 to argument of type
   <V>(x : V) -> V
 to produce result of type
@@ -77,6 +91,8 @@ because no instantiation of T makes
   <V>(x : V) -> V  <:  (f : <U>T -> U)
 inference.mo:118.1-118.31: type error [M0098], cannot implicitly instantiate function of type
   <T>(f : <U>U -> T) -> ()
+with parameters
+  (f : <U>U -> T)
 to argument of type
   <V>(x : V) -> V
 to produce result of type
@@ -85,6 +101,8 @@ because no instantiation of T makes
   <V>(x : V) -> V  <:  (f : <U>U -> T)
 inference.mo:127.8-127.20: type error [M0098], cannot implicitly instantiate function of type
   <T>(x : [T]) -> T
+with parameters
+  (x : [T])
 to argument of type
   [var Nat]
 to produce result of type
@@ -93,6 +111,8 @@ because no instantiation of T makes
   [var Nat]  <:  (x : [T])
 inference.mo:130.1-130.13: type error [M0098], cannot implicitly instantiate function of type
   <T>(x : [var T]) -> T
+with parameters
+  (x : [var T])
 to argument of type
   [Nat]
 to produce result of type
@@ -103,6 +123,8 @@ and
   [Nat]  <:  (x : [var T])
 inference.mo:132.1-132.17: type error [M0098], cannot implicitly instantiate function of type
   <T>(x : [var T]) -> T
+with parameters
+  (x : [var T])
 to argument of type
   [var Nat]
 to produce result of type
@@ -114,6 +136,8 @@ where
 so that no valid instantiation exists
 inference.mo:137.4-137.8: type error [M0098], cannot implicitly instantiate function of type
   <U <: {}>(y : U) -> ()
+with parameters
+  (y : U)
 to argument of type
   T
 to produce result of type
@@ -125,6 +149,8 @@ where
 so that no valid instantiation exists
 inference.mo:152.11-152.15: type error [M0098], cannot implicitly instantiate function of type
   <U <: T>(y : U) -> U
+with parameters
+  (y : U)
 to argument of type
   T
 to produce result of type
@@ -136,6 +162,8 @@ where
 so that no valid instantiation exists
 inference.mo:172.8-172.54: type error [M0098], cannot implicitly instantiate function of type
   <T>(b : Bool, x : [var T], y : [var T]) -> [var T]
+with parameters
+  (b : Bool, x : [var T], y : [var T])
 to argument of type
   (Bool, [var Nat], [var Int])
 to produce result of type
@@ -147,6 +175,8 @@ where
 so that no valid instantiation exists
 inference.mo:177.8-177.44: type error [M0098], cannot implicitly instantiate function of type
   <T>(o : {x : T}) -> T
+with parameters
+  (o : {x : T})
 to argument of type
   {type x = Nat}
 to produce result of type

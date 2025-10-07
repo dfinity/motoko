@@ -1,6 +1,7 @@
 implicit-import-hint-dot.mo:13.3-13.12: type error [M0098], cannot implicitly instantiate function of type
-  <K, V>(map : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K) ->
-    ?V
+  <K, V>(compare : (implicit : (K, K) -> Order), key : K) -> ?V
+with parameters
+  (compare : (implicit : (K, K) -> Order), key : K)
 to argument of type
   (compare : (implicit : (K, K) -> Order), key : K)
 to produce result of type

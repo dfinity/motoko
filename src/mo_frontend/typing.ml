@@ -2574,16 +2574,21 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
           "this looks like an unintended function call, perhaps a missing ';'?";
       T.as_func_sub T.Local n T.Non
   in
-  let t_arg, extra_subtype_problems = match ctx_dot with
-    | None -> t_arg, []
+  let t1, t_arg, extra_subtype_problems = match ctx_dot with
+    | None -> t1, t_arg, []
     | Some(e, t) -> begin
       match T.normalize t_arg with
-      | T.Tup([t'; t2]) -> t2, [(t, t')]
-      | T.Tup(t'::ts) -> T.Tup(ts), [(t, t')]
-      | t' -> T.unit, [(t, t')]
+      | T.Tup([t'; t2]) ->
+         T.Func(sort, T.Returns, tbs, [t2], [t_ret]),
+         t2, [(t, t')]
+      | T.Tup(t'::ts) ->
+         T.Func(sort, T.Returns, tbs, ts, [t_ret]),
+         T.Tup(ts), [(t, t')]
+      | t' ->
+         T.Func(sort, T.Returns, tbs, [], [t_ret]),
+         T.unit, [(t, t')]
     end
   in
-  let display_t1 = T.Func(sort, T.Returns (*HACK *), tbs, T.as_seq t_arg, T.as_seq t_ret) in
   let exp2 =
     let es = match exp2.it with
       | TupE es when not parenthesized -> es
@@ -2612,11 +2617,11 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       if not env.pre then check_exp_strong env t_arg' exp2
       else if typs <> [] && Flags.is_warning_enabled "M0223" &&
         is_redundant_instantiation ts env (fun env' ->
-          infer_call_instantiation env' display_t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
+          infer_call_instantiation env' t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
             warn env inst.at "M0223" "redundant type instantiation";
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
-      infer_call_instantiation env display_t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
+      infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
   inst.note <- ts;
   if not env.pre then begin
