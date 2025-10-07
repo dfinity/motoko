@@ -34,8 +34,7 @@ persistent actor {
 
    let peopleMap = Map.empty<Nat, Text>();
    public shared query func test() : async () {
-      let person0 = peopleMap.get(Nat.compare, 1);
-      let person1 = peopleMap.get(Nat.compare, 1);
-      let person2 = peopleMap.get(Nat.compare, "test");
+      let person0 = peopleMap.get(Nat.compare, 1); // ok
+      let person2 = peopleMap.get(Nat.compare, "test"); // bad
    };
 }
