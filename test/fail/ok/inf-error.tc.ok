@@ -1,0 +1,10 @@
+inf-error.mo:38.21-38.55: type error [M0098], cannot implicitly instantiate function of type
+  <K, V>(map : Map<K, V>, compare : (implicit : (K, K) -> Order), n : K) ->
+    ?V
+to argument of type
+  ((n : Nat, m : Nat) -> Order, Text)
+because implicit instantiation of type parameter K is over-constrained with
+  Any  <:  K  <:  Nat
+where
+  Any  </:  Nat
+so that no valid instantiation exists
