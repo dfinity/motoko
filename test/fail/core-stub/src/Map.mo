@@ -23,7 +23,7 @@ module {
     }
   };
 
-  public func get<K, V>(map : Map<K, V>, compare : (implicit : (K, K) -> Types.Order), key : K) : ?V {
+  public func get<K, V>(map : Map<K, V>, compare : implicit (K, K) -> Types.Order, key : K) : ?V {
     switch (map.root) {
       case (#internal _) { null };
       case (#leaf(leafNode)) {
@@ -33,7 +33,7 @@ module {
     }
   };
 
-  public func add<K, V>(map : Map<K, V>, compare : (implicit : (K, K) -> Types.Order), key : K, value : V) {
+  public func add<K, V>(map : Map<K, V>, compare : implicit (K, K) -> Types.Order, key : K, value : V) {
     switch (map.root) {
       case (#internal _) { };
       case (#leaf(leafNode)) {

@@ -6,7 +6,7 @@ module Map {
 
   public type Self<T, U> = Map<T, U>;
 
-  public func get<T, U>(map : Self<T, U>, x : T, compare : (implicit : (T, T) -> Int)) : ?U {
+  public func get<T, U>(map : Self<T, U>, x : T, compare : implicit (T, T) -> Int) : ?U {
     if (compare(map.k, x) == 0) ?map.u else null;
   };
 };

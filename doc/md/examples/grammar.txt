@@ -7,6 +7,9 @@
     X
     X SEP <list(X, SEP)>
 
+<implicit> ::= 
+    'implicit'
+
 <id_wild> ::= 
     '_'
 
@@ -65,6 +68,7 @@
 
 <typ> ::= 
     <typ_nobin>
+    <implicit> <typ_nobin>
     <typ> 'and' <typ>
     <typ> 'or' <typ>
 
