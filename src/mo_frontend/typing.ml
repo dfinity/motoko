@@ -2578,16 +2578,12 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       T.as_func_sub T.Local n T.Non
   in
   let t_arg, extra_subtype_problems = match ctx_dot with
-    | None ->
-      (t_arg, [])
+    | None -> t_arg, []
     | Some(e, t, _id, _inst) -> begin
       match T.normalize t_arg with
-      | T.Tup([t'; t2]) ->
-         t2, [(t, t')]
-      | T.Tup(t'::ts) ->
-         T.Tup(ts), [(t, t')]
-      | t' ->
-         T.unit, [(t, t')]
+      | T.Tup([t'; t2]) -> t2, [(t, t')]
+      | T.Tup(t'::ts) -> T.Tup(ts), [(t, t')]
+      | t' -> T.unit, [(t, t')]
     end
   in
   let exp2 =
