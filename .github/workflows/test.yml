@@ -80,30 +80,6 @@ jobs:
           is_fork: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
           token: ${{ steps.app-token.outputs.token }}
 
-
-  # cleanups:
-      - name: Automatically closing successful trials
-        env:
-          GH_TOKEN: ${{ github.token }}
-        if: matrix.os == 'ubuntu-24-large' && matrix.build_type == 'release' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository # && contains(github.event.pull_request.labels.*.name, 'autoclose')
-        run: |
-          gh pr view
-          gh pr checks -q '.[] | select(.state=="SUCCESS" and (.name=="verify-common-gc" or .name=="verify-main-tests"))' --json='name,state' | cat
-          $(gh pr checks -q '.[] | select(.state=="SUCCESS" and (.name=="verify-common-gc" or .name=="verify-main-tests"))' --json='name,state' | jq -n '[inputs] | length==2') || echo NICE
-
-    #steps:
-    #  - name: Automatically closing successful trials
-    #  
-    #  - name: Clean up automerge tags
-    #conditions:
-    #  - closed
-    #actions:
-    #  label:
-    #    remove:
-    #      - automerge-squash
-    #      - autoclose
-
-
   reports:
     if: github.ref == 'refs/heads/master'
     needs: [tests]
