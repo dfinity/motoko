@@ -1,4 +1,11 @@
-implicit-insert-problem.mo:12.10-12.22: type error [M0232], cannot infer type of implicit argument
-implicit-insert-problem.mo:15.10-15.22: type error [M0232], cannot infer type of implicit argument
-+extra arguments:   assert foo(1, b, **3**) == (1, 2, 3, 4);
-+extra arguments:   assert foo(1, 3, **d**) == (1, 2, 3, 4);
+implicit-insert-problem.mo:12.13-12.22: type error [M0096], expression of type
+  (Nat, Nat, Nat)
+cannot produce expected type
+  (a : Nat, b : (implicit : Nat), c : Nat, d : (implicit : Nat))
+implicit-insert-problem.mo:15.13-15.22: type error [M0096], expression of type
+  (Nat, Nat, Nat)
+cannot produce expected type
+  (a : Nat, b : (implicit : Nat), c : Nat, d : (implicit : Nat))
++arity mismatch: 4 <> 4 + 2
++arity mismatch: 4 <> 3 + 2
++arity mismatch: 4 <> 3 + 2
