@@ -1528,6 +1528,13 @@ let rec isolated_typ co = function
 
 and isolated t = isolated_typ (ref S.empty) t
 
+let can_ntuple_match n typ =
+  match promote typ with
+  | Tup ts -> List.length ts = n
+  | Any
+  | Var _ -> true
+  | _ -> false
+
 (* Least upper bound and greatest lower bound *)
 
 module M = Map.Make (OrdPair)
