@@ -39,7 +39,6 @@ pull_request_rules:
       label:
         remove:
           - automerge-squash
-          - autoclose
   - name: Auto-approve auto-PRs
     conditions:
       - author=pr-automation-bot-public[bot]
