@@ -158,7 +158,7 @@ let fail_over_constrained lb c ub =
     display_constraint (lb, c, ub)
     display_rel (lb, "</:", ub)))
 
-let bi_match_typs ctx =
+let bi_match_typs ctx regions =
   let flexible c = ConSet.mem c ctx.var_set in
   
   let rec bi_match_list p rel eq inst any xs1 xs2 =
@@ -169,6 +169,16 @@ let bi_match_typs ctx =
       | None -> None)
     | [], [] -> Some inst
     | _, _ -> None
+  in
+
+  let rec bi_match_list_with_regions p regions rel eq inst any xs1 xs2 =
+    match (xs1, xs2, regions) with
+    | x1::xs1, x2::xs2, region::regions ->
+      (match p rel eq inst any x1 x2 with
+      | Some inst -> bi_match_list_with_regions p regions rel eq inst any xs1 xs2
+      | None -> None)
+    | [], [], [] -> Some inst
+    | _, _, _ -> None
   in
 
   let update binop c t ce =
@@ -342,13 +352,13 @@ let bi_match_typs ctx =
     bi_match_typ rel eq inst any (open_ ts tb1.bound) (open_ ts tb2.bound)
 
   in
-  bi_match_list bi_match_typ
+  bi_match_list_with_regions bi_match_typ regions
 
 (** Solves the given constraints [ts1, ts2] in the given context [ctx].
     Unused type variables can be deferred to the next round.
     [deferred_typs] are types to appear in the constraints of the next round. Used to determine which type variables to defer.
  *)
-let solve ctx (ts1, ts2) must_solve =
+let solve ctx (ts1, ts2, regions) must_solve =
   if debug then Debug.print_solve ctx (ts1, ts2) must_solve;
 
   (* Defer solving type variables that can be solved later. More constraints appear in the next round, let them influence as many variables as possible *)
@@ -368,7 +378,7 @@ let solve ctx (ts1, ts2) must_solve =
     to_defer, not (ConSet.disjoint used to_defer)
   in
   match
-    bi_match_typs ctx (ref SS.empty) (ref SS.empty) ctx.bounds ConSet.empty ts1 ts2
+    bi_match_typs ctx regions (ref SS.empty) (ref SS.empty) ctx.bounds ConSet.empty ts1 ts2
   with
   | Some (l, u) ->
     if debug then Debug.print_solved_bounds l u;
@@ -474,9 +484,10 @@ let bi_match_subs scope_opt tbs typ_opt =
 
   fun subs must_solve ->
     let must_solve = List.map (open_ ts) must_solve in
-    let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
-    let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
-    let env, remaining = solve ctx (ts1, ts2) must_solve in
+    let ts1 = List.map (fun (t1, _, _) -> open_ ts t1) subs in
+    let ts2 = List.map (fun (_, t2, _) -> open_ ts t2) subs in
+    let regions = List.map (fun (_, _, r) -> r) subs in
+    let env, remaining = solve ctx (ts1, ts2, regions) must_solve in
     List.map (subst env) ts, remaining
 
 let finalize ts1 ctx subs =
@@ -485,7 +496,7 @@ let finalize ts1 ctx subs =
     ts1, ConEnv.empty
   end else begin
     (* Solve the 2nd round of sub-type problems *)
-    let env, remaining = solve ctx (List.split subs) [] in
+    let env, remaining = solve ctx (Lib.List.split3 subs) [] in
 
     (* The 2nd round should not leave any remaining type variables *)
     assert (is_ctx_empty remaining);

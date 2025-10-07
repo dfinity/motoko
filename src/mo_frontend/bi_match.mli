@@ -72,7 +72,7 @@ val bi_match_subs :
   scope option ->
   bind list ->
   typ option ->
-  (typ * typ) list ->
+  (typ * typ * Source.region) list ->
   typ list ->
   typ list * ctx
 
@@ -88,7 +88,7 @@ val bi_match_subs :
 val finalize :
   typ list ->
   ctx ->
-  (typ * typ) list ->
+  (typ * typ * Source.region) list ->
   typ list * typ ConEnv.t
 
 (** Checks that all types are closed (no unresolved type variables) *)

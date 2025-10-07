@@ -361,6 +361,13 @@ struct
     then (take n xs, drop n xs)
     else (xs, [])
 
+  let rec split3 l =
+    match l with
+    | [] -> [], [], []
+    | (x, y, z) :: tl ->
+      let xs, ys, zs = split3 tl in
+      (x::xs, y::ys, z::zs)
+
   let mapi2 f xs ys =
     let _, acc = List.fold_left2 (fun (i, acc) x y -> (1 + i, f i x y :: acc)) (0, []) xs ys in
     List.rev acc

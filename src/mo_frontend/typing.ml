@@ -1523,7 +1523,7 @@ let contextual_dot env name receiver_ty =
   (* Does an instantiation for [tbs] exist that makes [t1] <: [t2]? *)
   let permissive_sub t1 (tbs, t2) =
     try
-      let (s, c) = Bi_match.bi_match_subs None tbs None [t1, t2] [] in
+      let (s, c) = Bi_match.bi_match_subs None tbs None [t1, t2, Source.no_region] [] in
       ignore (Bi_match.finalize s c []);
       true
     with _ ->
@@ -2627,11 +2627,11 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     | None -> t_args, []
     | Some(e, t) -> begin
       match t_args with
-      | [t'; t2] -> [t2], [(t, t')]
-      | t'::ts -> ts, [(t, t')]
+      | [t'; t2] -> [t2], [(t, t', e.at)]
+      | t'::ts -> ts, [(t, t', e.at)]
       | [] ->
         (* Should be unreachable *)
-        [T.unit], [(t, T.unit)]
+        [T.unit], [(t, T.unit, e.at)]
     end
   in
   let ctx_holes, implicit_t_args_n = insert_holes at t_args syntax_args in
@@ -2748,7 +2748,7 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
       | _ ->
         (* Infer and add a subtype problem for bi_match *)
         let t = infer_exp env exp in
-        subs := (t, target_type) :: !subs;
+        subs := (t, target_type, exp.at) :: !subs;
         t
     in
     let t2 = decompose exp target_type in
@@ -2758,7 +2758,7 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
   (* Infer the argument as much as possible, defer sub-expressions that cannot be inferred *)
   let t2, subs, deferred, to_fix, must_solve = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
 
-  if Bi_match.debug then debug_print_infer_defer_split exp2 t_arg t2 subs deferred;
+  (* if Bi_match.debug then debug_print_infer_defer_split exp2 t_arg t2 subs deferred; *)
 
   (* In case of an early error, we need to replace Type.Var with Type.Con for a better error message *)
   let err_ts = ref None in
@@ -2774,7 +2774,7 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
   let ret_typ_opt, subs =
     match t_expect_opt with
     | None -> Some t_ret, subs
-    | Some expected_ret -> None, (t_ret, expected_ret) :: subs
+    | Some expected_ret -> None, (t_ret, expected_ret, Source.no_region) :: subs
   in
 
   try
@@ -2812,11 +2812,11 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
         if not closed then
           if body_typ <> codom then
             (* [body_typ] is closed, body is already checked above, we just need to solve the subtype problem *)
-            subs := (body_typ, codom) :: !subs
+            subs := (body_typ, codom, exp.at) :: !subs
           else begin
             (* We just have open [codom], we need to infer the body *)
             let actual_t = infer_exp env' body in
-            subs := (actual_t, body_typ) :: !subs;
+            subs := (actual_t, body_typ, exp.at) :: !subs;
         end
       | HoleE _, typ ->
          if not env.pre then begin
@@ -2826,7 +2826,7 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
          end
       | _ ->
         (* Future work: Inferring will fail, we could report an explicit error instead *)
-        subs := (infer_exp env exp, typ) :: !subs
+        subs := (infer_exp env exp, typ, exp.at) :: !subs
     );
     let ts, subst_env = Bi_match.finalize ts remaining !subs in
 
