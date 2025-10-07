@@ -164,3 +164,16 @@ jobs:
     steps:
       - name: Main tests passed
         run: echo "Main tests completed successfully."
+
+  autoclose:
+    needs: [verify-common-gc, verify-main-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Automatically closing successful trials XXXX
+        env:
+          GH_TOKEN: ${{ github.token }}
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository # && contains(github.event.pull_request.labels.*.name, 'autoclose')
+        run: |
+          gh pr view
+          gh pr checks -q '.[] | select(.state=="SUCCESS" and (.name=="verify-common-gc" or .name=="verify-main-tests"))' --json='name,state' | cat
+          $(gh pr checks -q '.[] | select(.state=="SUCCESS" and (.name=="verify-common-gc" or .name=="verify-main-tests"))' --json='name,state' | jq -n '[inputs] | length==2') || echo NICE
