@@ -153,7 +153,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository # && contains(github.event.pull_request.labels.*.name, 'autoclose')
         run: |
-          echo ${{ github.event.pull_request.number }}
+          echo ${{ github.event.pull_request.number }} ${{ github.event.pull_request.html_url }}
+          sleep 3
           gh pr view ${{ github.event.pull_request.number }}
-          gh pr checks -q '.[] | select(.state=="SUCCESS" and (.name=="verify-common-gc" or .name=="verify-main-tests"))' --json='name,state' | cat
+          gh pr checks ${{ github.event.pull_request.number }} -q '.[] | select(.state=="SUCCESS" and (.name=="verify-common-gc" or .name=="verify-main-tests"))' --json='name,state' | cat
           $(gh pr checks -q '.[] | select(.state=="SUCCESS" and (.name=="verify-common-gc" or .name=="verify-main-tests"))' --json='name,state' | jq -n '[inputs] | length==2') || echo NICE
