@@ -157,4 +157,4 @@ jobs:
           sleep 3
           gh pr view ${{ github.event.pull_request.number }}
           gh pr checks ${{ github.event.pull_request.number }} -q '.[] | select(.state=="SUCCESS" and (.name=="verify-common-gc" or .name=="verify-main-tests"))' --json='name,state' | cat
-          $(gh pr checks  ${{ github.event.pull_request.number }} -q '.[] | select(.state=="SUCCESS" and (.name=="verify-common-gc" or .name=="verify-main-tests"))' --json='name,state' | jq -n '[inputs] | length==2') && gh pr edit ${{ github.event.pull_request.number }} --add-label testing
+          $(gh pr checks  ${{ github.event.pull_request.number }} -q '.[] | select(.state=="SUCCESS" and (.name=="verify-common-gc" or .name=="verify-main-tests"))' --json='name,state' | jq -n '[inputs] | length==2') && gh pr comment ${{ github.event.pull_request.number }} --body "CI looks good, this dependency bump would not cause problems, hence closing this trial PR."
