@@ -2530,7 +2530,7 @@ and infer_callee env exp =
            at = id.at;
            note = { note_eff = T.Triv; note_typ = func_ty }
          };
-         func_ty, Some (exp1, t1, inst)
+         func_ty, Some (exp1, t1, id.it, inst)
      end
   | _ ->
      infer_exp_promote env exp, None
@@ -2577,19 +2577,10 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
           "this looks like an unintended function call, perhaps a missing ';'?";
       T.as_func_sub T.Local n T.Non
   in
-  let strip_receiver ty = match ty with
-    | T.Func(s, c, tbs, t1::ts1, ts2) ->
-      T.Func(s, c, tbs, ts1, ts2)
-    |  _ -> ty
-  in
-  let t1', inst_opt, (t_arg, extra_subtype_problems) = match ctx_dot with
+  let t_arg, extra_subtype_problems = match ctx_dot with
     | None ->
-      t1,
-      None,
       (t_arg, [])
-    | Some(e, t, inst) -> begin
-      strip_receiver t1,
-      Some inst,
+    | Some(e, t, _id, _inst) -> begin
       match T.normalize t_arg with
       | T.Tup([t'; t2]) ->
          t2, [(t, t')]
@@ -2627,11 +2618,11 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       if not env.pre then check_exp_strong env t_arg' exp2
       else if typs <> [] && Flags.is_warning_enabled "M0223" &&
         is_redundant_instantiation ts env (fun env' ->
-          infer_call_instantiation env' t1' inst_opt tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
+          infer_call_instantiation env' t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
             warn env inst.at "M0223" "redundant type instantiation";
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
-      infer_call_instantiation env t1' inst_opt tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
+      infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
   inst.note <- ts;
   if not env.pre then begin
@@ -2655,7 +2646,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
 
-and infer_call_instantiation env t1 inst_opt tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems =
+and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems =
   (*
   Partial Argument Inference:
   We need to infer the type of the argument and find the best instantiation for the call expression.
@@ -2705,11 +2696,13 @@ and infer_call_instantiation env t1 inst_opt tbs t_arg t_ret exp2 at t_expect_op
   if Bi_match.debug then debug_print_infer_defer_split exp2 t_arg t2 subs deferred;
 
   (* In case of an early error, we need to replace Type.Var with Type.Con for a better error message *)
-  let err_ts = ref inst_opt in
+  let err_ts = ref None in
   let err_subst t =
     let ts = match !err_ts with
       | None ->
-        T.open_binds tbs
+        (match ctx_dot with
+        | Some (_, _, _, ts) -> ts
+        | _ -> T.open_binds tbs)
       | Some ts -> ts
     in
     T.open_ ts t
@@ -2791,9 +2784,20 @@ and infer_call_instantiation env t1 inst_opt tbs t_arg t_ret exp2 at t_expect_op
   *)
     ts, T.open_ ts t_arg, T.open_ ts t_ret
   with Bi_match.Bimatch msg ->
+    let strip_receiver ty = match ty with
+     | T.Func(s, c, tbs, t1::ts1, ts2) ->
+       T.Func(s, c, tbs, ts1, ts2)
+     |  _ -> ty
+    in
+    let desc, t1' = match ctx_dot with
+      | None -> "function", t1
+      | Some (_, _, id, _) ->
+         Printf.sprintf "dotted function `_.%s` " id,
+         strip_receiver t1 in
     error env at "M0098"
-      "cannot implicitly instantiate function of type%a\nwith parameters%a\nto argument of type%a%s\nbecause %s"
-      display_typ t1
+      "cannot implicitly instantiate %s of type%a\nwith parameters%a\nto argument of type%a%s\nbecause %s"
+      desc
+      display_typ t1'
       display_typ (err_subst t_arg)
       display_typ (err_subst t2)
       (match t_expect_opt with
