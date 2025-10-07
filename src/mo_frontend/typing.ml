@@ -2692,13 +2692,14 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
   if Bi_match.debug then debug_print_infer_defer_split exp2 t_arg t2 subs deferred;
 
   (* In case of an early error, we need to replace Type.Var with Type.Con for a better error message *)
-  let err_ts = ref None in
+  let err_ts = ref
+      (match ctx_dot with
+      | Some (_, _, _, ts) -> Some ts
+      | _ -> None)
+  in
   let err_subst t =
     let ts = match !err_ts with
-      | None ->
-        (match ctx_dot with
-        | Some (_, _, _, ts) -> ts
-        | _ -> T.open_binds tbs)
+      | None -> T.open_binds tbs
       | Some ts -> ts
     in
     T.open_ ts t
