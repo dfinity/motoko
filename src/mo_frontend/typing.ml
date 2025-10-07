@@ -1484,6 +1484,7 @@ let resolve_hole env at hole_sort typ =
 type ctx_dot_candidate =
   { module_name : T.lab;
     func_ty : T.typ;
+    inst : T.typ list;
     module_ty : T.typ;
   }
 
@@ -1497,28 +1498,30 @@ let contextual_dot env name receiver_ty =
   (* Does an instantiation for [tbs] exist that makes [t1] <: [t2]? *)
   let permissive_sub t1 (tbs, t2) =
     try
-      let (s, c) = Bi_match.bi_match_subs None tbs None [t1, t2] [] in
-      ignore (Bi_match.finalize s c []);
-      true
+      let (inst, c) = Bi_match.bi_match_subs None tbs None [t1, t2] [] in
+      ignore (Bi_match.finalize inst c []);
+      Some inst
     with _ ->
-      false in
+      None in
   let is_module (n, (t, _, _, _)) = match T.normalize t with
     | T.Obj (T.Module, fs) -> Some (n, (t, fs))
     | _ -> None in
   let has_matching_self tf = match tf with
     | T.{ lab = "Self"; typ = T.Typ con; _ } ->
        (match Cons.kind con with
-       | T.Def(tbs, t') -> permissive_sub receiver_ty (tbs, t')
+       | T.Def(tbs, t') -> permissive_sub receiver_ty (tbs, t') <> None
        | _ -> false)
     | _ -> false in
   let has_matching_self_type (_, (_, fs)) = List.exists has_matching_self fs in
   let is_matching_func = function (* TODO: normalize first *)
     | T.{ lab; typ = T.Func (_, _, tbs, first_arg::_, _) as typ; _ } when lab = name.it ->
-      if permissive_sub receiver_ty (tbs, first_arg) then Some typ else None
+      (match permissive_sub receiver_ty (tbs, first_arg) with
+       | Some inst -> Some (typ, inst)
+       | _ -> None)
     | _ -> None in
   let find_candidate (module_name, (module_ty, fs)) =
     List.find_map is_matching_func fs |>
-      Option.map (fun func_ty -> { module_name; func_ty; module_ty }) in
+      Option.map (fun (func_ty, inst) -> { module_name; func_ty; module_ty; inst }) in
   let eligible_funcs =
     T.Env.to_seq env.vals |>
       Seq.filter_map is_module |>
@@ -2515,7 +2518,7 @@ and infer_callee env exp =
       | Error suggestions ->
          let sug = Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
          Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
-      | Ok { module_name; module_ty; func_ty } ->
+      | Ok { module_name; module_ty; func_ty; inst; } ->
          if not env.pre then
          use_identifier env module_name;
          note := Some {
@@ -2527,7 +2530,7 @@ and infer_callee env exp =
            at = id.at;
            note = { note_eff = T.Triv; note_typ = func_ty }
          };
-         func_ty, Some (exp1, t1)
+         func_ty, Some (exp1, t1, inst)
      end
   | _ ->
      infer_exp_promote env exp, None
@@ -2579,12 +2582,14 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       T.Func(s, c, tbs, ts1, ts2)
     |  _ -> ty
   in
-  let t1', (t_arg, extra_subtype_problems) = match ctx_dot with
+  let t1', inst_opt, (t_arg, extra_subtype_problems) = match ctx_dot with
     | None ->
       t1,
+      None,
       (t_arg, [])
-    | Some(e, t) -> begin
+    | Some(e, t, inst) -> begin
       strip_receiver t1,
+      Some inst,
       match T.normalize t_arg with
       | T.Tup([t'; t2]) ->
          t2, [(t, t')]
@@ -2622,11 +2627,11 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       if not env.pre then check_exp_strong env t_arg' exp2
       else if typs <> [] && Flags.is_warning_enabled "M0223" &&
         is_redundant_instantiation ts env (fun env' ->
-          infer_call_instantiation env' t1' tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
+          infer_call_instantiation env' t1' inst_opt tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
             warn env inst.at "M0223" "redundant type instantiation";
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
-      infer_call_instantiation env t1' tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
+      infer_call_instantiation env t1' inst_opt tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
   inst.note <- ts;
   if not env.pre then begin
@@ -2650,7 +2655,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
 
-and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems =
+and infer_call_instantiation env t1 inst_opt tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems =
   (*
   Partial Argument Inference:
   We need to infer the type of the argument and find the best instantiation for the call expression.
@@ -2700,19 +2705,11 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
   if Bi_match.debug then debug_print_infer_defer_split exp2 t_arg t2 subs deferred;
 
   (* In case of an early error, we need to replace Type.Var with Type.Con for a better error message *)
-  let err_ts = ref None in
+  let err_ts = ref inst_opt in
   let err_subst t =
     let ts = match !err_ts with
       | None ->
-        if extra_subtype_problems <> [] then
-          try
-            (* specialize to receiver type *)
-            let (ts, c) = Bi_match.bi_match_subs None tbs None extra_subtype_problems [] in
-            ignore (Bi_match.finalize ts c []);
-            ts
-          with _ ->
-            T.open_binds tbs
-        else T.open_binds tbs
+        T.open_binds tbs
       | Some ts -> ts
     in
     T.open_ ts t
