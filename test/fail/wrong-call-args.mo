@@ -21,9 +21,12 @@ module BreakingChange {
   func foo<K>(_ : Nat, compare : (implicit : (K, K) -> Types.Order)) {
     ignore compare;
   };
-  func main() {
-    let arg = (1, Text.compare);
+  let arg = (1, Text.compare);
+  func main1() {
     foo(arg);
+  };
+  func main2() {
+    foo arg;
   };
 };
 
