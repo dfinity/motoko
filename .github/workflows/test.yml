@@ -162,4 +162,4 @@ jobs:
               && gh pr edit ${{ github.event.pull_request.number }} --remove-label "autoclose")
 
 
-# delete_head_branch, remove 'autoclose'
+# delete_head_branch
