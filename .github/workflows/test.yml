@@ -83,6 +83,8 @@ jobs:
 
   # cleanups:
       - name: Automatically closing successful trials
+        env:
+          GH_TOKEN: ${{ github.token }}
         if: matrix.os == 'ubuntu-24-large' && matrix.build_type == 'release' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository # && contains(github.event.pull_request.labels.*.name, 'autoclose')
         run: gh pr view
 
