@@ -1,5 +1,14 @@
-wrong-call-args.mo:21.12-21.14: type error [M0233], wrong number of arguments: expected 1 but got 0
-wrong-call-args.mo:25.5-25.31: type error [M0098], cannot implicitly instantiate function of type
+wrong-call-args.mo:26.5-26.13: type error [M0098], cannot implicitly instantiate function of type
+  <K>(Nat, compare : (implicit : (K, K) -> Order)) -> ()
+to argument of type
+  ((Nat, (t1 : Text, t2 : Text) -> Order),
+   compare : (implicit : (K, K) -> Order))
+to produce result of type
+  ()
+because no instantiation of K makes
+  (Nat, (t1 : Text, t2 : Text) -> Order)  <:  Nat
+wrong-call-args.mo:32.12-32.14: type error [M0233], wrong number of arguments: expected 1 but got 0
+wrong-call-args.mo:36.5-36.31: type error [M0098], cannot implicitly instantiate function of type
   <K, V>(map : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K,
          value : V) ->
     ()
@@ -13,7 +22,7 @@ because implicit instantiation of type parameter K is over-constrained with
 where
   Any  </:  Text
 so that no valid instantiation exists
-wrong-call-args.mo:31.5-31.17: type error [M0098], cannot implicitly instantiate function of type
+wrong-call-args.mo:42.5-42.17: type error [M0098], cannot implicitly instantiate function of type
   <K, V>(map : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K) ->
     ?V
 to argument of type
@@ -25,11 +34,11 @@ because no instantiation of K, V makes
 and
   {var root : Node<Text, Text>; var size_ : Nat}  <: 
     (map : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K)
-wrong-call-args.mo:34.27-34.39: type error [M0096], expression of type
+wrong-call-args.mo:45.27-45.39: type error [M0096], expression of type
   (t1 : Text, t2 : Text) -> Order
 cannot produce expected type
   ()
-wrong-call-args.mo:37.5-37.28: type error [M0098], cannot implicitly instantiate function of type
+wrong-call-args.mo:48.5-48.28: type error [M0098], cannot implicitly instantiate function of type
   <K, V>() -> Map<K, V>
 to argument of type
   (t1 : Text, t2 : Text) -> Order
@@ -39,7 +48,7 @@ because no instantiation of K, V makes
   Map<K, V>  <:  {var root : Node<Text, Text>; var size_ : Nat}
 and
   (t1 : Text, t2 : Text) -> Order  <:  ()
-wrong-call-args.mo:41.5-41.36: type error [M0098], cannot implicitly instantiate function of type
+wrong-call-args.mo:52.5-52.36: type error [M0098], cannot implicitly instantiate function of type
   <K, V>(map : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K,
          value : V) ->
     ()

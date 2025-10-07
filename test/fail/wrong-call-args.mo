@@ -2,6 +2,7 @@
 
 import Map "mo:core/Map";
 import Text "mo:core/Text";
+import Types "mo:core/Types";
 
 let map = Map.empty<Text, Text>();
 
@@ -13,6 +14,16 @@ module Ok {
   func singleArgAsMany2() {
     let arg = (map, Text.compare, "abc");
     let _ = Map.get arg;
+  };
+};
+
+module BreakingChange {
+  func foo<K>(_ : Nat, compare : (implicit : (K, K) -> Types.Order)) {
+    ignore compare;
+  };
+  func main() {
+    let arg = (1, Text.compare);
+    foo(arg);
   };
 };
 
@@ -40,13 +51,4 @@ module WithoutDot {
     let key = "abc";
     Map.add(map, Text.compare, key); // missing value, low priority issue: Text.compare should not appear
   };
-};
-
-module M {
-  public type Self = (Nat, Nat);
-  public let i : Nat = 42;
-  public func f1(_self : Self, _x : Nat, _y : Nat) {};
-  public func f2(_self : Self, _xy : (Nat, Nat)) {};
-  public func f3(_self : Self, _i : (implicit : (i : Nat))) {};
-  public func f4(_self : Self, _xy : (Nat, Nat), _i : (implicit : (i : Nat))) {};
 };
