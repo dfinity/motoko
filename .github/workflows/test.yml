@@ -169,6 +169,7 @@ jobs:
     needs: [verify-common-gc, verify-main-tests]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v5
       - name: Automatically closing successful trials XXXX
         env:
           GH_TOKEN: ${{ github.token }}
