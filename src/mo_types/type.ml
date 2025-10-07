@@ -644,10 +644,12 @@ let seq_of_tup t =
   | Tup ts -> ts
   | t -> invalid "seq_of_tup"
 
-let arity t =
-  match normalize t with
-  | Tup ts -> List.length ts
-  | t -> 1
+(* Returns two arities. The first is for saturated calls, while the second is for calls with implicit resolution *)
+let arities ts =
+  List.fold_left (fun (n_sat, n_implicit) t ->
+    match t with
+    | Named(_, Named("implicit", _)) -> (n_sat + 1, n_implicit)
+    | _ -> (n_sat + 1, n_implicit + 1)) (0, 0) ts
 
 let as_prim_sub p t = match promote t with
   | Prim p' when p = p' -> ()

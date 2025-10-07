@@ -2574,6 +2574,18 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
           "this looks like an unintended function call, perhaps a missing ';'?";
       T.as_func_sub T.Local n T.Non
   in
+
+  let n_saturated, n_implicit = T.arities (match t_arg with | T.Tup ts -> ts | t -> [t]) in
+  let n_saturated, n_implicit = match ctx_dot with
+    | None -> n_saturated, n_implicit
+    | Some _ -> n_saturated - 1, n_implicit - 1 in
+  let n_syntactic = match exp2.it with
+    | TupE es when not parenthesized -> List.length es
+    | _ -> 1 in
+  let trickery = Option.is_some ctx_dot || n_saturated <> n_implicit in
+  if trickery && n_syntactic <> n_saturated && n_syntactic <> n_implicit then
+    error env exp2.at "M0999"
+      "Wrong arg count n_syntactic: %d, n_saturated: %d, n_implicit %d" n_syntactic n_saturated n_implicit;
   let t_arg, extra_subtype_problems = match ctx_dot with
     | None -> t_arg, []
     | Some(e, t) -> begin

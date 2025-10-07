@@ -179,8 +179,7 @@ val seq : typ list -> typ
 val codom : control -> (unit -> typ) -> typ list -> typ
 val as_seq : typ -> typ list (* This needs to go away *)
 val seq_of_tup : typ -> typ list
-val arity : typ -> int
-
+val arities : typ list -> int * int
 
 (* Fields *)
 

@@ -1,0 +1,65 @@
+wrong-call-args.mo:12.21-12.24: type error [M0999], Wrong arg count n_syntactic: 1, n_saturated: 3, n_implicit 2
+wrong-call-args.mo:16.21-16.24: type error [M0999], Wrong arg count n_syntactic: 1, n_saturated: 3, n_implicit 2
+wrong-call-args.mo:26.5-26.13: type error [M0098], cannot implicitly instantiate function of type
+  <K>(Nat, compare : (implicit : (K, K) -> Order)) -> ()
+to argument of type
+  ((Nat, (t1 : Text, t2 : Text) -> Order),
+   compare : (implicit : (K, K) -> Order))
+to produce result of type
+  ()
+because no instantiation of K makes
+  (Nat, (t1 : Text, t2 : Text) -> Order)  <:  Nat
+wrong-call-args.mo:29.5-29.12: type error [M0098], cannot implicitly instantiate function of type
+  <K>(Nat, compare : (implicit : (K, K) -> Order)) -> ()
+to argument of type
+  ((Nat, (t1 : Text, t2 : Text) -> Order),
+   compare : (implicit : (K, K) -> Order))
+to produce result of type
+  ()
+because no instantiation of K makes
+  (Nat, (t1 : Text, t2 : Text) -> Order)  <:  Nat
+wrong-call-args.mo:35.12-35.14: type error [M0999], Wrong arg count n_syntactic: 0, n_saturated: 2, n_implicit 1
+wrong-call-args.mo:39.5-39.31: type error [M0098], cannot implicitly instantiate function of type
+  <K, V>(map : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K,
+         value : V) ->
+    ()
+to argument of type
+  (compare : (implicit : (K, K) -> Order), (t1 : Text, t2 : Text) -> Order,
+   Text)
+to produce result of type
+  ()
+because implicit instantiation of type parameter K is over-constrained with
+  Any  <:  K  <:  Text
+where
+  Any  </:  Text
+so that no valid instantiation exists
+wrong-call-args.mo:45.13-45.16: type error [M0999], Wrong arg count n_syntactic: 1, n_saturated: 3, n_implicit 2
+wrong-call-args.mo:48.27-48.39: type error [M0096], expression of type
+  (t1 : Text, t2 : Text) -> Order
+cannot produce expected type
+  ()
+wrong-call-args.mo:51.5-51.28: type error [M0098], cannot implicitly instantiate function of type
+  <K, V>() -> Map<K, V>
+to argument of type
+  (t1 : Text, t2 : Text) -> Order
+to produce result of type
+  {var root : Node<Text, Text>; var size_ : Nat}
+because no instantiation of K, V makes
+  Map<K, V>  <:  {var root : Node<Text, Text>; var size_ : Nat}
+and
+  (t1 : Text, t2 : Text) -> Order  <:  ()
+wrong-call-args.mo:55.5-55.36: type error [M0098], cannot implicitly instantiate function of type
+  <K, V>(map : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K,
+         value : V) ->
+    ()
+to argument of type
+  ({var root : Node<Text, Text>; var size_ : Nat},
+   compare : (implicit : (K, K) -> Order), (t1 : Text, t2 : Text) -> Order,
+   Text)
+to produce result of type
+  ()
+because implicit instantiation of type parameter K is over-constrained with
+  Any  <:  K  <:  Text
+where
+  Any  </:  Text
+so that no valid instantiation exists
