@@ -1,4 +1,7 @@
 implicit-import-hint-dot.mo:13.10-13.12: type error [M0233], wrong number of arguments: expected 1 but got 0
+Expected arguments of type:
+  (key : K)
+But got no arguments
 implicit-import-hint-dot.mo:17.12-17.26: type error [M0230], Cannot determine implicit argument `compare` of type
   (Text, Text) -> Order
 Hint: Did you mean to import `core-stub/src/Text.mo.compare`?

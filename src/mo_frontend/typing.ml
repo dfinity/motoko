@@ -140,6 +140,21 @@ let display_typ = Lib.Format.display T.pp_typ
 
 let display_typ_expand = Lib.Format.display T.pp_typ_expand
 
+let display_many display p xs =
+  List.iter (display p) xs
+
+let display_expected fmt types =
+  if types = [] then
+    Format.fprintf fmt "Expected no arguments\n"
+  else
+    Format.fprintf fmt "Expected arguments of type:%a" (display_many display_typ_expand) types
+
+let display_given fmt types =
+  if types = [] then
+    Format.fprintf fmt "But got no arguments"
+  else
+    Format.fprintf fmt "But got arguments of type:%a" (display_many display_typ_expand) types
+
 let display_obj fmt (s, fs) =
   if !Flags.ai_errors || (List.length fs) < 16 then
     Format.fprintf fmt "type:%a" display_typ (T.Obj(s, fs))
@@ -2532,21 +2547,20 @@ and infer_callee env exp =
   | _ ->
      infer_exp_promote env exp, None
 
-and insert_holes at ts es =
-  let as_implicit = function
-    | T.Named ("implicit", T.Named (arg_name, t)) ->
-      Some arg_name
-    | T.Named ("implicit", t) ->
-      Some "_"
-    | T.Named (_inf_arg_name, (T.Named ("implicit", T.Named (arg_name, t)))) ->
-      (* override inferred arg_name *)
-      Some arg_name
-    | T.Named (inf_arg_name, (T.Named ("implicit", t))) ->
-      (* non-overriden, use inferred arg_name *)
-      Some inf_arg_name
-    | _ -> None
-  in
+and as_implicit = function
+  | T.Named ("implicit", T.Named (arg_name, t)) ->
+    Some arg_name
+  | T.Named ("implicit", t) ->
+    Some "_"
+  | T.Named (_inf_arg_name, (T.Named ("implicit", T.Named (arg_name, t)))) ->
+    (* override inferred arg_name *)
+    Some arg_name
+  | T.Named (inf_arg_name, (T.Named ("implicit", t))) ->
+    (* non-overriden, use inferred arg_name *)
+    Some inf_arg_name
+  | _ -> None
 
+and insert_holes at ts es =
   let implicits_n = List.to_seq ts |> Seq.filter_map as_implicit |> Seq.length in
   if List.length ts <> List.length es + implicits_n then
     (* let () = Printf.printf "+arity mismatch: %d <> %d + %d\n" (List.length ts) (List.length es) implicits_n in *)
@@ -2652,11 +2666,20 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   (* Match the arguments against the parameter types *)
   let t_arg =
     if (ctx_dot = None && ctx_holes = None) || List.length t_args = List.length args then T.seq t_args else
-      (* TODO: include actual types and expected types *)
+      let tvars = T.open_binds tbs in
+      let subst t = if tvars = [] then t else T.open_ tvars t in
+      let given_types = List.map (infer_exp env) syntax_args in
+      let expected_types =
+        t_args
+        |> List.filter (fun t -> as_implicit t = None)
+        |> List.map subst
+      in
       error env exp2.at "M0233"
-      "wrong number of arguments: expected %d but got %d"
+      "wrong number of arguments: expected %d but got %d\n%a\n%a"
       (List.length t_args - implicit_t_args_n)
       (List.length syntax_args)
+      display_expected expected_types
+      display_given given_types
   in
   if not env.pre then ref_exp2 := exp2; (* TODO: is this good enough *)
   let ts, t_arg', t_ret' =
