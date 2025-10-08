@@ -2,5 +2,3 @@ lambdas-open-types.mo:6.9-6.37: type error [M0098], cannot implicitly instantiat
   (_ar : [var T], _f : T -> U) -> [var U]
 to argument of type
   ([Nat], _f : T -> U)
-because no instantiation of T, U makes
-  [Nat]  <:  (_ar : [var T])

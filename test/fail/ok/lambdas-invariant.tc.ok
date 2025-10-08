@@ -2,44 +2,35 @@ lambdas-invariant.mo:27.11-27.39: type error [M0098], cannot implicitly instanti
   ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because type parameter `U` has no best solution, please provide an explicit instantiation.
 lambdas-invariant.mo:30.11-30.45: type error [M0098], cannot implicitly instantiate function of type
   ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because type parameter `U` has no best solution, please provide an explicit instantiation.
 lambdas-invariant.mo:33.11-33.42: type error [M0098], cannot implicitly instantiate function of type
   ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because type parameter `U` has no best solution, please provide an explicit instantiation.
 lambdas-invariant.mo:36.11-36.56: type error [M0098], cannot implicitly instantiate function of type
   ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because type parameter `U` has no best solution, please provide an explicit instantiation.
 lambdas-invariant.mo:39.11-39.41: type error [M0098], cannot implicitly instantiate function of type
   ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because type parameter `U` has no best solution, please provide an explicit instantiation.
 lambdas-invariant.mo:42.11-42.43: type error [M0098], cannot implicitly instantiate function of type
   ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because type parameter `U` has no best solution, please provide an explicit instantiation.
 lambdas-invariant.mo:45.11-45.43: type error [M0098], cannot implicitly instantiate function of type
   ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because type parameter `U` has no best solution, please provide an explicit instantiation.
 lambdas-invariant.mo:58.11-58.39: type error [M0098], cannot implicitly instantiate function of type
   ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because type parameter `U` has no best solution, please provide an explicit instantiation.
 lambdas-invariant.mo:62.11-62.39: type error [M0098], cannot implicitly instantiate function of type
   ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because type parameter `U` has no best solution, please provide an explicit instantiation.

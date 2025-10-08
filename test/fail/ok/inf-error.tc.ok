@@ -4,17 +4,15 @@ to argument of type
   ({map : [(Nat, [var Text])]}, (n : Nat, m : Nat) -> Order, Text)
 to produce result of type
   Any
-because type parameter `K` has no solution. Maybe try an explicit instantiation.
 inf-error.mo:48.13-48.39: type error [M0230], Cannot determine implicit argument `compare` of type
   (Any, Any) -> Order
 Hint: If you're trying to omit an implicit argument named `compare` you need to have a matching declaration named `compare` in scope.
-inf-error.mo:52.13-52.47: type error [M0098], cannot implicitly instantiate dotted function `_.get` of type
+inf-error.mo:52.13-52.47: type error [M0098], cannot implicitly instantiate function `.get` of type
   (compare : (implicit : (Nat, Nat) -> Order), n : Nat) -> ?Text
 to argument of type
   ((n : Nat, m : Nat) -> Order, Text)
 to produce result of type
   Any
-because type parameter `K` has no solution. Maybe try an explicit instantiation.
 inf-error.mo:53.13-53.34: type error [M0230], Cannot determine implicit argument `compare` of type
   (Any, Any) -> Order
 Hint: If you're trying to omit an implicit argument named `compare` you need to have a matching declaration named `compare` in scope.
@@ -25,26 +23,23 @@ to argument of type
   ({map : [(Nat, [var Text])]}, (n : Nat, m : Nat) -> Order, Text, Text)
 to produce result of type
   Any
-because type parameter `K` has no solution. Maybe try an explicit instantiation.
 inf-error.mo:61.13-61.43: type error [M0230], Cannot determine implicit argument `compare` of type
   (Any, Any) -> Order
 Hint: If you're trying to omit an implicit argument named `compare` you need to have a matching declaration named `compare` in scope.
-inf-error.mo:63.13-63.51: type error [M0098], cannot implicitly instantiate dotted function `_.set` of type
+inf-error.mo:63.13-63.51: type error [M0098], cannot implicitly instantiate function `.set` of type
   (compare : (implicit : (Nat, Nat) -> Order), n : Nat, v : Text) ->
     Map<Nat, Text>
 to argument of type
   ((n : Nat, m : Nat) -> Order, Text, Text)
 to produce result of type
   Any
-because type parameter `K` has no solution. Maybe try an explicit instantiation.
-inf-error.mo:65.13-65.51: type error [M0098], cannot implicitly instantiate dotted function `_.set` of type
+inf-error.mo:65.13-65.51: type error [M0098], cannot implicitly instantiate function `.set` of type
   (compare : (implicit : (Nat, Nat) -> Order), n : Nat, v : Text) ->
     Map<Nat, Text>
 to argument of type
   ((n : Nat, m : Nat) -> Order, Text, Text)
 to produce result of type
   Any
-because type parameter `K` has no solution. Maybe try an explicit instantiation.
 inf-error.mo:66.13-66.38: type error [M0230], Cannot determine implicit argument `compare` of type
   (Any, Any) -> Order
 Hint: If you're trying to omit an implicit argument named `compare` you need to have a matching declaration named `compare` in scope.

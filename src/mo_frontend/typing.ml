@@ -2873,7 +2873,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
     let desc, t1'  = match ctx_dot with
       | None -> "function", t1
       | Some (_, receiver_ty, id, _) ->
-        Printf.sprintf "dotted function `_.%s`" id,
+        Printf.sprintf "function `.%s`" id,
         strip_receiver t1
     in
     let t1'' = match T.normalize t1' with
@@ -2884,18 +2884,28 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
     let remove_holes typ =
       T.seq (remove_holes_nary (match typ with T.Tup ts -> ts | t -> [t]))
     in
-    (*    let t_arg' = remove_holes t_arg in *)
     let t2' = remove_holes t2 in
-    error env at "M0098"
-      "cannot implicitly instantiate %s of type%a\nto argument of type%a%s\nbecause %s"
-      desc
-      display_typ t1''
-      display_typ (err_subst t2')
-      (match t_expect_opt with
-        | None -> ""
-        | Some t ->
-          Format.asprintf "\nto produce result of type%a" display_typ t)
-      msg
+    if Bi_match.debug then
+      error env at "M0098"
+        "cannot implicitly instantiate %s of type%a\nto argument of type%a%s\nbecause %s"
+        desc
+        display_typ t1
+        display_typ (err_subst t2')
+        (match t_expect_opt with
+         | None -> ""
+         | Some t ->
+           Format.asprintf "\nto produce result of type%a" display_typ t)
+        msg
+    else
+      error env at "M0098"
+        "cannot implicitly instantiate %s of type%a\nto argument of type%a%s"
+        desc
+        display_typ t1''
+        display_typ (err_subst t2')
+        (match t_expect_opt with
+         | None -> ""
+         | Some t ->
+           Format.asprintf "\nto produce result of type%a" display_typ t)
 
 and is_redundant_instantiation ts env infer_instantiation =
   assert env.pre;

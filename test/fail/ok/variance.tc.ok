@@ -38,4 +38,3 @@ variance.mo:84.15-84.20: type error [M0098], cannot implicitly instantiate funct
   () -> Inv<A>
 to argument of type
   ()
-because type parameter `A` has no best solution, please provide an explicit instantiation.
