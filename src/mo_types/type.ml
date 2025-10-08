@@ -13,6 +13,7 @@ type control =
 type obj_sort =
    Object
  | Actor
+ | Mixin
  | Module
  | Memory          (* (codegen only): stable memory serialization format *)
 
@@ -116,6 +117,7 @@ let tag_obj_sort = function
   | Module -> 1
   | Actor -> 2
   | Memory -> 3
+  | Mixin -> 4
 
 let tag_control = function
   | Returns -> 0
@@ -682,8 +684,8 @@ let as_pair_sub t = match promote t with
   | _ -> invalid "as_pair_sub"
 let as_func_sub default_s default_arity t = match promote t with
   | Func (s, c, tbs, ts1, ts2) ->
-    s, tbs, seq ts1, codom c (fun () -> Var((List.hd tbs).var, 0)) ts2
-  | Non -> default_s, Lib.List.make default_arity {var = "X"; sort = Type; bound = Any}, Any, Non
+    s, tbs, ts1, codom c (fun () -> Var((List.hd tbs).var, 0)) ts2
+  | Non -> default_s, Lib.List.make default_arity {var = "X"; sort = Type; bound = Any}, [Any], Non
   | _ -> invalid "as_func_sub"
 let as_mono_func_sub t = match promote t with
   | Func (_, _, [], ts1, ts2) -> seq ts1, seq ts2
@@ -882,7 +884,7 @@ let serializable allow_mut t =
       | Obj (s, fs) ->
         (match s with
          | Actor -> true
-         | Module -> false (* TODO(1452) make modules sharable *)
+         | Module | Mixin -> false (* TODO(1452) make modules sharable *)
          | Object | Memory -> List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
@@ -911,7 +913,7 @@ let find_unshared t =
       | Tup ts -> List.find_map go ts
       | Obj (s, fs) ->
         (match s with
-         | Actor -> None
+         | Actor | Mixin -> None
          | Module -> Some t (* TODO(1452) make modules sharable *)
          | Object ->
            List.find_map (fun f -> go f.typ) fs
@@ -1838,6 +1840,7 @@ let string_of_obj_sort = function
   | Object -> ""
   | Module -> "module "
   | Actor -> "actor "
+  | Mixin -> "mixin "
   | Memory -> "memory "
 
 let string_of_func_sort = function
@@ -2054,7 +2057,7 @@ and pp_typ_pre vs ppf t =
           (pp_typ' vs) t1
           (pp_typ_pre vs) t2
     else fprintf ppf "@[<2>async%s@ %a@]" (string_of_async_sort s) (pp_typ_pre vs) t2
-  | Obj ((Module | Actor | Memory) as os, fs) ->
+  | Obj ((Module | Actor | Mixin | Memory) as os, fs) ->
     pp_typ_obj vs ppf (os, fs)
   | t ->
     pp_typ_un vs ppf t
