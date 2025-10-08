@@ -3751,20 +3751,21 @@ and gather_dec env scope dec : Scope.t =
       {it = FuncE (name, { it = T.Local T.Stable; _ }, _, _, _, _, _, _); _}, _) ->
     new_constant_declaration env id.it;
     Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
-  | LetD (pat, { it = ImportE _; _ }, _) ->
-    let declaration_scope = gather_pat env scope pat in
-    let declarations = declaration_scope.Scope.val_env in
-    T.Env.iter (fun id _ ->
-      new_constant_declaration env id
-    ) declarations;
-    Scope.adjoin_val_env scope declarations
-  | LetD (pat, exp, _) -> (match is_mixin_import env exp.it with
-    | None -> gather_pat env scope pat
+  | LetD (pat, { it = ImportE import_exp; _ }, _) -> (match is_mixin_import env (ImportE import_exp) with
+    | None -> 
+      (let declaration_scope = gather_pat env scope pat in
+      let declarations = declaration_scope.Scope.val_env in
+      T.Env.iter (fun id _ ->
+        new_constant_declaration env id
+      ) declarations;
+      Scope.adjoin_val_env scope declarations)
     | Some (imports, args, t, decs) ->
       match pat.it with
       | VarP id -> Scope.adjoin scope (Scope.mixin id.it (imports, args, t, decs))
       | _ -> error env pat.at "M0229" "mixins may only be imported by binding to a name"
     )
+  | LetD (pat, _, _) ->
+    gather_pat env scope pat
   | VarD (id, _) ->
     shadow_declaration env id.it;
     Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
