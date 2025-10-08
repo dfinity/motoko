@@ -2633,7 +2633,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   let needs_holes = List.length syntax_args = implicits_arity in (* Implicit arguments are holes *)
   let exp2 =
     if needs_holes
-    then { exp2 with it = insert_holes exp2.at t_args syntax_args}
+    then { exp2 with it = insert_holes at t_args syntax_args}
     else exp2
   in
   (* Elaboration for contextual dot and implicits relies on the syntactic shape of the arguments,
