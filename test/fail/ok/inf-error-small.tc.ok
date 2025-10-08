@@ -1,0 +1,77 @@
+inf-error-small.mo:44.13-44.34: type error [M0098], cannot implicitly instantiate dotted function `_.get` of type
+  <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
+with parameters
+  (n : Nat)
+to argument of type
+  Text
+to produce result of type
+  Text
+because no instantiation of K, V makes
+  ?V  <:  Text
+and
+  Text  <:  (n : K)
+and
+  {map : [(Nat, [var Text])]}  <:  (map : Map<K, V>)
+inf-error-small.mo:45.13-45.47: type error [M0098], cannot implicitly instantiate dotted function `_.get` of type
+  <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
+with parameters
+  (compare : (implicit : (Nat, Nat) -> Order), n : Nat)
+to argument of type
+  ((n : Nat, m : Nat) -> Order, Text)
+to produce result of type
+  Text
+because no instantiation of K, V makes
+  ?V  <:  Text
+and
+  Text  <:  (n : K)
+and
+  (n : Nat, m : Nat) -> Order  <:  (compare : (implicit : (K, K) -> Order))
+and
+  {map : [(Nat, [var Text])]}  <:  (map : Map<K, V>)
+inf-error-small.mo:47.13-47.45: type error [M0098], cannot implicitly instantiate dotted function `_.get` of type
+  <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
+with parameters
+  (compare : (implicit : (Nat, Nat) -> Order), n : Nat)
+to argument of type
+  ({map : [(Nat, [var Text])]}, Text)
+to produce result of type
+  Text
+because no instantiation of K, V makes
+  ?V  <:  Text
+and
+  Text  <:  (n : K)
+and
+  {map : [(Nat, [var Text])]}  <:  (compare : (implicit : (K, K) -> Order))
+and
+  {map : [(Nat, [var Text])]}  <:  (map : Map<K, V>)
+inf-error-small.mo:48.13-48.58: type error [M0098], cannot implicitly instantiate dotted function `_.get` of type
+  <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
+with parameters
+  (compare : (implicit : (Nat, Nat) -> Order), n : Nat)
+to argument of type
+  ({map : [(Nat, [var Text])]}, (n : Nat, m : Nat) -> Order, Text)
+to produce result of type
+  Text
+because no instantiation of K, V makes
+  ?V  <:  Text
+and
+  ({map : [(Nat, [var Text])]}, (n : Nat, m : Nat) -> Order, Text)  <: 
+    (compare : (implicit : (K, K) -> Order), n : K)
+and
+  {map : [(Nat, [var Text])]}  <:  (map : Map<K, V>)
+inf-error-small.mo:49.13-49.45: type error [M0098], cannot implicitly instantiate dotted function `_.get` of type
+  <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
+with parameters
+  (compare : (implicit : (Nat, Nat) -> Order), n : Nat)
+to argument of type
+  ({map : [(Nat, [var Text])]}, Text)
+to produce result of type
+  Text
+because no instantiation of K, V makes
+  ?V  <:  Text
+and
+  Text  <:  (n : K)
+and
+  {map : [(Nat, [var Text])]}  <:  (compare : (implicit : (K, K) -> Order))
+and
+  {map : [(Nat, [var Text])]}  <:  (map : Map<K, V>)
