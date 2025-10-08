@@ -136,7 +136,7 @@ let fail_open_bound c bd =
 let fail_under_constrained lb c ub =
   if debug then
     raise (Bimatch (Format.asprintf
-      "implicit instantiation of type parameter %s is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
+      "implicit instantiation of type parameter `%s` is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
       (Cons.name c)
       display_constraint (lb, c, ub)
       display_rel (lb,"=/=",ub)))
@@ -148,7 +148,7 @@ let fail_under_constrained lb c ub =
 let fail_over_constrained lb c ub =
   if debug then
     raise (Bimatch (Format.asprintf
-      "implicit instantiation of type parameter %s is over-constrained with%a\nwhere%a\nso that no valid instantiation exists"
+      "implicit instantiation of type parameter `%s` is over-constrained with%a\nwhere%a\nso that no valid instantiation exists"
       (Cons.name c)
       display_constraint (lb, c, ub)
       display_rel (lb, "</:", ub)))

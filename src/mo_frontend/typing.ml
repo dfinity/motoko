@@ -2784,9 +2784,22 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
   *)
     ts, T.open_ ts t_arg, T.open_ ts t_ret
   with Bi_match.Bimatch msg ->
+    let remove_holes_nary ts =
+      match exp2.it, ts with
+        HoleE _, [_] ->
+        ts
+      | TupE es, ts when List.length es = List.length ts ->
+        let ets = List.combine es ts in
+        List.filter_map (fun (e, t) ->
+          match e.it with
+          | HoleE _ -> None
+          | _ -> Some t)
+          ets
+      | e -> ts
+    in
     let strip_receiver ty = match ty with
       | T.Func(s, c, tbs, t1::ts1, ts2) ->
-        T.Func(s, c, tbs, ts1, ts2)
+        T.Func(s, c, tbs, remove_holes_nary ts1, ts2)
       |  _ -> ty
     in
     let desc, t1' = match ctx_dot with
@@ -2796,18 +2809,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
         strip_receiver t1
     in
     let remove_holes typ =
-      let ts = T.as_seq typ in
-      match exp2.it, ts with
-        HoleE _, [_] ->
-        T.Tup []
-      | TupE es, ts when List.length es = List.length ts ->
-        let ets = List.combine es ts in
-        T.seq (List.filter_map (fun (e, t) ->
-          match e.it with
-          | HoleE _ -> None
-          | _ -> Some t)
-          ets)
-      | e -> typ
+      T.seq (remove_holes_nary (match typ with T.Tup ts -> ts | t -> [t]))
     in
     let t_arg' = remove_holes t_arg in
     let t2' = remove_holes t2 in
