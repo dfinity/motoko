@@ -153,7 +153,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          echo "${{ toJson(github.event.pull_request) }}"
           gh pr close ${{ github.event.pull_request.number }} --delete-branch --comment "CI looks good, this dependency bump would not cause problems, hence closing this trial PR."
           gh pr edit ${{ github.event.pull_request.number }} --remove-label "autoclose"
 
@@ -169,4 +168,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          echo "${{ toJson(github.event.pull_request) }}"
+          echo "${{ toJson(github.event.pull_request) }}" ${{ github.event.pull_request.base.ref }}  ${{ github.event.pull_request.base.ref == 'master' }}
