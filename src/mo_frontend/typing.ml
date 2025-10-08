@@ -442,17 +442,6 @@ let check_closed env id k at =
       (plural free_params)
       (String.concat ", " (T.ConSet.fold (fun c cs -> T.string_of_con c::cs) free_params []))
 
-(** Check if [args] could have type [T.seq t_args] *)
-let can_args_match args t_args =
-  match args with
-  | [_] ->
-    (* A single argument could match any tuple *)
-    true
-  | _ ->
-    (* Case 1: No arguments, must match unit (empty tuple) *)
-    (* Case 2: Multiple arguments, must match n-tuple where n is the number of arguments *)
-    T.can_ntuple_match (List.length args) (T.seq t_args)
-
 (* Imports *)
 
 let is_mixin_import env = function
@@ -2649,7 +2638,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
 
   (* Match the arguments against the parameter types *)
   let t_arg =
-    if (ctx_dot = None && ctx_holes = None && can_args_match args t_args) || List.length t_args = List.length args
+    if (ctx_dot = None && ctx_holes = None) || List.length t_args = List.length args
     then T.seq t_args
     else wrong_call_args env tbs exp2.at t_args implicit_t_args_n syntax_args
   in

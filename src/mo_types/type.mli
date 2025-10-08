@@ -228,12 +228,6 @@ val singleton : typ -> bool
 
 (** A type is isolated if it has no proper supertypes nor proper subtypes (ignoring top [Any] and bottom [Non]). *)
 val isolated : typ -> bool
-
-(** Check if [n]-tuple could bi-match with [typ], which is exactly when:
-  [exists T1..Tn, ts. (T1 .. Tn) <: open_ ts typ]
-  *)
-val can_ntuple_match : int -> typ -> bool
-
 val span : typ -> int option
 
 
