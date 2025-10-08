@@ -2615,11 +2615,6 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     | TupE es when not parenthesized -> es
     | _ -> [exp2]
   in
-
-  (* Contextual dot:
-    - r.f(e1 .. en)  when  f : (R, I1 .. Ik) -> O
-    - Pop the head t_args that matches R, already checked.
-   *)
   let t_args, extra_subtype_problems = match ctx_dot with
     | None -> t_args, []
     | Some(e, t) -> begin
@@ -2640,11 +2635,8 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     else exp2
   in
   (* Elaboration for contextual dot and implicits relies on the syntactic shape of the arguments,
-    so we need to require the exact arity.
-   *)
+    so we need to require the exact arity *)
   let require_exact_arity = needs_holes || Option.is_some ctx_dot in
-
-  (* Match the arguments against the parameter types *)
   let t_arg =
     if require_exact_arity && not is_correct_arity
     then wrong_call_args env tbs exp2.at t_args implicits_arity syntax_args
