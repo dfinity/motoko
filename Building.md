@@ -168,7 +168,7 @@ echo "Last version: $LAST_MOC_VERSION"
 echo "Next version: $NEXT_MOC_VERSION"
 ```
 
-Run the following command to create the release PR:
+Run the following command pipeline to create the release PR:
 
 ```bash
 (test -n "$NEXT_MOC_VERSION" || (echo "NEXT_MOC_VERSION is not set" && false)) && \
@@ -176,7 +176,8 @@ git switch -c $USER/$NEXT_MOC_VERSION && \
 git add Changelog.md && \
 git commit -m "chore: Releasing $NEXT_MOC_VERSION" && \
 git push --set-upstream origin $USER/$NEXT_MOC_VERSION && \
-gh pr create --title "chore: Releasing $NEXT_MOC_VERSION" --label "release,automerge-squash" --base master --head $USER/$NEXT_MOC_VERSION --body ""
+gh pr create --title "chore: Releasing $NEXT_MOC_VERSION" --label "release" --base master --head $USER/$NEXT_MOC_VERSION --body "" && \
+gh pr merge --auto
 ```
 
 <details>
@@ -203,11 +204,11 @@ git push --set-upstream origin $USER/$NEXT_MOC_VERSION
 
 Create a PR from this commit:
 - Make sure the **PR title** is the same as the **commit message**.
-- Label the PR with `release` (to mark it as a release PR) and `automerge-squash`. Mergify will merge it into `master` without additional approval, but it will take some time as the title (version number) enters into the `nix` dependency tracking.
+- Label the PR with `release` (to mark it as a release PR) and enable auto-merge on it. It will not get merged into `master` without additional approval, and it may take some time as the title (version number) enters into the `nix` dependency tracking.
 
 To create the PR, you can use `gh` CLI:
 ```bash
-gh pr create --title "chore: Releasing $NEXT_MOC_VERSION" --label "release,automerge-squash" --base master --head $USER/$NEXT_MOC_VERSION --body ""
+gh pr create --title "chore: Releasing $NEXT_MOC_VERSION" --label "release" --base master --head $USER/$NEXT_MOC_VERSION --body "" && gh pr merge --auto
 ```
 </details>
 
