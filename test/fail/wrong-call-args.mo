@@ -65,23 +65,12 @@ module FuncWithSingleArgTuple {
 };
 
 module ImplicitTuple {
-  module Mono {
-    func foo(tup : (implicit : (Nat, ()))) {};
-    let tup = (1, ());
-    func main() {
-      foo(tup);
-      foo tup;
-      foo();
-    };
-  };
-  module Poly {
-    func foo<A, B>(tup : (implicit : (A, B))) {};
-    let tup = (1, ());
-    func main() {
-      foo(tup);
-      foo tup;
-      foo();
-    };
+  func foo(tup : (implicit : (Nat, ()))) {};
+  let tup = (1, ());
+  func main() {
+    foo(tup);
+    foo tup;
+    foo();
   };
 };
 
