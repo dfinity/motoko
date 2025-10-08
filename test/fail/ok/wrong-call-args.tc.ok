@@ -60,7 +60,11 @@ to argument of type
    Text)
 to produce result of type
   ()
-because type parameter `K` has no solution. Maybe try an explicit instantiation.
+because implicit instantiation of type parameter `K` is over-constrained with
+  Any  <:  K  <:  Text
+where
+  Any  </:  Text
+so that no valid instantiation exists
 wrong-call-args.mo:107.8-107.9: type error [M0050], literal of type
   Nat
 does not have expected type

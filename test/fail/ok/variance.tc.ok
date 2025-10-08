@@ -34,8 +34,7 @@ variance.mo:82.11-82.18: type error [M0096], expression of type
   {get : () -> ?Nat; put : (i : Nat) -> ()}
 cannot produce expected type
   {get : () -> ?Any; put : (i : Any) -> ()}
-variance.mo:84.15-84.20: type error [M0098], cannot implicitly instantiate function of type
+variance.mo:84.15-84.20: type error [M0098], cannot apply function of type
   () -> Inv<A>
 to argument of type
   ()
-because type parameter `A` has no best solution, please provide an explicit instantiation.
