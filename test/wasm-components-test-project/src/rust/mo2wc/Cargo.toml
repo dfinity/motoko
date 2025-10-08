@@ -1,0 +1,27 @@
+[package]
+name = "mo2wc"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "mo2wc"
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+log = "0.4"
+env_logger = "0.11"
+tokio = { version = "1.47", default-features = false, features = [
+    "macros",
+    "rt-multi-thread",
+] }
+wac-cli = { version = "0.8", default-features = false }
+wac-graph = "0.8"
+wac-parser = "0.8"
+wasm-encoder = { git = "https://github.com/bytecodealliance/wasm-tools.git", rev= "ab2b80498079faf55555c4f4a29de343506f4a70"}
+wasm-tools = { git = "https://github.com/bytecodealliance/wasm-tools.git", rev= "ab2b80498079faf55555c4f4a29de343506f4a70", features = ["component"] }
+wasmparser = { git = "https://github.com/bytecodealliance/wasm-tools.git", rev= "ab2b80498079faf55555c4f4a29de343506f4a70"}
+wasmprinter = { git = "https://github.com/bytecodealliance/wasm-tools.git", rev= "ab2b80498079faf55555c4f4a29de343506f4a70"}
+wat = { git = "https://github.com/bytecodealliance/wasm-tools.git", rev= "ab2b80498079faf55555c4f4a29de343506f4a70"}
+wit-component = { git = "https://github.com/bytecodealliance/wasm-tools.git", rev= "ab2b80498079faf55555c4f4a29de343506f4a70"}
+wit-parser = { git = "https://github.com/bytecodealliance/wasm-tools.git", rev= "ab2b80498079faf55555c4f4a29de343506f4a70"}
