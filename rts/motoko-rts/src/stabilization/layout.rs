@@ -33,7 +33,7 @@ use crate::{
     types::{
         base_array_tag, size_of, Tag, Value, TAG_ARRAY_I, TAG_ARRAY_M, TAG_ARRAY_S,
         TAG_ARRAY_SLICE_MIN, TAG_ARRAY_T, TAG_BIGINT, TAG_BITS64_F, TAG_BITS64_S, TAG_BITS64_U,
-        TAG_BLOB_A, TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T, TAG_CLOSURE, TAG_CONCAT, TAG_MUTBOX,
+        TAG_BLOB_A, TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T, TAG_CONCAT, TAG_MUTBOX, TAG_NEW_CLOSURE,
         TAG_OBJECT, TAG_REGION, TAG_SOME, TAG_VARIANT, TAG_WEAK_REF, TRUE_VALUE,
     },
 };
@@ -179,7 +179,7 @@ impl StableObjectKind {
             TAG_CONCAT => StableObjectKind::Concat,
             TAG_BIGINT => StableObjectKind::BigInt,
             TAG_SOME => StableObjectKind::Some,
-            TAG_CLOSURE => StableObjectKind::Closure,
+            TAG_NEW_CLOSURE => StableObjectKind::Closure,
             _ => unreachable!("invalid tag"),
         }
     }

@@ -108,7 +108,10 @@ impl Serialization {
     // For RTS unit testing only
     #[cfg(not(feature = "ic"))]
     fn has_non_stable_type(old_field: Value) -> bool {
-        unsafe { old_field.tag() == crate::types::TAG_CLOSURE }
+        unsafe {
+            old_field.tag() == crate::types::TAG_OLD_CLOSURE
+                || old_field.tag() == crate::types::TAG_NEW_CLOSURE
+        }
     }
 
     pub fn pending_array_scanning(&self) -> bool {

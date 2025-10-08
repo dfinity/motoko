@@ -1981,7 +1981,7 @@ module Tagged = struct
     | Array of array_sort (* Also a tuple *)
     | Bits64 of bits_sort (* Contains a 64 bit number *)
     | MutBox (* used for mutable heap-allocated variables *)
-    | Closure
+    | OldClosure
     | Some (* For opt *)
     | Variant
     | Blob of blob_sort
@@ -1992,6 +1992,7 @@ module Tagged = struct
     | FreeSpace (* Only used by the RTS *)
     | Region
     | WeakRef
+    | NewClosure
     | ArraySliceMinimum (* Used by the GC for incremental array marking *)
     | StableSeen (* Marker that we have seen this thing before *)
     | CoercionFailure (* Used in the Candid decoder. Static singleton! *)
@@ -2011,7 +2012,7 @@ module Tagged = struct
     | Bits64 S -> 13L
     | Bits64 F -> 15L
     | MutBox -> 17L
-    | Closure -> 19L
+    | OldClosure -> 19L
     | Some -> 21L
     | Variant -> 23L
     | Blob B -> 25L
@@ -2025,7 +2026,8 @@ module Tagged = struct
     | OneWordFiller -> 41L
     | FreeSpace -> 43L
     | WeakRef -> 45L
-    | ArraySliceMinimum -> 46L
+    | NewClosure -> 47L
+    | ArraySliceMinimum -> 48L
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
     | CoercionFailure -> 0xffff_ffff_ffff_fffeL
@@ -4082,7 +4084,7 @@ module Closure = struct
           │ blob header │ captured1_hash │ captured2_hash │ … │
           └─────────────┴────────────────┴────────────────┴───┘
 
-     The object header includes the object tag (TAG_CLOSURE) and the forwarding pointer.
+     The object header includes the object tag (TAG_NEW_CLOSURE) and the forwarding pointer.
   *)
   let header_size = Int64.add Tagged.header_size 2L
   let funptr_field = Tagged.header_size
@@ -4154,7 +4156,7 @@ module Closure = struct
     | None -> ());
     (* no captured variables in constant functions *)
     let (_, empty_hash_blob) = FieldLookupTable.build_hash_blob env [] in
-    Tagged.shared_object __LINE__ env (fun env -> Tagged.obj env Tagged.Closure [
+    Tagged.shared_object __LINE__ env (fun env -> Tagged.obj env Tagged.NewClosure [
       compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index) ^^
       (if env.E.is_canister then
         E.call_import env "rts" "resolve_function_literal"
@@ -9223,7 +9225,7 @@ module StableFunctionGC = struct
             let relevant_fields = List.filter (fun field -> must_visit field.typ) field_list in
             G.concat_map (fun field ->
               get_object ^^ Tagged.load_tag env ^^
-              compile_eq_const (Tagged.int_of_tag Tagged.Closure) ^^
+              compile_eq_const (Tagged.int_of_tag Tagged.NewClosure) ^^
               E.if1 I64Type (
                 get_object ^^ Closure.load_captured env field.lab ^^
                 E.call_import env "rts" "unwrap_closure_field"
@@ -10184,7 +10186,7 @@ module FuncDec = struct
 
       let code =
         (* Allocate a heap object for the closure *)
-        Tagged.alloc env (Int64.add Closure.header_size len) Tagged.Closure ^^
+        Tagged.alloc env (Int64.add Closure.header_size len) Tagged.NewClosure ^^
         set_clos ^^
 
         (* Store the function pointer number: *)

@@ -43,7 +43,7 @@ static TAGS: [Tag; 23] = [
     TAG_BITS64_S,
     TAG_BITS64_F,
     TAG_MUTBOX,
-    TAG_CLOSURE,
+    TAG_OLD_CLOSURE,
     TAG_SOME,
     TAG_VARIANT,
     TAG_BLOB_B,

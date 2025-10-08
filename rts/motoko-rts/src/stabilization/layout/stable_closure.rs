@@ -8,7 +8,7 @@ use crate::{
             SerializationContext,
         },
     },
-    types::{size_of, Closure, Value, Words, TAG_CLOSURE},
+    types::{size_of, NewClosure, Value, Words, TAG_NEW_CLOSURE},
 };
 
 use super::{
@@ -34,10 +34,10 @@ impl StaticScanner<StableValue> for StableClosure {
     }
 }
 
-impl Serializer<Closure> for StableClosure {
+impl Serializer<NewClosure> for StableClosure {
     unsafe fn serialize_static_part(
         stable_memory: &mut StableMemoryStream,
-        main_object: *mut Closure,
+        main_object: *mut NewClosure,
     ) -> Self {
         debug_assert!(!is_flexible_function_id((*main_object).funid));
         StableClosure {
@@ -49,7 +49,7 @@ impl Serializer<Closure> for StableClosure {
 
     unsafe fn serialize_dynamic_part(
         stable_memory: &mut StableMemoryStream,
-        main_object: *mut Closure,
+        main_object: *mut NewClosure,
     ) {
         let closure_size = get_closure_size(stable_memory, main_object);
         for index in 0..closure_size {
@@ -81,18 +81,18 @@ impl Serializer<Closure> for StableClosure {
         object_kind: StableObjectKind,
     ) -> Value {
         debug_assert_eq!(object_kind, StableObjectKind::Closure);
-        let total_size = size_of::<Closure>() + Words(self.size as usize);
+        let total_size = size_of::<NewClosure>() + Words(self.size as usize);
         main_memory.alloc_words(total_size)
     }
 
     unsafe fn deserialize_static_part(
         &self,
-        target_object: *mut Closure,
+        target_object: *mut NewClosure,
         object_kind: StableObjectKind,
     ) {
         debug_assert_eq!(object_kind, StableObjectKind::Closure);
         debug_assert!(!is_flexible_function_id(self.function_id as isize));
-        (*target_object).header.tag = TAG_CLOSURE;
+        (*target_object).header.tag = TAG_NEW_CLOSURE;
         (*target_object)
             .header
             .init_forward(Value::from_ptr(target_object as usize));
@@ -105,7 +105,7 @@ impl Serializer<Closure> for StableClosure {
         _main_memory: &mut M,
         stable_memory: &StableMemoryAccess,
         stable_object: StableValue,
-        target_object: *mut Closure,
+        target_object: *mut NewClosure,
     ) {
         let stable_address = stable_object.payload_address();
         for index in 0..self.size {
@@ -133,7 +133,7 @@ fn is_flexible_function_id(_function_id: isize) -> bool {
 /// Resolve closure size (number of captured variables) during serialization.
 /// This requires a look up in the hash blob, which may however already have been
 /// serialized to stable memory.
-fn get_closure_size(stable_memory: &StableMemoryStream, main_object: *mut Closure) -> usize {
+fn get_closure_size(stable_memory: &StableMemoryStream, main_object: *mut NewClosure) -> usize {
     // Do not call tag as it resolves the forwarding pointer.
     unsafe {
         let main_hash_blob = (*main_object).hash_blob;

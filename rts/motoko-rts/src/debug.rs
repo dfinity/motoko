@@ -196,10 +196,17 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let mutbox = obj as *const MutBox;
             let _ = write!(buf, "<MutBox field={:#x}>", (*mutbox).field.get_raw());
         }
-        TAG_CLOSURE => {
-            let closure = obj as *const Closure;
+        TAG_OLD_CLOSURE => {
+            let closure = obj as *const OldClosure;
             let _ = write!(buf, "<Closure size={:#x}>", closure.size());
         }
+
+        #[cfg(feature = "enhanced_orthogonal_persistence")]
+        TAG_NEW_CLOSURE => {
+            let closure = obj as *const NewClosure;
+            let _ = write!(buf, "<Closure size={:#x}>", closure.size());
+        }
+
         TAG_SOME => {
             let some = obj as *const Some;
             let _ = write!(buf, "<Some field={:#x}>", (*some).field.get_raw());

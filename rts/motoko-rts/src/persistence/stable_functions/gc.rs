@@ -7,7 +7,7 @@ use motoko_rts_macros::ic_mem_fn;
 use crate::{
     memory::Memory,
     persistence::stable_functions::is_flexible_function_id,
-    types::{Value, NULL_POINTER, TAG_CLOSURE, TAG_MUTBOX, TAG_OBJECT, TAG_SOME},
+    types::{Value, NULL_POINTER, TAG_MUTBOX, TAG_NEW_CLOSURE, TAG_OBJECT, TAG_SOME},
 };
 
 use super::{resolve_stable_function_id, FunctionId, PersistentVirtualTable, VirtualTableEntry};
@@ -48,7 +48,7 @@ impl FunctionGC {
                     debug_assert_ne!(object, NULL_POINTER);
                     if object.tag() == TAG_SOME {
                         // skip null boxes, not visited
-                    } else if object.tag() == TAG_CLOSURE {
+                    } else if object.tag() == TAG_NEW_CLOSURE {
                         self.visit_stable_closure(object);
                     } else {
                         // Specialized field visitor, as optimization.

@@ -450,12 +450,18 @@ impl Value {
         self.forward().get_ptr() as *mut BigInt
     }
 
-    /// Get the pointer as `Closure` using forwarding. In debug mode panics if the value is not a pointer or the
-    /// pointed object is not an `Closure`.
-    pub unsafe fn as_closure(self) -> *mut Closure {
-        debug_assert_eq!(self.tag(), TAG_CLOSURE);
+    #[enhanced_orthogonal_persistence]
+    pub unsafe fn as_closure(self) -> *mut NewClosure {
+        debug_assert_eq!(self.tag(), TAG_NEW_CLOSURE);
         self.check_forwarding_pointer();
-        self.forward().get_ptr() as *mut Closure
+        self.forward().get_ptr() as *mut NewClosure
+    }
+
+    #[classical_persistence]
+    pub unsafe fn as_closure(self) -> *mut OldClosure {
+        debug_assert_eq!(self.tag(), TAG_OLD_CLOSURE);
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut OldClosure
     }
 
     pub fn as_tiny(self) -> isize {
@@ -520,7 +526,7 @@ pub const TAG_BITS64_U: Tag = 11; // Unsigned (Nat64)
 pub const TAG_BITS64_S: Tag = 13; // Signed (Int64)
 pub const TAG_BITS64_F: Tag = 15; // Float
 pub const TAG_MUTBOX: Tag = 17;
-pub const TAG_CLOSURE: Tag = 19;
+pub const TAG_OLD_CLOSURE: Tag = 19; // Keep for backwards compatibility of GC and graph copy
 pub const TAG_SOME: Tag = 21;
 pub const TAG_VARIANT: Tag = 23;
 pub const TAG_BLOB_B: Tag = 25; // Blob of Bytes (Blob)
@@ -540,6 +546,9 @@ pub const TAG_FREE_SPACE: Tag = 43;
 #[enhanced_orthogonal_persistence]
 pub const TAG_WEAK_REF: Tag = 45;
 
+#[enhanced_orthogonal_persistence]
+pub const TAG_NEW_CLOSURE: Tag = 47;
+
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean
 // a slice of an array object (i.e. compressed array tag + start index) for
@@ -551,7 +560,7 @@ pub const TAG_WEAK_REF: Tag = 45;
 // a lower boundary to distinguish slice information from
 // the actual tag values.
 #[enhanced_orthogonal_persistence]
-pub const TAG_ARRAY_SLICE_MIN: Tag = 46;
+pub const TAG_ARRAY_SLICE_MIN: Tag = 48;
 
 pub const TAG_SPACING: Tag = 2;
 
@@ -572,7 +581,7 @@ pub const TAG_ARRAY_SLICE_MIN: Tag = 52;
 
 #[enhanced_orthogonal_persistence]
 pub fn is_object_tag(tag: Tag) -> bool {
-    tag >= TAG_OBJECT && tag <= TAG_REGION || tag == TAG_WEAK_REF
+    tag >= TAG_OBJECT && tag <= TAG_REGION || tag == TAG_WEAK_REF || tag == TAG_NEW_CLOSURE
 }
 
 #[classical_persistence]
@@ -846,18 +855,32 @@ impl Object {
     }
 }
 
-#[classical_persistence]
 #[repr(C)]
-pub struct Closure {
+pub struct OldClosure {
     pub header: Obj,
     pub funid: isize,
     pub size: usize, // number of elements
                      // other stuff follows ...
 }
 
+impl OldClosure {
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
+        self.offset(1) as *mut Value // skip closure header
+    }
+
+    pub(crate) unsafe fn size(self: *const Self) -> usize {
+        (*self).size
+    }
+
+    #[allow(unused)]
+    pub(crate) unsafe fn get(self: *mut Self, index: usize) -> Value {
+        *self.payload_addr().add(index)
+    }
+}
+
 #[enhanced_orthogonal_persistence]
 #[repr(C)] // See the note at the beginning of this module
-pub struct Closure {
+pub struct NewClosure {
     pub header: Obj,
     pub funid: isize,
     // Pointer to a blob containing sorted hashes of the captured variables
@@ -867,8 +890,8 @@ pub struct Closure {
     // captured variables in order of occurrence based on their hashes
 }
 
-impl Closure {
-    #[enhanced_orthogonal_persistence]
+#[enhanced_orthogonal_persistence]
+impl NewClosure {
     pub unsafe fn hash_blob_addr(self: *mut Self) -> *mut Value {
         &mut (*self).hash_blob
     }
@@ -877,12 +900,6 @@ impl Closure {
         self.offset(1) as *mut Value // skip closure header
     }
 
-    #[classical_persistence]
-    pub(crate) unsafe fn size(self: *const Self) -> usize {
-        (*self).size
-    }
-
-    #[enhanced_orthogonal_persistence]
     pub(crate) unsafe fn size(self: *const Self) -> usize {
         count_fields_in_hash_blob((*self).hash_blob)
     }
@@ -1273,10 +1290,17 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<usize> {
 
         TAG_MUTBOX => size_of::<MutBox>(),
 
-        TAG_CLOSURE => {
-            let closure = address as *mut Closure;
+        TAG_OLD_CLOSURE => {
+            let closure = address as *mut OldClosure;
             let size = closure.size();
-            size_of::<Closure>() + Words(size)
+            size_of::<OldClosure>() + Words(size)
+        }
+
+        #[cfg(feature = "enhanced_orthogonal_persistence")]
+        TAG_NEW_CLOSURE => {
+            let closure = address as *mut NewClosure;
+            let size = closure.size();
+            size_of::<NewClosure>() + Words(size)
         }
 
         TAG_SOME => size_of::<Some>(),

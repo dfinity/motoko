@@ -110,7 +110,7 @@ use crate::{
     memory::{alloc_blob, Memory},
     persistence::name_resolution::lookup_name,
     rts_trap_with,
-    types::{Blob, Bytes, Value, NULL_POINTER, TAG_BLOB_B, TAG_CLOSURE},
+    types::{Blob, Bytes, Value, NULL_POINTER, TAG_BLOB_B, TAG_NEW_CLOSURE},
 };
 
 use super::{compatibility::MemoryCompatibilityTest, stable_function_state};
@@ -147,7 +147,7 @@ fn to_flexible_function_id(wasm_table_index: WasmTableIndex) -> FunctionId {
 }
 
 pub unsafe fn is_flexible_closure(value: Value) -> bool {
-    if value.tag() == TAG_CLOSURE {
+    if value.tag() == TAG_NEW_CLOSURE {
         let closure = value.as_closure();
         is_flexible_function_id((*closure).funid)
     } else {
