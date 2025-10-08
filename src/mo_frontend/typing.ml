@@ -1501,7 +1501,7 @@ let resolve_hole env at hole_sort typ =
 type ctx_dot_candidate =
   { module_name : T.lab;
     func_ty : T.typ;
-    inst : T.typ list;
+    inst : T.typ option list;
     module_ty : T.typ;
   }
 
@@ -1515,8 +1515,7 @@ let contextual_dot env name receiver_ty =
   (* Does an instantiation for [tbs] exist that makes [t1] <: [t2]? *)
   let permissive_sub t1 (tbs, t2) =
     try
-      let (inst, c) = Bi_match.bi_match_subs None tbs None [t1, t2] [] in
-      ignore (Bi_match.finalize inst c []);
+      let inst = Bi_match.bi_match_receiver tbs (t1, t2) in
       Some inst
     with _ ->
       None in
@@ -2623,13 +2622,17 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     | TupE es when not parenthesized -> es
     | _ -> [exp2]
   in
-  let t_args, extra_subtype_problems = match ctx_dot with
-    | None -> t_args, []
-    | Some(e, t, _id, _inst) -> begin
+  let t_args, extra_subtype_problems, inst_ctx_dot = match ctx_dot with
+    | None -> t_args, [], None
+    | Some(e, t, _id, inst) -> begin
       match t_args with
-      | t'::ts -> ts, [(t, t')]
+      | t'::ts -> ts, [(t, t')], Some inst
       | [] -> assert false
     end
+  in
+  let dot_full_inst = match inst_ctx_dot with
+    | Some ts when List.for_all Option.is_some ts -> Some (List.map Option.get ts)
+    | _ -> None
   in
   let saturated_arity, implicits_arity = arity_with_implicits t_args in
   let is_correct_arity =
@@ -2664,11 +2667,18 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       if not env.pre then check_exp_strong env t_arg' exp2
       else if typs <> [] && Flags.is_warning_enabled "M0223" &&
         is_redundant_instantiation ts env (fun env' ->
-          infer_call_instantiation env' t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
+          infer_call_instantiation env' t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
             warn env inst.at "M0223" "redundant type instantiation";
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
-      infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
+      match dot_full_inst with
+      | Some ts ->
+        let t_arg' = T.open_ ts t_arg in
+        let t_ret' = T.open_ ts t_ret in
+        if not env.pre then check_exp_strong env t_arg' exp2;
+        ts, t_arg', t_ret'
+      | None ->
+        infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
   inst.note <- ts;
   if not env.pre then begin
@@ -2708,7 +2718,7 @@ and wrong_call_args env tbs at t_args implicits_arity syntax_args =
     display_expected_arg_types expected_types
     display_given_arg_types given_types
 
-and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems =
+and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems =
   (*
   Partial Argument Inference:
   We need to infer the type of the argument and find the best instantiation for the call expression.
@@ -2758,11 +2768,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
   if Bi_match.debug then debug_print_infer_defer_split exp2 t_arg t2 subs deferred;
 
   (* In case of an early error, we need to replace Type.Var with Type.Con for a better error message *)
-  let err_ts = ref
-      (match ctx_dot with
-      | Some (_, _, _, ts) -> Some ts
-      | _ -> None)
-  in
+  let err_ts = ref None in
   let err_subst t =
     let ts = match !err_ts with
       | None -> T.open_binds tbs
@@ -2847,50 +2853,10 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
   *)
     ts, T.open_ ts t_arg, T.open_ ts t_ret
   with Bi_match.Bimatch msg ->
-    let t1 = match T.normalize t1 with
-      | T.Func(s, c, tbs, ts1, ts2) ->
-        T.Func(s, c, [], List.map err_subst ts1, List.map err_subst ts2)
-      | t1 -> t1
-    in
-    let remove_holes_nary ts =
-      match exp2.it, ts with
-        HoleE _, [_] ->
-        ts
-      | TupE es, ts when List.length es = List.length ts ->
-        let ets = List.combine es ts in
-        List.filter_map (fun (e, t) ->
-          match e.it with
-          | HoleE _ -> None
-          | _ -> Some t)
-          ets
-      | e -> ts
-    in
-    let strip_receiver ty = match ty with
-      | T.Func(s, c, tbs, t1::ts1, ts2) ->
-        T.Func(s, c, tbs, ts1, ts2)
-      |  _ -> ty
-    in
-    let desc, t1'  = match ctx_dot with
-      | None -> "function", t1
-      | Some (_, receiver_ty, id, _) ->
-        Printf.sprintf "dotted function `_.%s`" id,
-        strip_receiver t1
-    in
-    let t1'' = match T.normalize t1' with
-      | T.Func(s, c, tbs, ts1, ts2) ->
-        T.Func(s, c, [], remove_holes_nary ts1, List.map err_subst ts2)
-      | t1 -> t1
-    in
-    let remove_holes typ =
-      T.seq (remove_holes_nary (match typ with T.Tup ts -> ts | t -> [t]))
-    in
-    (*    let t_arg' = remove_holes t_arg in *)
-    let t2' = remove_holes t2 in
     error env at "M0098"
-      "cannot implicitly instantiate %s of type%a\nto argument of type%a%s\nbecause %s"
-      desc
-      display_typ t1''
-      display_typ (err_subst t2')
+      "cannot implicitly instantiate function of type%a\nto argument of type%a%s\nbecause %s"
+      display_typ t1
+      display_typ (err_subst t2)
       (match t_expect_opt with
         | None -> ""
         | Some t ->

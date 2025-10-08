@@ -72,13 +72,13 @@ let string_of_bounds (l, u) =
 
 (** Functions used only for debugging *)
 module Debug = struct
-  let print_solve ctx (ts1, ts2) must_solve =
+  let print_solve ctx (ts1, ts2) (must_solve : ConSet.t) =
     print_endline "solve ctx";
     print_endline (Printf.sprintf "var_list: %s" (String.concat ", " (List.map Cons.name ctx.var_list)));
     print_endline (Printf.sprintf "bounds: %s" (string_of_bounds ctx.bounds));
     print_endline (Printf.sprintf "variances: %s" (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s: %s" (Cons.name c) (Variance.string_of t)) (ConEnv.bindings ctx.variances))));
     print_endline (Printf.sprintf "subs: %s" (String.concat ", " (List.map (fun (t1, t2) -> Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2)) (List.combine ts1 ts2))));
-    print_endline (Printf.sprintf "must_solve : %s" (String.concat ", " (List.map string_of_typ must_solve)));
+    print_endline (Printf.sprintf "must_solve : %s" (String.concat ", " (List.map Cons.name (ConSet.elements must_solve))));
     verify_ctx ctx
 
   let print_variables_to_defer used to_defer to_solve =
@@ -362,11 +362,11 @@ let bi_match_typs ctx =
     Unused type variables can be deferred to the next round.
     [deferred_typs] are types to appear in the constraints of the next round. Used to determine which type variables to defer.
  *)
-let solve ctx (ts1, ts2) must_solve =
+let solve ctx (ts1, ts2) (must_solve : ConSet.t) =
   if debug then Debug.print_solve ctx (ts1, ts2) must_solve;
 
   (* Defer solving type variables that can be solved later. More constraints appear in the next round, let them influence as many variables as possible *)
-  let to_defer, defer_verify = if must_solve = [] then (ConSet.empty, false) else
+  let to_defer, defer_verify = if ConSet.is_empty must_solve then (ConSet.empty, false) else
     (* Type variables mentioned/used in subtyping constraints *)
     let cons1 = cons_typs ts1 in
     let cons2 = cons_typs ts2 in
@@ -374,7 +374,7 @@ let solve ctx (ts1, ts2) must_solve =
     let unused = ConSet.diff ctx.var_set used in
 
     (* Solve only variables that need to be solved now *)
-    let to_solve = cons_typs must_solve in
+    let to_solve = must_solve in
     (* Exclude variables that are not used in the constraints, it is better to raise an error than infer a default bound that could lead to confusing errors *)
     let to_solve = ConSet.diff to_solve unused in
     let to_defer = ConSet.diff ctx.var_set to_solve in
@@ -441,7 +441,7 @@ let solve ctx (ts1, ts2) must_solve =
           Format.asprintf "%a" display_rel (t1, "<:", t2))
           tts))))
 
-let bi_match_subs scope_opt tbs typ_opt =
+let bi_match_init scope_opt tbs typ_opt =
   (* Create a fresh constructor for each type parameter.
    * These constructors are used as type variables.
    *)
@@ -485,13 +485,23 @@ let bi_match_subs scope_opt tbs typ_opt =
     (Option.fold ~none:Any ~some:(open_ ts) typ_opt)
   in
   let ctx = { var_set; var_env; var_list = cs; bounds = (l, u); variances; to_verify = ([], [])} in
+  ctx, ts
 
-  fun subs must_solve ->
-    let must_solve = List.map (open_ ts) must_solve in
-    let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
-    let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
-    let env, remaining = solve ctx (ts1, ts2) must_solve in
-    List.map (subst env) ts, remaining
+let bi_match_subs scope_opt tbs typ_opt subs must_solve =
+  let ctx, ts = bi_match_init scope_opt tbs typ_opt in
+  let must_solve = List.map (open_ ts) must_solve in
+  let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
+  let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
+  let env, remaining = solve ctx (ts1, ts2) (cons_typs must_solve) in
+  List.map (subst env) ts, remaining
+
+let bi_match_receiver tbs (t1, t2) =
+  let ctx, ts = bi_match_init None tbs None in
+  let t1 = open_ ts t1 in
+  let t2 = open_ ts t2 in
+  let must_solve = ConSet.diff ctx.var_set (cons_typs [t1; t2]) in
+  let env, remaining = solve ctx ([t1], [t2]) must_solve in
+  List.map (fun t -> ConEnv.find_opt (as_con_var t) env) ts
 
 let finalize ts1 ctx subs =
   if is_ctx_empty ctx then begin
@@ -499,7 +509,7 @@ let finalize ts1 ctx subs =
     ts1, ConEnv.empty
   end else begin
     (* Solve the 2nd round of sub-type problems *)
-    let env, remaining = solve ctx (List.split subs) [] in
+    let env, remaining = solve ctx (List.split subs) ConSet.empty in
 
     (* The 2nd round should not leave any remaining type variables *)
     assert (is_ctx_empty remaining);

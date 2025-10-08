@@ -76,6 +76,11 @@ val bi_match_subs :
   typ list ->
   typ list * ctx
 
+val bi_match_receiver :
+  bind list ->
+  typ * typ ->
+  typ option list
+
 (** [finalize ts ctx subs] returns the final solution and the substitution of the remaining type variables from the 1st round.
   - [ts] is the solution from the 1st round
   - [ctx] is the remaining context for variables to be solved in this 2nd round

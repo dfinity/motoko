@@ -1,43 +1,19 @@
-inf-error-small.mo:44.13-44.34: type error [M0098], cannot implicitly instantiate dotted function `_.get` of type
-  (n : Nat) -> ?Text
-to argument of type
+inf-error-small.mo:44.27-44.33: type error [M0050], literal of type
   Text
-to produce result of type
+does not have expected type
+  Nat
+inf-error-small.mo:45.40-45.46: type error [M0050], literal of type
   Text
-because no instantiation of K, V makes
-  ?V  <:  Text
-and
-  Text  <:  (n : K)
-and
-  {map : [(Nat, [var Text])]}  <:  (map : Map<K, V>)
-inf-error-small.mo:45.13-45.47: type error [M0098], cannot implicitly instantiate dotted function `_.get` of type
-  (compare : (implicit : (Nat, Nat) -> Order), n : Nat) -> ?Text
-to argument of type
-  ((n : Nat, m : Nat) -> Order, Text)
-to produce result of type
+does not have expected type
+  Nat
+inf-error-small.mo:47.27-47.36: type error [M0096], expression of type
+  {map : [(Nat, [var Text])]}
+cannot produce expected type
+  (Nat, Nat) -> Order
+inf-error-small.mo:47.38-47.44: type error [M0050], literal of type
   Text
-because no instantiation of K, V makes
-  ?V  <:  Text
-and
-  Text  <:  (n : K)
-and
-  (n : Nat, m : Nat) -> Order  <:  (compare : (implicit : (K, K) -> Order))
-and
-  {map : [(Nat, [var Text])]}  <:  (map : Map<K, V>)
-inf-error-small.mo:47.13-47.45: type error [M0098], cannot implicitly instantiate dotted function `_.get` of type
-  (compare : (implicit : (Nat, Nat) -> Order), n : Nat) -> ?Text
-to argument of type
-  ({map : [(Nat, [var Text])]}, Text)
-to produce result of type
-  Text
-because no instantiation of K, V makes
-  ?V  <:  Text
-and
-  Text  <:  (n : K)
-and
-  {map : [(Nat, [var Text])]}  <:  (compare : (implicit : (K, K) -> Order))
-and
-  {map : [(Nat, [var Text])]}  <:  (map : Map<K, V>)
+does not have expected type
+  Nat
 inf-error-small.mo:48.26-48.58: type error [M0233], wrong number of arguments: expected 1 but got 3
 Expected 1 argument of type:
   (n : K)
@@ -45,29 +21,15 @@ But got 3 arguments of type:
   {map : [(Nat, [var Text])]}
   (n : Nat, m : Nat) -> Order
   Text
-inf-error-small.mo:49.13-49.45: type error [M0098], cannot implicitly instantiate dotted function `_.get` of type
-  (compare : (implicit : (Nat, Nat) -> Order), n : Nat) -> ?Text
-to argument of type
-  ({map : [(Nat, [var Text])]}, Text)
-to produce result of type
+inf-error-small.mo:49.27-49.36: type error [M0096], expression of type
+  {map : [(Nat, [var Text])]}
+cannot produce expected type
+  (Nat, Nat) -> Order
+inf-error-small.mo:49.38-49.44: type error [M0050], literal of type
   Text
-because no instantiation of K, V makes
-  ?V  <:  Text
-and
-  Text  <:  (n : K)
-and
-  {map : [(Nat, [var Text])]}  <:  (compare : (implicit : (K, K) -> Order))
-and
-  {map : [(Nat, [var Text])]}  <:  (map : Map<K, V>)
-inf-error-small.mo:51.13-51.29: type error [M0098], cannot implicitly instantiate dotted function `_.get` of type
-  (n : Nat) -> ?Text
-to argument of type
+does not have expected type
   Nat
-to produce result of type
+inf-error-small.mo:51.13-51.29: type error [M0096], expression of type
+  ?Text
+cannot produce expected type
   Bool
-because no instantiation of K, V makes
-  ?V  <:  Bool
-and
-  Nat  <:  (n : K)
-and
-  {map : [(Nat, [var Text])]}  <:  (map : Map<K, V>)
