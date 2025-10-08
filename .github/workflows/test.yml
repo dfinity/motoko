@@ -142,6 +142,7 @@ jobs:
         run: echo "Main tests completed successfully."
 
   autoclose:
+    if: github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'autoclose')
     needs: [verify-common-gc, verify-main-tests]
     runs-on: ubuntu-latest
     steps:
@@ -151,7 +152,6 @@ jobs:
       - name: Automatically closing successful trials
         env:
           GH_TOKEN: ${{ github.token }}
-        if: github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'autoclose')
         run: |
           gh pr close ${{ github.event.pull_request.number }} --delete-branch --comment "CI looks good, this dependency bump would not cause problems, hence closing this trial PR."
           gh pr edit ${{ github.event.pull_request.number }} --remove-label "autoclose"
