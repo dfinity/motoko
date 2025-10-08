@@ -1,81 +1,36 @@
-lambdas-invariant.mo:27.11-27.39: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>([var T], T -> U) -> [var U]
+lambdas-invariant.mo:27.11-27.39: type error [M0098], cannot apply function of type
+  ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
-  Nat  <:  U  <:  Any
-where
-  Nat  =/=  Any
-so that explicit type instantiation is required
-lambdas-invariant.mo:30.11-30.45: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>([var T], T -> U) -> [var U]
+lambdas-invariant.mo:30.11-30.45: type error [M0098], cannot apply function of type
+  ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
-  Int  <:  U  <:  Any
-where
-  Int  =/=  Any
-so that explicit type instantiation is required
-lambdas-invariant.mo:33.11-33.42: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>([var T], T -> U) -> [var U]
+lambdas-invariant.mo:33.11-33.42: type error [M0098], cannot apply function of type
+  ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
-  Null  <:  U  <:  Any
-where
-  Null  =/=  Any
-so that explicit type instantiation is required
-lambdas-invariant.mo:36.11-36.56: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>([var T], T -> U) -> [var U]
+lambdas-invariant.mo:36.11-36.56: type error [M0098], cannot apply function of type
+  ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
-  ?Nat8  <:  U  <:  Any
-where
-  ?Nat8  =/=  Any
-so that explicit type instantiation is required
-lambdas-invariant.mo:39.11-39.41: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>([var T], T -> U) -> [var U]
+lambdas-invariant.mo:39.11-39.41: type error [M0098], cannot apply function of type
+  ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
-  [Nat]  <:  U  <:  Any
-where
-  [Nat]  =/=  Any
-so that explicit type instantiation is required
-lambdas-invariant.mo:42.11-42.43: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>([var T], T -> U) -> [var U]
+lambdas-invariant.mo:42.11-42.43: type error [M0098], cannot apply function of type
+  ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
-  {x : Nat}  <:  U  <:  Any
-where
-  {x : Nat}  =/=  Any
-so that explicit type instantiation is required
-lambdas-invariant.mo:45.11-45.43: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>([var T], T -> U) -> [var U]
+lambdas-invariant.mo:45.11-45.43: type error [M0098], cannot apply function of type
+  ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
-  {#c : Nat}  <:  U  <:  Any
-where
-  {#c : Nat}  =/=  Any
-so that explicit type instantiation is required
-lambdas-invariant.mo:58.11-58.39: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>([var T], T -> U) -> [var U]
+lambdas-invariant.mo:58.11-58.39: type error [M0098], cannot apply function of type
+  ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
-  Er  <:  U  <:  Any
-where
-  Er  =/=  Any
-so that explicit type instantiation is required
-lambdas-invariant.mo:62.11-62.39: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>([var T], T -> U) -> [var U]
+lambdas-invariant.mo:62.11-62.39: type error [M0098], cannot apply function of type
+  ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
-  Er  <:  U  <:  Any
-where
-  Er  =/=  Any
-so that explicit type instantiation is required
