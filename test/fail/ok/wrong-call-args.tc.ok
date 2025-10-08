@@ -1,5 +1,5 @@
 wrong-call-args.mo:26.5-26.13: type error [M0098], cannot implicitly instantiate function of type
-  (Nat, compare : (implicit : (K, K) -> Order)) -> ()
+  Nat -> ()
 to argument of type
   (Nat, (t1 : Text, t2 : Text) -> Order)
 to produce result of type
@@ -7,7 +7,7 @@ to produce result of type
 because no instantiation of K makes
   (Nat, (t1 : Text, t2 : Text) -> Order)  <:  Nat
 wrong-call-args.mo:29.5-29.12: type error [M0098], cannot implicitly instantiate function of type
-  (Nat, compare : (implicit : (K, K) -> Order)) -> ()
+  Nat -> ()
 to argument of type
   (Nat, (t1 : Text, t2 : Text) -> Order)
 to produce result of type
@@ -51,8 +51,7 @@ because no instantiation of K, V makes
 and
   (t1 : Text, t2 : Text) -> Order  <:  ()
 wrong-call-args.mo:55.5-55.36: type error [M0098], cannot implicitly instantiate function of type
-  (map : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K,
-   value : V) -> ()
+  (map : Map<K, V>, key : K, value : V) -> ()
 to argument of type
   ({var root : Node<Text, Text>; var size_ : Nat},
    (t1 : Text, t2 : Text) -> Order, Text)
