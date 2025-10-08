@@ -9,7 +9,7 @@ This document distinguishes use-cases (requirements, goals) from
 implementations, to allow evaluating alternative implementations.
 
 The implementation is currently a careful choreography between Github, Github
-Actions, and the cachix nix cache.
+Actions, and the Cachix nix cache.
 
 Knowing if it is broken
 -----------------------

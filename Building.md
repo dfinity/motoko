@@ -204,7 +204,7 @@ git push --set-upstream origin $USER/$NEXT_MOC_VERSION
 
 Create a PR from this commit:
 - Make sure the **PR title** is the same as the **commit message**.
-- Label the PR with `release` (to mark it as a release PR) and enable auto-merge on it. It will get merged into `master` without additional approval (???), but it will take some time as the title (version number) enters into the `nix` dependency tracking.
+- Label the PR with `release` (to mark it as a release PR) and enable auto-merge on it. It will not get merged into `master` without additional approval, and it may take some time as the title (version number) enters into the `nix` dependency tracking.
 
 To create the PR, you can use `gh` CLI:
 ```bash
