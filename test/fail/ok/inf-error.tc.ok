@@ -1,15 +1,9 @@
-inf-error.mo:47.13-47.52: type error [M0098], cannot implicitly instantiate function of type
-  <K, V>(map : Map<K, V>, compare : (implicit : (K, K) -> Order), n : K) ->
-    ?V
+inf-error.mo:47.13-47.52: type error [M0098], cannot apply function of type
+  (map : Map<K, V>, compare : (implicit : (K, K) -> Order), n : K) -> ?V
 to argument of type
   ({map : [(Nat, [var Text])]}, (n : Nat, m : Nat) -> Order, Text)
-to produce result of type
+to produce result of expected type
   Any
-because implicit instantiation of type parameter `K` is over-constrained with
-  Any  <:  K  <:  Nat
-where
-  Any  </:  Nat
-so that no valid instantiation exists
 inf-error.mo:48.13-48.39: type error [M0230], Cannot determine implicit argument `compare` of type
   (Any, Any) -> Order
 Hint: If you're trying to omit an implicit argument named `compare` you need to have a matching declaration named `compare` in scope.
@@ -21,19 +15,13 @@ inf-error.mo:53.27-53.33: type error [M0050], literal of type
   Text
 does not have expected type
   Nat
-inf-error.mo:60.13-60.56: type error [M0098], cannot implicitly instantiate function of type
-  <K, V>(map : Map<K, V>, compare : (implicit : (K, K) -> Order), n : K,
-         v : V) ->
+inf-error.mo:60.13-60.56: type error [M0098], cannot apply function of type
+  (map : Map<K, V>, compare : (implicit : (K, K) -> Order), n : K, v : V) ->
     Map<K, V>
 to argument of type
   ({map : [(Nat, [var Text])]}, (n : Nat, m : Nat) -> Order, Text, Text)
-to produce result of type
+to produce result of expected type
   Any
-because implicit instantiation of type parameter `K` is over-constrained with
-  Any  <:  K  <:  Nat
-where
-  Any  </:  Nat
-so that no valid instantiation exists
 inf-error.mo:61.13-61.43: type error [M0230], Cannot determine implicit argument `compare` of type
   (Any, Any) -> Order
 Hint: If you're trying to omit an implicit argument named `compare` you need to have a matching declaration named `compare` in scope.

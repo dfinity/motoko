@@ -120,6 +120,269 @@ func envVar<system>(name : Text) : ?Text {
   (prim "env_var" : Text -> ?Text)(name);
 };
 
+/// EXPERIMENTAL SECTION AND API. DO NOT USE IN PRODUCTION CODE!
+///
+type __WeakRef = {
+  ref : weak Blob;
+};
+type __List = {
+  var next : ?__List;
+  value : ?__WeakRef;
+  originalBlob : Blob;
+  index : Nat;
+};
+func __getDedupTable() : ?[var __List] {
+  (prim "get_dedup_table" : () -> ?[var __List])();
+};
+
+class BlobIterator(hash : [var __List]) {
+  let HASH_ARRAY_SIZE = 16_384;
+  var currentIndex : Nat = 0;
+  var currentList : ?__List = null;
+  let hashArray = hash;
+
+  // Counts the number of dead blobs.
+  public func size() : Nat {
+    var len = 0;
+    var i = 0;
+    while (i < HASH_ARRAY_SIZE) {
+      var list = hashArray[i];
+      label countLoop loop {
+        let weakRef = list.value;
+        switch weakRef {
+          case (?weakRef) {
+            let deref = weakGet(weakRef.ref);
+            switch deref {
+              case (?deref) {};
+              case null { len += 1 };
+            };
+          };
+          case null {};
+        };
+        let next = list.next;
+        switch next {
+          case (?next) { list := next };
+          case null { break countLoop };
+        };
+      };
+      i += 1;
+    };
+    len;
+  };
+
+  func getDeadBlobFromListNode(list : ?__List) : ?Blob {
+    switch list {
+      case (?myList) {
+        let weakRef = myList.value;
+        switch weakRef {
+          case (?weakRef) {
+            let deref = weakGet(weakRef.ref);
+            switch deref {
+              case (?deref) { return null };
+              case null { return ?myList.originalBlob };
+            };
+          };
+          case null { return null };
+        };
+      };
+      case null { return null };
+    };
+  };
+
+  func advanceListNode(list : ?__List) : ?__List {
+    switch list {
+      case (?list) { list.next };
+      case null { null };
+    };
+  };
+
+  public func nextDeadBlob() : Blob {
+    // Start at the current index and list.
+    loop {
+      // Get the blob from the current list node.
+      let blob = getDeadBlobFromListNode(currentList);
+      switch blob {
+        // If we found a blob, return it.
+        case (?blob) {
+          // Advance to the next list node.
+          // So that next time we call nextDeadBlob(), we get the next blob.
+          currentList := advanceListNode(currentList);
+          return blob;
+        };
+        case null {
+          // If we didn't find a blob, advance to the next list node.
+          currentList := advanceListNode(currentList);
+
+          switch currentList {
+            case (?_) {};
+            // If we reached the end of the list, advance to the next index.
+            case null {
+              currentIndex += 1;
+              // If we reached the end of the hash array, return null.
+              if (currentIndex >= HASH_ARRAY_SIZE) {
+                return "";
+              };
+              // Get the new list node.
+              currentList := ?hashArray[currentIndex];
+            };
+          };
+
+        };
+      };
+    };
+    "";
+  };
+
+  func computeIndex(b : Blob) : Nat {
+    // Append the magic bytes to compute the hash.
+    let magicBytes : [Nat8] = [0x21, 0x63, 0x61, 0x66, 0x21];
+    let originalBlob : [Nat8] = blobToArray(b);
+    let concat = Array_tabulate(magicBytes.size() + originalBlob.size(), func(i : Nat) : Nat8 = if (i < magicBytes.size()) { magicBytes[i] } else { originalBlob[i - magicBytes.size()] });
+    let bWithMagic = arrayToBlob(concat);
+    // Get hash bucket.
+    let hashValue = hashBlob(bWithMagic);
+    nat32ToNat(hashValue) % HASH_ARRAY_SIZE;
+  };
+
+  public func isBlobLive(b : Blob) : Bool {
+    let index = computeIndex(b);
+    var list = hashArray[index];
+    // Walk the list and check if the blob is live.
+    loop {
+      if (blobCompare(list.originalBlob, b) == 0) {
+        let weakRef = list.value;
+        switch weakRef {
+          case (?weakRef) { return isLive(weakRef.ref) };
+          // The weak ref should not be null, but just in case.
+          case null { return false };
+        };
+      } else {
+        // Advance to the next list node.
+        let next = list.next;
+        switch next {
+          case (?next) { list := next };
+          // If we reached the end of the list, return false.
+          case null { return false };
+        };
+      };
+    };
+  };
+
+  func pruneFirstElement(list : __List, b : Blob, index : Nat) : Bool {
+    let deadBlob = getDeadBlobFromListNode(?list);
+    switch deadBlob {
+      case (?deadBlob) {
+        if (blobCompare(deadBlob, b) == 0) {
+          let nextElem = list.next;
+          switch nextElem {
+            case (?next) { hashArray[index] := next; return true };
+            case null {
+              // Do nothing. This case should not happen as the array is initialized
+              // with a sentinel (empty) value that is non-null.};
+            };
+          };
+        };
+      };
+      // No dead blob in this list node.
+      case null {};
+    };
+    false;
+  };
+
+  public func pruneDeadBlobs(confirmedDeadBlobs : [Blob]) {
+    // For each element in the confirmedDeadBlobs array, we check if it is in the hash array.
+    // If it is, and if the corresponding WeakRef is null, we remove the whole list node
+    // from the hash array.
+    var i = 0;
+    while (i < confirmedDeadBlobs.size()) {
+      let b = confirmedDeadBlobs[i];
+      // Get hash bucket.
+      let index = computeIndex(b);
+      // Get the list of the hash bucket and walk it until we find the blob b.
+      let list = hashArray[index];
+      // Special case for the first list node.
+      let pruned = pruneFirstElement(list, b, index);
+      if (pruned == false) {
+        // If we're here, we know that the blob is not the first list node.
+        // So we can advance to the next list node.
+        var prev = ?list;
+        var crntNode = advanceListNode(?list);
+        label findLoop loop {
+          let crntBlob = getDeadBlobFromListNode(crntNode);
+          switch crntBlob {
+            case (?crntBlob) {
+              if (blobCompare(crntBlob, b) == 0) {
+                // We found the blob and we know for sure it's dead.
+                // We just need to prune the current list node.
+                switch (prev, crntNode) {
+                  case (?prev, ?crntNode) {
+                    prev.next := crntNode.next;
+                    // Break the loop, we found the blob and pruned.
+                    break findLoop;
+                  };
+                  case _ {};
+                };
+              };
+            };
+            case null {
+              // No dead blob in this list node.
+              // We can advance pointers.
+              prev := crntNode;
+              crntNode := advanceListNode(crntNode);
+            };
+          };
+          switch crntNode {
+            case (?crntNode) {};
+            // We reached the end, break.
+            case null { break findLoop };
+          };
+        };
+      };
+      // Continue loop.
+      i += 1;
+    };
+
+  };
+
+};
+
+func getDeadBlobs() : ?[Blob] {
+  let dedupTableOption = __getDedupTable();
+  switch dedupTableOption {
+    case (?dedupTable) {
+      let dedupTableIter = BlobIterator(dedupTable);
+      let numDeadBlobs = dedupTableIter.size();
+      let deadBlobs = Array_tabulate<Blob>(numDeadBlobs, func(i : Nat) : Blob { dedupTableIter.nextDeadBlob() });
+      return ?deadBlobs;
+    };
+    case null { return null };
+  };
+
+};
+
+func pruneConfirmedDeadBlobs(confirmedDeadBlobs : [Blob]) {
+  let dedupTableOption = __getDedupTable();
+  switch dedupTableOption {
+    case (?dedupTable) {
+      let dedupTableIter = BlobIterator(dedupTable);
+      dedupTableIter.pruneDeadBlobs(confirmedDeadBlobs);
+    };
+  };
+};
+
+func isStorageBlobLive(b : Blob) : Bool {
+  let dedupTableOption = __getDedupTable();
+  switch dedupTableOption {
+    case (?dedupTable) {
+      let iter = BlobIterator(dedupTable);
+      iter.isBlobLive(b);
+    };
+    case null { false };
+  };
+};
+///
+/// END EXPERIMENTAL SECTION.
+
 // Total conversions (fixed to big)
 
 let int64ToInt = @int64ToInt;
