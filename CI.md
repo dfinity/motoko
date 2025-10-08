@@ -135,19 +135,19 @@ Dependencies are updated automatically
 --------------------------------------
 
 **Use-case:**
-Several dependencies, as pinned by `nix/souces.json`, should be updated without
+Several dependencies, as pinned by `flake.nix`, should be updated without
 human intervention. Some dependencies are updated daily, others weekly. For
 some dependency, it should only be _tested_ if it builds, but not merged.
 
 **Implementation:**
  * Multiple files (with different settings) in `.github/workflows/` use
-   [niv-updater-action](https://github.com/knl/niv-updater-action) to create
+   flake-updater to create
    pull requests with the version bumps, as `dfinity-bot`, setting
    `automerge-squash` or `autoclose`.
- * Mergify automatically approves PRs from `dfinity-bot`.
- * Once CI passes, mergify merges or closes PRs, as per label.
+ * (obsolete) Mergify automatically approves PRs from `dfinity-bot`.
+ * Once CI passes, the `test.yml` GitHub action merges or closes PRs, as per label.
 
-Updates to the Changelog require no review
+(obsolete) Updates to the Changelog require no review
 ------------------------------------------
 
 **Use-case:**
