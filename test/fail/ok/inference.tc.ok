@@ -14,11 +14,7 @@ to argument of type
   (x : None) -> Any
 to produce result of type
   ()
-because implicit instantiation of type parameter T is over-constrained with
-  Any  <:  T  <:  None
-where
-  Any  </:  None
-so that no valid instantiation exists
+because type parameter `T` has no solution. Maybe try an explicit instantiation.
 inference.mo:87.20-87.27: warning [M0146], this pattern is never matched
 inference.mo:94.8-94.20: type error [M0098], cannot implicitly instantiate function of type
   <T <: U, U>(x : T, y : T) -> (U, U)
@@ -61,11 +57,7 @@ to argument of type
   Bool
 to produce result of type
   Any
-because implicit instantiation of type parameter T is over-constrained with
-  Bool  <:  T  <:  Int
-where
-  Bool  </:  Int
-so that no valid instantiation exists
+because type parameter `T` has no solution. Maybe try an explicit instantiation.
 inference.mo:112.1-112.10: type error [M0098], cannot implicitly instantiate function of type
   <T <: Int>(x : T) -> T
 with parameters
@@ -74,11 +66,7 @@ to argument of type
   Bool
 to produce result of type
   ()
-because implicit instantiation of type parameter T is over-constrained with
-  Bool  <:  T  <:  None
-where
-  Bool  </:  None
-so that no valid instantiation exists
+because type parameter `T` has no solution. Maybe try an explicit instantiation.
 inference.mo:116.1-116.27: type error [M0098], cannot implicitly instantiate function of type
   <T>(f : <U>T -> U) -> ()
 with parameters
@@ -129,11 +117,7 @@ to argument of type
   [var Nat]
 to produce result of type
   ()
-because implicit instantiation of type parameter T is over-constrained with
-  Nat  <:  T  <:  None
-where
-  Nat  </:  None
-so that no valid instantiation exists
+because type parameter `T` has no solution. Maybe try an explicit instantiation.
 inference.mo:137.4-137.8: type error [M0098], cannot implicitly instantiate function of type
   <U <: {}>(y : U) -> ()
 with parameters
@@ -142,11 +126,7 @@ to argument of type
   T
 to produce result of type
   ()
-because implicit instantiation of type parameter U is over-constrained with
-  T  <:  U  <:  {}
-where
-  T  </:  {}
-so that no valid instantiation exists
+because type parameter `U` has no solution. Maybe try an explicit instantiation.
 inference.mo:152.11-152.15: type error [M0098], cannot implicitly instantiate function of type
   <U <: T>(y : U) -> U
 with parameters
@@ -155,11 +135,7 @@ to argument of type
   T
 to produce result of type
   None
-because implicit instantiation of type parameter U is over-constrained with
-  T  <:  U  <:  None
-where
-  T  </:  None
-so that no valid instantiation exists
+because type parameter `U` has no solution. Maybe try an explicit instantiation.
 inference.mo:172.8-172.54: type error [M0098], cannot implicitly instantiate function of type
   <T>(b : Bool, x : [var T], y : [var T]) -> [var T]
 with parameters
@@ -168,11 +144,7 @@ to argument of type
   (Bool, [var Nat], [var Int])
 to produce result of type
   Any
-because implicit instantiation of type parameter T is over-constrained with
-  Int  <:  T  <:  Nat
-where
-  Int  </:  Nat
-so that no valid instantiation exists
+because type parameter `T` has no solution. Maybe try an explicit instantiation.
 inference.mo:177.8-177.44: type error [M0098], cannot implicitly instantiate function of type
   <T>(o : {x : T}) -> T
 with parameters

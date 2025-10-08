@@ -40,8 +40,4 @@ with parameters
   ()
 to argument of type
   ()
-because implicit instantiation of type parameter A is under-constrained with
-  None  <:  A  <:  Any
-where
-  None  =/=  Any
-so that explicit type instantiation is required
+because type parameter `A` has no best solution, please provide an explicit instantiation.
