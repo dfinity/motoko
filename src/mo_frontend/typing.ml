@@ -143,17 +143,19 @@ let display_typ_expand = Lib.Format.display T.pp_typ_expand
 let display_many display p xs =
   List.iter (display p) xs
 
+let plural_typs types = if List.length types = 1 then "" else "s"
+
 let display_expected_arg_types fmt types =
   if types = [] then
     Format.fprintf fmt "Expected no arguments"
   else
-    Format.fprintf fmt "Expected arguments of type:%a" (display_many display_typ_expand) types
+    Format.fprintf fmt "Expected %d argument%s of type:%a" (List.length types) (plural_typs types) (display_many display_typ_expand) types
 
 let display_given_arg_types fmt types =
   if types = [] then
     Format.fprintf fmt "But got no arguments"
   else
-    Format.fprintf fmt "But got arguments of type:%a" (display_many display_typ_expand) types
+    Format.fprintf fmt "But got %d argument%s of type:%a" (List.length types) (plural_typs types) (display_many display_typ_expand) types
 
 let display_obj fmt (s, fs) =
   if !Flags.ai_errors || (List.length fs) < 16 then
