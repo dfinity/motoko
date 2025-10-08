@@ -75,15 +75,22 @@ because implicit instantiation of type parameter K is over-constrained with
 where
   Any  </:  Text
 so that no valid instantiation exists
-wrong-call-args.mo:97.8-97.9: type error [M0050], literal of type
+wrong-call-args.mo:83.7-83.12: type error [M0098], cannot implicitly instantiate function of type
+  <A, B>(tup : (implicit : (A, B))) -> ()
+to argument of type
+  (tup : (implicit : (A, B)))
+to produce result of type
+  ()
+because cannot infer A, B
+wrong-call-args.mo:118.8-118.9: type error [M0050], literal of type
   Nat
 does not have expected type
   ()
-wrong-call-args.mo:98.7-98.13: type error [M0096], expression of type
+wrong-call-args.mo:119.7-119.13: type error [M0096], expression of type
   (Nat, Nat)
 cannot produce expected type
   ()
-wrong-call-args.mo:100.5-100.10: type error [M0098], cannot implicitly instantiate function of type
+wrong-call-args.mo:121.5-121.10: type error [M0098], cannot implicitly instantiate function of type
   <A, B>((A, B)) -> ()
 to argument of type
   ()
@@ -91,7 +98,7 @@ to produce result of type
   ()
 because no instantiation of A, B makes
   ()  <:  (A, B)
-wrong-call-args.mo:101.5-101.11: type error [M0098], cannot implicitly instantiate function of type
+wrong-call-args.mo:122.5-122.11: type error [M0098], cannot implicitly instantiate function of type
   <A, B>((A, B)) -> ()
 to argument of type
   Nat
@@ -99,7 +106,7 @@ to produce result of type
   ()
 because no instantiation of A, B makes
   Nat  <:  (A, B)
-wrong-call-args.mo:102.5-102.17: type error [M0098], cannot implicitly instantiate function of type
+wrong-call-args.mo:123.5-123.17: type error [M0098], cannot implicitly instantiate function of type
   <A, B>((A, B)) -> ()
 to argument of type
   (Nat, Nat, Nat)
@@ -107,7 +114,7 @@ to produce result of type
   ()
 because no instantiation of A, B makes
   (Nat, Nat, Nat)  <:  (A, B)
-wrong-call-args.mo:104.5-104.9: type error [M0098], cannot implicitly instantiate function of type
+wrong-call-args.mo:125.5-125.9: type error [M0098], cannot implicitly instantiate function of type
   <A, B>(A, B) -> ()
 to argument of type
   ()
@@ -115,7 +122,7 @@ to produce result of type
   ()
 because no instantiation of A, B makes
   ()  <:  (A, B)
-wrong-call-args.mo:105.5-105.10: type error [M0098], cannot implicitly instantiate function of type
+wrong-call-args.mo:126.5-126.10: type error [M0098], cannot implicitly instantiate function of type
   <A, B>(A, B) -> ()
 to argument of type
   Nat
@@ -123,7 +130,7 @@ to produce result of type
   ()
 because no instantiation of A, B makes
   Nat  <:  (A, B)
-wrong-call-args.mo:106.5-106.16: type error [M0098], cannot implicitly instantiate function of type
+wrong-call-args.mo:127.5-127.16: type error [M0098], cannot implicitly instantiate function of type
   <A, B>(A, B) -> ()
 to argument of type
   (Nat, Nat, Nat)
