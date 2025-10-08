@@ -168,7 +168,7 @@ val as_opt_sub : typ -> typ
 val as_tup_sub : int -> typ -> typ list
 val as_unit_sub : typ -> unit
 val as_pair_sub : typ -> typ * typ
-val as_func_sub : func_sort -> int -> typ -> func_sort * bind list * typ * typ
+val as_func_sub : func_sort -> int -> typ -> func_sort * bind list * typ list * typ
 val as_mono_func_sub : typ -> typ * typ
 val as_async_sub : async_sort -> typ -> typ -> typ * typ
 val as_weak_sub : typ -> typ

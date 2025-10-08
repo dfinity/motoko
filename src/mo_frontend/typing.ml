@@ -2575,7 +2575,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       T.as_func_sub T.Local n T.Non
   in
 
-  let n_saturated, n_implicit = T.arities (match t_arg with | T.Tup ts -> ts | t -> [t]) in
+  let n_saturated, n_implicit = T.arities t_arg in
   let n_saturated, n_implicit = match ctx_dot with
     | None -> n_saturated, n_implicit
     | Some _ -> n_saturated - 1, n_implicit - 1 in
@@ -2589,10 +2589,9 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   let t_arg, extra_subtype_problems = match ctx_dot with
     | None -> t_arg, []
     | Some(e, t) -> begin
-      match T.normalize t_arg with
-      | T.Tup([t'; t2]) -> t2, [(t, t')]
-      | T.Tup(t'::ts) -> T.Tup(ts), [(t, t')]
-      | t' -> T.unit, [(t, t')]
+      match t_arg with
+      | t'::ts -> ts, [(t, t')]
+      | [] -> assert false
     end
   in
   let exp2 =
@@ -2601,14 +2600,12 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       | _ -> [exp2] in
     (* Must not use T.as_seq here, as T.normalize will clear the
        `implicit` Name in case of a single implicit argument *)
-    let ts = match t_arg with
-      | T.Tup ts -> ts
-      | t -> [t] in
-    let e' = match insert_holes at ts es with
+    let e' = match insert_holes at t_arg es with
       | [e] -> e.it
       | es -> TupE es in
     { exp2 with it = e'}
   in
+  let t_arg = T.seq t_arg in
   if not env.pre then ref_exp2 := exp2; (* TODO: is this good enough *)
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
@@ -3540,7 +3537,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
      try
       let sort, tbs, t_dom, t_rng = T.as_func_sub T.Local 0 typ in
       if sort <> T.Local || tbs <> [] then raise (Invalid_argument "");
-      check_fields "consumes" (T.normalize t_dom),
+      check_fields "consumes" (T.normalize (T.seq t_dom)),
       check_fields "produces" (T.promote t_rng)
      with Invalid_argument _ ->
        local_error env focus "M0203"

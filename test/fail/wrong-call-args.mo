@@ -55,3 +55,11 @@ module WithoutDot {
     Map.add(map, Text.compare, key); // missing value, low priority issue: Text.compare should not appear
   };
 };
+
+module FuncWithSingleArgTuple {
+  func foo<K>(_ : (n : Nat, compare : (implicit : (K, K) -> Types.Order))) {};
+  func main() {
+    let arg = (1, Text.compare);
+    foo(arg);
+  };
+};
