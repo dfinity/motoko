@@ -1,0 +1,22 @@
+ctx-dot-tuple-args.mo:13.8-13.16: type error [M0233], wrong number of arguments: expected 2 but got 1
+Expected 2 arguments of type:
+  (_x : Nat)
+  (_y : Nat)
+But got 1 argument of type:
+  (Nat, Nat)
+ctx-dot-tuple-args.mo:14.8-14.9: type error [M0233], wrong number of arguments: expected 2 but got 1
+Expected 2 arguments of type:
+  (_x : Nat)
+  (_y : Nat)
+But got 1 argument of type:
+  (Nat, Nat)
+ctx-dot-tuple-args.mo:16.7-16.15: type error [M0233], wrong number of arguments: expected 1 but got 2
+Expected 1 argument of type:
+  (_xy : (Nat, Nat))
+But got 2 arguments of type:
+  Nat
+  Nat
+ctx-dot-tuple-args.mo:23.8-23.10: type error [M0050], literal of type
+  Nat
+does not have expected type
+  (Nat, Nat)
