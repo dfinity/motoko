@@ -3,7 +3,7 @@ type Order = {
 };
 
 module Any {
-  public func compare(n : Any, m : Any) : Order { #equal };
+//  public func compare(n : Any, m : Any) : Order { #equal };
 };
 
 module Nat {
@@ -47,5 +47,7 @@ persistent actor {
      ignore peopleMap.get(peopleMap, "text") : Text; // bad
      ignore peopleMap.get(peopleMap, Nat.compare, "text") : Text; // bad
      ignore peopleMap.get(peopleMap, "text") : Text; // bad
+
+     ignore peopleMap.get(1) : Bool; // bad
   };
 }

@@ -1,7 +1,5 @@
 inf-error-small.mo:44.13-44.34: type error [M0098], cannot implicitly instantiate dotted function `_.get` of type
-  <K, V>(n : K) -> ?V
-with parameters
-  (n : Nat)
+  (n : Nat) -> ?Text
 to argument of type
   Text
 to produce result of type
@@ -13,9 +11,7 @@ and
 and
   {map : [(Nat, [var Text])]}  <:  (map : Map<K, V>)
 inf-error-small.mo:45.13-45.47: type error [M0098], cannot implicitly instantiate dotted function `_.get` of type
-  <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
-with parameters
-  (compare : (implicit : (Nat, Nat) -> Order), n : Nat)
+  (compare : (implicit : (Nat, Nat) -> Order), n : Nat) -> ?Text
 to argument of type
   ((n : Nat, m : Nat) -> Order, Text)
 to produce result of type
@@ -29,9 +25,7 @@ and
 and
   {map : [(Nat, [var Text])]}  <:  (map : Map<K, V>)
 inf-error-small.mo:47.13-47.45: type error [M0098], cannot implicitly instantiate dotted function `_.get` of type
-  <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
-with parameters
-  (compare : (implicit : (Nat, Nat) -> Order), n : Nat)
+  (compare : (implicit : (Nat, Nat) -> Order), n : Nat) -> ?Text
 to argument of type
   ({map : [(Nat, [var Text])]}, Text)
 to produce result of type
@@ -52,9 +46,7 @@ But got 3 arguments of type:
   (n : Nat, m : Nat) -> Order
   Text
 inf-error-small.mo:49.13-49.45: type error [M0098], cannot implicitly instantiate dotted function `_.get` of type
-  <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
-with parameters
-  (compare : (implicit : (Nat, Nat) -> Order), n : Nat)
+  (compare : (implicit : (Nat, Nat) -> Order), n : Nat) -> ?Text
 to argument of type
   ({map : [(Nat, [var Text])]}, Text)
 to produce result of type
@@ -65,5 +57,17 @@ and
   Text  <:  (n : K)
 and
   {map : [(Nat, [var Text])]}  <:  (compare : (implicit : (K, K) -> Order))
+and
+  {map : [(Nat, [var Text])]}  <:  (map : Map<K, V>)
+inf-error-small.mo:51.13-51.29: type error [M0098], cannot implicitly instantiate dotted function `_.get` of type
+  (n : Nat) -> ?Text
+to argument of type
+  Nat
+to produce result of type
+  Bool
+because no instantiation of K, V makes
+  ?V  <:  Bool
+and
+  Nat  <:  (n : K)
 and
   {map : [(Nat, [var Text])]}  <:  (map : Map<K, V>)

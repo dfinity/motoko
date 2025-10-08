@@ -1,7 +1,5 @@
 invariant-inference.mo:5.11-5.32: type error [M0098], cannot implicitly instantiate function of type
-  <T>(len : Nat, x : T) -> [var T]
-with parameters
-  (len : Nat, x : T)
+  (len : Nat, x : T) -> [var T]
 to argument of type
   (Nat, Nat)
 because type parameter `T` has no best solution, please provide an explicit instantiation.
