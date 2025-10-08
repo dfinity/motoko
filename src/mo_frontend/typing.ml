@@ -2616,11 +2616,8 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     | None -> t_args, []
     | Some(e, t) -> begin
       match t_args with
-      | [t'; t2] -> [t2], [(t, t')]
       | t'::ts -> ts, [(t, t')]
-      | [] ->
-        (* Should be unreachable *)
-        [T.unit], [(t, T.unit)]
+      | [] -> assert false
     end
   in
   let ctx_holes, implicit_t_args_n = insert_holes at t_args syntax_args in
