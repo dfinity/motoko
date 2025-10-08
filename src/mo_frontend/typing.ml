@@ -140,6 +140,23 @@ let display_typ = Lib.Format.display T.pp_typ
 
 let display_typ_expand = Lib.Format.display T.pp_typ_expand
 
+let display_many display p xs =
+  List.iter (display p) xs
+
+let plural_typs types = if List.length types = 1 then "" else "s"
+
+let display_expected_arg_types fmt types =
+  if types = [] then
+    Format.fprintf fmt "Expected no arguments"
+  else
+    Format.fprintf fmt "Expected %d argument%s of type:%a" (List.length types) (plural_typs types) (display_many display_typ_expand) types
+
+let display_given_arg_types fmt types =
+  if types = [] then
+    Format.fprintf fmt "But got no arguments"
+  else
+    Format.fprintf fmt "But got %d argument%s of type:%a" (List.length types) (plural_typs types) (display_many display_typ_expand) types
+
 let display_obj fmt (s, fs) =
   if !Flags.ai_errors || (List.length fs) < 16 then
     Format.fprintf fmt "type:%a" display_typ (T.Obj(s, fs))
@@ -1463,7 +1480,7 @@ let resolve_hole env at hole_sort typ =
          List.flatten |>
          List.partition (fun (candidate : hole_candidate) -> is_matching_lab candidate.id)
      in
-     Error (List.map (fun candidate -> candidate.desc) lib_terms,
+     Error (List.map suggestion_of_candidate lib_terms,
             List.map (fun candidate -> candidate.desc) explicit_terms,
             renaming_hints)
   | terms -> begin
@@ -2532,6 +2549,28 @@ and infer_callee env exp =
   | _ ->
      infer_exp_promote env exp, None
 
+and as_implicit = function
+  | T.Named ("implicit", T.Named (arg_name, t)) ->
+    Some arg_name
+  | T.Named ("implicit", t) ->
+    Some "_"
+  | T.Named (_inf_arg_name, (T.Named ("implicit", T.Named (arg_name, t)))) ->
+    (* override inferred arg_name *)
+    Some arg_name
+  | T.Named (inf_arg_name, (T.Named ("implicit", t))) ->
+    (* non-overriden, use inferred arg_name *)
+    Some inf_arg_name
+  | _ -> None
+
+(** With implicits we can either fully specify all implicit arguments or none
+  Saturated arity is the number of expected arguments when all arguments are fully specified
+  Implicits arity is the number of non-implicit arguments, when all implicit arguments are omitted
+  *)
+and arity_with_implicits t_args =
+  let saturated_arity = List.length t_args in
+  let implicits_arity = List.to_seq t_args |> Seq.filter (fun t -> Option.is_none (as_implicit t)) |> Seq.length in
+  saturated_arity, implicits_arity
+
 and insert_holes at ts es =
   let mk_hole pos hole_id =
     let hole_sort = if hole_id = "" then Anon pos else Named hole_id in
@@ -2540,30 +2579,26 @@ and insert_holes at ts es =
       note = empty_typ_note }
   in
   let rec go n ts es =
-    match (ts, es) with
-    | (T.Named ("implicit", T.Named (arg_name, t))) :: ts1, es ->
-      (mk_hole n arg_name) :: go (n + 1) ts1 es
-    | (T.Named ("implicit", t)) :: ts1, es ->
-      (mk_hole n "_") :: go (n + 1) ts1 es
-    | (T.Named (_inf_arg_name, (T.Named ("implicit", T.Named (arg_name, t))))) :: ts1, es ->
-      (* override inferred arg_name *)
-      (mk_hole n arg_name) :: go (n + 1) ts1 es
-    | (T.Named (inf_arg_name, (T.Named ("implicit", t)))) :: ts1, es ->
-      (* non-overriden, use inferred arg_name *)
-      (mk_hole n inf_arg_name) :: go (n + 1) ts1 es
-    | (t :: ts1, e::es1) -> e :: go (n+1) ts1 es1
-    | _, [] ->  []
-    | [], es -> es
+    match ts with
+    | [] -> es
+    | t :: ts1 ->
+      match as_implicit t with
+      | Some arg_name ->
+        mk_hole n arg_name :: go (n + 1) ts1 es
+      | None ->
+        match es with
+        | e :: es1 -> e :: go (n + 1) ts1 es1
+        | [] -> []
   in
-  if List.length es < List.length ts
-  then go 0 ts es
-  else es
+  match go 0 ts es with
+  | [arg] -> arg.it
+  | args -> TupE args
 
 and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   let exp2 = !ref_exp2 in
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
   let (t1, ctx_dot) = infer_callee env exp1 in
-  let sort, tbs, t_arg, t_ret =
+  let sort, tbs, t_args, t_ret =
     try T.as_func_sub T.Local n t1
     with Invalid_argument _ ->
       local_error env exp1.at "M0097"
@@ -2574,28 +2609,40 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
           "this looks like an unintended function call, perhaps a missing ';'?";
       T.as_func_sub T.Local n T.Non
   in
-  let t_arg, extra_subtype_problems = match ctx_dot with
-    | None -> t_arg, []
+  (* Syntactic arguments:
+    - exp1(e1 .. en) => [e1 .. en]
+    - exp1((e1 .. en)) => [(e1 .. en)] (single argument! parenthesized)
+   *)
+  let syntax_args = match exp2.it with
+    | TupE es when not parenthesized -> es
+    | _ -> [exp2]
+  in
+  let t_args, extra_subtype_problems = match ctx_dot with
+    | None -> t_args, []
     | Some(e, t) -> begin
-      match T.normalize t_arg with
-      | T.Tup([t'; t2]) -> t2, [(t, t')]
-      | T.Tup(t'::ts) -> T.Tup(ts), [(t, t')]
-      | t' -> T.unit, [(t, t')]
+      match t_args with
+      | t'::ts -> ts, [(t, t')]
+      | [] -> assert false
     end
   in
+  let saturated_arity, implicits_arity = arity_with_implicits t_args in
+  let is_correct_arity =
+    let n = List.length syntax_args in
+    n = saturated_arity || n = implicits_arity
+  in
+  let needs_holes = List.length syntax_args = implicits_arity in (* Implicit arguments are holes *)
   let exp2 =
-    let es = match exp2.it with
-      | TupE es when not parenthesized -> es
-      | _ -> [exp2] in
-    (* Must not use T.as_seq here, as T.normalize will clear the
-       `implicit` Name in case of a single implicit argument *)
-    let ts = match t_arg with
-      | T.Tup ts -> ts
-      | t -> [t] in
-    let e' = match insert_holes at ts es with
-      | [e] -> e.it
-      | es -> TupE es in
-    { exp2 with it = e'}
+    if needs_holes
+    then { exp2 with it = insert_holes at t_args syntax_args}
+    else exp2
+  in
+  (* Elaboration for contextual dot and implicits relies on the syntactic shape of the arguments,
+    so we need to require the exact arity *)
+  let require_exact_arity = needs_holes || Option.is_some ctx_dot in
+  let t_arg =
+    if require_exact_arity && not is_correct_arity
+    then wrong_call_args env tbs exp2.at t_args implicits_arity syntax_args
+    else T.seq t_args
   in
   if not env.pre then ref_exp2 := exp2; (* TODO: is this good enough *)
   let ts, t_arg', t_ret' =
@@ -2638,6 +2685,22 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   end;
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
+
+and wrong_call_args env tbs at t_args implicits_arity syntax_args =
+  let tvars = T.open_binds tbs in
+  let subst t = if tvars = [] then t else T.open_ tvars t in
+  let given_types = List.map (infer_exp env) syntax_args in
+  let expected_types =
+    t_args
+    |> List.filter (fun t -> as_implicit t = None)
+    |> List.map subst
+  in
+  error env at "M0233"
+    "wrong number of arguments: expected %d but got %d\n%a\n%a"
+    implicits_arity
+    (List.length syntax_args)
+    display_expected_arg_types expected_types
+    display_given_arg_types given_types
 
 and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems =
   (*
@@ -3526,7 +3589,8 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
    in
    let dom_tfs, rng_tfs =
      try
-      let sort, tbs, t_dom, t_rng = T.as_func_sub T.Local 0 typ in
+      let sort, tbs, t_args, t_rng = T.as_func_sub T.Local 0 typ in
+      let t_dom = T.seq t_args in
       if sort <> T.Local || tbs <> [] then raise (Invalid_argument "");
       check_fields "consumes" (T.normalize t_dom),
       check_fields "produces" (T.promote t_rng)
