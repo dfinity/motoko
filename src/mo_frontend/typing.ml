@@ -2561,7 +2561,6 @@ and as_implicit = function
   | _ -> None
 
 and insert_holes at ts es =
-  let implicits_n = List.to_seq ts |> Seq.filter_map as_implicit |> Seq.length in
   let mk_hole pos hole_id =
     let hole_sort = if hole_id = "" then Anon pos else Named hole_id in
     {it = HoleE (hole_sort, ref {it = PrimE "hole"; at; note=empty_typ_note });
@@ -2580,14 +2579,9 @@ and insert_holes at ts es =
         | e :: es1 -> e :: go (n + 1) ts1 es1
         | [] -> []
   in
-  if List.length ts <> List.length es + implicits_n
-  then None, implicits_n
-  else
-    let args = match go 0 ts es with
-      | [arg] -> arg.it
-      | args -> TupE args
-    in
-    Some args, implicits_n
+  match go 0 ts es with
+  | [arg] -> arg.it
+  | args -> TupE args
 
 and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   let exp2 = !ref_exp2 in
@@ -2625,11 +2619,12 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       | [] -> assert false
     end
   in
-  let ctx_holes, implicit_args_n = insert_holes at t_args syntax_args in
+  let implicit_args_n = List.to_seq t_args |> Seq.filter_map as_implicit |> Seq.length in
+  let needs_holes = List.length t_args = List.length syntax_args + implicit_args_n in
   let exp2 =
-    match ctx_holes with
-    | None -> exp2
-    | Some args -> { exp2 with it = args}
+    if needs_holes
+    then { exp2 with it = insert_holes exp2.at t_args syntax_args}
+    else exp2
   in
   (* With implicits we can either fully specify all implicit arguments or none
     Saturated arity is the number of expected arguments when all arguments are fully specified
@@ -2645,7 +2640,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     both `f(e)` and `f(e1, e2)` can be correct when e : (A, B), e1 : A, e2 : B
     even when `f(e)` has incorrect arity.
    *)
-  let require_exact_arity = Option.is_some ctx_dot || Option.is_some ctx_holes in
+  let require_exact_arity = needs_holes || Option.is_some ctx_dot in
 
   (* Match the arguments against the parameter types *)
   let t_arg =
