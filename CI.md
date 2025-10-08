@@ -80,7 +80,7 @@ This can be done before approvals are in and/or CI has turned green, and will
 reliably be acted on once requirements are fulfilled.
 
 **Implementation:**
-Use the "Enable auto-merge (squash)" button of the GitHub PR weeb page.
+Use the "Enable auto-merge (squash)" button of the GitHub PR web page.
 Alternatively from the CLI `gh pr merge --auto` will do. Note that you have to update
 the PR with `master` first, so that the tests can run on the most recent codebase.
 From the command line issue `gh pr update-branch` to that effect.
