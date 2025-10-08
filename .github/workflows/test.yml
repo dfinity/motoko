@@ -156,3 +156,17 @@ jobs:
           echo "${{ toJson(github.event.pull_request) }}"
           gh pr close ${{ github.event.pull_request.number }} --delete-branch --comment "CI looks good, this dependency bump would not cause problems, hence closing this trial PR."
           gh pr edit ${{ github.event.pull_request.number }} --remove-label "autoclose"
+
+  debug:
+    if: github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: [verify-common-gc, verify-main-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: 'master'
+      - name: Automatically closing successful trials
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "${{ toJson(github.event.pull_request) }}"
