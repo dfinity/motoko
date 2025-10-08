@@ -2849,8 +2849,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
   with Bi_match.Bimatch msg ->
     let t1 = match T.normalize t1 with
       | T.Func(s, c, tbs, ts1, ts2) ->
-        T.Func(s, c, [], List.map err_subst ts1,
-               List.map err_subst ts2)
+        T.Func(s, c, [], List.map err_subst ts1, List.map err_subst ts2)
       | t1 -> t1
     in
     let remove_holes_nary ts =
@@ -2868,7 +2867,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
     in
     let strip_receiver ty = match ty with
       | T.Func(s, c, tbs, t1::ts1, ts2) ->
-        T.Func(s, c, tbs, remove_holes_nary ts1, ts2)
+        T.Func(s, c, tbs, ts1, ts2)
       |  _ -> ty
     in
     let desc, t1'  = match ctx_dot with
@@ -2876,6 +2875,11 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
       | Some (_, receiver_ty, id, _) ->
         Printf.sprintf "dotted function `_.%s`" id,
         strip_receiver t1
+    in
+    let t1'' = match T.normalize t1' with
+      | T.Func(s, c, tbs, ts1, ts2) ->
+        T.Func(s, c, [], remove_holes_nary ts1, List.map err_subst ts2)
+      | t1 -> t1
     in
     let remove_holes typ =
       T.seq (remove_holes_nary (match typ with T.Tup ts -> ts | t -> [t]))
@@ -2885,7 +2889,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
     error env at "M0098"
       "cannot implicitly instantiate %s of type%a\nto argument of type%a%s\nbecause %s"
       desc
-      display_typ t1'
+      display_typ t1''
       display_typ (err_subst t2')
       (match t_expect_opt with
         | None -> ""
