@@ -2560,6 +2560,15 @@ and as_implicit = function
     Some inf_arg_name
   | _ -> None
 
+(** With implicits we can either fully specify all implicit arguments or none
+  Saturated arity is the number of expected arguments when all arguments are fully specified
+  Implicits arity is the number of non-implicit arguments, when all implicit arguments are omitted
+  *)
+and arity_with_implicits t_args =
+  let saturated_arity = List.length t_args in
+  let implicits_arity = List.to_seq t_args |> Seq.filter (fun t -> Option.is_none (as_implicit t)) |> Seq.length in
+  saturated_arity, implicits_arity
+
 and insert_holes at ts es =
   let mk_hole pos hole_id =
     let hole_sort = if hole_id = "" then Anon pos else Named hole_id in
@@ -2619,33 +2628,26 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       | [] -> assert false
     end
   in
-  let implicit_args_n = List.to_seq t_args |> Seq.filter_map as_implicit |> Seq.length in
-  let needs_holes = List.length t_args = List.length syntax_args + implicit_args_n in
+  let saturated_arity, implicits_arity = arity_with_implicits t_args in
+  let is_correct_arity =
+    let n = List.length syntax_args in
+    n = saturated_arity || n = implicits_arity
+  in
+  let needs_holes = List.length syntax_args = implicits_arity in (* Implicit arguments are holes *)
   let exp2 =
     if needs_holes
     then { exp2 with it = insert_holes exp2.at t_args syntax_args}
     else exp2
   in
-  (* With implicits we can either fully specify all implicit arguments or none
-    Saturated arity is the number of expected arguments when all arguments are fully specified
-    Implicits arity is the number of non-implicit arguments, when all implicit arguments are omitted
-   *)
-  let saturated_arity = List.length t_args in
-  let implicits_arity = saturated_arity - implicit_args_n in
-  let is_correct_arity =
-    let n = List.length syntax_args in
-    n = saturated_arity || n = implicits_arity
-  in
-  (* Arity mismatch is allowed in legacy programs, e.g. given f : (A, B) -> O
-    both `f(e)` and `f(e1, e2)` can be correct when e : (A, B), e1 : A, e2 : B
-    even when `f(e)` has incorrect arity.
+  (* Elaboration for contextual dot and implicits relies on the syntactic shape of the arguments,
+    so we need to require the exact arity.
    *)
   let require_exact_arity = needs_holes || Option.is_some ctx_dot in
 
   (* Match the arguments against the parameter types *)
   let t_arg =
     if require_exact_arity && not is_correct_arity
-    then wrong_call_args env tbs exp2.at t_args implicit_args_n syntax_args
+    then wrong_call_args env tbs exp2.at t_args implicits_arity syntax_args
     else T.seq t_args
   in
   if not env.pre then ref_exp2 := exp2; (* TODO: is this good enough *)
@@ -2690,7 +2692,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
 
-and wrong_call_args env tbs at t_args implicit_args_n syntax_args =
+and wrong_call_args env tbs at t_args implicits_arity syntax_args =
   let tvars = T.open_binds tbs in
   let subst t = if tvars = [] then t else T.open_ tvars t in
   let given_types = List.map (infer_exp env) syntax_args in
@@ -2701,7 +2703,7 @@ and wrong_call_args env tbs at t_args implicit_args_n syntax_args =
   in
   error env at "M0233"
     "wrong number of arguments: expected %d but got %d\n%a\n%a"
-    (List.length t_args - implicit_args_n)
+    implicits_arity
     (List.length syntax_args)
     display_expected_arg_types expected_types
     display_given_arg_types given_types
