@@ -2582,7 +2582,12 @@ and insert_holes at ts es =
   in
   if List.length ts <> List.length es + implicits_n
   then None, implicits_n
-  else Some (go 0 ts es), implicits_n
+  else
+    let args = match go 0 ts es with
+      | [arg] -> arg.it
+      | args -> TupE args
+    in
+    Some args, implicits_n
 
 and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   let exp2 = !ref_exp2 in
@@ -2620,24 +2625,33 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       | [] -> assert false
     end
   in
-  let ctx_holes, implicit_t_args_n = insert_holes at t_args syntax_args in
-  let exp2, args =
+  let ctx_holes, implicit_args_n = insert_holes at t_args syntax_args in
+  let exp2 =
     match ctx_holes with
-    | None -> exp2, syntax_args
-    | Some args ->
-      let e' = match args with
-        | [e] -> e.it
-        | es -> TupE es
-      in
-      let exp2 = { exp2 with it = e'} in
-      exp2, args
+    | None -> exp2
+    | Some args -> { exp2 with it = args}
   in
+  (* With implicits we can either fully specify all implicit arguments or none
+    Saturated arity is the number of expected arguments when all arguments are fully specified
+    Implicits arity is the number of non-implicit arguments, when all implicit arguments are omitted
+   *)
+  let saturated_arity = List.length t_args in
+  let implicits_arity = saturated_arity - implicit_args_n in
+  let is_correct_arity =
+    let n = List.length syntax_args in
+    n = saturated_arity || n = implicits_arity
+  in
+  (* Arity mismatch is allowed in legacy programs, e.g. given f : (A, B) -> O
+    both `f(e)` and `f(e1, e2)` can be correct when e : (A, B), e1 : A, e2 : B
+    even when `f(e)` has incorrect arity.
+   *)
+  let require_exact_arity = Option.is_some ctx_dot || Option.is_some ctx_holes in
 
   (* Match the arguments against the parameter types *)
   let t_arg =
-    if (ctx_dot = None && ctx_holes = None) || List.length t_args = List.length args
-    then T.seq t_args
-    else wrong_call_args env tbs exp2.at t_args implicit_t_args_n syntax_args
+    if require_exact_arity && not is_correct_arity
+    then wrong_call_args env tbs exp2.at t_args implicit_args_n syntax_args
+    else T.seq t_args
   in
   if not env.pre then ref_exp2 := exp2; (* TODO: is this good enough *)
   let ts, t_arg', t_ret' =
@@ -2681,7 +2695,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
 
-and wrong_call_args env tbs at t_args implicit_t_args_n syntax_args =
+and wrong_call_args env tbs at t_args implicit_args_n syntax_args =
   let tvars = T.open_binds tbs in
   let subst t = if tvars = [] then t else T.open_ tvars t in
   let given_types = List.map (infer_exp env) syntax_args in
@@ -2692,7 +2706,7 @@ and wrong_call_args env tbs at t_args implicit_t_args_n syntax_args =
   in
   error env at "M0233"
     "wrong number of arguments: expected %d but got %d\n%a\n%a"
-    (List.length t_args - implicit_t_args_n)
+    (List.length t_args - implicit_args_n)
     (List.length syntax_args)
     display_expected_arg_types expected_types
     display_given_arg_types given_types
