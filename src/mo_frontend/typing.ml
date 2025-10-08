@@ -2221,25 +2221,28 @@ and check_exp' env0 t exp : T.typ =
       check_exp env t path;
       t
     | Error (import_suggestions, explicit_suggestions, renaming_hints) ->
-      let import_sug =
-        if import_suggestions = [] then
-           let desc = match s with Named id -> " named " ^ quote id | _ -> "" in
-           Format.sprintf
+      if not env.pre then begin
+        let import_sug =
+          if import_suggestions = [] then
+            let desc = match s with Named id -> " named " ^ quote id | _ -> "" in
+            Format.sprintf
              "\nHint: If you're trying to omit an implicit argument%s you need to have a matching declaration%s in scope."
              desc desc
-         else Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " import_suggestions)
-      in
-      let explicit_sug =
-         if explicit_suggestions = [] then ""
-         else Format.sprintf "\nHint: Did you mean to explicitly use %s?" (String.concat " or " explicit_suggestions)
-      in
-      renaming_hints env;
-      error env exp.at "M0230" "Cannot determine implicit argument %s of type%a%s%s"
-        (desc s)
-        display_typ t
-        import_sug
-        explicit_sug
-    end
+          else Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " import_suggestions)
+        in
+        let explicit_sug =
+          if explicit_suggestions = [] then ""
+          else Format.sprintf "\nHint: Did you mean to explicitly use %s?" (String.concat " or " explicit_suggestions)
+        in
+        renaming_hints env;
+        local_error env exp.at "M0230" "Cannot determine implicit argument %s of type%a%s%s"
+          (desc s)
+          display_typ t
+          import_sug
+          explicit_sug
+      end;
+      t
+  end
   | PrimE s, T.Func _ ->
     t
   | LitE lit, _ ->
@@ -2782,7 +2785,8 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
     ts, T.open_ ts t_arg, T.open_ ts t_ret
   with Bi_match.Bimatch msg ->
     let strip_receiver ty = match ty with
-      | T.Func(s, c, tbs, t1::ts1, ts2) -> T.Func(s, c, tbs, ts1, ts2)
+      | T.Func(s, c, tbs, t1::ts1, ts2) ->
+        T.Func(s, c, tbs, ts1, ts2)
       |  _ -> ty
     in
     let desc, t1' = match ctx_dot with
@@ -2791,12 +2795,28 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
         Printf.sprintf "dotted function `_.%s`" id,
         strip_receiver t1
     in
+    let remove_holes typ =
+      let ts = T.as_seq typ in
+      match exp2.it, ts with
+        HoleE _, [_] ->
+        T.Tup []
+      | TupE es, ts when List.length es = List.length ts ->
+        let ets = List.combine es ts in
+        T.seq (List.filter_map (fun (e, t) ->
+          match e.it with
+          | HoleE _ -> None
+          | _ -> Some t)
+          ets)
+      | e -> typ
+    in
+    let t_arg' = remove_holes t_arg in
+    let t2' = remove_holes t2 in
     error env at "M0098"
       "cannot implicitly instantiate %s of type%a\nwith parameters%a\nto argument of type%a%s\nbecause %s"
       desc
       display_typ t1'
-      display_typ (err_subst t_arg)
-      display_typ (err_subst t2)
+      display_typ (err_subst t_arg')
+      display_typ (err_subst t2')
       (match t_expect_opt with
         | None -> ""
         | Some t ->
