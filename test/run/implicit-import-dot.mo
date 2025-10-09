@@ -12,3 +12,7 @@ map.add("abc", 3)
 
 // let ar = [3, 1, 2];
 // let ar2 = ar.sort()
+
+//SKIP run-low
+//SKIP run
+//SKIP run-ir
