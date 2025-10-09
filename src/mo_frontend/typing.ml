@@ -1378,6 +1378,12 @@ let disambiguate_resolutions (candidates : hole_candidate list) =
   | [dom] -> Some dom
   | _ -> None
 
+let is_module ~only_libs (n, (t, _, _, _)) = 
+  if only_libs <> String.starts_with ~prefix:"file$" n then None else
+  match T.normalize t with
+  | T.Obj (T.Module, fs) -> Some (n, (t, fs))
+  | _ -> None
+
 (** Searches for hole resolutions for [name] on a given [hole_sort] and [typ].
     Returns [Ok(candidate)] when a single resolution is
     found, [Error(file_paths)] when no resolution was found, but a
@@ -1390,12 +1396,7 @@ let resolve_hole env at hole_sort typ =
     | Named lab1 -> lab = lab1
     | Anon _ -> true
   in
-  let is_module avl (n, (t, _, _, _)) = 
-    if avl = Unavailable && not (String.starts_with ~prefix:"file$" n) then None else
-    match T.normalize t with
-    | T.Obj (T.Module, fs) -> Some (n, fs)
-    | _ -> None
-  in
+  
   let is_matching_typ typ1 = T.sub typ1 typ
   in
   let has_matching_field_typ = function
@@ -1406,7 +1407,7 @@ let resolve_hole env at hole_sort typ =
        then Some (lab1, typ1, src.T.region)
        else None
   in
-  let find_candidate_fields (module_name, fs) =
+  let find_candidate_fields (module_name, (_, fs)) =
     List.filter_map has_matching_field_typ fs |>
       List.map (fun (lab, typ, region)->
           let path =
@@ -1440,9 +1441,9 @@ let resolve_hole env at hole_sort typ =
       List.of_seq |>
       List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
   in
-  let eligible_fields avl =
+  let eligible_fields ~only_libs =
     T.Env.to_seq env.vals |>
-      Seq.filter_map (is_module avl) |>
+      Seq.filter_map (is_module ~only_libs) |>
       Seq.map find_candidate_fields |>
       List.of_seq |>
       List.flatten |>
@@ -1452,7 +1453,7 @@ let resolve_hole env at hole_sort typ =
     T.Env.to_seq env.libs |>
       Seq.filter_map (fun (n, t) ->
           match t with
-          | T.Obj (T.Module, fs) -> Some (n, fs)
+          | T.Obj (T.Module, fs) -> Some (n, (t, fs))
           | _ -> None) |>
       Seq.map find_candidate_fields |>
       List.of_seq |>
@@ -1463,7 +1464,7 @@ let resolve_hole env at hole_sort typ =
     match eligible_ids with
     | [id] -> ([id], []) (* first look in local env, otherwise consider module entries *)
     | _ ->
-       let (eligible_fields, explicit_fields) = eligible_fields Available in
+       let (eligible_fields, explicit_fields) = eligible_fields ~only_libs:false in
        (* let (lib_eligible_fields, lib_explicit_fields) = lib_candidates () in *)
        (eligible_ids @ eligible_fields,
         explicit_ids @ explicit_fields)
@@ -1496,7 +1497,7 @@ let resolve_hole env at hole_sort typ =
   match eligible_terms with
   | [term] -> Ok term
   | [] ->
-    (match eligible_fields Unavailable with
+    (match eligible_fields ~only_libs:true with
     | [term], _ -> Ok term
     | _ ->
       let (lib_terms, _) = lib_candidates () in
@@ -1542,11 +1543,6 @@ let contextual_dot env name receiver_ty =
       Some inst
     with _ ->
       None in
-  let is_module avl (n, (t, _, _, avl')) =
-    if avl = Available && String.starts_with ~prefix:"file$" n then None else
-    match T.normalize t with
-    | T.Obj (T.Module, fs) -> Some (n, (t, fs))
-    | _ -> None in
   let has_matching_self tf = match tf with
     | T.{ lab = "Self"; typ = T.Typ con; _ } ->
        (match Cons.kind con with
@@ -1563,26 +1559,26 @@ let contextual_dot env name receiver_ty =
   let find_candidate (module_name, (module_ty, fs)) =
     List.find_map is_matching_func fs |>
       Option.map (fun (func_ty, inst) -> { module_name; func_ty; module_ty; inst }) in
-  let eligible_funcs avl =
+  let eligible_funcs ~only_libs =
     T.Env.to_seq env.vals |>
-      Seq.filter_map (is_module avl) |>
+      Seq.filter_map (is_module ~only_libs) |>
       Seq.filter has_matching_self_type |>
       Seq.filter_map find_candidate |>
       List.of_seq in
-  let try_eligible_funcs avl =
-    match eligible_funcs avl with
+  (* let try_eligible_funcs ~only_libs =
+    match eligible_funcs ~only_libs with
     | [oc] -> Some oc
     | [] -> None
     | ocs ->
       let candidates = List.map (fun oc -> oc.module_name) ocs in
       error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
-  in
-  match try_eligible_funcs Available with
-  | Some oc -> Ok oc
-  | None ->
-    match try_eligible_funcs Unavailable with
-    | Some oc -> Ok oc
-    | None ->
+  in *)
+  match eligible_funcs ~only_libs:false with
+  | [oc] -> Ok oc
+  | [] ->
+    (match eligible_funcs ~only_libs:true with
+    | [oc] -> Ok oc
+    | _ ->
       let lib_candidates =
         T.Env.to_seq env.libs |>
           Seq.filter_map (fun (n, t) ->
@@ -1593,7 +1589,11 @@ let contextual_dot env name receiver_ty =
           Seq.filter_map find_candidate |>
           List.of_seq in
       Error (List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)
-
+    )
+  | ocs ->
+    let candidates = List.map (fun oc -> oc.module_name) ocs in
+    error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
+      
 let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
 
