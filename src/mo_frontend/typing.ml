@@ -1449,17 +1449,6 @@ let resolve_hole env at hole_sort typ =
       List.flatten |>
       List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
   in
-  let lib_candidates () =
-    T.Env.to_seq env.libs |>
-      Seq.filter_map (fun (n, t) ->
-          match t with
-          | T.Obj (T.Module, fs) -> Some (n, (t, fs))
-          | _ -> None) |>
-      Seq.map find_candidate_fields |>
-      List.of_seq |>
-      List.flatten |>
-      List.partition (fun (candidate : hole_candidate) -> is_matching_lab candidate.id)
-  in
   let eligible_terms, explicit_terms  =
     match eligible_ids with
     | [id] -> ([id], []) (* first look in local env, otherwise consider module entries *)
@@ -1500,11 +1489,20 @@ let resolve_hole env at hole_sort typ =
     (match eligible_fields ~only_libs:true with
     | [term], _ -> Ok term
     | _ ->
-      let (lib_terms, _) = lib_candidates () in
-      Error (
-        List.map suggestion_of_candidate lib_terms,
-        List.map (fun candidate -> candidate.desc) explicit_terms,
-        renaming_hints)
+      let (lib_terms, _) =
+        T.Env.to_seq env.libs |>
+          Seq.filter_map (fun (n, t) ->
+              match t with
+              | T.Obj (T.Module, fs) -> Some (n, (t, fs))
+              | _ -> None) |>
+          Seq.map find_candidate_fields |>
+          List.of_seq |>
+          List.flatten |>
+          List.partition (fun (candidate : hole_candidate) -> is_matching_lab candidate.id)
+      in
+      Error (List.map suggestion_of_candidate lib_terms,
+              List.map (fun candidate -> candidate.desc) explicit_terms,
+              renaming_hints)
     )
   | terms -> begin
      match disambiguate_resolutions terms with
