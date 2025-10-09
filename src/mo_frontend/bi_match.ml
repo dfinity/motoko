@@ -499,8 +499,9 @@ let bi_match_receiver tbs (t1, t2) =
   let ctx, ts = bi_match_init None tbs None in
   let t1 = open_ ts t1 in
   let t2 = open_ ts t2 in
-  let must_solve = ConSet.diff ctx.var_set (cons_typs [t1; t2]) in
+  let must_solve = ConSet.inter ctx.var_set (cons_typs [t1; t2]) in
   let env, remaining = solve ctx ([t1], [t2]) must_solve in
+  let env = ConEnv.restrict must_solve env in
   List.map (fun t -> ConEnv.find_opt (as_con_var t) env) ts
 
 let finalize ts1 ctx subs =

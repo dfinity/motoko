@@ -1,8 +1,0 @@
-contextual-dot.mo:50.33-50.40: type error [M0050], literal of type
-  Text
-does not have expected type
-  B
-contextual-dot.mo:56.39-56.46: type error [M0050], literal of type
-  Text
-does not have expected type
-  B
