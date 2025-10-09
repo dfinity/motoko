@@ -207,7 +207,7 @@ and exp' at note = function
     assert (is_empty_tup !e);
     I.PrimE (I.GetCertificate, [])
   (* Component *)
-  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE fn;_},_); note = callee_note; _}, _, e)
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE fn;_},_); note = callee_note; _}, _, (_, e))
     when !Mo_config.Flags.wasm_components && Lib.String.chop_prefix "component:" fn <> None ->
     let parts = String.split_on_char ':' fn in
     (* parts[0] == "component", parts[1] == <component-name>, parts[2] = <function-name> *)
@@ -218,11 +218,11 @@ and exp' at note = function
     | T.Func (T.Local, T.Returns, [], ts1, _) ->
       let return_type = note.Note.typ in
       let arg_types, args =
-        match e.it with
+        match !e.it with
         | S.TupE es ->
           assert (List.length ts1 = List.length es);
           ts1, exps es
-        | _ -> [Type.seq ts1], [exp e]
+        | _ -> [Type.seq ts1], [exp !e]
       in
       I.PrimE (I.ComponentPrim (fn, component_name, function_name, arg_types, return_type), args)
     | _ -> assert false
