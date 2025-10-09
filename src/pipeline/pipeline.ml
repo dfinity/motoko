@@ -450,6 +450,19 @@ let chase_imports_cached parsefn senv0 imports scopes_map
         let* sscope = check_lib !senv cur_pkg_opt lib in
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
+        (* Inject implicit alias as a value binding in the scope for AI diagnostics. *)
+        if !Flags.ai_errors then (
+          (* Inject alias values for all lib entries now in scope *)
+          Type.Env.iter (fun full_path typ ->
+            match Type.normalize typ with
+            | Type.Obj (Type.Module, _) ->
+              let alias = "_" ^ full_path in
+              let alias_scope : Scope.scope =
+                let open Scope in
+                { empty with val_env = Type.Env.singleton alias (typ, Source.no_region, Declaration) } in
+              senv := Scope.adjoin !senv alias_scope
+            | _ -> ()) sscope.Scope.lib_env
+        );
         cache := Type.Env.add ri_name sscope !cache;
         pending := remove it !pending;
         Diag.return ()
