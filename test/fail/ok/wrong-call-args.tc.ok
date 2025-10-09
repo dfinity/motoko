@@ -14,10 +14,12 @@ wrong-call-args.mo:35.12-35.14: type error [M0233], wrong number of arguments: e
 Expected 1 argument of type:
   (key : K)
 But got no arguments
-wrong-call-args.mo:39.13-39.25: type error [M0096], expression of type
-  (t1 : Text, t2 : Text) -> Order
-cannot produce expected type
-  Text
+wrong-call-args.mo:39.5-39.31: type error [M0098], cannot apply function `.add` of type
+  (key : Text, value : Text) -> ()
+to argument of type
+  ((t1 : Text, t2 : Text) -> Order, Text)
+to produce result of expected type
+  ()
 wrong-call-args.mo:45.5-45.17: type error [M0098], cannot apply function of type
   (map : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K) -> ?V
 to argument of type

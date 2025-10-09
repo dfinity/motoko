@@ -2637,7 +2637,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     else
       None)
   in
-  let dot_full_inst = Option.map (fun (_, _, _, ts) -> ts) ctx_dot in
+  let _dot_full_inst = Option.map (fun (_, _, _, ts) -> ts) ctx_dot in
   let saturated_arity, implicits_arity = arity_with_implicits t_args in
   let is_correct_arity =
     let n = List.length syntax_args in
@@ -2675,13 +2675,13 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
             warn env inst.at "M0223" "redundant type instantiation";
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
-      match dot_full_inst with
+      (* match dot_full_inst with
       | Some ts ->
         let t_arg' = T.open_ ts t_arg in
         let t_ret' = T.open_ ts t_ret in
         if not env.pre then check_exp_strong env t_arg' exp2;
         ts, t_arg', t_ret'
-      | None ->
+      | None -> *)
         infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
   inst.note <- ts;
