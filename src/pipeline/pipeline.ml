@@ -146,7 +146,7 @@ let resolve_flags () =
     package_urls = !Flags.package_urls;
     actor_aliases = !Flags.actor_aliases;
     actor_idl_path = !Flags.actor_idl_path;
-    include_all_libs = !Flags.ai_errors;
+    include_all_libs = !Flags.ai_errors || !Flags.ai_implicit_libs;
   }
 
 let resolve_prog (prog, base) : resolve_result =
@@ -451,7 +451,7 @@ let chase_imports_cached parsefn senv0 imports scopes_map
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
         (* Inject implicit alias as a value binding in the scope for AI diagnostics. *)
-        (* if !Flags.ai_errors then (
+        (* if !Flags.ai_implicit_libs then (
           (* Inject alias values for all lib entries now in scope *)
           Type.Env.iter (fun full_path typ ->
             match Type.normalize typ with

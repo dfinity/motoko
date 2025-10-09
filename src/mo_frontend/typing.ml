@@ -79,7 +79,7 @@ type env =
 let env_of_scope ?(viper_mode=false) msgs scope =
   let libs = scope.Scope.lib_env in
   let vals = available scope.Scope.val_env in
-  let vals = if !Flags.ai_errors then T.Env.adjoin vals (lib_modules_as_vals libs) else vals in
+  let vals = if !Flags.ai_implicit_libs then T.Env.adjoin vals (lib_modules_as_vals libs) else vals in
   { vals = vals;
     libs = libs;
     mixins = scope.Scope.mixin_env;
