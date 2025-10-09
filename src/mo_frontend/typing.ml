@@ -1563,14 +1563,6 @@ let contextual_dot env name receiver_ty =
       Seq.filter has_matching_self_type |>
       Seq.filter_map find_candidate |>
       List.of_seq in
-  (* let try_eligible_funcs ~only_libs =
-    match eligible_funcs ~only_libs with
-    | [oc] -> Some oc
-    | [] -> None
-    | ocs ->
-      let candidates = List.map (fun oc -> oc.module_name) ocs in
-      error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
-  in *)
   match eligible_funcs ~only_libs:false with
   | [oc] -> Ok oc
   | [] ->
