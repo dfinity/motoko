@@ -2632,14 +2632,12 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   in
   let ctx_dot = Option.bind ctx_dot (fun (e, t, id, inst) -> 
     if List.for_all Option.is_some inst then
+      (* No support for partial instantiation yet *)
       Some (e, t, id, List.map Option.get inst)
     else
       None)
   in
-  let dot_full_inst = match inst_ctx_dot with
-    | Some ts when List.for_all Option.is_some ts -> Some (List.map Option.get ts)
-    | _ -> None
-  in
+  let dot_full_inst = Option.map (fun (_, _, _, ts) -> ts) ctx_dot in
   let saturated_arity, implicits_arity = arity_with_implicits t_args in
   let is_correct_arity =
     let n = List.length syntax_args in
