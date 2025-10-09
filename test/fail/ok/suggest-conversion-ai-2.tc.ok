@@ -1,0 +1,18 @@
+suggest-conversion-ai-2.mo:8.3-8.5: type error [M0096], expression of type
+  Nat8
+cannot produce expected type
+  Nat
+Maybe try conversion:
+  `file$conv/Nat8.mo.toNat(_)`,
+  `file$conv/Nat8.mo.fromNat8(_)`,
+  `file$conv/Nat8.mo.Outer.Inner.toNat(_)` or
+  `file$conv/Nat8.mo.Outer.Inner.fromNat8(_)`?
+suggest-conversion-ai-2.mo:9.3-9.6: type error [M0096], expression of type
+  Nat16
+cannot produce expected type
+  Nat
+Maybe try conversion:
+  `file$conv/Nat16.mo.toNat(_)`,
+  `file$conv/Nat16.mo.fromNat16(_)`,
+  `file$conv/Nat16.mo.Outer.Inner.toNat(_)` or
+  `file$conv/Nat16.mo.Outer.Inner.fromNat16(_)`?
