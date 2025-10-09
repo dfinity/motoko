@@ -167,5 +167,6 @@ jobs:
       - name: Automatically closing successful trials
         env:
           GH_TOKEN: ${{ github.token }}
+          OUTPUT: ${{ toJson(github.event.pull_request) }}
         run: |
-          echo "${{ toJson(github.event.pull_request) }}" ${{ github.event.pull_request.base.ref }}  ${{ github.event.pull_request.base.ref == 'master' }}
+          echo "$OUTPUT" ${{ github.event.pull_request.base.ref }}  ${{ github.event.pull_request.base.ref == 'master' }}
