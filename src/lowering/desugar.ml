@@ -1377,14 +1377,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
   match prog with
   | I.LibU (ds, e) ->
     let exp = blockE ds e in
-    let id = id_of_full_path f in
-    let main = letD (var id exp.note.Note.typ) exp in
-    let aliases =
-      if !Mo_config.Flags.ai_errors then
-        let alias = "_" ^ f in
-        [ letD (var alias exp.note.Note.typ) (varE (var id exp.note.Note.typ)) ]
-      else [] in
-    main :: aliases
+    [ letD (var (id_of_full_path f) exp.note.Note.typ) exp ]
   | I.ActorU (None, ds, fs, up, t) ->
     raise (Invalid_argument "Desugar: Cannot import actor")
   | I.ActorU (Some as_, ds, fs, up, actor_t) ->

@@ -34,7 +34,7 @@ let lib_modules_as_vals (libs : Scope.lib_env) : val_env =
   T.Env.fold (fun id ty acc ->
     match T.normalize ty with
     | T.Obj (T.Module, _) ->
-      T.Env.add ("_" ^ id) (ty, Source.no_region, Scope.Declaration, Available) acc
+      T.Env.add ("file$" ^ id) (ty, Source.no_region, Scope.Declaration, Available) acc
     | _ -> acc
   ) libs T.Env.empty
 
@@ -1391,7 +1391,7 @@ let resolve_hole env at hole_sort typ =
     | Anon _ -> true
   in
   let is_module avl (n, (t, _, _, _)) = 
-    if avl = Unavailable && not (String.starts_with ~prefix:"_" n) then None else
+    if avl = Unavailable && not (String.starts_with ~prefix:"file$" n) then None else
     match T.normalize t with
     | T.Obj (T.Module, fs) -> Some (n, fs)
     | _ -> None
@@ -1543,7 +1543,7 @@ let contextual_dot env name receiver_ty =
     with _ ->
       None in
   let is_module avl (n, (t, _, _, avl')) =
-    if avl = Available && String.starts_with ~prefix:"_" n then None else
+    if avl = Available && String.starts_with ~prefix:"file$" n then None else
     match T.normalize t with
     | T.Obj (T.Module, fs) -> Some (n, (t, fs))
     | _ -> None in

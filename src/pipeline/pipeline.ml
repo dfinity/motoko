@@ -456,7 +456,7 @@ let chase_imports_cached parsefn senv0 imports scopes_map
           Type.Env.iter (fun full_path typ ->
             match Type.normalize typ with
             | Type.Obj (Type.Module, _) ->
-              let alias = "_" ^ full_path in
+              let alias = "file$" ^ full_path in
               let alias_scope : Scope.scope =
                 let open Scope in
                 { empty with val_env = Type.Env.singleton alias (typ, Source.no_region, Declaration) } in
