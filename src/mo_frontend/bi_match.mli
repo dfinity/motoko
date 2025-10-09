@@ -57,12 +57,12 @@ type ctx
   - Call the [finalize] function with the remaining sub-type problems (make sure the solved type parameters are substituted!)
     to get the final solution and the substitution of the remaining type variables from the 1st round
 
-  [bi_match_subs scope_opt tbs ret_opt subs deferred]:
+  [bi_match_subs scope_opt tbs ret_opt subs must_solve]:
   - [scope_opt] is the optional async scope
   - [tbs] is the list of type parameters to instantiate
   - [ret_opt] is the optional return type mentioning tbs determining polarities
   - [subs] is the list of sub-type problems mentioning tbs either on left or right, but never both sides
-  - [deferred] is the list of types deferred until the next round; types containing tbs that are part of the subtype problems in the 2nd round
+  - [must_solve] is the list of types to be solved in this round; when empty: all type variables in tbs are solved, no need for the 2nd round
 
   Returns: the solution and the remaining context for variables to be solved in the 2nd round.
 
