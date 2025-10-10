@@ -17,7 +17,6 @@ implicit.mo:65.1-65.9: f4(1, 1)
 implicit.mo:65.1-65.9: type error [M0230], Cannot determine implicit argument `bogus` of type
   (Nat, Nat) -> Order
 Hint: If you're trying to omit an implicit argument named `bogus` you need to have a matching declaration named `bogus` in scope.
-Hint: Did you mean to explicitly use `explicit1` or `M.aardvark` or `M.ambiguous` or `M.c` or `N.ambiguous`?
 implicit.mo:75.1-75.9: type error [M0231], ambiguous implicit argument named `ambiguous` of type
   (Nat, Nat) -> Order.
 The ambiguous implicit candidates are: `M.ambiguous`, `N.ambiguous`.
