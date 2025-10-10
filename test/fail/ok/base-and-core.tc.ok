@@ -1,2 +1,1 @@
-base-and-core.mo:2.8-2.9: warning [M0194], unused identifier A (delete or rename to wildcard `_` or `_A`)
-base-and-core.mo:3.8-3.9: warning [M0194], unused identifier B (delete or rename to wildcard `_` or `_B`)
+(unknown location): import error [M0003], file base-and-core/base/Array.mo must not depend on itself

@@ -146,7 +146,7 @@ let resolve_flags pkg_opt =
     package_urls = !Flags.package_urls;
     actor_aliases = !Flags.actor_aliases;
     actor_idl_path = !Flags.actor_idl_path;
-    include_all_libs = pkg_opt = None && (!Flags.ai_errors || !Flags.implicit_lib_vals);
+    include_all_libs = (*pkg_opt = None &&*) (!Flags.ai_errors || !Flags.implicit_lib_vals);
   }
 
 let resolve_prog (prog, base) : resolve_result =
