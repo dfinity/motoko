@@ -108,6 +108,7 @@ and prim = function
   | SystemTimeoutSetPrim -> Atom "SystemTimeoutSetPrim"
   | SetCertifiedData  -> Atom "SetCertifiedData"
   | GetCertificate    -> Atom "GetCertificate"
+  | ComponentPrim (full_name, _, _, _, _) -> Atom full_name
   | OtherPrim s       -> Atom s
   | CPSAwait (Type.AwaitFut false, t) -> "CPSAwait" $$ [typ t]
   | CPSAwait (Type.AwaitFut true, t) -> "CPSAwait?" $$ [typ t]

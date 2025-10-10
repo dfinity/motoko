@@ -2289,6 +2289,8 @@ and check_exp' env0 t exp : T.typ =
       t
   end
   | PrimE s, T.Func _ ->
+    if not !Flags.wasm_components && Lib.String.chop_prefix "component:" s <> None then
+      error env exp.at "M0234" "Wasm components support not enabled, use -wasm-components flag";
     t
   | LitE lit, _ ->
     check_lit env t lit exp.at true;
