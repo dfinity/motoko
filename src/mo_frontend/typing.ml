@@ -39,6 +39,11 @@ let lib_modules_as_vals (libs : Scope.lib_env) : val_env =
     | _ -> acc
   ) libs T.Env.empty
 
+let file_of_lib_id id =
+  match Lib.String.chop_prefix "file$" id with
+  | Some suffix -> suffix
+  | _ -> assert false
+
 let initial_scope =
   { Scope.empty with
     Scope.typ_env = T.Env.singleton T.default_scope_var C.top_cap;
@@ -1455,17 +1460,6 @@ let resolve_hole env at hole_sort typ =
       List.flatten |>
       List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
   in
-  let lib_fields () =
-    T.Env.to_seq env.libs |>
-      Seq.filter_map (fun (n, t) ->
-        match T.normalize t with
-        | T.Obj (T.Module, fs) -> Some (n, (t, fs))
-        | _ -> None) |>
-      Seq.map find_candidate_fields |>
-      List.of_seq |>
-      List.flatten |>
-      List.partition (fun (candidate : hole_candidate) -> is_matching_lab candidate.id)
-  in
   let eligible_terms, explicit_terms  =
     match eligible_ids with
     | [id] -> ([id], []) (* first look in local env, otherwise consider module entries *)
@@ -1502,13 +1496,15 @@ let resolve_hole env at hole_sort typ =
   match eligible_terms with
   | [term] -> Ok term
   | [] ->
-    (match disambiguate_resolutions (fst (eligible_fields env.implicit_lib_vals)) with
+    let (lib_terms, explicit_terms) = eligible_fields env.implicit_lib_vals
+    in
+    (match disambiguate_resolutions lib_terms with
     | Some term -> Ok term
     | None ->
-      let (lib_terms, _) = lib_fields () in
-      Error (List.map suggestion_of_candidate lib_terms,
-              List.map (fun candidate -> candidate.desc) explicit_terms,
-              renaming_hints)
+      let adjust candidates = List.map (fun candidate -> { candidate with module_name_opt = Option.map file_of_lib_id candidate.module_name_opt}) candidates in
+      Error (List.map suggestion_of_candidate (adjust lib_terms),
+             List.map (fun candidate -> candidate.desc) (adjust explicit_terms),
+             renaming_hints)
     )
   | terms -> begin
      match disambiguate_resolutions terms with
@@ -1574,22 +1570,13 @@ let contextual_dot env name receiver_ty =
   | [] ->
     (match eligible_funcs env.implicit_lib_vals with
     | [oc] -> Ok oc
-    | _ ->
-      let lib_candidates =
-        T.Env.to_seq env.libs |>
-          Seq.filter_map (fun (n, t) ->
-              match t with
-              | T.Obj (T.Module, fs) -> Some (n, (t, fs))
-              | _ -> None) |>
-          Seq.filter has_matching_self_type |>
-          Seq.filter_map find_candidate |>
-          List.of_seq in
-      Error (List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)
+    | lib_candidates ->
+       Error (List.map (fun candidate -> Suggest.module_name_as_url (file_of_lib_id candidate.module_name)) lib_candidates)
     )
   | ocs ->
     let candidates = List.map (fun oc -> oc.module_name) ocs in
     error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
-      
+
 let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
 
