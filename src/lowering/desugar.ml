@@ -281,7 +281,11 @@ and exp' at note = function
   | S.AssertE (Runtime, e) -> I.PrimE (I.AssertPrim, [exp e])
   | S.AssertE (_, e) -> (unitE ()).it
   | S.AnnotE (e, _) -> assert false
-  | S.ImportE (f, ir) -> raise (Invalid_argument (Printf.sprintf "Import expression found in unit body: %s" f))
+  | S.ImportE (f, ir) ->
+    if !Mo_config.Flags.implicit_lib_vals then
+      (varE (var (id_of_full_path f) note.Note.typ)).it
+    else
+      raise (Invalid_argument (Printf.sprintf "Import expression found in unit body: %s" f))
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
   | S.IgnoreE e ->
     I.BlockE ([
