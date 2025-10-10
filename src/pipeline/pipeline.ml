@@ -152,7 +152,7 @@ let resolve_flags () =
 let resolve_prog (prog, base) : resolve_result =
   Diag.map
     (fun libs -> (prog, libs))
-    (ResolveImport.resolve (resolve_flags ()) prog base)
+    (ResolveImport.resolve (resolve_flags ()) prog base None)
 
 let resolve_progs =
   Diag.traverse resolve_prog
@@ -443,7 +443,7 @@ let chase_imports_cached parsefn senv0 imports scopes_map
         pending := add it !pending;
         let* prog, base = parsefn ri.Source.at f in
         let* () = Static.prog prog in
-        let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
+        let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base pkg_opt in
         let cur_pkg_opt = if lib_pkg_opt <> None then lib_pkg_opt else pkg_opt in
         let* () = go_set cur_pkg_opt more_imports in
         let lib = lib_of_prog f prog in
