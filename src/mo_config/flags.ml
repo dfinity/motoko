@@ -17,7 +17,7 @@ type actors = LegacyActors | RequirePersistentActors | DefaultPersistentActors
 type lint_level = Allow | Warn | Error
 
 let ai_errors = ref false
-let ai_implicit_libs = ref false
+let implicit_lib_vals = ref false
 let trace = ref false
 let verbose = ref false
 let print_warnings = ref true

@@ -40,9 +40,9 @@ let inclusion_args = [
     \      <file>"
   ]
 
-let ai_errors_args = [
+let ai_args = [
   "--ai-errors", Arg.Set Flags.ai_errors, " emit AI tailored errors";
-  "--ai-implicit-libs", Arg.Set Flags.ai_implicit_libs, _UNDOCUMENTED_ " expose library modules as values for contextual dot and implicits resolution"
+  "--implicit-lib-vals", Arg.Set Flags.implicit_lib_vals, _UNDOCUMENTED_ " expose library modules as values for contextual dot and implicits resolution"
 ]
 
 let persistent_actors_args = [

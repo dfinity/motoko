@@ -1,4 +1,4 @@
-//MOC-FLAG --ai-implicit-libs
+//MOC-FLAG --implicit-lib-vals
 //MOC-FLAG --package core ../core-stub/src
 
 import Map "mo:core/Map";

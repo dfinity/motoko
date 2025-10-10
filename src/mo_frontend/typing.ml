@@ -81,7 +81,7 @@ type env =
 let env_of_scope ?(viper_mode=false) msgs scope =
   let libs = scope.Scope.lib_env in
   { vals = available scope.Scope.val_env;
-    implicit_lib_vals = if !Flags.ai_implicit_libs then lib_modules_as_vals libs else T.Env.empty;
+    implicit_lib_vals = if !Flags.implicit_lib_vals then lib_modules_as_vals libs else T.Env.empty;
     libs = libs;
     mixins = scope.Scope.mixin_env;
     typs = scope.Scope.typ_env;
@@ -489,7 +489,7 @@ let check_import env at f ri =
 
 let find_id env id =
   match T.Env.find_opt id.it env.vals with
-  | None when !Flags.ai_implicit_libs ->
+  | None when !Flags.implicit_lib_vals ->
     T.Env.find_opt id.it env.implicit_lib_vals
   | o -> o
 
