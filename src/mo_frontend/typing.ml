@@ -507,7 +507,7 @@ and check_obj_path' env path : T.typ =
   match path.it with
   | IdH id ->
     use_identifier env id.it;
-    (match find_id env id with
+    (match T.Env.find_opt id.it env.vals with
      | Some (T.Pre, _, _, _) ->
        error env id.at "M0024" "cannot infer type of forward variable reference %s" id.it
      | Some (t, _, _, Available) -> t
@@ -1301,7 +1301,7 @@ let rec combine_pat_fields_srcs env t tfs (pfs : pat_field list) : unit =
       combine_pat_fields_srcs env t tfs' pfs';
 
 and combine_id_srcs env t id : unit =
-  match find_id env id with
+  match T.Env.find_opt id.it env.vals with
   | None -> ()
   | Some (t', _, _, _) ->
     (* Use [sub] to merge the fields of sources, if one type is indeed a subtype
