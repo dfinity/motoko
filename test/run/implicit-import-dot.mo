@@ -3,15 +3,10 @@
 
 import Map "mo:core/Map";
 
-// The following import should be suggested.
-// It should NOT be imported by the Map above.
-// import Text "../src/Text";
+// The mo:core/Text import should not be necessary for the implicit Text.compare to be resolved
 
 let map = Map.empty<Text, Nat>();
 map.add("abc", 3)
-
-// let ar = [3, 1, 2];
-// let ar2 = ar.sort()
 
 //SKIP run-low
 //SKIP run
