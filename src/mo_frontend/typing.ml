@@ -20,7 +20,8 @@ type avl = Available | Unavailable
 
 type lab_env = T.typ T.Env.t
 type ret_env = T.typ option
-type val_env  = (T.typ * Source.region * Scope.val_kind * avl) T.Env.t
+type val_info = T.typ * Source.region * Scope.val_kind * avl
+type val_env  = val_info T.Env.t
 
 (* separate maps for values and types; entries only for _public_ elements *)
 type visibility_src = {depr : string option; id_region : Source.region; field_region : Source.region}
@@ -48,6 +49,7 @@ type unused_warnings = (string * Source.region * Scope.val_kind) List.t
 
 type env =
   { vals : val_env;
+    implicit_lib_vals : val_env;
     libs : Scope.lib_env;
     typs : Scope.typ_env;
     cons : Scope.con_env;
@@ -78,9 +80,8 @@ type env =
 
 let env_of_scope ?(viper_mode=false) msgs scope =
   let libs = scope.Scope.lib_env in
-  let vals = available scope.Scope.val_env in
-  let vals = if !Flags.ai_implicit_libs then T.Env.adjoin vals (lib_modules_as_vals libs) else vals in
-  { vals = vals;
+  { vals = available scope.Scope.val_env;
+    implicit_lib_vals = if !Flags.ai_implicit_libs then lib_modules_as_vals libs else T.Env.empty;
     libs = libs;
     mixins = scope.Scope.mixin_env;
     typs = scope.Scope.typ_env;
@@ -486,6 +487,12 @@ let check_import env at f ri =
 
 (* Paths *)
 
+let find_id env id =
+  match T.Env.find_opt id.it env.vals with
+  | None when !Flags.ai_implicit_libs ->
+    T.Env.find_opt id.it env.implicit_lib_vals
+  | o -> o
+
 let rec check_obj_path env path : T.obj_sort * (T.field list) =
   match T.promote (check_obj_path' env path) with
   | T.Obj (s, fs) as t ->
@@ -500,7 +507,7 @@ and check_obj_path' env path : T.typ =
   match path.it with
   | IdH id ->
     use_identifier env id.it;
-    (match T.Env.find_opt id.it env.vals with
+    (match find_id env id with
      | Some (T.Pre, _, _, _) ->
        error env id.at "M0024" "cannot infer type of forward variable reference %s" id.it
      | Some (t, _, _, Available) -> t
@@ -1294,7 +1301,7 @@ let rec combine_pat_fields_srcs env t tfs (pfs : pat_field list) : unit =
       combine_pat_fields_srcs env t tfs' pfs';
 
 and combine_id_srcs env t id : unit =
-  match T.Env.find_opt id.it env.vals with
+  match find_id env id with
   | None -> ()
   | Some (t', _, _, _) ->
     (* Use [sub] to merge the fields of sources, if one type is indeed a subtype
@@ -1378,8 +1385,7 @@ let disambiguate_resolutions (candidates : hole_candidate list) =
   | [dom] -> Some dom
   | _ -> None
 
-let is_module ~only_libs (n, (t, _, _, _)) = 
-  if only_libs <> String.starts_with ~prefix:"file$" n then None else
+let is_module (n, ((t, _, _, _) : val_info)) = 
   match T.normalize t with
   | T.Obj (T.Module, fs) -> Some (n, (t, fs))
   | _ -> None
@@ -1441,20 +1447,30 @@ let resolve_hole env at hole_sort typ =
       List.of_seq |>
       List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
   in
-  let eligible_fields ~only_libs =
-    T.Env.to_seq env.vals |>
-      Seq.filter_map (is_module ~only_libs) |>
+  let eligible_fields vals =
+    T.Env.to_seq vals |>
+      Seq.filter_map is_module |>
       Seq.map find_candidate_fields |>
       List.of_seq |>
       List.flatten |>
       List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
   in
+  let lib_fields () =
+    T.Env.to_seq env.libs |>
+      Seq.filter_map (fun (n, t) ->
+        match t with
+        | T.Obj (T.Module, fs) -> Some (n, (t, fs))
+        | _ -> None) |>
+      Seq.map find_candidate_fields |>
+      List.of_seq |>
+      List.flatten |>
+      List.partition (fun (candidate : hole_candidate) -> is_matching_lab candidate.id)
+  in
   let eligible_terms, explicit_terms  =
     match eligible_ids with
     | [id] -> ([id], []) (* first look in local env, otherwise consider module entries *)
     | _ ->
-       let (eligible_fields, explicit_fields) = eligible_fields ~only_libs:false in
-       (* let (lib_eligible_fields, lib_explicit_fields) = lib_candidates () in *)
+       let (eligible_fields, explicit_fields) = eligible_fields env.vals in
        (eligible_ids @ eligible_fields,
         explicit_ids @ explicit_fields)
   in
@@ -1486,20 +1502,10 @@ let resolve_hole env at hole_sort typ =
   match eligible_terms with
   | [term] -> Ok term
   | [] ->
-    (match eligible_fields ~only_libs:true with
+    (match eligible_fields env.implicit_lib_vals with
     | [term], _ -> Ok term
     | _ ->
-      let (lib_terms, _) =
-        T.Env.to_seq env.libs |>
-          Seq.filter_map (fun (n, t) ->
-              match t with
-              | T.Obj (T.Module, fs) -> Some (n, (t, fs))
-              | _ -> None) |>
-          Seq.map find_candidate_fields |>
-          List.of_seq |>
-          List.flatten |>
-          List.partition (fun (candidate : hole_candidate) -> is_matching_lab candidate.id)
-      in
+      let (lib_terms, _) = lib_fields () in
       Error (List.map suggestion_of_candidate lib_terms,
               List.map (fun candidate -> candidate.desc) explicit_terms,
               renaming_hints)
@@ -1557,16 +1563,16 @@ let contextual_dot env name receiver_ty =
   let find_candidate (module_name, (module_ty, fs)) =
     List.find_map is_matching_func fs |>
       Option.map (fun (func_ty, inst) -> { module_name; func_ty; module_ty; inst }) in
-  let eligible_funcs ~only_libs =
-    T.Env.to_seq env.vals |>
-      Seq.filter_map (is_module ~only_libs) |>
+  let eligible_funcs vals =
+    T.Env.to_seq vals |>
+      Seq.filter_map is_module |>
       Seq.filter has_matching_self_type |>
       Seq.filter_map find_candidate |>
       List.of_seq in
-  match eligible_funcs ~only_libs:false with
+  match eligible_funcs env.vals with
   | [oc] -> Ok oc
   | [] ->
-    (match eligible_funcs ~only_libs:true with
+    (match eligible_funcs env.implicit_lib_vals with
     | [oc] -> Ok oc
     | _ ->
       let lib_candidates =
@@ -1626,7 +1632,7 @@ and infer_exp'' env exp : T.typ =
     error env exp.at "M0054" "cannot infer type of primitive"
   | VarE id ->
     use_identifier env id.it;
-    (match T.Env.find_opt id.it env.vals with
+    (match find_id env id with
     | Some (T.Pre, _, _, _) ->
       error env id.at "M0055" "cannot infer type of forward variable %s" id.it;
     | Some (t, _, _, Unavailable) ->
@@ -4022,7 +4028,7 @@ and infer_val_path env exp : T.typ option =
   | ImportE (f, ri) ->
     Some (check_import env exp.at f ri)
   | VarE id ->
-    (match T.Env.find_opt id.it env.vals with (* TBR: return None for Unavailable? *)
+    (match find_id env id with (* TBR: return None for Unavailable? *)
      | Some (t, _, _, _) -> Some t
      | _ -> None)
   | DotE (path, id, _) ->
