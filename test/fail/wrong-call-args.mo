@@ -1,4 +1,4 @@
-//MOC-FLAG --package core core-stub/src
+//MOC-FLAG --package core ../core-stub/src
 
 import Map "mo:core/Map";
 import Text "mo:core/Text";
