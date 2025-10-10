@@ -287,8 +287,7 @@ let package_imports base packages =
   let imports = M.fold (fun pname url acc ->
     let url_norm = Lib.FilePath.normalise url in
     (* Skip when it is a sub-directory, because list_files adds all files recursively *)
-    if Filename.is_relative base then acc else
-    if base = url || base_norm = url_norm || Lib.FilePath.relative_to url_norm base_norm <> None then
+    if base_norm = url_norm || Lib.FilePath.relative_to url_norm base_norm <> None then
       acc
     else
       let files = list_files url in
