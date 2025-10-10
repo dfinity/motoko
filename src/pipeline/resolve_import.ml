@@ -305,13 +305,6 @@ let resolve_flags : flags -> resolved_flags Diag.result
   let* aliases = resolve_aliases actor_aliases in
   Diag.return { packages; aliases; actor_idl_path }
 
-let string_of_ri ri = match ri with
-  | Unresolved -> "Unresolved"
-  | LibPath {package=id_opt; path} -> "LibPath " ^ (match id_opt with Some pkg -> "[" ^ pkg ^ "]" | None -> "")  ^ path
-  | IDLPath (path, bytes) -> "IDLPath " ^ path
-  | ImportedValuePath blob -> "ImportedValuePath " ^ blob
-  | PrimPath -> "Prim"
-
 let resolve
     : flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
   = fun flags p base ->
