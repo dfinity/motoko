@@ -1502,9 +1502,9 @@ let resolve_hole env at hole_sort typ =
   match eligible_terms with
   | [term] -> Ok term
   | [] ->
-    (match eligible_fields env.implicit_lib_vals with
-    | [term], _ -> Ok term
-    | _ ->
+    (match disambiguate_resolutions (fst (eligible_fields env.implicit_lib_vals)) with
+    | Some term -> Ok term
+    | None ->
       let (lib_terms, _) = lib_fields () in
       Error (List.map suggestion_of_candidate lib_terms,
               List.map (fun candidate -> candidate.desc) explicit_terms,
