@@ -32,7 +32,7 @@ type resolved_flags = {
 
 val resolve_flags : flags -> resolved_flags Diag.result
 
-val resolve : flags -> Syntax.prog -> filepath -> string option (* package *) -> resolved_imports Diag.result
+val resolve : flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
 
 (* Exported for tests *)
 val append_mo_extension : (filepath -> bool) -> filepath -> filepath

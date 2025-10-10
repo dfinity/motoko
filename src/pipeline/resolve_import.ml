@@ -284,11 +284,8 @@ let list_files : string -> string list =
 
 let package_imports base packages =
   let base_norm = Lib.FilePath.normalise base in
-  Printf.printf "\npackage imports base %s url %s packages "
-    base base_norm (* (String.concat "," (M.fold packages )); *);
   let imports = M.fold (fun pname url acc ->
     let url_norm = Lib.FilePath.normalise url in
-    Printf.printf "\n  pname %s base %s url %s ulr_norm %s" pname base url url_norm;
     (* Skip when it is a sub-directory, because list_files adds all files recursively *)
     if Filename.is_relative base then acc else
     if base = url || base_norm = url_norm || Lib.FilePath.relative_to url_norm base_norm <> None then
@@ -296,7 +293,6 @@ let package_imports base packages =
     else
       let files = list_files url in
       List.map (fun path ->
-          Printf.printf "\n     package %s path %s"  pname path;
           LibPath {package = Some pname; path = path}
         ) files::acc)
     packages []
@@ -318,17 +314,15 @@ let string_of_ri ri = match ri with
   | PrimPath -> "Prim"
 
 let resolve
-    : flags -> Syntax.prog -> filepath -> string option (*package *)-> resolved_imports Diag.result
-  = fun flags p base pkg_opt ->
-  Printf.printf "\nresolve file %s base %s" p.note.filename base;
+    : flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
+  = fun flags p base ->
   let open Diag.Syntax in
   let* { packages; aliases; actor_idl_path } = resolve_flags flags in
   Diag.with_message_store (fun msgs ->
-      (*    let is_dir = Sys.is_directory base in *)
     let base = if Sys.is_directory base then base else Filename.dirname base in
     let imported =
-      ref (if pkg_opt = None && flags.include_all_libs (* && is_dir *)
-           then (* add all available package libraries *)
+      ref (if flags.include_all_libs
+           then (* outside any package, add all available package libraries *)
              (List.fold_right (fun ri rim -> RIM.add ri Source.no_region rim)
                (package_imports base packages) RIM.empty)
            else
@@ -337,8 +331,6 @@ let resolve
 
     in
     List.iter (resolve_import_string msgs base actor_idl_path aliases packages imported)(prog_imports p);
-(*    RIM.iter (fun ri  _ ->
-      Printf.printf "\nri %s" (string_of_ri ri)) (!imported); *)
     Some (List.map (fun (rim, at) -> rim @@ at) (RIM.bindings !imported))
   )
 
