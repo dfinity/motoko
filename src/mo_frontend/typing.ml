@@ -1458,7 +1458,7 @@ let resolve_hole env at hole_sort typ =
   let lib_fields () =
     T.Env.to_seq env.libs |>
       Seq.filter_map (fun (n, t) ->
-        match t with
+        match T.normalize t with
         | T.Obj (T.Module, fs) -> Some (n, (t, fs))
         | _ -> None) |>
       Seq.map find_candidate_fields |>
