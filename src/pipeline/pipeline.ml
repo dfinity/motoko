@@ -443,8 +443,8 @@ let chase_imports_cached parsefn senv0 imports scopes_map
         pending := add it !pending;
         let* prog, base = parsefn ri.Source.at f in
         let* () = Static.prog prog in
-        let* more_imports = ResolveImport.resolve (resolve_flags pkg_opt) prog base in
         let cur_pkg_opt = if lib_pkg_opt <> None then lib_pkg_opt else pkg_opt in
+        let* more_imports = ResolveImport.resolve (resolve_flags cur_pkg_opt) prog base in
         let* () = go_set cur_pkg_opt more_imports in
         let lib = lib_of_prog f prog in
         let* sscope = check_lib !senv cur_pkg_opt lib in
