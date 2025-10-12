@@ -318,7 +318,13 @@ let string_of_lit = function
   | FloatLit f    -> Numerics.Float.to_pretty_string f
   | PreLit _      -> assert false
 
-
+(** Used for debugging *)
+let string_of_resolved_import = function
+  | LibPath {path; package } -> Printf.sprintf "LibPath {path = %s, package = %s}" path (match package with | Some p -> p | None -> "None")
+  | IDLPath (path, _) -> Printf.sprintf "IDLPath (%s, _)" path
+  | ImportedValuePath path -> Printf.sprintf "ImportedValuePath %s" path
+  | PrimPath -> "PrimPath"
+  | Unresolved -> "Unresolved"
 
 (* Miscellaneous *)
 (* TODO: none of what follows should probably be in this file *)
