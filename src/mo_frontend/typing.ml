@@ -1072,7 +1072,7 @@ let rec is_explicit_exp e =
   | RelE _ | NotE _ | AndE _ | OrE _ | ImpliesE _ | OldE _ | ShowE _ | ToCandidE _ | FromCandidE _
   | AssignE _ | IgnoreE _ | AssertE _ | DebugE _
   | WhileE _ | ForE _
-  | AnnotE _ | ImportE _ ->
+  | AnnotE _ | ImportE _ | ImplicitLibE _ ->
     true
   | LitE l -> is_explicit_lit !l
   | UnE (_, _, e1) | OptE e1 | DoOptE e1
@@ -1378,7 +1378,7 @@ let module_exp env module_name =
   if T.Env.mem module_name env.vals then
     VarE {it = module_name; at = no_region; note = Const}
   else
-    ImportE (module_name, ref Unresolved)
+    ImplicitLibE module_name
 
 (** Searches for hole resolutions for [name] on a given [hole_sort] and [typ].
     Returns [Ok(candidate)] when a single resolution is
@@ -1463,9 +1463,9 @@ let resolve_hole env at hole_sort typ =
         | Named id ->
           let mod_desc, mid =
             match candidate.path.it with
-            | DotE({ it = VarE {it = mid;_ }; _ }, _, _) ->
+            | DotE({ it = ImplicitLibE mid | VarE {it = mid;_ }; _ }, _, _) ->
               ("the existing", mid)
-            | VarE _ | _ ->
+            | VarE _ | ImplicitLibE _ | _ ->
               let mid = match Lib.String.chop_prefix id candidate.id with
                 | Some suffix when not (T.Env.mem suffix env.vals) ->
                    suffix
@@ -2064,10 +2064,11 @@ and infer_exp'' env exp : T.typ =
     end;
     T.unit
   | ImportE (f, ri) ->
-    match if !Flags.implicit_lib_vals then T.Env.find_opt f env.libs else None with
+    check_import env exp.at f ri
+  | ImplicitLibE f ->
+    match T.Env.find_opt f env.libs with
     | Some t -> t
-    | None ->
-      check_import env exp.at f ri
+    | None -> failwith "ImplicitLibE not found in env.libs"
 
 and infer_bin_exp env exp1 exp2 =
   match is_explicit_exp exp1, is_explicit_exp exp2 with
@@ -2421,6 +2422,9 @@ and check_exp' env0 t exp : T.typ =
     check_exp env typ exp1;
     t
   | ImportE _, t ->
+    t
+  | ImplicitLibE _, t ->
+    (* todo: check_sub t' t *)
     t
   | e, _ ->
     let t' = infer_exp env0 exp in
@@ -4004,6 +4008,10 @@ and infer_val_path env exp : T.typ option =
     (match T.Env.find_opt id.it env.vals with (* TBR: return None for Unavailable? *)
      | Some (t, _, _, _) -> Some t
      | _ -> None)
+  | ImplicitLibE f ->
+    (match T.Env.find_opt f env.libs with
+    | Some t -> Some t
+    | None -> None)
   | DotE (path, id, _) ->
     (match infer_val_path env path with
      | None -> None
