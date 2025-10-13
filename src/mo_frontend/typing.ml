@@ -171,11 +171,14 @@ let display_given_arg_types fmt types =
   else
     Format.fprintf fmt "But got %d argument%s of type:%a" (List.length types) (plural_typs types) (display_many display_typ_expand) types
 
-let display_obj fmt (s, fs) =
-  if !Flags.ai_errors || (List.length fs) < 16 then
-    Format.fprintf fmt "type:%a" display_typ (T.Obj(s, fs))
-  else
-    Format.fprintf fmt "%s." (String.trim(T.string_of_obj_sort s))
+let display_obj fmt typ =
+  match T.normalize typ with
+  | T.Obj(s, fs) ->
+     if !Flags.ai_errors || (List.length fs) < 16 then
+       Format.fprintf fmt "type:%a" display_typ_expand typ
+     else
+       Format.fprintf fmt "%s." (String.trim(T.string_of_obj_sort s))
+  |  typ -> Format.fprintf fmt "type:%a" display_typ_expand typ
 
 let display_vals fmt vals =
   if !Flags.ai_errors then
@@ -527,7 +530,7 @@ and check_obj_path' env path : T.typ =
     | exception Invalid_argument _ ->
       error env id.at "M0028" "field %s does not exist in %a%s"
         id.it
-        display_obj (s, fs)
+        display_obj (T.Obj(s, fs))
         (Suggest.suggest_id "field" id.it
           (List.filter_map
             (function
@@ -558,7 +561,8 @@ and check_typ_path' env path : T.con =
         c
       | exception Invalid_argument _ ->
         error env id.at "M0030" "type field %s does not exist in %a%s"
-          id.it display_obj (s, fs)
+          id.it
+          display_obj (T.Obj(s, fs))
           (Suggest.suggest_id "type field" id.it
              (List.filter_map
                (function { T.lab; T.typ=T.Typ _;_ } -> Some lab
@@ -1589,7 +1593,7 @@ let contextual_dot env name receiver_ty =
   | ocs ->
     let candidates = List.map (fun oc -> oc.module_name) ocs in
     error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
-      
+
 let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
 
@@ -1597,13 +1601,17 @@ and infer_exp_mut env exp : T.typ =
   infer_exp' Fun.id env exp
 
 and infer_exp_promote env exp : T.typ =
+  snd (infer_exp_and_promote env exp)
+
+and infer_exp_and_promote env exp : T.typ * T.typ =
   let t = infer_exp env exp in
   let t' = T.promote t in
   if t' = T.Pre then
     error env exp.at "M0053"
       "cannot infer type of expression while trying to infer surrounding class type,\nbecause its type is a forward reference to type%a"
       display_typ_expand t;
-  t'
+  t, t'
+
 
 and infer_exp_wrapper inf f env exp : T.typ =
   assert (exp.note.note_typ = T.Pre);
@@ -2115,7 +2123,7 @@ and infer_bin_exp env exp1 exp2 =
    `Error` with the type of the receiver as well as the error message
    to report. This is used to delay the reporting for contextual dot resulution *)
 and try_infer_dot_exp env at exp id =
-  let t1 = infer_exp_promote env exp in
+  let t0, t1 = infer_exp_and_promote env exp in
   let fields =
     try Ok(T.as_obj_sub [id.it] t1) with Invalid_argument _ ->
     try Ok(array_obj (T.as_array_sub t1)) with Invalid_argument _ ->
@@ -2123,7 +2131,7 @@ and try_infer_dot_exp env at exp id =
     try Ok(text_obj (T.as_prim_sub T.Text t1)) with Invalid_argument _ ->
       Error(t1, type_error exp.at "M0070" (Format.asprintf
               "expected object type, but expression produces type%a"
-              display_typ_expand t1))
+              display_typ_expand t0))
   in
   match fields with
   | Error e -> Error e
@@ -2140,7 +2148,7 @@ and try_infer_dot_exp env at exp id =
     | exception Invalid_argument _ ->
       Error(t1, type_error id.at "M0072" (Format.asprintf "field %s does not exist in %a%s"
           id.it
-          display_obj (s, tfs)
+          display_obj t0
           (Suggest.suggest_id "field" id.it
              (List.filter_map
                 (function

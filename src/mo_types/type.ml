@@ -1869,21 +1869,21 @@ module ShowStamps = struct
   let max_list = None
 end
 
-module ElideStamps = struct
-  let show_stamps = false
-  let show_scopes = true
-  let show_hash_suffix = true
-  let con_sep = ShowStamps.con_sep
-  let par_sep = ShowStamps.par_sep
-  let max_list = None
-end
-
 module ParseableStamps = struct
   let show_stamps = true
   let show_scopes = true (* false ok too *)
   let con_sep = "__"
   let par_sep = "_"
   let show_hash_suffix = true
+  let max_list = None
+end
+
+module ElideStamps = struct
+  let show_stamps = false
+  let show_scopes = true
+  let show_hash_suffix = true
+  let con_sep = ShowStamps.con_sep
+  let par_sep = ShowStamps.par_sep
   let max_list = None
 end
 
