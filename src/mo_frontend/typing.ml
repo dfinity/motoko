@@ -182,10 +182,10 @@ let display_obj fmt typ =
           | Actor -> "actor"
           | Module -> "module"
           | Object -> "object"
-          (* these should not occur *)
+          (* these should not occur, but let's be forgiving*)
           | Mixin -> "mixin"
           | Memory -> "memory")
-  | _ -> Format.fprintf fmt "type:%a" display_typ_expand typ
+  | _ -> Format.fprintf fmt "type:%a" display_typ typ
 
 let display_vals fmt vals =
   if !Flags.ai_errors then
