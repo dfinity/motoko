@@ -1,3 +1,4 @@
-import _ = "blob:file:issue-5507/inner.mo";
+import _ = "blob:file:./inner.mo";
+import _ = "blob:file:inner.mo";
 
 module {}
