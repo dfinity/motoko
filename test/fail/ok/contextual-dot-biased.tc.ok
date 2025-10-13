@@ -1,4 +1,4 @@
-contextual-dot-biased.mo:23.12-23.17: type error [M0233], field other does exist in type:
+contextual-dot-biased.mo:23.12-23.17: type error [M0234], field other does exist in type:
   {var other : Nat; var size : Nat}
 but is not a function.
 

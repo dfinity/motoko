@@ -684,8 +684,8 @@ let as_pair_sub t = match promote t with
   | _ -> invalid "as_pair_sub"
 let as_func_sub default_s default_arity t = match promote t with
   | Func (s, c, tbs, ts1, ts2) ->
-    s, tbs, seq ts1, codom c (fun () -> Var((List.hd tbs).var, 0)) ts2
-  | Non -> default_s, Lib.List.make default_arity {var = "X"; sort = Type; bound = Any}, Any, Non
+    s, tbs, ts1, codom c (fun () -> Var((List.hd tbs).var, 0)) ts2
+  | Non -> default_s, Lib.List.make default_arity {var = "X"; sort = Type; bound = Any}, [Any], Non
   | _ -> invalid "as_func_sub"
 let as_mono_func_sub t = match promote t with
   | Func (_, _, [], ts1, ts2) -> seq ts1, seq ts2
@@ -1869,21 +1869,21 @@ module ShowStamps = struct
   let max_list = None
 end
 
-module ElideStamps = struct
-  let show_stamps = false
-  let show_scopes = true
-  let show_hash_suffix = true
-  let con_sep = ShowStamps.con_sep
-  let par_sep = ShowStamps.par_sep
-  let max_list = None
-end
-
 module ParseableStamps = struct
   let show_stamps = true
   let show_scopes = true (* false ok too *)
   let con_sep = "__"
   let par_sep = "_"
   let show_hash_suffix = true
+  let max_list = None
+end
+
+module ElideStamps = struct
+  let show_stamps = false
+  let show_scopes = true
+  let show_hash_suffix = true
+  let con_sep = ShowStamps.con_sep
+  let par_sep = ShowStamps.par_sep
   let max_list = None
 end
 

@@ -291,7 +291,9 @@ let package_imports base packages =
       acc
     else
       let files = list_files url in
-      List.map (fun path -> LibPath {package = Some pname; path = path}) files::acc)
+      List.map (fun path ->
+          LibPath {package = Some pname; path = path}
+        ) files::acc)
     packages []
   in
   List.concat imports
@@ -304,7 +306,7 @@ let resolve_flags : flags -> resolved_flags Diag.result
   Diag.return { packages; aliases; actor_idl_path }
 
 let resolve
-  : flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
+    : flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
   = fun flags p base ->
   let open Diag.Syntax in
   let* { packages; aliases; actor_idl_path } = resolve_flags flags in
@@ -312,12 +314,13 @@ let resolve
     let base = if Sys.is_directory base then base else Filename.dirname base in
     let imported =
       ref (if flags.include_all_libs
-           then (* add all available package libraries *)
+           then (* outside any package, add all available package libraries *)
              (List.fold_right (fun ri rim -> RIM.add ri Source.no_region rim)
                (package_imports base packages) RIM.empty)
            else
              (* consider only the explicitly imported package libraries *)
              RIM.empty)
+
     in
     List.iter (resolve_import_string msgs base actor_idl_path aliases packages imported)(prog_imports p);
     Some (List.map (fun (rim, at) -> rim @@ at) (RIM.bindings !imported))

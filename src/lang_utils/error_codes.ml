@@ -204,7 +204,8 @@ let error_codes : (string * string option) list =
     "M0230", None; (* Cannot determine implicit argument *)
     "M0231", None; (* Ambiguous implicit argument *)
     "M0232", None; (* Cannot infer type of implicit argument *)
-    "M0233", None; (* Field exists but is not a function *)
+    "M0233", None; (* Wrong number of arguments *)
+    "M0234", None; (* Field exists but is not a function *)
   ]
 
 (** Message codes that can be both used as warnings and errors *)
