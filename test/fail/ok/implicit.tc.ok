@@ -1,23 +1,27 @@
-implicit.mo:46.4-46.7: type error [M0050], literal of type
-  Text
-does not have expected type
-  Nat
-implicit.mo:54.3-54.15: type error [M0230], Cannot determine implicit argument 'c' of type
+implicit.mo:58.1-58.15: type error [M0230], Cannot determine implicit argument `c` of type
   (Bool, Bool) -> Order
-Hint: If you're trying to use an implicit argument you need to have a matching declaration in scope.
-implicit.mo:56.3-56.9: type error [M0230], Cannot determine implicit argument 'd' of type
+Hint: If you're trying to omit an implicit argument named `c` you need to have a matching declaration named `c` in scope.
+implicit.mo:60.1-60.9: type error [M0230], Cannot determine implicit argument `d` of type
   Nat -> Order
-Hint: If you're trying to use an implicit argument you need to have a matching declaration in scope.
-implicit.mo:61.3-61.9: type error [M0230], Cannot determine implicit argument 'bogus' of type
+Hint: If you're trying to omit an implicit argument named `d` you need to have a matching declaration named `d` in scope.
+implicit.mo:3.6-3.15: info, Consider renaming ``explicit1`` to `<M>.bogus` in a new module `<M>`. Then it can serve as an implicit argument `bogus` in this call:
+implicit.mo:65.1-65.9: f4(1, 1)
+implicit.mo:8.3-8.59: info, Consider renaming ``M.aardvark`` to `M.bogus` in the existing module `M`. Then it can serve as an implicit argument `bogus` in this call:
+implicit.mo:65.1-65.9: f4(1, 1)
+implicit.mo:16.3-20.4: info, Consider renaming ``M.ambiguous`` to `M.bogus` in the existing module `M`. Then it can serve as an implicit argument `bogus` in this call:
+implicit.mo:65.1-65.9: f4(1, 1)
+implicit.mo:10.3-14.4: info, Consider renaming ``M.c`` to `M.bogus` in the existing module `M`. Then it can serve as an implicit argument `bogus` in this call:
+implicit.mo:65.1-65.9: f4(1, 1)
+implicit.mo:29.3-33.4: info, Consider renaming ``N.ambiguous`` to `N.bogus` in the existing module `N`. Then it can serve as an implicit argument `bogus` in this call:
+implicit.mo:65.1-65.9: f4(1, 1)
+implicit.mo:65.1-65.9: type error [M0230], Cannot determine implicit argument `bogus` of type
   (Nat, Nat) -> Order
-Hint: If you're trying to use an implicit argument you need to have a matching declaration in scope.
-implicit.mo:71.3-71.9: type error [M0231], ambiguous implicit argument of type
+Hint: If you're trying to omit an implicit argument named `bogus` you need to have a matching declaration named `bogus` in scope.
+Hint: Did you mean to explicitly use `explicit1` or `M.aardvark` or `M.ambiguous` or `M.c` or `N.ambiguous`?
+implicit.mo:75.1-75.9: type error [M0231], ambiguous implicit argument named `ambiguous` of type
   (Nat, Nat) -> Order.
-The available candidates are: M.ambiguous, N.ambiguous
-implicit.mo:88.27-88.29: type error [M0231], ambiguous implicit argument of type
+The ambiguous implicit candidates are: `M.ambiguous`, `N.ambiguous`.
+The other explicit candidates are: `explicit1`, `M.aardvark`, `M.c`.
+implicit.mo:92.27-92.29: type error [M0231], ambiguous implicit argument named `zero` of type
   {x : Nat}.
-The available candidates are: XY.zero, XZ.zero
-implicit.mo:107.14-107.15: type error [M0050], literal of type
-  Nat
-does not have expected type
-  (Nat, Nat)
+The ambiguous implicit candidates are: `XY.zero`, `XZ.zero`.
