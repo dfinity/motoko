@@ -171,11 +171,21 @@ let display_given_arg_types fmt types =
   else
     Format.fprintf fmt "But got %d argument%s of type:%a" (List.length types) (plural_typs types) (display_many display_typ_expand) types
 
-let display_obj fmt (s, fs) =
-  if !Flags.ai_errors || (List.length fs) < 16 then
-    Format.fprintf fmt "type:%a" display_typ (T.Obj(s, fs))
-  else
-    Format.fprintf fmt "%s." (String.trim(T.string_of_obj_sort s))
+let display_obj fmt typ =
+  match T.normalize typ with
+  | T.Obj(s, fs) ->
+     if !Flags.ai_errors || (List.length fs) < 16 then
+       Format.fprintf fmt "type:%a" display_typ_expand typ
+     else
+       Format.fprintf fmt "%s."
+         T.(match s with
+          | Actor -> "actor"
+          | Module -> "module"
+          | Object -> "object"
+          (* these should not occur, but let's be forgiving*)
+          | Mixin -> "mixin"
+          | Memory -> "memory")
+  | _ -> Format.fprintf fmt "type:%a" display_typ typ
 
 let display_vals fmt vals =
   if !Flags.ai_errors then
@@ -527,7 +537,7 @@ and check_obj_path' env path : T.typ =
     | exception Invalid_argument _ ->
       error env id.at "M0028" "field %s does not exist in %a%s"
         id.it
-        display_obj (s, fs)
+        display_obj (T.Obj(s, fs))
         (Suggest.suggest_id "field" id.it
           (List.filter_map
             (function
@@ -558,7 +568,8 @@ and check_typ_path' env path : T.con =
         c
       | exception Invalid_argument _ ->
         error env id.at "M0030" "type field %s does not exist in %a%s"
-          id.it display_obj (s, fs)
+          id.it
+          display_obj (T.Obj(s, fs))
           (Suggest.suggest_id "type field" id.it
              (List.filter_map
                (function { T.lab; T.typ=T.Typ _;_ } -> Some lab
@@ -1589,7 +1600,7 @@ let contextual_dot env name receiver_ty =
   | ocs ->
     let candidates = List.map (fun oc -> oc.module_name) ocs in
     error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
-      
+
 let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
 
@@ -1597,13 +1608,17 @@ and infer_exp_mut env exp : T.typ =
   infer_exp' Fun.id env exp
 
 and infer_exp_promote env exp : T.typ =
+  snd (infer_exp_and_promote env exp)
+
+and infer_exp_and_promote env exp : T.typ * T.typ =
   let t = infer_exp env exp in
   let t' = T.promote t in
   if t' = T.Pre then
     error env exp.at "M0053"
       "cannot infer type of expression while trying to infer surrounding class type,\nbecause its type is a forward reference to type%a"
       display_typ_expand t;
-  t'
+  t, t'
+
 
 and infer_exp_wrapper inf f env exp : T.typ =
   assert (exp.note.note_typ = T.Pre);
@@ -1790,9 +1805,10 @@ and infer_exp'' env exp : T.typ =
   | ObjE (exp_bases, exp_fields) ->
     infer_check_bases_fields env [] exp.at exp_bases exp_fields
   | DotE (exp1, id, _) ->
-    (match try_infer_dot_exp env exp.at exp1 id with
+    (match try_infer_dot_exp env exp.at exp1 id ("", (fun dot_typ -> true))  with
     | Ok t -> t
-    | Error (_, e) ->
+    | Error (_, mk_e) ->
+      let e = mk_e() in
       Diag.add_msg env.msgs e;
       raise Recover)
   | AssignE (exp1, exp2) ->
@@ -2114,38 +2130,57 @@ and infer_bin_exp env exp1 exp2 =
 (* Returns `Ok` when finding an object with a matching field or
    `Error` with the type of the receiver as well as the error message
    to report. This is used to delay the reporting for contextual dot resulution *)
-and try_infer_dot_exp env at exp id =
-  let t1 = infer_exp_promote env exp in
+and try_infer_dot_exp env at exp id (desc, pred) =
+  let t0, t1 = infer_exp_and_promote env exp in
   let fields =
     try Ok(T.as_obj_sub [id.it] t1) with Invalid_argument _ ->
     try Ok(array_obj (T.as_array_sub t1)) with Invalid_argument _ ->
     try Ok(blob_obj (T.as_prim_sub T.Blob t1)) with Invalid_argument _ ->
     try Ok(text_obj (T.as_prim_sub T.Text t1)) with Invalid_argument _ ->
-      Error(t1, type_error exp.at "M0070" (Format.asprintf
-              "expected object type, but expression produces type%a"
-              display_typ_expand t1))
+      Error(t1, fun () ->
+        type_error exp.at "M0070"
+          (Format.asprintf
+             "expected object type, but expression produces type%a"
+             display_typ_expand t0))
   in
   match fields with
   | Error e -> Error e
   | Ok((s, tfs)) -> begin
+    let suggest () =
+      Suggest.suggest_id "field" id.it
+        (List.filter_map
+           (function
+              { T.typ=T.Typ _;_} -> None
+            | {T.lab;_} -> Some lab) tfs)
+    in
     match T.lookup_val_field id.it tfs with
     | T.Pre ->
       error env at "M0071"
         "cannot infer type of forward field reference %s"
         id.it
-    | t ->
+    | t when pred t ->
       if not env.pre then
         check_deprecation env at "field" id.it (T.lookup_val_deprecation id.it tfs);
       Ok(t)
+    | t (* when not (pred t) *) ->
+      Error(t1, fun () ->
+        type_error id.at "M0234"
+          (Format.asprintf "field %s does exist in %a\nbut is not %s.\n%s"
+             id.it
+             display_obj t0
+             desc
+             (suggest ())))
     | exception Invalid_argument _ ->
-      Error(t1, type_error id.at "M0072" (Format.asprintf "field %s does not exist in %a%s"
-          id.it
-          display_obj (s, tfs)
-          (Suggest.suggest_id "field" id.it
-             (List.filter_map
-                (function
-                   { T.typ=T.Typ _;_} -> None
-                 | {T.lab;_} -> Some lab) tfs))))
+      Error(t1, fun () ->
+        type_error id.at "M0072"
+          (Format.asprintf "field %s does not exist in %a%s"
+             id.it
+             display_obj t0
+             (Suggest.suggest_id "field" id.it
+                (List.filter_map
+                   (function
+                      { T.typ=T.Typ _;_} -> None
+                    | {T.lab;_} -> Some lab) tfs))))
     end
 
 and infer_exp_field env rf =
@@ -2554,16 +2589,23 @@ and detect_lost_fields env t = function
   | _ -> ()
 
 and infer_callee env exp =
+  let is_func_typ typ = T.(
+    match promote typ with
+    | Func _ | Non -> true
+    | _ -> false)
+  in
   match exp.it with
   | DotE(exp1, id, note) -> begin
-    match try_infer_dot_exp env exp.at exp1 id with
+    match try_infer_dot_exp env exp.at exp1 id ("a function", is_func_typ) with
     | Ok t -> infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
-    | Error (t1, e) ->
+    | Error (t1, mk_e) ->
       match contextual_dot env id t1 with
       | Error [] ->
+         let e = mk_e () in
          let sug = "\nHint: If you're trying to use a contextual call you need to import the corresponding module." in
          Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
       | Error suggestions ->
+         let e = mk_e () in
          let sug = Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
          Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
       | Ok { module_name; module_ty; func_ty; inst; } ->
