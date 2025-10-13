@@ -196,6 +196,15 @@ let error_codes : (string * string option) list =
     "M0220", None; (* Missing `persistent` *)
     "M0221", None; (* Failed to determine type for type pattern field *)
     "M0224", None; (* Overlapping dot resolution *)
+    "M0225", None; (* A mixin cannot be used as an entry point *)
+    "M0226", None; (* Unknown mixin inclusion *)
+    "M0227", None; (* Non-actor include *)
+    "M0228", None; (* Only top-level mixins *)
+    "M0229", None; (* Non-var pattern for mixin import *)
+    "M0230", None; (* Cannot determine implicit argument *)
+    "M0231", None; (* Ambiguous implicit argument *)
+    "M0232", None; (* Cannot infer type of implicit argument *)
+    "M0233", None; (* Wrong number of arguments *)
   ]
 
 (** Message codes that can be both used as warnings and errors *)

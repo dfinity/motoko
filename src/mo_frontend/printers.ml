@@ -100,6 +100,8 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (T T_MULOP) -> binop "*"
   | X (T T_MULASSIGN) -> binassign "*="
   | X (T T_MODULE) -> simple_token "module"
+  | X (T T_INCLUDE) -> simple_token "include"
+  | X (T T_MIXIN) -> simple_token "mixin"
   | X (T T_MODOP) -> binop "%"
   | X (T T_MODASSIGN) -> binassign "%="
   | X (T T_MINUSASSIGN) -> unassign "-="
@@ -191,6 +193,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (N N_exp_nonvar_ob_) -> "<exp_nonvar(ob)>", eg_exp
   | X (N N_exp_nullary_bl_) -> "<exp_nullary(bl)>", eg_exp
   | X (N N_exp_nullary_ob_) -> "<exp_nullary(ob)>", eg_exp
+  | X (N N_exp_arg) -> "<exp_nullary(ob)>", eg_exp
   | X (N N_exp_plain) -> "<exp_plain>", "true"
   | X (N N_exp_post_bl_) -> "<exp_post(bl)>", eg_exp
   | X (N N_exp_post_ob_) -> "<exp_post(ob)>", eg_exp
