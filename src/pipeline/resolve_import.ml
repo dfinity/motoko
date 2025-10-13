@@ -80,7 +80,7 @@ let err_file_does_not_exist' at full_path =
     at
     "M0009"
     "import"
-    (Printf.sprintf "file \"%s\" does not exist (cwd: %s)" full_path (Sys.getcwd()))
+    (Printf.sprintf "file \"%s\" does not exist" full_path)
 
 let err_file_does_not_exist msgs at full_path =
   Diag.add_msg msgs (err_file_does_not_exist' at full_path)
