@@ -147,7 +147,7 @@ end = struct
   type t = (typ * con * typ) list ref
   let empty () = ref []
   let add t lb c ub = t := (lb, c, ub) :: !t
-  let to_string t = 
+  let to_string t =
     let parts = List.rev !t in
     if parts = [] then "" else
     Format.asprintf
@@ -157,6 +157,30 @@ end = struct
       display_constraints parts
       display_rels (List.map (fun (lb, _, ub) -> (lb,"=/=",ub)) parts)
 end
+
+let fail_under_constrained lb c ub =
+(*  if debug then *)
+    raise (Bimatch (Format.asprintf
+      "implicit instantiation of type parameter `%s` is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
+      (Cons.name c)
+      display_constraint (lb, c, ub)
+      display_rel (lb,"=/=",ub)))
+(*  else
+    raise (Bimatch (Format.asprintf
+      "type parameter `%s` has no best solution, please provide an explicit instantiation."
+      (Cons.name c))) *)
+
+let fail_over_constrained lb c ub =
+(*  if debug then *)
+    raise (Bimatch (Format.asprintf
+      "implicit instantiation of type parameter `%s` is over-constrained with%a\nwhere%a\nso that no valid instantiation exists"
+      (Cons.name c)
+      display_constraint (lb, c, ub)
+      display_rel (lb, "</:", ub)))
+(*  else
+    raise (Bimatch (Format.asprintf
+      "type parameter `%s` has no solution. Maybe try an explicit instantiation."
+      (Cons.name c))) *)
 
 let choose_under_constrained ctx er lb c ub =
   match ConEnv.find c ctx.variances with
@@ -184,6 +208,7 @@ let fail_over_constrained lb c ub =
     (Cons.name c)
     display_constraint (lb, c, ub)
     display_rel (lb, "</:", ub)))
+
 
 let bi_match_typs ctx =
   let flexible c = ConSet.mem c ctx.var_set in

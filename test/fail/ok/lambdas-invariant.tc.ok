@@ -1,112 +1,40 @@
-lambdas-invariant.mo:34.11-34.48: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>([var T], T -> C<U>) -> [var U]
+lambdas-invariant.mo:34.11-34.48: type error [M0098], cannot apply function of type
+  ([var Nat], Nat -> C<U>) -> [var U]
 to argument of type
   ([var Nat], Nat -> C<U>)
-because cannot solve invariant type parameter U, no principal solution with
-  None  <:  U  <:  Int
-where
-  None  =/=  Int
-Add a return type annotation or an explicit type instantiation
-Suggested return type annotation : 
-  [var Int]
-lambdas-invariant.mo:50.11-50.39: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>([var T], T -> U) -> [var U]
+lambdas-invariant.mo:50.11-50.39: type error [M0098], cannot apply function of type
+  ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because cannot solve invariant type parameter U, no principal solution with
-  Nat  <:  U  <:  Any
-where
-  Nat  =/=  Any
-Add a return type annotation or an explicit type instantiation
-Suggested return type annotation : 
-  [var Nat]
-lambdas-invariant.mo:53.11-53.42: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>([var T], T -> U) -> [var U]
+lambdas-invariant.mo:53.11-53.42: type error [M0098], cannot apply function of type
+  ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because cannot solve invariant type parameter U, no principal solution with
-  Null  <:  U  <:  Any
-where
-  Null  =/=  Any
-Add a return type annotation or an explicit type instantiation
-Suggested return type annotation : 
-  [var Null]
-lambdas-invariant.mo:56.11-56.40: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>([var T], T -> U) -> [var U]
+lambdas-invariant.mo:56.11-56.40: type error [M0098], cannot apply function of type
+  ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because cannot solve invariant type parameter U, no principal solution with
-  ?Nat  <:  U  <:  Any
-where
-  ?Nat  =/=  Any
-Add a return type annotation or an explicit type instantiation
-Suggested return type annotation : 
-  [var ?Nat]
-lambdas-invariant.mo:59.11-59.41: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>([var T], T -> U) -> [var U]
+lambdas-invariant.mo:59.11-59.41: type error [M0098], cannot apply function of type
+  ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because cannot solve invariant type parameter U, no principal solution with
-  [Nat]  <:  U  <:  Any
-where
-  [Nat]  =/=  Any
-Add a return type annotation or an explicit type instantiation
-Suggested return type annotation : 
-  [var [Nat]]
-lambdas-invariant.mo:62.11-62.43: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>([var T], T -> U) -> [var U]
+lambdas-invariant.mo:62.11-62.43: type error [M0098], cannot apply function of type
+  ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because cannot solve invariant type parameter U, no principal solution with
-  {x : Nat}  <:  U  <:  Any
-where
-  {x : Nat}  =/=  Any
-Add a return type annotation or an explicit type instantiation
-Suggested return type annotation : 
-  [var {x : Nat}]
-lambdas-invariant.mo:65.11-65.43: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>([var T], T -> U) -> [var U]
+lambdas-invariant.mo:65.11-65.43: type error [M0098], cannot apply function of type
+  ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because cannot solve invariant type parameter U, no principal solution with
-  {#c : Nat}  <:  U  <:  Any
-where
-  {#c : Nat}  =/=  Any
-Add a return type annotation or an explicit type instantiation
-Suggested return type annotation : 
-  [var {#c : Nat}]
-lambdas-invariant.mo:78.11-78.39: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>([var T], T -> U) -> [var U]
+lambdas-invariant.mo:78.11-78.39: type error [M0098], cannot apply function of type
+  ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because cannot solve invariant type parameter U, no principal solution with
-  Er  <:  U  <:  Any
-where
-  Er  =/=  Any
-Add a return type annotation or an explicit type instantiation
-Suggested return type annotation : 
-  [var Er]
-lambdas-invariant.mo:82.11-82.39: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>([var T], T -> U) -> [var U]
+lambdas-invariant.mo:82.11-82.39: type error [M0098], cannot apply function of type
+  ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because cannot solve invariant type parameter U, no principal solution with
-  Er  <:  U  <:  Any
-where
-  Er  =/=  Any
-Add a return type annotation or an explicit type instantiation
-Suggested return type annotation : 
-  [var Er]
-lambdas-invariant.mo:86.11-86.48: type error [M0098], cannot implicitly instantiate function of type
-  <T, U1, U2>([var T], T -> (U1, U2)) -> [var (U1, U2)]
+lambdas-invariant.mo:86.11-86.48: type error [M0098], cannot apply function of type
+  ([var Nat], Nat -> (U1, U2)) -> [var (U1, U2)]
 to argument of type
   ([var Nat], Nat -> (U1, U2))
-because cannot solve invariant type parameters U2, U1, no principal solution with
-  Null  <:  U2  <:  Any
-  Nat  <:  U1  <:  Any
-where
-  Null  =/=  Any
-  Nat  =/=  Any
-Add a return type annotation or an explicit type instantiation
-Suggested return type annotation : 
-  [var (Nat, Null)]
