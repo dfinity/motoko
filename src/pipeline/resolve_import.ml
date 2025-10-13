@@ -159,7 +159,6 @@ let add_value_import msgs imported ri_ref at path =
   let add_no_extension _file_exists f = f in
   match resolve_lib_import at path add_no_extension with
   | Ok full_path -> begin
-      (*Printf.eprintf "path: %s full_path: %s, cwd: %s\n" path full_path (Sys.getcwd());*)
       let ri = ImportedValuePath full_path in
       ri_ref := ri;
       imported := RIM.add ri at !imported
