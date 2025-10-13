@@ -1539,7 +1539,7 @@ let resolve_hole env at hole_sort typ =
 type ctx_dot_candidate =
   { module_name : T.lab;
     func_ty : T.typ;
-    inst : T.typ list;
+    inst : T.typ option list;
     module_ty : T.typ;
   }
 
@@ -1553,8 +1553,7 @@ let contextual_dot env name receiver_ty =
   (* Does an instantiation for [tbs] exist that makes [t1] <: [t2]? *)
   let permissive_sub t1 (tbs, t2) =
     try
-      let (inst, c) = Bi_match.bi_match_subs None tbs None [t1, t2] [] in
-      ignore (Bi_match.finalize inst c []);
+      let inst = Bi_match.bi_match_receiver tbs (t1, t2) in
       Some inst
     with _ ->
       None in
@@ -2693,14 +2692,22 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     | TupE es when not parenthesized -> es
     | _ -> [exp2]
   in
-  let t_args, extra_subtype_problems = match ctx_dot with
-    | None -> t_args, []
-    | Some(e, t, _id, _inst) -> begin
+  let t_args, extra_subtype_problems, inst_ctx_dot = match ctx_dot with
+    | None -> t_args, [], None
+    | Some(e, t, _id, inst) -> begin
       match t_args with
-      | t'::ts -> ts, [(t, t')]
+      | t'::ts -> ts, [(t, t')], Some inst
       | [] -> assert false
     end
   in
+  let ctx_dot = Option.bind ctx_dot (fun (e, t, id, inst) -> 
+    if List.for_all Option.is_some inst then
+      (* No support for partial instantiation yet *)
+      Some (e, t, id, List.map Option.get inst)
+    else
+      None)
+  in
+  let _dot_full_inst = Option.map (fun (_, _, _, ts) -> ts) ctx_dot in
   let saturated_arity, implicits_arity = arity_with_implicits t_args in
   let is_correct_arity =
     let n = List.length syntax_args in
@@ -2738,7 +2745,14 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
             warn env inst.at "M0223" "redundant type instantiation";
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
-      infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
+      (* match dot_full_inst with
+      | Some ts ->
+        let t_arg' = T.open_ ts t_arg in
+        let t_ret' = T.open_ ts t_ret in
+        if not env.pre then check_exp_strong env t_arg' exp2;
+        ts, t_arg', t_ret'
+      | None -> *)
+        infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
   inst.note <- ts;
   if not env.pre then begin
