@@ -1463,7 +1463,7 @@ let resolve_hole env at hole_sort typ =
         | Named id ->
           let mod_desc, mid =
             match candidate.path.it with
-            | DotE({ it = ImplicitLibE mid | VarE {it = mid;_ }; _ }, _, _) ->
+            | DotE({ it = VarE {it = mid;_ }; _ }, _, _) ->
               ("the existing", mid)
             | VarE _ | _ ->
               let mid = match Lib.String.chop_prefix id candidate.id with
