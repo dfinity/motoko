@@ -1374,8 +1374,8 @@ let is_lib_module (n, t) =
 let is_val_module (n, ((t, _, _, _) : val_info)) =
   is_lib_module (n, t)
 
-let module_exp env module_name =
-  if T.Env.mem module_name env.vals then
+let module_exp in_libs env module_name =
+  if not in_libs then
     VarE {it = module_name; at = no_region; note = Const}
   else
     ImplicitLibE module_name
@@ -1403,12 +1403,12 @@ let resolve_hole env at hole_sort typ =
        then Some (lab1, typ1, src.T.region)
        else None
   in
-  let find_candidate_fields (module_name, (_, fs)) =
+  let find_candidate_fields in_libs (module_name, (_, fs)) =
     List.filter_map has_matching_field_typ fs |>
       List.map (fun (lab, typ, region)->
           let path =
             { it = DotE(
-                { it = module_exp env module_name;
+                { it = module_exp in_libs env module_name;
                   at = Source.no_region;
                   note = empty_typ_note
                 },
@@ -1437,10 +1437,10 @@ let resolve_hole env at hole_sort typ =
       List.of_seq |>
       List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
   in
-  let candidates xs f =
+  let candidates in_libs xs f =
     T.Env.to_seq xs |>
       Seq.filter_map f |>
-      Seq.map find_candidate_fields |>
+      Seq.map (find_candidate_fields in_libs) |>
       List.of_seq |>
       List.flatten |>
       List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
@@ -1449,7 +1449,7 @@ let resolve_hole env at hole_sort typ =
     match eligible_ids with
     | [id] -> ([id], []) (* first look in local env, otherwise consider module entries *)
     | _ ->
-       let (eligible_fields, explicit_fields) = candidates env.vals is_val_module in
+       let (eligible_fields, explicit_fields) = candidates false env.vals is_val_module in
        (eligible_ids @ eligible_fields,
         explicit_ids @ explicit_fields)
   in
@@ -1481,7 +1481,7 @@ let resolve_hole env at hole_sort typ =
   match eligible_terms with
   | [term] -> Ok term
   | [] ->
-    let (lib_terms, _) = candidates env.libs is_lib_module in
+    let (lib_terms, _) = candidates true env.libs is_lib_module in
     (match if !Flags.implicit_lib_vals then disambiguate_resolutions lib_terms else None with
     | Some term -> Ok term
     | None ->
@@ -1506,9 +1506,9 @@ let resolve_hole env at hole_sort typ =
 
 type ctx_dot_candidate =
   { module_name : T.lab;
+    path : exp;
     func_ty : T.typ;
     inst : T.typ list;
-    module_ty : T.typ;
   }
 
 (** Searches for contextual resolutions for [name] on a given
@@ -1539,19 +1539,29 @@ let contextual_dot env name receiver_ty =
        | Some inst -> Some (typ, inst)
        | _ -> None)
     | _ -> None in
-  let find_candidate (module_name, (module_ty, fs)) =
+  let find_candidate in_libs (module_name, (module_ty, fs)) =
     List.find_map is_matching_func fs |>
-      Option.map (fun (func_ty, inst) -> { module_name; func_ty; module_ty; inst }) in
-  let candidates xs f =
+      Option.map (fun (func_ty, inst) ->
+        let path = {
+          it = DotE({
+              it = module_exp in_libs env module_name;
+              at = name.at;
+              note = empty_typ_note
+            }, name, ref None);
+          at = name.at;
+          note = empty_typ_note }
+        in
+        { module_name; path; func_ty; inst }) in
+  let candidates in_libs xs f =
     T.Env.to_seq xs |>
       Seq.filter_map f |>
       Seq.filter has_matching_self_type |>
-      Seq.filter_map find_candidate |>
+      Seq.filter_map (find_candidate in_libs) |>
       List.of_seq in
-  match candidates env.vals is_val_module with
+  match candidates false env.vals is_val_module with
   | [oc] -> Ok oc
   | [] ->
-    (match candidates env.libs is_lib_module with
+    (match candidates true env.libs is_lib_module with
     | [oc] when !Flags.implicit_lib_vals -> Ok oc
     | lib_candidates ->
       Error (List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)
@@ -2540,19 +2550,11 @@ and infer_callee env exp =
       | Error suggestions ->
          let sug = Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
          Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
-      | Ok { module_name; module_ty; func_ty; inst; } ->
-         if not env.pre then
-         use_identifier env module_name;
-         note := Some {
-           it = DotE({
-               it = module_exp env module_name;
-               at = id.at;
-               note = { note_eff = T.Triv; note_typ = module_ty }
-             }, id, ref None);
-           at = id.at;
-           note = { note_eff = T.Triv; note_typ = func_ty }
-         };
-         func_ty, Some (exp1, t1, id.it, inst)
+      | Ok { module_name; path; func_ty; inst; } ->
+        note := Some path;
+        if not env.pre then
+          check_exp env func_ty path;
+        func_ty, Some (exp1, t1, id.it, inst)
      end
   | _ ->
      infer_exp_promote env exp, None
