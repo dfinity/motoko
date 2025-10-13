@@ -1805,7 +1805,7 @@ and infer_exp'' env exp : T.typ =
   | ObjE (exp_bases, exp_fields) ->
     infer_check_bases_fields env [] exp.at exp_bases exp_fields
   | DotE (exp1, id, _) ->
-    (match try_infer_dot_exp env exp.at exp1 id with
+    (match try_infer_dot_exp env exp.at exp1 id ("", (fun dot_typ -> true))  with
     | Ok t -> t
     | Error (_, mk_e) ->
       let e = mk_e() in
@@ -2130,7 +2130,7 @@ and infer_bin_exp env exp1 exp2 =
 (* Returns `Ok` when finding an object with a matching field or
    `Error` with the type of the receiver as well as the error message
    to report. This is used to delay the reporting for contextual dot resulution *)
-and try_infer_dot_exp env at exp id =
+and try_infer_dot_exp env at exp id (desc, pred) =
   let t0, t1 = infer_exp_and_promote env exp in
   let fields =
     try Ok(T.as_obj_sub [id.it] t1) with Invalid_argument _ ->
@@ -2146,15 +2146,30 @@ and try_infer_dot_exp env at exp id =
   match fields with
   | Error e -> Error e
   | Ok((s, tfs)) -> begin
+    let suggest () =
+      Suggest.suggest_id "field" id.it
+        (List.filter_map
+           (function
+              { T.typ=T.Typ _;_} -> None
+            | {T.lab;_} -> Some lab) tfs)
+    in
     match T.lookup_val_field id.it tfs with
     | T.Pre ->
       error env at "M0071"
         "cannot infer type of forward field reference %s"
         id.it
-    | t ->
+    | t when pred t ->
       if not env.pre then
         check_deprecation env at "field" id.it (T.lookup_val_deprecation id.it tfs);
       Ok(t)
+    | t (* when not (pred t) *) ->
+      Error(t1, fun () ->
+        type_error id.at "M0234"
+          (Format.asprintf "field %s does exist in %a\nbut is not %s.\n%s"
+             id.it
+             display_obj t0
+             desc
+             (suggest ())))
     | exception Invalid_argument _ ->
       Error(t1, fun () ->
         type_error id.at "M0072"
@@ -2574,9 +2589,14 @@ and detect_lost_fields env t = function
   | _ -> ()
 
 and infer_callee env exp =
+  let is_func_typ typ = T.(
+    match promote typ with
+    | Func _ | Non -> true
+    | _ -> false)
+  in
   match exp.it with
   | DotE(exp1, id, note) -> begin
-    match try_infer_dot_exp env exp.at exp1 id with
+    match try_infer_dot_exp env exp.at exp1 id ("a function", is_func_typ) with
     | Ok t -> infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
     | Error (t1, mk_e) ->
       match contextual_dot env id t1 with
