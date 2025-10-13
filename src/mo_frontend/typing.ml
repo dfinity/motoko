@@ -177,8 +177,15 @@ let display_obj fmt typ =
      if !Flags.ai_errors || (List.length fs) < 16 then
        Format.fprintf fmt "type:%a" display_typ_expand typ
      else
-       Format.fprintf fmt "%s." (String.trim(T.string_of_obj_sort s))
-  |  typ -> Format.fprintf fmt "type:%a" display_typ_expand typ
+       Format.fprintf fmt "%s."
+         T.(match s with
+          | Actor -> "actor"
+          | Module -> "module"
+          | Object -> "object"
+          (* these should not occur *)
+          | Mixin -> "mixin"
+          | Memory -> "memory")
+  | _ -> Format.fprintf fmt "type:%a" display_typ_expand typ
 
 let display_vals fmt vals =
   if !Flags.ai_errors then
