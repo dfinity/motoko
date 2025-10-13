@@ -1465,7 +1465,7 @@ let resolve_hole env at hole_sort typ =
             match candidate.path.it with
             | DotE({ it = ImplicitLibE mid | VarE {it = mid;_ }; _ }, _, _) ->
               ("the existing", mid)
-            | VarE _ | ImplicitLibE _ | _ ->
+            | VarE _ | _ ->
               let mid = match Lib.String.chop_prefix id candidate.id with
                 | Some suffix when not (T.Env.mem suffix env.vals) ->
                    suffix
@@ -2065,8 +2065,8 @@ and infer_exp'' env exp : T.typ =
     T.unit
   | ImportE (f, ri) ->
     check_import env exp.at f ri
-  | ImplicitLibE f ->
-    match T.Env.find_opt f env.libs with
+  | ImplicitLibE lib ->
+    match T.Env.find_opt lib env.libs with
     | Some t -> t
     | None -> failwith "ImplicitLibE not found in env.libs"
 
@@ -2421,10 +2421,7 @@ and check_exp' env0 t exp : T.typ =
     let {T.typ; _} = List.find (fun T.{lab; typ;_} -> lab = id.it) fs in
     check_exp env typ exp1;
     t
-  | ImportE _, t ->
-    t
-  | ImplicitLibE _, t ->
-    (* todo: check_sub t' t *)
+  | (ImportE _ | ImplicitLibE _), t ->
     t
   | e, _ ->
     let t' = infer_exp env0 exp in
@@ -4008,8 +4005,8 @@ and infer_val_path env exp : T.typ option =
     (match T.Env.find_opt id.it env.vals with (* TBR: return None for Unavailable? *)
      | Some (t, _, _, _) -> Some t
      | _ -> None)
-  | ImplicitLibE f ->
-    (match T.Env.find_opt f env.libs with
+  | ImplicitLibE lib ->
+    (match T.Env.find_opt lib env.libs with
     | Some t -> Some t
     | None -> None)
   | DotE (path, id, _) ->
