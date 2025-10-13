@@ -1807,7 +1807,8 @@ and infer_exp'' env exp : T.typ =
   | DotE (exp1, id, _) ->
     (match try_infer_dot_exp env exp.at exp1 id with
     | Ok t -> t
-    | Error (_, e) ->
+    | Error (_, mk_e) ->
+      let e = mk_e() in
       Diag.add_msg env.msgs e;
       raise Recover)
   | AssignE (exp1, exp2) ->
@@ -2136,9 +2137,11 @@ and try_infer_dot_exp env at exp id =
     try Ok(array_obj (T.as_array_sub t1)) with Invalid_argument _ ->
     try Ok(blob_obj (T.as_prim_sub T.Blob t1)) with Invalid_argument _ ->
     try Ok(text_obj (T.as_prim_sub T.Text t1)) with Invalid_argument _ ->
-      Error(t1, type_error exp.at "M0070" (Format.asprintf
-              "expected object type, but expression produces type%a"
-              display_typ_expand t0))
+      Error(t1, fun () ->
+        type_error exp.at "M0070"
+          (Format.asprintf
+             "expected object type, but expression produces type%a"
+             display_typ_expand t0))
   in
   match fields with
   | Error e -> Error e
@@ -2153,14 +2156,16 @@ and try_infer_dot_exp env at exp id =
         check_deprecation env at "field" id.it (T.lookup_val_deprecation id.it tfs);
       Ok(t)
     | exception Invalid_argument _ ->
-      Error(t1, type_error id.at "M0072" (Format.asprintf "field %s does not exist in %a%s"
-          id.it
-          display_obj t0
-          (Suggest.suggest_id "field" id.it
-             (List.filter_map
-                (function
-                   { T.typ=T.Typ _;_} -> None
-                 | {T.lab;_} -> Some lab) tfs))))
+      Error(t1, fun () ->
+        type_error id.at "M0072"
+          (Format.asprintf "field %s does not exist in %a%s"
+             id.it
+             display_obj t0
+             (Suggest.suggest_id "field" id.it
+                (List.filter_map
+                   (function
+                      { T.typ=T.Typ _;_} -> None
+                    | {T.lab;_} -> Some lab) tfs))))
     end
 
 and infer_exp_field env rf =
@@ -2573,12 +2578,14 @@ and infer_callee env exp =
   | DotE(exp1, id, note) -> begin
     match try_infer_dot_exp env exp.at exp1 id with
     | Ok t -> infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
-    | Error (t1, e) ->
+    | Error (t1, mk_e) ->
       match contextual_dot env id t1 with
       | Error [] ->
+         let e = mk_e () in
          let sug = "\nHint: If you're trying to use a contextual call you need to import the corresponding module." in
          Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
       | Error suggestions ->
+         let e = mk_e () in
          let sug = Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
          Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
       | Ok { module_name; module_ty; func_ty; inst; } ->
