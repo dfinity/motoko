@@ -43,6 +43,7 @@ let
         type != "directory"
         || hasPrefix "${dir}/" "${relPath}/"
         || hasPrefix "core-stub/" "${relPath}/";
+        || hasPrefix "base-stub/" "${relPath}/";
       src = ../test;
       name = "test-${dir}-src";
     };
