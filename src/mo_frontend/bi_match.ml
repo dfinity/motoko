@@ -441,7 +441,7 @@ let solve ctx (ts1, ts2) must_solve =
           Format.asprintf "%a" display_rel (t1, "<:", t2))
           tts))))
 
-let bi_match_subs scope_opt tbs typ_opt =
+let bi_match_subs scope_opt tbs (partial_inst_opt : typ option list option) typ_opt =
   (* Create a fresh constructor for each type parameter.
    * These constructors are used as type variables.
    *)
@@ -476,6 +476,18 @@ let bi_match_subs scope_opt tbs typ_opt =
     | _, _ ->
       l,
       u
+  in
+
+  (* Fix the bounds from the partial instantiation *)
+  let l, u = match partial_inst_opt with
+    | None -> l, u
+    | Some partial_inst ->
+      List.fold_left2 (fun (l, u) c typ_opt ->
+        match typ_opt with
+        | None -> l, u
+        | Some t ->
+          ConEnv.add c t l, ConEnv.add c t u
+      ) (l, u) cs partial_inst
   in
 
   (* Compute the variances using the optional return type.

@@ -743,12 +743,32 @@ let infer_class_cap env obj_sort (tbs : T.bind list) cs =
   | _ ->
     C.NullCap, tbs, cs
 
+let check_typ_args_count env tbs ts ats at =
+  let pars = List.length tbs in
+  let args = List.length ts in
+  if pars <> args then
+    let consider_scope x = match tbs with
+      | hd :: _ when hd.T.sort = T.Scope -> x - 1
+      | _ -> x in
+    error env at "M0045"
+      "wrong number of type arguments: expected %d but got %d"
+      (consider_scope pars)
+      (consider_scope args)
+
 (* Types *)
 
 let rec check_typ env (typ : typ) : T.typ =
   let t = check_typ' env typ in
   typ.note <- t;
   t
+
+and check_typ_or_wildcard env (typ : typ_or_wildcard) : T.typ option =
+  match typ.it with
+  | None -> None
+  | Some typ' ->
+    let ty = check_typ' env { typ with it = typ' } in
+    typ.note <- ty;
+    Some ty
 
 and check_typ_item env typ_item =
   match typ_item with
@@ -958,17 +978,7 @@ and check_typ_bind env typ_bind : T.con * T.bind * Scope.typ_env * Scope.con_env
   | _ -> assert false
 
 and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) ats at =
-  let pars = List.length tbs in
-  let args = List.length ts in
-  if pars <> args then begin
-    let consider_scope x = match tbs with
-      | hd :: _ when hd.T.sort = T.Scope -> x - 1
-      | _ -> x in
-    error env at "M0045"
-      "wrong number of type arguments: expected %d but got %d"
-      (consider_scope pars)
-      (consider_scope args)
-    end;
+  check_typ_args_count env tbs ts ats at;
   let rec go tbs' ts' ats' =
     match tbs', ts', ats' with
     | tb::tbs', t::ts', at'::ats' ->
@@ -998,26 +1008,24 @@ and check_con_env env at ce =
     error env at "M0156" "block contains expansive type definitions%s" msg
   end;
 
-and infer_inst env sort tbs typs t_ret at =
-  let ts = List.map (check_typ env) typs in
-  let ats = List.map (fun typ -> typ.at) typs in
-  match tbs, typs with
-  | {T.bound; sort = T.Scope; _}::tbs', typs' ->
+and check_tbs_scopes env sort tbs t_ret at =
+  match tbs with
+  | {T.bound; sort = T.Scope; _}::tbs' ->
     assert (List.for_all (fun tb -> tb.T.sort = T.Type) tbs');
     (match env.async with
      | cap when sort = T.Local && not (T.is_async t_ret) ->
        begin
          match cap with
          | C.(SystemCap c | AwaitCap c | AsyncCap c) ->
-           (T.Con(c, [])::ts, at::ats)
+           Some (T.Con(c, []), at)
          | _ ->
           if not env.pre then
             local_error env at "M0197"
               "`system` capability required, but not available\n (need an enclosing async expression or function body or explicit `system` type parameter)";
-          (T.Con(C.bogus_cap, [])::ts, at::ats)
+          Some (T.Con(C.bogus_cap, []), at)
        end
      | C.(AwaitCap c | AsyncCap c) when T.(sort = Shared Query || sort = Shared Write || sort = Local) ->
-        (T.Con(c, [])::ts, at::ats)
+        Some (T.Con(c, []), at)
      | C.(AwaitCap c | AsyncCap c) when sort = T.(Shared Composite) ->
         error env at "M0186"
          "composite send capability required, but not available\n  (cannot call a `composite query` function from a non-`composite query` function)"
@@ -1025,7 +1033,7 @@ and infer_inst env sort tbs typs t_ret at =
        begin
          match sort with
          | T.(Shared (Composite | Query)) ->
-           (T.Con(c, [])::ts, at::ats)
+           Some (T.Con(c, []), at)
          | T.(Shared Write | Local) ->
            error env at "M0187"
              "send capability required, but not available\n  (cannot call a `shared` function from a `composite query` function; only calls to `query` and `composite query` functions are allowed)"
@@ -1039,15 +1047,26 @@ and infer_inst env sort tbs typs t_ret at =
         error env at "M0047"
           "send capability required, but not available\n (need an enclosing async expression or function body)"
     )
-  | tbs', typs' ->
-    assert (List.for_all (fun tb -> tb.T.sort = T.Type) tbs');
-    ts, ats
+  | _ ->
+    assert (List.for_all (fun tb -> tb.T.sort = T.Type) tbs);
+    None
 
-and check_inst_bounds env sort tbs inst t_ret at =
-  let ts, ats = infer_inst env sort tbs inst t_ret at in
-  check_typ_bounds env tbs ts ats at;
-  ts
+and infer_inst env sort tbs (typs : typ_or_wildcard list) t_ret at =
+  let ts = List.map (check_typ_or_wildcard env) typs in
+  let ats = List.map (fun typ -> typ.at) typs in
+  match check_tbs_scopes env sort tbs t_ret at with
+  | Some (t, at) -> (Some t :: ts, at :: ats)
+  | None -> ts, ats
 
+and check_inst_bounds env sort tbs (inst : typ_or_wildcard list) t_ret at =
+  let partial_ts, ats = infer_inst env sort tbs inst t_ret at in
+  match List.filter_map Fun.id partial_ts with
+  | ts when List.length ts = List.length partial_ts ->
+    check_typ_bounds env tbs ts ats at;
+    Ok ts
+  | _ ->
+    check_typ_args_count env tbs partial_ts ats at;
+    Error (partial_ts, ats)
 
 (* Subgrammar of explicitly typed expressions *)
 
@@ -1553,7 +1572,7 @@ let contextual_dot env name receiver_ty =
   (* Does an instantiation for [tbs] exist that makes [t1] <: [t2]? *)
   let permissive_sub t1 (tbs, t2) =
     try
-      let (inst, c) = Bi_match.bi_match_subs None tbs None [t1, t2] [] in
+      let (inst, c) = Bi_match.bi_match_subs None tbs None None [t1, t2] [] in
       ignore (Bi_match.finalize inst c []);
       Some inst
     with _ ->
@@ -2728,17 +2747,22 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     | _, Some _ ->
       (* explicit instantiation, check argument against instantiated domain *)
       let typs = match inst.it with None -> [] | Some (_, typs) -> typs in
-      let ts = check_inst_bounds env sort tbs typs t_ret at in
-      let t_arg' = T.open_ ts t_arg in
-      let t_ret' = T.open_ ts t_ret in
-      if not env.pre then check_exp_strong env t_arg' exp2
-      else if typs <> [] && Flags.is_warning_enabled "M0223" &&
-        is_redundant_instantiation ts env (fun env' ->
-          infer_call_instantiation env' t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
-            warn env inst.at "M0223" "redundant type instantiation";
-      ts, t_arg', t_ret'
+      (match check_inst_bounds env sort tbs typs t_ret at with
+      | Error (typ_opts, _) ->
+        let partial_inst = if List.for_all Option.is_none typ_opts then None else Some typ_opts in
+        infer_call_instantiation env t1 ctx_dot tbs partial_inst t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
+      | Ok ts ->
+        let t_arg' = T.open_ ts t_arg in
+        let t_ret' = T.open_ ts t_ret in
+        if not env.pre then check_exp_strong env t_arg' exp2
+        else if typs <> [] && Flags.is_warning_enabled "M0223" &&
+          is_redundant_instantiation ts env (fun env' ->
+            infer_call_instantiation env' t1 ctx_dot tbs None t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
+              warn env inst.at "M0223" "redundant type instantiation";
+        ts, t_arg', t_ret'
+      )
     | _::_, None -> (* implicit, infer *)
-      infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
+      infer_call_instantiation env t1 ctx_dot tbs None t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
   inst.note <- ts;
   if not env.pre then begin
@@ -2778,7 +2802,7 @@ and wrong_call_args env tbs at t_args implicits_arity syntax_args =
     display_expected_arg_types expected_types
     display_given_arg_types given_types
 
-and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems =
+and infer_call_instantiation env t1 ctx_dot tbs partial_inst_opt t_arg t_ret exp2 at t_expect_opt extra_subtype_problems =
   (*
   Partial Argument Inference:
   We need to infer the type of the argument and find the best instantiation for the call expression.
@@ -2838,6 +2862,11 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
       | None -> T.open_binds tbs
       | Some ts -> ts
     in
+    let ts = 
+      match partial_inst_opt with
+      | None -> ts
+      | Some partial_inst -> List.map2 (fun t -> Option.value ~default:t) ts partial_inst
+    in
     T.open_ ts t
   in
 
@@ -2852,7 +2881,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
     (* i.e. exists minimal ts .
             t2 <: open_ ts t_arg /\
             t_expect_opt == Some t -> open ts_ t_ret <: t *)
-    let (ts, remaining) = Bi_match.bi_match_subs (scope_of_env env) tbs ret_typ_opt subs must_solve in
+    let (ts, remaining) = Bi_match.bi_match_subs (scope_of_env env) tbs partial_inst_opt ret_typ_opt subs must_solve in
 
     (* A partial solution for a better error message in case of an error *)
     err_ts := Some ts;
