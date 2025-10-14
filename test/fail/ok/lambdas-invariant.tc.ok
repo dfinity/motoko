@@ -2,39 +2,79 @@ lambdas-invariant.mo:34.11-34.48: type error [M0098], cannot apply function of t
   ([var Nat], Nat -> C<U>) -> [var U]
 to argument of type
   ([var Nat], Nat -> C<U>)
+because type parameter U have no best solution
+Add a return type annotation or an explicit type instantiation
+Suggested return type annotation : 
+  [var Int]
 lambdas-invariant.mo:50.11-50.39: type error [M0098], cannot apply function of type
   ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
+because type parameter U have no best solution
+Add a return type annotation or an explicit type instantiation
+Suggested return type annotation : 
+  [var Nat]
 lambdas-invariant.mo:53.11-53.42: type error [M0098], cannot apply function of type
   ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
+because type parameter U have no best solution
+Add a return type annotation or an explicit type instantiation
+Suggested return type annotation : 
+  [var Null]
 lambdas-invariant.mo:56.11-56.40: type error [M0098], cannot apply function of type
   ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
+because type parameter U have no best solution
+Add a return type annotation or an explicit type instantiation
+Suggested return type annotation : 
+  [var ?Nat]
 lambdas-invariant.mo:59.11-59.41: type error [M0098], cannot apply function of type
   ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
+because type parameter U have no best solution
+Add a return type annotation or an explicit type instantiation
+Suggested return type annotation : 
+  [var [Nat]]
 lambdas-invariant.mo:62.11-62.43: type error [M0098], cannot apply function of type
   ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
+because type parameter U have no best solution
+Add a return type annotation or an explicit type instantiation
+Suggested return type annotation : 
+  [var {x : Nat}]
 lambdas-invariant.mo:65.11-65.43: type error [M0098], cannot apply function of type
   ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
+because type parameter U have no best solution
+Add a return type annotation or an explicit type instantiation
+Suggested return type annotation : 
+  [var {#c : Nat}]
 lambdas-invariant.mo:78.11-78.39: type error [M0098], cannot apply function of type
   ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
+because type parameter U have no best solution
+Add a return type annotation or an explicit type instantiation
+Suggested return type annotation : 
+  [var Er]
 lambdas-invariant.mo:82.11-82.39: type error [M0098], cannot apply function of type
   ([var Nat], Nat -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
+because type parameter U have no best solution
+Add a return type annotation or an explicit type instantiation
+Suggested return type annotation : 
+  [var Er]
 lambdas-invariant.mo:86.11-86.48: type error [M0098], cannot apply function of type
   ([var Nat], Nat -> (U1, U2)) -> [var (U1, U2)]
 to argument of type
   ([var Nat], Nat -> (U1, U2))
+because type parameters U2, U1 have no best solution
+Add a return type annotation or an explicit type instantiation
+Suggested return type annotation : 
+  [var (Nat, Null)]

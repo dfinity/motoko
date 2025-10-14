@@ -4,18 +4,40 @@ to argument of type
   Text
 to produce result of expected type
   Text
+because there is no way to satisfy 
+  {map : [(Nat, [var Text])]}  <:  (map : Map<K, V>)
+and
+  Text  <:  (n : K)
+and
+  ?V  <:  Text
 inf-error-small.mo:45.13-45.47: type error [M0098], cannot apply function `.get` of type
   (compare : (implicit : (Nat, Nat) -> Order), n : Nat) -> ?Text
 to argument of type
   ((n : Nat, m : Nat) -> Order, Text)
 to produce result of expected type
   Text
+because there is no way to satisfy 
+  {map : [(Nat, [var Text])]}  <:  (map : Map<K, V>)
+and
+  (n : Nat, m : Nat) -> Order  <:  (compare : (implicit : (K, K) -> Order))
+and
+  Text  <:  (n : K)
+and
+  ?V  <:  Text
 inf-error-small.mo:47.13-47.45: type error [M0098], cannot apply function `.get` of type
   (compare : (implicit : (Nat, Nat) -> Order), n : Nat) -> ?Text
 to argument of type
   ({map : [(Nat, [var Text])]}, Text)
 to produce result of expected type
   Text
+because there is no way to satisfy 
+  {map : [(Nat, [var Text])]}  <:  (map : Map<K, V>)
+and
+  {map : [(Nat, [var Text])]}  <:  (compare : (implicit : (K, K) -> Order))
+and
+  Text  <:  (n : K)
+and
+  ?V  <:  Text
 inf-error-small.mo:48.26-48.58: type error [M0233], wrong number of arguments: expected 1 but got 3
 Expected 1 argument of type:
   (n : K)
@@ -29,9 +51,23 @@ to argument of type
   ({map : [(Nat, [var Text])]}, Text)
 to produce result of expected type
   Text
+because there is no way to satisfy 
+  {map : [(Nat, [var Text])]}  <:  (map : Map<K, V>)
+and
+  {map : [(Nat, [var Text])]}  <:  (compare : (implicit : (K, K) -> Order))
+and
+  Text  <:  (n : K)
+and
+  ?V  <:  Text
 inf-error-small.mo:51.13-51.29: type error [M0098], cannot apply function `.get` of type
   (n : Nat) -> ?Text
 to argument of type
   Nat
 to produce result of expected type
   Bool
+because there is no way to satisfy 
+  {map : [(Nat, [var Text])]}  <:  (map : Map<K, V>)
+and
+  Nat  <:  (n : K)
+and
+  ?V  <:  Bool

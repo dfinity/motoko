@@ -147,40 +147,48 @@ end = struct
   type t = (typ * con * typ) list ref
   let empty () = ref []
   let add t lb c ub = t := (lb, c, ub) :: !t
-  let to_string t = 
+  let to_string t =
     let parts = List.rev !t in
     if parts = [] then "" else
-    Format.asprintf
-      "cannot solve invariant type parameter%s %s, no principal solution with%a\nwhere%a"
-      (if List.length parts > 1 then "s" else "")
-      (String.concat ", " (List.map (fun (_, c, _) -> Cons.name c) parts))
-      display_constraints parts
-      display_rels (List.map (fun (lb, _, ub) -> (lb,"=/=",ub)) parts)
+      if debug then begin
+        Format.asprintf
+          "cannot solve invariant type parameter%s %s, no principal solution with%a\nwhere%a"
+          (if List.length parts > 1 then "s" else "")
+          (String.concat ", " (List.map (fun (_, c, _) -> Cons.name c) parts))
+          display_constraints parts
+          display_rels (List.map (fun (lb, _, ub) -> (lb,"=/=",ub)) parts)
+        end
+      else
+        Format.asprintf
+          "type parameter%s %s have no best solution"
+          (if List.length parts > 1 then "s" else "")
+          (String.concat ", " (List.map (fun (_, c, _) -> Cons.name c) parts))
+
 end
 
 let fail_under_constrained lb c ub =
-(*  if debug then *)
+  if debug then
     raise (Bimatch (Format.asprintf
       "implicit instantiation of type parameter `%s` is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
       (Cons.name c)
       display_constraint (lb, c, ub)
       display_rel (lb,"=/=",ub)))
-(*  else
+  else
     raise (Bimatch (Format.asprintf
       "type parameter `%s` has no best solution, please provide an explicit instantiation."
-      (Cons.name c))) *)
+      (Cons.name c)))
 
 let fail_over_constrained lb c ub =
-(*  if debug then *)
+  if debug then
     raise (Bimatch (Format.asprintf
       "implicit instantiation of type parameter `%s` is over-constrained with%a\nwhere%a\nso that no valid instantiation exists"
       (Cons.name c)
       display_constraint (lb, c, ub)
       display_rel (lb, "</:", ub)))
-(*  else
+  else
     raise (Bimatch (Format.asprintf
       "type parameter `%s` has no solution. Maybe try an explicit instantiation."
-      (Cons.name c))) *)
+      (Cons.name c)))
 
 let choose_under_constrained ctx er lb c ub =
   match ConEnv.find c ctx.variances with
@@ -486,16 +494,26 @@ let solve ctx (ts1, ts2) must_solve =
         instantiation))
     end
   | None ->
-    let tts =
-      List.filter (fun (t1, t2) -> not (sub t1 t2)) (List.combine ts1 ts2)
+    let tts = List.rev (
+      List.filter (fun (t1, t2) -> not (sub t1 t2)) (List.combine ts1 ts2))
     in
-    raise (Bimatch (Format.asprintf
-      "no instantiation of %s makes%s"
-      (String.concat ", " (List.map string_of_con ctx.var_list))
-      (String.concat "\nand"
-        (List.map (fun (t1, t2) ->
-          Format.asprintf "%a" display_rel (t1, "<:", t2))
-          tts))))
+    raise (if debug
+      then
+        Bimatch (Format.asprintf
+                    "no instantiation of %s makes%s"
+                    (String.concat ", " (List.map string_of_con ctx.var_list))
+                    (String.concat "\nand"
+                       (List.map (fun (t1, t2) ->
+                            Format.asprintf "%a" display_rel (t1, "<:", t2))
+                          tts)))
+      else
+        Bimatch (Format.asprintf
+                    "there is no way to satisfy %s"
+                    (String.concat "\nand"
+                       (List.map (fun (t1, t2) ->
+                            Format.asprintf "%a" display_rel (t1, "<:", t2))
+                          tts))))
+
 
 let bi_match_subs scope_opt tbs ret_typ =
   (* Create a fresh constructor for each type parameter.
