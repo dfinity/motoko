@@ -164,7 +164,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           ref: 'master'
-      - name: Automatically closing successful trials
+      - name: Fooling around
         env:
           GH_TOKEN: ${{ github.token }}
           OUTPUT: ${{ toJson(github.event.pull_request) }}
