@@ -29,16 +29,6 @@ type visibility_env = visibility_src T.Env.t * visibility_src T.Env.t
 
 let available env = T.Env.map (fun (ty, at, kind) -> (ty, at, kind, Available)) env
 
-(* When AI errors are enabled, expose modules from libs as value bindings so they
-   can participate in contextual resolution and environment display. *)
-let lib_modules_as_vals (libs : Scope.lib_env) : val_env =
-  T.Env.fold (fun id ty acc ->
-    match T.normalize ty with
-    | T.Obj (T.Module, _) ->
-      T.Env.add ("file$" ^ id) (ty, Source.no_region, Scope.Declaration, Available) acc
-    | _ -> acc
-  ) libs T.Env.empty
-
 let initial_scope =
   { Scope.empty with
     Scope.typ_env = T.Env.singleton T.default_scope_var C.top_cap;
@@ -49,7 +39,6 @@ type unused_warnings = (string * Source.region * Scope.val_kind) List.t
 
 type env =
   { vals : val_env;
-    implicit_lib_vals : val_env;
     libs : Scope.lib_env;
     typs : Scope.typ_env;
     cons : Scope.con_env;
@@ -79,10 +68,8 @@ type env =
   }
 
 let env_of_scope ?(viper_mode=false) msgs scope =
-  let libs = scope.Scope.lib_env in
   { vals = available scope.Scope.val_env;
-    implicit_lib_vals = if !Flags.implicit_lib_vals then lib_modules_as_vals libs else T.Env.empty;
-    libs = libs;
+    libs = scope.Scope.lib_env;
     mixins = scope.Scope.mixin_env;
     typs = scope.Scope.typ_env;
     cons = scope.Scope.con_env;
@@ -496,12 +483,6 @@ let check_import env at f ri =
 
 
 (* Paths *)
-
-let find_id env id =
-  match T.Env.find_opt id.it env.vals with
-  | None when !Flags.implicit_lib_vals ->
-    T.Env.find_opt id.it env.implicit_lib_vals
-  | o -> o
 
 let rec check_obj_path env path : T.obj_sort * (T.field list) =
   match T.promote (check_obj_path' env path) with
@@ -1102,7 +1083,7 @@ let rec is_explicit_exp e =
   | RelE _ | NotE _ | AndE _ | OrE _ | ImpliesE _ | OldE _ | ShowE _ | ToCandidE _ | FromCandidE _
   | AssignE _ | IgnoreE _ | AssertE _ | DebugE _
   | WhileE _ | ForE _
-  | AnnotE _ | ImportE _ ->
+  | AnnotE _ | ImportE _ | ImplicitLibE _ ->
     true
   | LitE l -> is_explicit_lit !l
   | UnE (_, _, e1) | OptE e1 | DoOptE e1
@@ -1396,10 +1377,19 @@ let disambiguate_resolutions (candidates : hole_candidate list) =
   | [dom] -> Some dom
   | _ -> None
 
-let is_module (n, ((t, _, _, _) : val_info)) = 
+let is_lib_module (n, t) =
   match T.normalize t with
   | T.Obj (T.Module, fs) -> Some (n, (t, fs))
   | _ -> None
+
+let is_val_module (n, ((t, _, _, _) : val_info)) =
+  is_lib_module (n, t)
+
+let module_exp in_libs env module_name =
+  if not in_libs then
+    VarE {it = module_name; at = no_region; note = Const}
+  else
+    ImplicitLibE module_name
 
 (** Searches for hole resolutions for [name] on a given [hole_sort] and [typ].
     Returns [Ok(candidate)] when a single resolution is
@@ -1424,12 +1414,12 @@ let resolve_hole env at hole_sort typ =
        then Some (lab1, typ1, src.T.region)
        else None
   in
-  let find_candidate_fields (module_name, (_, fs)) =
+  let find_candidate_fields in_libs (module_name, (_, fs)) =
     List.filter_map has_matching_field_typ fs |>
       List.map (fun (lab, typ, region)->
           let path =
             { it = DotE(
-                { it = VarE {it = module_name; at = no_region; note = Const};
+                { it = module_exp in_libs env module_name;
                   at = Source.no_region;
                   note = empty_typ_note
                 },
@@ -1458,30 +1448,19 @@ let resolve_hole env at hole_sort typ =
       List.of_seq |>
       List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
   in
-  let eligible_fields vals =
-    T.Env.to_seq vals |>
-      Seq.filter_map is_module |>
-      Seq.map find_candidate_fields |>
+  let candidates in_libs xs f =
+    T.Env.to_seq xs |>
+      Seq.filter_map f |>
+      Seq.map (find_candidate_fields in_libs) |>
       List.of_seq |>
       List.flatten |>
       List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
-  in
-  let lib_fields () =
-    T.Env.to_seq env.libs |>
-      Seq.filter_map (fun (n, t) ->
-        match T.normalize t with
-        | T.Obj (T.Module, fs) -> Some (n, (t, fs))
-        | _ -> None) |>
-      Seq.map find_candidate_fields |>
-      List.of_seq |>
-      List.flatten |>
-      List.partition (fun (candidate : hole_candidate) -> is_matching_lab candidate.id)
   in
   let eligible_terms, explicit_terms  =
     match eligible_ids with
     | [id] -> ([id], []) (* first look in local env, otherwise consider module entries *)
     | _ ->
-       let (eligible_fields, explicit_fields) = eligible_fields env.vals in
+       let (eligible_fields, explicit_fields) = candidates false env.vals is_val_module in
        (eligible_ids @ eligible_fields,
         explicit_ids @ explicit_fields)
   in
@@ -1513,10 +1492,10 @@ let resolve_hole env at hole_sort typ =
   match eligible_terms with
   | [term] -> Ok term
   | [] ->
-    (match disambiguate_resolutions (fst (eligible_fields env.implicit_lib_vals)) with
+    let (lib_terms, _) = candidates true env.libs is_lib_module in
+    (match if !Flags.implicit_lib_vals then disambiguate_resolutions lib_terms else None with
     | Some term -> Ok term
     | None ->
-      let (lib_terms, _) = lib_fields () in
       Error (List.map suggestion_of_candidate lib_terms,
               List.map (fun candidate -> candidate.desc) explicit_terms,
               renaming_hints)
@@ -1538,9 +1517,9 @@ let resolve_hole env at hole_sort typ =
 
 type ctx_dot_candidate =
   { module_name : T.lab;
+    path : exp;
     func_ty : T.typ;
     inst : T.typ list;
-    module_ty : T.typ;
   }
 
 (** Searches for contextual resolutions for [name] on a given
@@ -1571,30 +1550,31 @@ let contextual_dot env name receiver_ty =
        | Some inst -> Some (typ, inst)
        | _ -> None)
     | _ -> None in
-  let find_candidate (module_name, (module_ty, fs)) =
+  let find_candidate in_libs (module_name, (module_ty, fs)) =
     List.find_map is_matching_func fs |>
-      Option.map (fun (func_ty, inst) -> { module_name; func_ty; module_ty; inst }) in
-  let eligible_funcs vals =
-    T.Env.to_seq vals |>
-      Seq.filter_map is_module |>
+      Option.map (fun (func_ty, inst) ->
+        let path = {
+          it = DotE({
+              it = module_exp in_libs env module_name;
+              at = name.at;
+              note = empty_typ_note
+            }, name, ref None);
+          at = name.at;
+          note = empty_typ_note }
+        in
+        { module_name; path; func_ty; inst }) in
+  let candidates in_libs xs f =
+    T.Env.to_seq xs |>
+      Seq.filter_map f |>
       Seq.filter has_matching_self_type |>
-      Seq.filter_map find_candidate |>
+      Seq.filter_map (find_candidate in_libs) |>
       List.of_seq in
-  match eligible_funcs env.vals with
+  match candidates false env.vals is_val_module with
   | [oc] -> Ok oc
   | [] ->
-    (match eligible_funcs env.implicit_lib_vals with
-    | [oc] -> Ok oc
-    | _ ->
-      let lib_candidates =
-        T.Env.to_seq env.libs |>
-          Seq.filter_map (fun (n, t) ->
-              match t with
-              | T.Obj (T.Module, fs) -> Some (n, (t, fs))
-              | _ -> None) |>
-          Seq.filter has_matching_self_type |>
-          Seq.filter_map find_candidate |>
-          List.of_seq in
+    (match candidates true env.libs is_lib_module with
+    | [oc] when !Flags.implicit_lib_vals -> Ok oc
+    | lib_candidates ->
       Error (List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)
     )
   | ocs ->
@@ -1647,7 +1627,7 @@ and infer_exp'' env exp : T.typ =
     error env exp.at "M0054" "cannot infer type of primitive"
   | VarE id ->
     use_identifier env id.it;
-    (match find_id env id with
+    (match T.Env.find_opt id.it env.vals with
     | Some (T.Pre, _, _, _) ->
       error env id.at "M0055" "cannot infer type of forward variable %s" id.it;
     | Some (t, _, _, Unavailable) ->
@@ -2111,6 +2091,10 @@ and infer_exp'' env exp : T.typ =
     T.unit
   | ImportE (f, ri) ->
     check_import env exp.at f ri
+  | ImplicitLibE lib ->
+    match T.Env.find_opt lib env.libs with
+    | Some t -> t
+    | None -> failwith "ImplicitLibE not found in env.libs"
 
 and infer_bin_exp env exp1 exp2 =
   match is_explicit_exp exp1, is_explicit_exp exp2 with
@@ -2482,7 +2466,7 @@ and check_exp' env0 t exp : T.typ =
     let {T.typ; _} = List.find (fun T.{lab; typ;_} -> lab = id.it) fs in
     check_exp env typ exp1;
     t
-  | ImportE _, t ->
+  | (ImportE _ | ImplicitLibE _), t ->
     t
   | e, _ ->
     let t' = infer_exp env0 exp in
@@ -2608,19 +2592,11 @@ and infer_callee env exp =
          let e = mk_e () in
          let sug = Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
          Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
-      | Ok { module_name; module_ty; func_ty; inst; } ->
-         if not env.pre then
-         use_identifier env module_name;
-         note := Some {
-           it = DotE({
-               it = VarE { it = module_name; at = no_region; note = Const };
-               at = id.at;
-               note = { note_eff = T.Triv; note_typ = module_ty }
-             }, id, ref None);
-           at = id.at;
-           note = { note_eff = T.Triv; note_typ = func_ty }
-         };
-         func_ty, Some (exp1, t1, id.it, inst)
+      | Ok { module_name; path; func_ty; inst; } ->
+        note := Some path;
+        if not env.pre then
+          check_exp env func_ty path;
+        func_ty, Some (exp1, t1, id.it, inst)
      end
   | _ ->
      infer_exp_promote env exp, None
@@ -4070,9 +4046,13 @@ and infer_val_path env exp : T.typ option =
   | ImportE (f, ri) ->
     Some (check_import env exp.at f ri)
   | VarE id ->
-    (match find_id env id with (* TBR: return None for Unavailable? *)
+    (match T.Env.find_opt id.it env.vals with (* TBR: return None for Unavailable? *)
      | Some (t, _, _, _) -> Some t
      | _ -> None)
+  | ImplicitLibE lib ->
+    (match T.Env.find_opt lib env.libs with
+    | Some t -> Some t
+    | None -> None)
   | DotE (path, id, _) ->
     (match infer_val_path env path with
      | None -> None

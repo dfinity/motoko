@@ -43,7 +43,3 @@ mainInt();
 mainCompareText();
 // mainCompareNat();
 mainCompareInt();
-
-//SKIP run-low
-//SKIP run
-//SKIP run-ir
