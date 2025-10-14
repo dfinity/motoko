@@ -14,12 +14,6 @@ pull_request_rules:
       review:
         type: APPROVE
         message: This bot trusts that bot
-  - name: Auto-approve dependabot PR
-    conditions:
-      - -merged
-      - -closed
-      - files=doc/docusaurus/package-lock.json
-      - "#files=1"
     actions:
       review:
         type: APPROVE

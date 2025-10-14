@@ -171,6 +171,20 @@ jobs:
           && gh pr review ${{ github.event.pull_request.number }} --approve --body 'A change to `Changelog.md`? I can handle that!'
 
   approvals2:
+    if: github.event_name == 'pull_request' && github.event.pull_request.login == 'dependabot[bot]' && github.event.pull_request.state == 'open' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.base.ref == 'master' && github.event.pull_request.changed_files == 1 && contains(github.event.pull_request.labels.*.name, 'dependencies')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: 'master'
+      - name: Hand out approvals
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr diff ${{ github.event.pull_request.number }} | grep -E '^--- a/doc/docusaurus/package-lock.json$' \
+          && gh pr review ${{ github.event.pull_request.number }} --approve --body 'A change to `doc/docusaurus/package-lock.json`? I can handle that!'
+
+  approvals3:
     if: github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.base.ref == 'master' && github.event.pull_request.changed_files == 1 && contains(github.event.pull_request.labels.*.name, 'automerge-squash')
     runs-on: ubuntu-latest
     steps:
@@ -182,9 +196,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           OUTPUT: ${{ toJson(github.event.pull_request) }}
         run: |
-          echo "$OUTPUT" ${{ github.event.pull_request.base.ref }}
-          gh pr diff ${{ github.event.pull_request.number }} | grep -E '^--- a/doc/docusaurus/package-lock.json$' \
-          && gh pr review ${{ github.event.pull_request.number }} --approve --body 'A change to `doc/docusaurus/package-lock.json`? I can handle that!'
           gh pr diff ${{ github.event.pull_request.number }} | grep -E '^--- a/flake.lock$' \
           && gh pr review ${{ github.event.pull_request.number }} --approve --body 'A change to `flake.lock`? I can handle that!' \
           && gh pr merge --auto
