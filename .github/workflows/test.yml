@@ -171,4 +171,4 @@ jobs:
         run: |
           echo "$OUTPUT" ${{ github.event.pull_request.base.ref }}  ${{ github.event.pull_request.base.ref == 'master' }}
           gh pr diff | grep -- '--- a/.github/workflows/test.yml' \
-          && gh pr review --approve --body 'A change to `Changelog.md`? I can handle that!'
+          && gh pr review ${{ github.event.pull_request.number }} --approve --body 'A change to `Changelog.md`? I can handle that!'
