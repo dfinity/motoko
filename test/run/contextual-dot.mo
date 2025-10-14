@@ -1,38 +1,38 @@
 import ArrayExt "contextual-dot/ArrayExt";
 
 let Vec2 = module {
-  public type Self = { x : Nat; y : Nat };
+  public type Vec2 = { x : Nat; y : Nat };
 
-  public func add(v1 : Self, v2 : Self) : Self {
-    { x = v1.x + v2.x; y = v1.y + v2.y }
+  public func add(self : Vec2, v2 : Vec2) : Vec2 {
+    { x = self.x + v2.x; y = self.y + v2.y }
   };
 };
 
 let Vec3 = module {
-  public type Self = { x : Nat; y : Nat; z : Nat };
+  public type Vec3 = { x : Nat; y : Nat; z : Nat };
 
-  public func add(v1 : Self, v2 : Self) : Self {
-    { x = v1.x + v2.x; y = v1.y + v2.y; z = v1.z + v2.z }
+  public func add(self : Vec3, v2 : Vec3) : Vec3 {
+    { x = self.x + v2.x; y = self.y + v2.y; z = self.z + v2.z }
   };
 };
 
 module VarArrayExt {
-  public type Self<T> = [var T];
-
   public func first<T>(self : [var T]) : T = self[0];
-  public func map<A, B>(_self : [var A], _f : A -> B): [var B] {
+  public func map<A, B>(self : [var A], _f : A -> B): [var B] {
+    let _ = self;
     [var]
   };
   public func append<T>(self : [var T], _elem : T) : [var T] { self };
 };
 
 module MyArrayExt {
-  public type Self<T> = [T];
-  public func sum(_xs : [Int]) : Int { -42 };
+  public func sum(self : [Int]) : Int {
+    let _ = self;
+    -42
+  };
 };
 
 module NatExt {
-  public type Self = Nat;
   public func twice(self : Nat) : Nat { self * 2 };
 };
 

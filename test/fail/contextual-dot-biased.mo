@@ -5,11 +5,9 @@ module Map {
       var other: Nat
    };
 
-   public type Self<T, U> = Map<T, U>;
-
    public func empty<T, U>() : Map<T, U> = { var size = 0 };
 
-   public func size<T, U>(map : Map<T,U>) : Nat { map.size };
+   public func size<T, U>(self : Map<T,U>) : Nat { self.size };
 
 };
 

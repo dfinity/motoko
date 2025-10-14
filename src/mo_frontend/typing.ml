@@ -1396,7 +1396,7 @@ let disambiguate_resolutions (candidates : hole_candidate list) =
   | [dom] -> Some dom
   | _ -> None
 
-let is_module (n, ((t, _, _, _) : val_info)) = 
+let is_module (n, ((t, _, _, _) : val_info)) =
   match T.normalize t with
   | T.Obj (T.Module, fs) -> Some (n, (t, fs))
   | _ -> None
@@ -1413,7 +1413,7 @@ let resolve_hole env at hole_sort typ =
     | Named lab1 -> lab = lab1
     | Anon _ -> true
   in
-  
+
   let is_matching_typ typ1 = T.sub typ1 typ
   in
   let has_matching_field_typ = function
@@ -1558,15 +1558,8 @@ let contextual_dot env name receiver_ty =
       Some inst
     with _ ->
       None in
-  let has_matching_self tf = match tf with
-    | T.{ lab = "Self"; typ = T.Typ con; _ } ->
-       (match Cons.kind con with
-       | T.Def(tbs, t') -> permissive_sub receiver_ty (tbs, t') <> None
-       | _ -> false)
-    | _ -> false in
-  let has_matching_self_type (_, (_, fs)) = List.exists has_matching_self fs in
   let is_matching_func = function (* TODO: normalize first *)
-    | T.{ lab; typ = T.Func (_, _, tbs, first_arg::_, _) as typ; _ } when lab = name.it ->
+    | T.{ lab; typ = T.Func (_, _, tbs, T.Named("self", first_arg)::_, _) as typ; _ } when lab = name.it ->
       (match permissive_sub receiver_ty (tbs, first_arg) with
        | Some inst -> Some (typ, inst)
        | _ -> None)
@@ -1577,7 +1570,6 @@ let contextual_dot env name receiver_ty =
   let eligible_funcs vals =
     T.Env.to_seq vals |>
       Seq.filter_map is_module |>
-      Seq.filter has_matching_self_type |>
       Seq.filter_map find_candidate |>
       List.of_seq in
   match eligible_funcs env.vals with
@@ -1592,7 +1584,6 @@ let contextual_dot env name receiver_ty =
               match t with
               | T.Obj (T.Module, fs) -> Some (n, (t, fs))
               | _ -> None) |>
-          Seq.filter has_matching_self_type |>
           Seq.filter_map find_candidate |>
           List.of_seq in
       Error (List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)
