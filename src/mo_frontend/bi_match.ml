@@ -158,6 +158,30 @@ end = struct
       display_rels (List.map (fun (lb, _, ub) -> (lb,"=/=",ub)) parts)
 end
 
+let fail_under_constrained lb c ub =
+(*  if debug then *)
+    raise (Bimatch (Format.asprintf
+      "implicit instantiation of type parameter `%s` is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
+      (Cons.name c)
+      display_constraint (lb, c, ub)
+      display_rel (lb,"=/=",ub)))
+(*  else
+    raise (Bimatch (Format.asprintf
+      "type parameter `%s` has no best solution, please provide an explicit instantiation."
+      (Cons.name c))) *)
+
+let fail_over_constrained lb c ub =
+(*  if debug then *)
+    raise (Bimatch (Format.asprintf
+      "implicit instantiation of type parameter `%s` is over-constrained with%a\nwhere%a\nso that no valid instantiation exists"
+      (Cons.name c)
+      display_constraint (lb, c, ub)
+      display_rel (lb, "</:", ub)))
+(*  else
+    raise (Bimatch (Format.asprintf
+      "type parameter `%s` has no solution. Maybe try an explicit instantiation."
+      (Cons.name c))) *)
+
 let choose_under_constrained ctx er lb c ub =
   match ConEnv.find c ctx.variances with
   | Variance.Covariant -> lb
@@ -178,13 +202,9 @@ let choose_under_constrained ctx er lb c ub =
       ErrorUnderconstrained.add er lb c ub;
       if t = Non then ub else lb
 
-let fail_over_constrained lb c ub =
-  raise (Bimatch (Format.asprintf
-    "implicit instantiation of type parameter %s is over-constrained with%a\nwhere%a\nso that no valid instantiation exists"
-    (Cons.name c)
-    display_constraint (lb, c, ub)
-    display_rel (lb, "</:", ub)))
-
+    (* | _ ->
+     fail_under_constrained lb c ub *)
+     
 let bi_match_typs ctx =
   let flexible c = ConSet.mem c ctx.var_set in
   

@@ -51,7 +51,7 @@ let rec exp m e = match e.it with
     List.iter (exp m) bases; exp_fields m efs
 
   (* Variable access. Dangerous, due to loops. *)
-  | (VarE _ | ImportE _) -> ()
+  | (VarE _ | ImportE _ | ImplicitLibE _) -> ()
 
   (* Projections. These are a form of evaluation. *)
   | ProjE (exp1, _)

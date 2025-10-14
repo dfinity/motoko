@@ -9,7 +9,7 @@ module Sys_js = Js_of_ocaml.Sys_js
 let moc_args = Mo_args.inclusion_args
   @ Mo_args.warning_args
   @ Mo_args.error_args
-  @ Mo_args.ai_errors_args
+  @ Mo_args.ai_args
   @ Mo_args.persistent_actors_args
 
 let position_of_pos pos =
@@ -192,7 +192,7 @@ let js_parse_motoko_with_deps enable_recovery path s =
     let open Diag.Syntax in
     let* prog, _ = parse_fn main_file s in
     let* deps =
-      Pipeline.ResolveImport.resolve (Pipeline.resolve_flags ()) prog main_file
+      Pipeline.ResolveImport.resolve (Pipeline.resolve_flags None) prog main_file
     in
     Diag.return (prog, deps)
   in

@@ -145,7 +145,7 @@ let add_lib_import msgs imported ri_ref at lib_path =
       imported := RIM.add ri at !imported
     end
   | Error err ->
-     Diag.add_msg msgs err
+    Diag.add_msg msgs err
 
 let add_idl_import msgs imported ri_ref at full_path bytes =
   if Sys.file_exists full_path
@@ -164,7 +164,7 @@ let add_value_import msgs imported ri_ref at path =
       imported := RIM.add ri at !imported
     end
   | Error err ->
-     Diag.add_msg msgs err
+    Diag.add_msg msgs err
 
 let add_prim_import imported ri_ref at =
   ri_ref := PrimPath;
@@ -205,7 +205,7 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
     | None -> err_alias_not_defined msgs at alias
     end
   | Ok (Url.FileValue path) ->
-    add_value_import msgs imported ri_ref at path
+    add_value_import msgs imported ri_ref at (in_base base path)
   | Ok Url.Prim ->
     add_prim_import imported ri_ref at
   | Error msg ->
@@ -283,15 +283,20 @@ let list_files : string -> string list =
     List.filter (fun f -> Filename.extension f = ".mo") all_files
 
 let package_imports base packages =
+  let base_norm = Lib.FilePath.normalise base in
   let imports = M.fold (fun pname url acc ->
-    if base = url then
+    let url_norm = Lib.FilePath.normalise url in
+    (* Skip when it is a sub-directory, because list_files adds all files recursively *)
+    if base_norm = url_norm || Lib.FilePath.relative_to url_norm base_norm <> None then
       acc
     else
       let files = list_files url in
-      List.map (fun path -> LibPath {package = Some pname; path = path}) files::acc)
+      List.map (fun path ->
+          LibPath {package = Some pname; path = path}
+        ) files::acc)
     packages []
   in
-    List.concat imports
+  List.concat imports
 
 let resolve_flags : flags -> resolved_flags Diag.result
   = fun { actor_idl_path; package_urls; actor_aliases; _ } ->
@@ -301,7 +306,7 @@ let resolve_flags : flags -> resolved_flags Diag.result
   Diag.return { packages; aliases; actor_idl_path }
 
 let resolve
-  : flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
+    : flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
   = fun flags p base ->
   let open Diag.Syntax in
   let* { packages; aliases; actor_idl_path } = resolve_flags flags in
@@ -309,12 +314,13 @@ let resolve
     let base = if Sys.is_directory base then base else Filename.dirname base in
     let imported =
       ref (if flags.include_all_libs
-           then (* add all available package libraries *)
+           then (* outside any package, add all available package libraries *)
              (List.fold_right (fun ri rim -> RIM.add ri Source.no_region rim)
                (package_imports base packages) RIM.empty)
            else
              (* consider only the explicitly imported package libraries *)
              RIM.empty)
+
     in
     List.iter (resolve_import_string msgs base actor_idl_path aliases packages imported)(prog_imports p);
     Some (List.map (fun (rim, at) -> rim @@ at) (RIM.bindings !imported))
