@@ -176,6 +176,7 @@ module Make (Cfg : Config) = struct
     | TagE (i, e)         -> "TagE"    $$ [id i; exp e]
     | PrimE p             -> "PrimE"   $$ [Atom p]
     | ImportE (f, _fp)    -> "ImportE" $$ [Atom f]
+    | ImplicitLibE l      -> "ImplicitLibE" $$ [Atom l]
     | ThrowE e            -> "ThrowE"  $$ [exp e]
     | TryE (e, cs, None)  -> "TryE"    $$ [exp e] @ List.map catch cs
     | TryE (e, cs, Some f)-> "TryE"    $$ [exp e] @ List.map catch cs @ Atom ";" :: [exp f]
