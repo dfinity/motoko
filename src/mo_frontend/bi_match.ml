@@ -134,28 +134,28 @@ let fail_open_bound c bd =
 
 
 let fail_under_constrained lb c ub =
-(*  if debug then *)
+  if debug then
     raise (Bimatch (Format.asprintf
       "implicit instantiation of type parameter `%s` is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
       (Cons.name c)
       display_constraint (lb, c, ub)
       display_rel (lb,"=/=",ub)))
-(*  else
+  else
     raise (Bimatch (Format.asprintf
       "type parameter `%s` has no best solution, please provide an explicit instantiation."
-      (Cons.name c))) *)
+      (Cons.name c))) 
 
 let fail_over_constrained lb c ub =
-(*  if debug then *)
+  if debug then
     raise (Bimatch (Format.asprintf
       "implicit instantiation of type parameter `%s` is over-constrained with%a\nwhere%a\nso that no valid instantiation exists"
       (Cons.name c)
       display_constraint (lb, c, ub)
       display_rel (lb, "</:", ub)))
-(*  else
+  else
     raise (Bimatch (Format.asprintf
       "type parameter `%s` has no solution. Maybe try an explicit instantiation."
-      (Cons.name c))) *)
+      (Cons.name c)))
 
 let choose_under_constrained ctx lb c ub =
   match ConEnv.find c ctx.variances with
@@ -433,13 +433,16 @@ let solve ctx (ts1, ts2) must_solve =
     let tts =
       List.filter (fun (t1, t2) -> not (sub t1 t2)) (List.combine ts1 ts2)
     in
+    if debug then
     raise (Bimatch (Format.asprintf
       "no instantiation of %s makes%s"
       (String.concat ", " (List.map string_of_con ctx.var_list))
       (String.concat "\nand"
         (List.map (fun (t1, t2) ->
           Format.asprintf "%a" display_rel (t1, "<:", t2))
-          tts))))
+           tts))))
+     else raise (Bimatch "the type parameters have no solution")
+
 
 let bi_match_subs scope_opt tbs typ_opt =
   (* Create a fresh constructor for each type parameter.

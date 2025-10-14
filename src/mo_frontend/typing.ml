@@ -2919,7 +2919,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
   with Bi_match.Bimatch msg ->
     let t1 = match T.normalize t1 with
       | T.Func(s, c, tbs, ts1, ts2) ->
-        T.Func(s, c, [], List.map err_subst ts1, List.map err_subst ts2)
+        T.Func(s, c, tbs, (*List.map err_subst*) ts1, (*List.map err_subst*) ts2)
       | t1 -> t1
     in
     let remove_holes_nary ts =
@@ -2948,7 +2948,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
     in
     let t1'' = match T.normalize t1' with
       | T.Func(s, c, tbs, ts1, ts2) ->
-        T.Func(s, c, [], remove_holes_nary ts1, List.map err_subst ts2)
+         T.Func(s, c, tbs, remove_holes_nary ts1, (*List.map err_subst*) ts2)
       | t1 -> t1
     in
     let remove_holes typ =
@@ -2968,7 +2968,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
         msg
     else
       error env at "M0098"
-        "cannot apply %s of type%a\nto argument of type%a%s"
+        "cannot apply %s of type%a\nto argument of type%a%s\nbecause %s"
         desc
         display_typ t1''
         display_typ (err_subst t2')
@@ -2976,7 +2976,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
          | None -> ""
          | Some t ->
            Format.asprintf "\nto produce result of expected type%a" display_typ t)
-
+        msg
 and is_redundant_instantiation ts env infer_instantiation =
   assert env.pre;
   match Diag.with_message_store (recover_opt (fun msgs ->
