@@ -465,6 +465,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     | IDLPath _ -> trap exp.at "actor import"
     | PrimPath -> k (find "@prim" env.libs)
     )
+  | ImplicitLibE lib ->
+    k (find lib env.libs)
   | LitE lit ->
     k (interpret_lit env lit)
   | ActorUrlE url ->
