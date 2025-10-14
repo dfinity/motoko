@@ -145,7 +145,7 @@ let add_lib_import msgs imported ri_ref at lib_path =
       imported := RIM.add ri at !imported
     end
   | Error err ->
-     Diag.add_msg msgs err
+    Diag.add_msg msgs err
 
 let add_idl_import msgs imported ri_ref at full_path bytes =
   if Sys.file_exists full_path
@@ -164,7 +164,7 @@ let add_value_import msgs imported ri_ref at path =
       imported := RIM.add ri at !imported
     end
   | Error err ->
-     Diag.add_msg msgs err
+    Diag.add_msg msgs err
 
 let add_prim_import imported ri_ref at =
   ri_ref := PrimPath;
@@ -205,7 +205,7 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
     | None -> err_alias_not_defined msgs at alias
     end
   | Ok (Url.FileValue path) ->
-    add_value_import msgs imported ri_ref at path
+    add_value_import msgs imported ri_ref at (in_base base path)
   | Ok Url.Prim ->
     add_prim_import imported ri_ref at
   | Error msg ->
