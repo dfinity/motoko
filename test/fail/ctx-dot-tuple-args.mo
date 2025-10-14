@@ -1,13 +1,13 @@
 module M {
-  public type Self = (Nat, Nat);
+  public type T = (Nat, Nat);
   public let i : Nat = 42;
-  public func f1(_self : Self, _x : Nat, _y : Nat) {};
-  public func f2(_self : Self, _xy : (Nat, Nat)) {};
-  public func f3(_self : Self, _i : (implicit : (i : Nat))) {};
-  public func f4(_self : Self, _xy : (Nat, Nat), _i : (implicit : (i : Nat))) {};
+  public func f1(self : T, _x : Nat, _y : Nat) {};
+  public func f2(self : T, _xy : (Nat, Nat)) {};
+  public func f3(self : T, _i : (implicit : (i : Nat))) {};
+  public func f4(self : T, _xy : (Nat, Nat), _i : (implicit : (i : Nat))) {};
 };
 
-let s : M.Self = (0, 0);
+let s : M.T = (0, 0);
 func m1() {
   s.f1(10, 20); // ok
   s.f1((10, 20)); // er: 1 arg provided, 2 expected

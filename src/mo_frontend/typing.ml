@@ -1564,12 +1564,10 @@ let check_can_dot env (exp : Syntax.exp) tys es at =
   | _, _, _ -> ()
 
 let contextual_dot env name receiver_ty =
-  let has_matching_self tf = has_matching_self receiver_ty tf in
-  let has_matching_self_type (_, (_, fs)) = List.exists has_matching_self fs in
   let is_matching_func field =
     if not (String.equal field.T.lab name.it) then None
     else match T.normalize field.T.typ with
-    | T.Func (_, _, tbs, first_arg::_, _) as typ ->
+    | T.Func (_, _, tbs, T.Named("self", first_arg)::_, _) as typ ->
       (match permissive_sub receiver_ty (tbs, first_arg) with
         | Some inst -> Some (T.open_ inst first_arg, typ, inst)
         | _ -> None)
@@ -1590,7 +1588,6 @@ let contextual_dot env name receiver_ty =
   let candidates in_libs xs f =
     T.Env.to_seq xs |>
       Seq.filter_map f |>
-      Seq.filter has_matching_self_type |>
       Seq.filter_map (find_candidate in_libs) |>
       List.of_seq in
   (* All candidate functions accept supertypes of the required type as their first arguments.

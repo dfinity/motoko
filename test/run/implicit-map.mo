@@ -4,10 +4,8 @@ module Map {
     public let u = u_;
   };
 
-  public type Self<T, U> = Map<T, U>;
-
-  public func get<T, U>(map : Self<T, U>, x : T, compare : (implicit : (T, T) -> Int)) : ?U {
-    if (compare(map.k, x) == 0) ?map.u else null;
+  public func get<T, U>(self : Map<T, U>, x : T, compare : (implicit : (T, T) -> Int)) : ?U {
+    if (compare(self.k, x) == 0) ?self.u else null;
   };
 };
 
