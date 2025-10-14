@@ -282,9 +282,15 @@ let list_files : string -> string list =
     let all_files = list_files_recursively source in
     List.filter (fun f -> Filename.extension f = ".mo") all_files
 
+let skip_libs_from_package package =
+  match !Mo_config.Flags.implicit_package with
+  | None -> false
+  | Some implicit_package -> package <> implicit_package
+
 let package_imports base packages =
   let base_norm = Lib.FilePath.normalise base in
-  let imports = M.fold (fun pname url acc ->
+  let imports = M.fold (fun package url acc ->
+    if skip_libs_from_package package then acc else
     let url_norm = Lib.FilePath.normalise url in
     (* Skip when it is a sub-directory, because list_files adds all files recursively *)
     if base_norm = url_norm || Lib.FilePath.relative_to url_norm base_norm <> None then
@@ -292,7 +298,7 @@ let package_imports base packages =
     else
       let files = list_files url in
       List.map (fun path ->
-          LibPath {package = Some pname; path = path}
+          LibPath {package = Some package; path = path}
         ) files::acc)
     packages []
   in
