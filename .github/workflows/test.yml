@@ -163,7 +163,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           ref: 'master'
-      - name: Hand out approvals
+      - name: Hand out `Changelog.md` approval
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
