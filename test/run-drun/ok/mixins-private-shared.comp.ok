@@ -1,0 +1,2 @@
+mixins/Broken1.mo:2.11-2.40: type error [M0126], a shared function cannot be private
+  (This is a limitation of the current version.)

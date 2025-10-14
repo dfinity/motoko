@@ -46,7 +46,8 @@ A safe, simple, actor-based programming language for building [Internet Computer
 
 ## Related Repositories
 
-* [Base package](https://github.com/dfinity/motoko-base)
+* Next-Gen [Core package](https://github.com/dfinity/motoko-core)
+* Legacy [Base package](https://github.com/dfinity/motoko-base)
 * [Vessel package manager](https://github.com/dfinity/vessel)
 * [Example projects](https://github.com/dfinity/examples/tree/master/motoko)
 * [ICP Ninja, online authoring of canisters](https://icp.ninja)

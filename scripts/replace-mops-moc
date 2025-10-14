@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# replace-mops-moc: Build moc via Nix and replace a mops-cached moc binary.
+# Usage: ./replace-mops-moc <mops-moc-version-dir> [restore]
+# - Without 'restore': builds .#release.moc, backs up existing 'moc' once as 'moc-backup' if absent,
+#   then installs the newly built 'moc' into the target version directory.
+# - With 'restore': moves 'moc-backup' back to 'moc' (overwriting current), then prints version.
+set -euo pipefail
+
+if [ "${1:-}" = "" ]; then
+  echo "Usage: $0 <mops-moc-version-dir> [restore]" >&2
+  echo "Example replace: $0 0.16.1" >&2
+  echo "Example restore: $0 0.16.1 restore" >&2
+  exit 2
+fi
+
+VERSION_DIR="$1"
+TARGET_DIR="${HOME}/Library/Caches/mops/moc/${VERSION_DIR}"
+TARGET="${TARGET_DIR}/moc"
+BACKUP="${TARGET}-backup"
+MODE="${2:-}"
+
+# Do not create directories; assume they exist as requested.
+if [ ! -d "${TARGET_DIR}" ]; then
+  echo "Error: Target directory does not exist: ${TARGET_DIR}" >&2
+  exit 1
+fi
+
+if [ "${MODE}" = "restore" ]; then
+  echo "Restoring backup for ${TARGET}"
+  if [ ! -f "${BACKUP}" ]; then
+    echo "Error: No backup found at ${BACKUP}" >&2
+    exit 1
+  fi
+  mv -f "${BACKUP}" "${TARGET}"
+  chmod +x "${TARGET}" || true
+  echo "Restored. Version:"
+  "${TARGET}" --version || true
+  exit 0
+fi
+
+echo "Building moc via Nix (.#release.moc)..."
+OUT_PATH="$(nix build --max-jobs 1 .#release.moc --print-out-paths)"
+SRC="${OUT_PATH}/bin/moc"
+
+echo "Using built moc at: ${SRC}"
+echo "Target directory: ${TARGET_DIR}"
+echo "Target binary: ${TARGET}"
+
+# Step 1: Backup existing moc if no backup exists yet
+if [ -f "${BACKUP}" ]; then
+  echo "Backup already exists at ${BACKUP}; skipping backup."
+else
+  if [ -f "${TARGET}" ]; then
+    echo "Creating backup at ${BACKUP}"
+    mv "${TARGET}" "${BACKUP}"
+  else
+    echo "No existing moc found at ${TARGET}; nothing to back up."
+  fi
+fi
+
+# Step 2: Replace moc with newly built one
+echo "Installing new moc to ${TARGET}"
+cp -f "${SRC}" "${TARGET}"
+chmod +x "${TARGET}"
+
+echo "Installed. Version:"
+"${TARGET}" --version || true
