@@ -63,6 +63,7 @@ and typ' =
   | ParT of typ                                    (* parentheses, used to control function arity only *)
   | NamedT of id * typ                             (* parenthesized single element named "tuple" *)
   | WeakT of typ                                   (* weak reference *)
+  | WildcardT                                      (* wildcard type for partial instantiation *)
 
 and scope = typ
 and typ_field = typ_field' Source.phrase

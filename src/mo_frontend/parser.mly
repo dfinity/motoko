@@ -446,6 +446,8 @@ typ_nullary :
     { ObjT(Type.Object @@ at $sloc, tfs) @! at $sloc }
   | tfs=typ_variant
     { VariantT tfs @! at $sloc }
+  | UNDERSCORE
+    { WildcardT @! at $sloc }
 
 typ_un :
   | t=typ_nullary
