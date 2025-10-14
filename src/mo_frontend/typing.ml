@@ -864,8 +864,6 @@ and check_typ' env typ : T.typ =
     T.Named (name.it, check_typ env typ)
   | WeakT typ ->
     T.Weak (check_typ env typ)
-  | WildcardT ->
-    error env typ.at "M9999" "wildcard type `_` can only be used in type instantiation"
 
 and check_typ_def env at (id, typ_binds, typ) : T.kind =
   let cs, tbs, te, ce = check_typ_binds {env with pre = true} typ_binds in
