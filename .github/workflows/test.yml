@@ -170,5 +170,5 @@ jobs:
           OUTPUT: ${{ toJson(github.event.pull_request) }}
         run: |
           echo "$OUTPUT" ${{ github.event.pull_request.base.ref }}  ${{ github.event.pull_request.base.ref == 'master' }}
-          gh pr diff ${{ github.event.pull_request.number }} | grep -- '--- a/.github/workflows/test.yml' \
+          gh pr diff ${{ github.event.pull_request.number }} | grep -- '--- a/.Xgithub/workflows/test.yml' \
           && gh pr review ${{ github.event.pull_request.number }} --approve --body 'A change to `Changelog.md`? I can handle that!'
