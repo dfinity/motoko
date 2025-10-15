@@ -1,5 +1,5 @@
 inf-error-small.mo:44.13-44.34: type error [M0098], cannot apply function `.get` of type
-  (n : Nat) -> ?Text
+  <K, V>(n : K) -> ?V
 to argument of type
   Text
 to produce result of expected type
@@ -7,7 +7,7 @@ to produce result of expected type
 because there is no way to satisfy 
   ?V  <:  Text  (for the return type) 
 inf-error-small.mo:45.13-45.47: type error [M0098], cannot apply function `.get` of type
-  (compare : (implicit : (Nat, Nat) -> Order), n : Nat) -> ?Text
+  <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
 to argument of type
   ((n : Nat, m : Nat) -> Order, Text)
 to produce result of expected type
@@ -15,7 +15,7 @@ to produce result of expected type
 because there is no way to satisfy 
   ?V  <:  Text  (for the return type) 
 inf-error-small.mo:47.13-47.45: type error [M0098], cannot apply function `.get` of type
-  (compare : (implicit : (Nat, Nat) -> Order), n : Nat) -> ?Text
+  <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
 to argument of type
   ({map : [(Nat, [var Text])]}, Text)
 to produce result of expected type
@@ -30,7 +30,7 @@ But got 3 arguments of type:
   (n : Nat, m : Nat) -> Order
   Text
 inf-error-small.mo:49.13-49.45: type error [M0098], cannot apply function `.get` of type
-  (compare : (implicit : (Nat, Nat) -> Order), n : Nat) -> ?Text
+  <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
 to argument of type
   ({map : [(Nat, [var Text])]}, Text)
 to produce result of expected type
@@ -38,7 +38,7 @@ to produce result of expected type
 because there is no way to satisfy 
   ?V  <:  Text  (for the return type) 
 inf-error-small.mo:51.13-51.29: type error [M0098], cannot apply function `.get` of type
-  (n : Nat) -> ?Text
+  <K, V>(n : K) -> ?V
 to argument of type
   Nat
 to produce result of expected type

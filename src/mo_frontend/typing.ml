@@ -2894,11 +2894,12 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
   *)
     ts, T.open_ ts t_arg, T.open_ ts t_ret
   with Bi_match.Bimatch msg ->
-    let t1 = match T.normalize t1 with
+    let t1 = T.normalize t1 in
+(*    let t1 = match T.normalize t1 with
       | T.Func(s, c, tbs, ts1, ts2) ->
         T.Func(s, c, [], List.map err_subst ts1, List.map err_subst ts2)
       | t1 -> t1
-    in
+    in *)
     let remove_holes_nary ts =
       match exp2.it, ts with
         HoleE _, [_] ->
@@ -2925,7 +2926,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
     in
     let t1'' = match T.normalize t1' with
       | T.Func(s, c, tbs, ts1, ts2) ->
-        T.Func(s, c, [], remove_holes_nary ts1, List.map err_subst ts2)
+         T.Func(s, c, tbs, remove_holes_nary ts1, (* List.map  err_subst *) ts2)
       | t1 -> t1
     in
     let remove_holes typ =
@@ -2937,7 +2938,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
         "cannot implicitly instantiate %s of type%a\nto argument of type%a%s\nbecause %s"
         desc
         display_typ t1
-        display_typ (err_subst t2')
+        display_typ ((*err_subst*) t2')
         (match t_expect_opt with
          | None -> ""
          | Some t ->
