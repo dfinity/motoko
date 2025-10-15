@@ -739,7 +739,7 @@ let check_typ_args_count env tbs ts ats at =
 (* Types *)
 
 let rec check_typ env (typ : typ) : T.typ =
-  let t = check_typ' env typ in
+  let t = check_typ' env typ.it typ.at in
   typ.note <- t;
   t
 
@@ -747,29 +747,35 @@ and check_typ_or_wildcard env (typ : typ_or_wildcard) : T.typ option =
   match typ.it with
   | None -> None
   | Some typ' ->
-    let ty = check_typ' env { typ with it = typ' } in
-    typ.note <- ty;
-    Some ty
+    let t = check_typ' env typ' typ.at in
+    typ.note <- t;
+    Some t
+
+and set_wildcard_notes (typs : typ_or_wildcard list) (ts : T.typ list) =
+  List.iter2 (fun typ t -> match typ.it with
+    | Some _ -> ()
+    | None -> typ.note <- t;
+  ) typs ts
 
 and check_typ_item env typ_item =
   match typ_item with
   | (None, typ) -> check_typ env typ
   | (Some id, typ) -> T.Named (id.it, check_typ env typ)
 
-and check_typ' env typ : T.typ =
-  match typ.it with
+and check_typ' env typ' at : T.typ =
+  match typ' with
   | PathT (path, typs) ->
     let c = check_typ_path env path in
     let ts = List.map (check_typ env) typs in
     let T.Def (tbs, _) | T.Abs (tbs, _) = Cons.kind c in
     let tbs' = List.map (fun tb -> { tb with T.bound = T.open_ ts tb.T.bound }) tbs in
-    check_typ_bounds env tbs' ts (List.map (fun typ -> typ.at) typs) typ.at;
+    check_typ_bounds env tbs' ts (List.map (fun typ -> typ.at) typs) at;
     T.Con (c, ts)
   | PrimT "Any" -> T.Any
   | PrimT "None" -> T.Non
   | PrimT s ->
     (try T.Prim (T.prim s) with Invalid_argument _ ->
-      error env typ.at "M0040" "unknown primitive type"
+      error env at "M0040" "unknown primitive type"
     )
   | ArrayT (mut, typ) ->
     let t = check_typ env typ in
@@ -778,21 +784,21 @@ and check_typ' env typ : T.typ =
     T.Tup (List.map (check_typ_item env) typ_items)
   | FuncT (sort, binds, typ1, typ2) ->
     let cs, tbs, te, ce = check_typ_binds env binds in
-    let env' = infer_async_cap (adjoin_typs env te ce) sort.it cs tbs None typ.at in
+    let env' = infer_async_cap (adjoin_typs env te ce) sort.it cs tbs None at in
     let typs1 = as_domT typ1 in
     let c, typs2 = as_codomT sort.it typ2 in
     let ts1 = List.map (check_typ_item env') typs1 in
     let ts2 = List.map (check_typ_item env') typs2 in
     check_shared_return env typ2.at sort.it c ts2;
     if not env.pre && Type.is_shared_sort sort.it then begin
-      check_shared_binds env typ.at tbs;
+      check_shared_binds env at tbs;
       let t1 = T.seq ts1 in
       if not (T.shared t1) then
         error_shared env t1 typ1.at "M0031" "shared function has non-shared parameter type%a"
           display_typ_expand t1;
       List.iter (fun t ->
         if not (T.shared t) then
-          error_shared env t typ.at "M0032"
+          error_shared env t at "M0032"
             "shared function has non-shared return type%a"
             display_typ_expand t;
       ) ts2;
@@ -838,8 +844,8 @@ and check_typ' env typ : T.typ =
       error env typ2.at "M0168"
         "cannot compute intersection of types containing recursive or forward references to other type definitions"
     in
-    if not env.pre && sub env typ.at t T.Non && not (sub env typ1.at t1 T.Non || sub env typ2.at t2 T.Non) then
-      warn env typ.at "M0166"
+    if not env.pre && sub env at t T.Non && not (sub env typ1.at t1 T.Non || sub env typ2.at t2 T.Non) then
+      warn env at "M0166"
         "this intersection results in type%a\nbecause operand types are inconsistent,\nleft operand is%a\nright operand is%a"
         display_typ t
         display_typ_expand t1
@@ -852,8 +858,8 @@ and check_typ' env typ : T.typ =
       error env typ2.at "M0168"
         "cannot compute union of types containing recursive or forward references to other type definitions"
     in
-    if not env.pre && sub env typ.at T.Any t && not (sub env typ1.at T.Any t1 || sub env typ2.at T.Any t2) then
-      warn env typ.at "M0167"
+    if not env.pre && sub env at T.Any t && not (sub env typ1.at T.Any t1 || sub env typ2.at T.Any t2) then
+      warn env at "M0167"
         "this union results in type%a\nbecause operand types are inconsistent,\nleft operand is%a\nright operand is%a"
         display_typ t
         display_typ_expand t1
@@ -2726,7 +2732,9 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       (match check_inst_bounds env sort tbs typs t_ret at with
       | Error (typ_opts, _) ->
         let partial_inst = if List.for_all Option.is_none typ_opts then None else Some typ_opts in
-        infer_call_instantiation env t1 ctx_dot tbs partial_inst t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
+        let (ts, _, _) as r = infer_call_instantiation env t1 ctx_dot tbs partial_inst t_arg t_ret exp2 at t_expect_opt extra_subtype_problems in
+        set_wildcard_notes typs ts;
+        r
       | Ok ts ->
         let t_arg' = T.open_ ts t_arg in
         let t_ret' = T.open_ ts t_ret in
