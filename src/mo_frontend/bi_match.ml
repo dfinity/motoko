@@ -607,5 +607,5 @@ let fail_when_types_are_not_closed remaining typs = if is_ctx_empty remaining th
   let all_cons = cons_typs typs in
   let open_con_set = ConSet.inter remaining.var_set all_cons in
   if not (ConSet.is_empty open_con_set) then
-    let message = Printf.sprintf "cannot infer %s" (String.concat ", " (List.map Cons.name (ConSet.elements open_con_set))) in
+    let message = Printf.sprintf "`%s` cannot be inferred." (String.concat "`, `" (List.map Cons.name (ConSet.elements open_con_set))) in
     raise (Bimatch message)
