@@ -212,10 +212,20 @@ let choose_under_constrained ctx er lb c ub =
 
     (* | _ ->
      fail_under_constrained lb c ub *)
-     
+
 let bi_match_typs ctx =
   let flexible c = ConSet.mem c ctx.var_set in
-  
+
+  let rec bi_match_list_result p rel eq inst any xs1 xs2 =
+    match (xs1, xs2) with
+    | x1::xs1', x2::xs2' ->
+      (match p rel eq inst any x1 x2 with
+      | Some inst -> bi_match_list_result p rel eq inst any xs1' xs2'
+      | None -> Result.Error (inst, (xs1, xs2)))
+    | [], [] -> Ok inst
+    | _, _ -> Result.Error (inst, (xs1, xs2))
+  in
+
   let rec bi_match_list p rel eq inst any xs1 xs2 =
     match (xs1, xs2) with
     | x1::xs1, x2::xs2 ->
@@ -397,7 +407,7 @@ let bi_match_typs ctx =
     bi_match_typ rel eq inst any (open_ ts tb1.bound) (open_ ts tb2.bound)
 
   in
-  bi_match_list bi_match_typ
+  bi_match_list_result bi_match_typ
 
 let is_closed ctx t = if is_ctx_empty ctx then true else
   let all_cons = cons_typs [t] in
@@ -445,7 +455,7 @@ let solve ctx (ts1, ts2) must_solve =
   match
     bi_match_typs ctx (ref SS.empty) (ref SS.empty) ctx.bounds ConSet.empty ts1 ts2
   with
-  | Some (l, u) ->
+  | Ok (l, u) ->
     if debug then Debug.print_solved_bounds l u;
     let unsolved = ref ConSet.empty in
     let er = ErrorUnderconstrained.empty () in
@@ -493,10 +503,8 @@ let solve ctx (ts1, ts2) must_solve =
         "bug: inferred bad instantiation\n  <%s>\nplease report this error message and, for now, supply an explicit instantiation instead"
         instantiation))
     end
-  | None ->
-    let tts = List.rev (
-      List.filter (fun (t1, t2) -> not (sub t1 t2)) (List.combine ts1 ts2))
-    in
+  | Error (inst, (ts1, ts2)) ->
+    let tts = List.combine ts1 ts2 in
     raise (if debug
       then
         Bimatch (Format.asprintf

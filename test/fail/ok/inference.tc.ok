@@ -87,8 +87,6 @@ to produce result of expected type
   ()
 because there is no way to satisfy 
   [Nat]  <:  (x : [var T])
-and
-  T  <:  ()
 inference.mo:132.1-132.17: type error [M0098], cannot apply function of type
   (x : [var T]) -> T
 to argument of type
