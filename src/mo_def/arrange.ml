@@ -186,8 +186,8 @@ module Make (Cfg : Config) = struct
 
   and inst inst = match inst.it with
     | None -> []
-    | Some (false, ts) -> List.map (function t -> match t.it with None -> Atom "_" | Some typ' -> typ { t with it = typ' }) ts
-    | Some (true, ts) -> Atom "system" :: List.map (function t -> match t.it with None -> Atom "_" | Some typ' -> typ { t with it = typ' }) ts
+    | Some (false, ts) -> List.map typ_or_wildcard ts
+    | Some (true, ts) -> Atom "system" :: List.map typ_or_wildcard ts
 
   and pat p = source p.at (annot_typ p.note (match p.it with
     | WildP           -> Atom "WildP"
