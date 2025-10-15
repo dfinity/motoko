@@ -1348,25 +1348,19 @@ type hole_candidate =
 let suggestion_of_candidate candidate =
   Option.fold ~none:candidate.desc ~some:Suggest.module_name_as_url candidate.module_name_opt
 
-(* All candidates are subtypes of the required type. The "greatest" of
-   these types is the "closest" to the required type. If we can
-   uniquely identify a single candidate that is the supertype of all
-   other candidates we pick it. *)
-let disambiguate_resolutions (candidates : 'candidate list) (get_ty : 'candidate -> T.typ) =
+let disambiguate_resolutions (rel : 'candidate -> 'candidate -> bool) (candidates : 'candidate list) =
   let add_candidate (frontiers : 'candidate list) (c : 'candidate) =
-    let c_typ = get_ty c in
     let rec go (fs : 'candidate list) = match fs with
       | [] -> [c]
       | f::fs' ->
-         let f_typ = get_ty f in
-         if T.sub c_typ f_typ then
-           if T.eq c_typ f_typ then
+         if rel c f then
+           if rel f c then
              (* c = f, so we keep both *)
              f :: go fs'
            else
              (* c <: f, so f absorbs c *)
              fs
-         else if T.sub f_typ c_typ then
+         else if rel f c then
            (* f <: c, so c absorbs f *)
            go fs'
          else
@@ -1491,11 +1485,14 @@ let resolve_hole env at hole_sort typ =
              candidate.desc mid id mod_desc mid id call_region call_src)
       explicit_terms
   in
+  (* All candidates are subtypes of the required type. The "greatest" of these types is the "closest" to the required type.
+     If we can uniquely identify a single candidate that is the supertype of all other candidates we pick it. *)
+  let disambiguate_holes = disambiguate_resolutions (fun (c1 : hole_candidate) c2 -> T.sub c1.typ c2.typ) in
   match eligible_terms with
   | [term] -> Ok term
   | [] ->
     let (lib_terms, _) = candidates true env.libs is_lib_module in
-    (match if !Flags.implicit_lib_vals then disambiguate_resolutions lib_terms (fun c -> c.typ) else None with
+    (match if !Flags.implicit_lib_vals then disambiguate_holes lib_terms  else None with
     | Some term -> Ok term
     | None ->
       Error (List.map suggestion_of_candidate lib_terms,
@@ -1503,7 +1500,7 @@ let resolve_hole env at hole_sort typ =
               renaming_hints)
     )
   | terms -> begin
-     match disambiguate_resolutions terms (fun c -> c.typ) with
+     match disambiguate_holes terms with
      | Some term -> Ok term
      | None ->
        let terms = List.map (fun term -> term.desc) terms in
@@ -1547,11 +1544,13 @@ let contextual_dot env name receiver_ty =
        | _ -> false)
     | _ -> false in
   let has_matching_self_type (_, (_, fs)) = List.exists has_matching_self fs in
-  let is_matching_func = function (* TODO: normalize first *)
-    | T.{ lab; typ = T.Func (_, _, tbs, first_arg::_, _) as typ; _ } when lab = name.it ->
+  let is_matching_func field =
+    if not (String.equal field.T.lab name.it) then None
+    else match T.normalize field.T.typ with
+    | T.Func (_, _, tbs, first_arg::_, _) as typ ->
       (match permissive_sub receiver_ty (tbs, first_arg) with
-       | Some inst -> Some (first_arg, typ, inst)
-       | _ -> None)
+        | Some inst -> Some (T.open_ inst first_arg, typ, inst)
+        | _ -> None)
     | _ -> None in
   let find_candidate in_libs (module_name, (module_ty, fs)) =
     List.find_map is_matching_func fs |>
@@ -1572,18 +1571,23 @@ let contextual_dot env name receiver_ty =
       Seq.filter has_matching_self_type |>
       Seq.filter_map (find_candidate in_libs) |>
       List.of_seq in
+  (* All candidate functions accept supertypes of the required type as their first arguments.
+     The "smallest" of these types is the closest to the required type. *)
+  let disambiguate_candidates = disambiguate_resolutions (fun c1 c2 -> T.sub c2.arg_ty c1.arg_ty) in
   match candidates false env.vals is_val_module with
-  | [oc] -> Ok oc
+  | [c] -> Ok c
   | [] ->
     (match candidates true env.libs is_lib_module with
-    | [oc] when !Flags.implicit_lib_vals -> Ok oc
+    | [c] when !Flags.implicit_lib_vals -> Ok c
     | lib_candidates ->
-      Error (List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)
+      match disambiguate_candidates lib_candidates with
+      | Some c -> Ok c
+      | None ->  Error (List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)
     )
-  | ocs -> match disambiguate_resolutions ocs (fun c -> T.open_ c.inst c.arg_ty) with
-    | Some oc -> Ok oc
+  | cs -> match disambiguate_candidates cs with
+    | Some c -> Ok c
     | None ->
-      let candidates = List.map (fun oc -> oc.module_name) ocs in
+      let candidates = List.map (fun c -> c.module_name) cs in
       error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
 
 let rec infer_exp env exp : T.typ =
