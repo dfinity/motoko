@@ -97,7 +97,7 @@ to argument of type
 to produce result of expected type
   ()
 because there is no way to satisfy 
-  Nat  <:  ()
+  Nat  <:  ()  (for the return type) 
 pretty-inference.mo:44.1-44.9: type error [M0098], cannot apply function of type
   (x : T, u : U) -> Nat
 to argument of type
@@ -105,7 +105,7 @@ to argument of type
 to produce result of expected type
   ()
 because there is no way to satisfy 
-  Nat  <:  ()
+  Nat  <:  ()  (for the return type) 
 pretty-inference.mo:46.1-46.9: type error [M0098], cannot apply function of type
   (x : T, u : U) -> Nat
 to argument of type
@@ -113,7 +113,7 @@ to argument of type
 to produce result of expected type
   ()
 because there is no way to satisfy 
-  Nat  <:  ()
+  Nat  <:  ()  (for the return type) 
 pretty-inference.mo:48.1-48.9: type error [M0098], cannot apply function of type
   (x : T, u : U) -> Nat
 to argument of type
@@ -122,7 +122,7 @@ to argument of type
 to produce result of expected type
   ()
 because there is no way to satisfy 
-  Nat  <:  ()
+  Nat  <:  ()  (for the return type) 
 pretty-inference.mo:50.1-50.9: type error [M0098], cannot apply function of type
   (x : T, u : U) -> Nat
 to argument of type
@@ -133,7 +133,7 @@ to argument of type
 to produce result of expected type
   ()
 because there is no way to satisfy 
-  Nat  <:  ()
+  Nat  <:  ()  (for the return type) 
 pretty-inference.mo:52.1-52.9: type error [M0098], cannot apply function of type
   (x : T, u : U) -> Nat
 to argument of type
@@ -148,4 +148,4 @@ to argument of type
 to produce result of expected type
   ()
 because there is no way to satisfy 
-  Nat  <:  ()
+  Nat  <:  ()  (for the return type) 

@@ -32,7 +32,7 @@ to argument of type
 to produce result of expected type
   ()
 because there is no way to satisfy 
-  ?V  <:  ()
+  ?V  <:  ()  (for the return type) 
 wrong-call-args.mo:48.27-48.39: type error [M0096], expression of type
   (t1 : Text, t2 : Text) -> Order
 cannot produce expected type

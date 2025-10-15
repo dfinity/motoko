@@ -30,6 +30,9 @@ let display_typ = Lib.Format.display pp_typ
 
 exception Bimatch of string
 
+(* add a dummy name to recognize the return type *)
+let name_ret_typ typ = Named ("@ret", typ)
+
 type var_info = {
   (* Type.Con for this type variable *)
   t : typ;
@@ -512,6 +515,8 @@ let solve ctx (ts1, ts2) must_solve =
     let tts = List.combine ts1 ts2 in
     let pretty_sub (t1,t2) =
       match t2 with
+      | Named ("@ret", t2) ->
+        Format.asprintf "%a  (for the return type) " display_rel (t1, "<:", t2)
       | Named (n, t2) ->
         Format.asprintf "%a  (for argument `%s`) " display_rel (t1, "<:", t2) n
       | t2 ->

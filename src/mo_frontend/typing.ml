@@ -2755,6 +2755,7 @@ and wrong_call_args env tbs at t_args implicits_arity syntax_args =
     display_given_arg_types given_types
 
 and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems =
+
   (*
   Partial Argument Inference:
   We need to infer the type of the argument and find the best instantiation for the call expression.
@@ -2821,7 +2822,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
   let ret_typ_opt, subs =
     match t_expect_opt with
     | None -> Some t_ret, subs
-    | Some expected_ret -> None, (t_ret, expected_ret) :: subs
+    | Some expected_ret -> None, (t_ret, Bi_match.name_ret_typ expected_ret) :: subs
   in
 
   try
