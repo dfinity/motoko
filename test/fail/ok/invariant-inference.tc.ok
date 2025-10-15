@@ -2,7 +2,7 @@ invariant-inference.mo:5.11-5.32: type error [M0098], cannot apply function of t
   (len : Nat, x : T) -> [var T]
 to argument of type
   (Nat, Nat)
-because type parameter T have no best solution
+because type parameter `T` has no "best" solution.
 Add a return type annotation or an explicit type instantiation
 Suggested return type annotation : 
   [var Nat]

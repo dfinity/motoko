@@ -38,7 +38,7 @@ variance.mo:84.15-84.20: type error [M0098], cannot apply function of type
   () -> Inv<A>
 to argument of type
   ()
-because type parameter A have no best solution
+because type parameter `A` has no "best" solution.
 Add a return type annotation or an explicit type instantiation
 Suggested return type annotation : 
   Inv<Any>

@@ -135,7 +135,7 @@ let mentions typ cons = not (ConSet.disjoint (Type.cons typ) cons)
 let fail_open_bound c bd =
   let c = Cons.name c in
   raise (Bimatch (Format.asprintf
-    "type parameter %s has an open bound%a\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference"
+    "type parameter `%s` has a bound %a involving another type parameter. Please provide an explicit instantiation."
     c (Lib.Format.display pp_typ) bd))
 
 module ErrorUnderconstrained : sig
@@ -151,21 +151,25 @@ end = struct
     let parts = List.rev !t in
     if parts = [] then "" else
       if debug then begin
+        let s = if List.length parts > 1 then "s" else "" in
         Format.asprintf
-          "cannot solve invariant type parameter%s %s, no principal solution with%a\nwhere%a"
-          (if List.length parts > 1 then "s" else "")
-          (String.concat ", " (List.map (fun (_, c, _) -> Cons.name c) parts))
+          "cannot solve invariant type parameter%s `%s`, no principal solution with%a\nwhere%a"
+          s
+          (String.concat "`, `" (List.map (fun (_, c, _) -> Cons.name c) parts))
           display_constraints parts
           display_rels (List.map (fun (lb, _, ub) -> (lb,"=/=",ub)) parts)
         end
       else
+        let s, has_have = if List.length parts > 1 then ("s", "have") else ("", "has") in
         Format.asprintf
-          "type parameter%s %s have no best solution"
-          (if List.length parts > 1 then "s" else "")
-          (String.concat ", " (List.map (fun (_, c, _) -> Cons.name c) parts))
+          "type parameter%s `%s` %s no \"best\" solution."
+          s
+          (String.concat "`, `" (List.map (fun (_, c, _) -> Cons.name c) parts))
+          has_have
 
 end
 
+(*
 let fail_under_constrained lb c ub =
   if debug then
     raise (Bimatch (Format.asprintf
@@ -177,6 +181,7 @@ let fail_under_constrained lb c ub =
     raise (Bimatch (Format.asprintf
       "type parameter `%s` has no best solution, please provide an explicit instantiation."
       (Cons.name c)))
+*)
 
 let fail_over_constrained lb c ub =
   if debug then
