@@ -1580,10 +1580,9 @@ let contextual_dot env name receiver_ty =
     (match candidates true env.libs is_lib_module with
     | [c] when Option.is_some !Flags.implicit_package -> Ok c
     | lib_candidates ->
-      match disambiguate_candidates lib_candidates with
+      match if Option.is_some !Flags.implicit_package then disambiguate_candidates lib_candidates else None with
       | Some c -> Ok c
-      | None ->  Error (List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)
-    )
+      | None ->  Error (List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates))
   | cs -> match disambiguate_candidates cs with
     | Some c -> Ok c
     | None ->
