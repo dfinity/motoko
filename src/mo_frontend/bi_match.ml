@@ -221,7 +221,7 @@ let bi_match_typs ctx =
     | x1::xs1', x2::xs2' ->
       (match p rel eq inst any x1 x2 with
       | Some inst -> bi_match_list_result p rel eq inst any xs1' xs2'
-      | None -> Result.Error (inst, (xs1, xs2)))
+      | None -> Result.Error (inst, ([x1], [x2])))
     | [], [] -> Ok inst
     | _, _ -> Result.Error (inst, (xs1, xs2))
   in

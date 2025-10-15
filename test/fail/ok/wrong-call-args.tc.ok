@@ -33,9 +33,6 @@ to produce result of expected type
   ()
 because there is no way to satisfy 
   ?V  <:  ()
-and
-  {var root : Node<Text, Text>; var size_ : Nat}  <: 
-    (map : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K)
 wrong-call-args.mo:48.27-48.39: type error [M0096], expression of type
   (t1 : Text, t2 : Text) -> Order
 cannot produce expected type
