@@ -135,7 +135,7 @@ let mentions typ cons = not (ConSet.disjoint (Type.cons typ) cons)
 let fail_open_bound c bd =
   let c = Cons.name c in
   raise (Bimatch (Format.asprintf
-    "type parameter `%s` has a bound %a involving another type parameter. Please provide an explicit instantiation."
+    "type parameter `%s` has a bound %a\ninvolving another type parameter. Please provide an explicit instantiation."
     c (Lib.Format.display pp_typ) bd))
 
 module ErrorUnderconstrained : sig
@@ -428,7 +428,7 @@ let maybe_raise_underconstrained ctx env er =
     | Some ret_typ ->
       let ret_typ = subst env ret_typ in
       if is_closed ctx ret_typ then
-        Format.asprintf "%s\nAdd a return type annotation or an explicit type instantiation\nSuggested return type annotation : %a" error_msg display_typ ret_typ
+        Format.asprintf "%s\nAdd a return type annotation or an explicit type instantiation.\nSuggested return type annotation : %a" error_msg display_typ ret_typ
       else
         error_msg
   in

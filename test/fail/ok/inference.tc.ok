@@ -21,7 +21,8 @@ to argument of type
 to produce result of expected type
   Any
 because type parameter `T` has a bound 
-  U involving another type parameter. Please provide an explicit instantiation.
+  U
+involving another type parameter. Please provide an explicit instantiation.
 inference.mo:95.8-95.26: type error [M0098], cannot apply function of type
   (x : T, y : T) -> (U, U)
 to argument of type
@@ -29,7 +30,8 @@ to argument of type
 to produce result of expected type
   Any
 because type parameter `T` has a bound 
-  U involving another type parameter. Please provide an explicit instantiation.
+  U
+involving another type parameter. Please provide an explicit instantiation.
 inference.mo:96.8-96.23: type error [M0098], cannot apply function of type
   (x : T, y : T) -> (U, U)
 to argument of type
@@ -37,7 +39,8 @@ to argument of type
 to produce result of expected type
   Any
 because type parameter `T` has a bound 
-  U involving another type parameter. Please provide an explicit instantiation.
+  U
+involving another type parameter. Please provide an explicit instantiation.
 inference.mo:111.8-111.17: type error [M0098], cannot apply function of type
   (x : T) -> T
 to argument of type
