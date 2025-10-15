@@ -1492,7 +1492,7 @@ let resolve_hole env at hole_sort typ =
   | [term] -> Ok term
   | [] ->
     let (lib_terms, _) = candidates true env.libs is_lib_module in
-    (match if !Flags.implicit_lib_vals then disambiguate_holes lib_terms  else None with
+    (match if Option.is_some !Flags.implicit_package then disambiguate_holes lib_terms else None with
     | Some term -> Ok term
     | None ->
       Error (List.map suggestion_of_candidate lib_terms,
@@ -1578,7 +1578,7 @@ let contextual_dot env name receiver_ty =
   | [c] -> Ok c
   | [] ->
     (match candidates true env.libs is_lib_module with
-    | [c] when !Flags.implicit_lib_vals -> Ok c
+    | [c] when Option.is_some !Flags.implicit_package -> Ok c
     | lib_candidates ->
       match disambiguate_candidates lib_candidates with
       | Some c -> Ok c

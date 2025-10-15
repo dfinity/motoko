@@ -42,7 +42,8 @@ let
         let relPath = removePrefix (toString ../test + "/") (toString path); in
         type != "directory"
         || hasPrefix "${dir}/" "${relPath}/"
-        || hasPrefix "core-stub/" "${relPath}/";
+        || hasPrefix "core-stub/" "${relPath}/"
+        || hasPrefix "base-stub/" "${relPath}/";
       src = ../test;
       name = "test-${dir}-src";
     };
