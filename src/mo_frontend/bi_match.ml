@@ -510,22 +510,25 @@ let solve ctx (ts1, ts2) must_solve =
     end
   | Error (inst, (ts1, ts2)) ->
     let tts = List.combine ts1 ts2 in
+    let pretty_sub (t1,t2) =
+      match t2 with
+      | Named (n, t2) ->
+        Format.asprintf "%a  (for argument `%s`) " display_rel (t1, "<:", t2) n
+      | t2 ->
+        Format.asprintf "%a" display_rel (t1, "<:", t2)
+    in
     raise (if debug
       then
         Bimatch (Format.asprintf
                     "no instantiation of %s makes%s"
                     (String.concat ", " (List.map string_of_con ctx.var_list))
                     (String.concat "\nand"
-                       (List.map (fun (t1, t2) ->
-                            Format.asprintf "%a" display_rel (t1, "<:", t2))
-                          tts)))
+                       (List.map pretty_sub tts)))
       else
         Bimatch (Format.asprintf
                     "there is no way to satisfy %s"
                     (String.concat "\nand"
-                       (List.map (fun (t1, t2) ->
-                            Format.asprintf "%a" display_rel (t1, "<:", t2))
-                          tts))))
+                       (List.map pretty_sub tts))))
 
 
 let bi_match_subs scope_opt tbs ret_typ =

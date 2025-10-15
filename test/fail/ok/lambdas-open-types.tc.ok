@@ -3,4 +3,4 @@ lambdas-open-types.mo:6.9-6.37: type error [M0098], cannot apply function of typ
 to argument of type
   ([Nat], _f : T -> U)
 because there is no way to satisfy 
-  [Nat]  <:  (_ar : [var T])
+  [Nat]  <:  [var T]  (for argument `_ar`) 
