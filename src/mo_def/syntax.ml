@@ -212,6 +212,7 @@ and exp' =
   | AssertE of assert_kind * exp               (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
   | ImportE of (string * resolved_import ref)  (* import statement *)
+  | ImplicitLibE of string                     (* implicitly imported library *)
   | ThrowE of exp                              (* throw exception *)
   | TryE of exp * case list * exp option       (* catch exception / finally *)
   | IgnoreE of exp                             (* ignore *)
