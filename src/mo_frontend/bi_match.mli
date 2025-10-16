@@ -46,6 +46,8 @@ open Type
 
 exception Bimatch of string
 
+val name_ret_typ : typ -> typ
+
 (** Opaque context type for bi-matching *)
 type ctx
 
