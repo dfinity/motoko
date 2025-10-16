@@ -2593,9 +2593,7 @@ and infer_callee env exp =
     | Error (t1, mk_e) ->
       match contextual_dot env id t1 with
       | Error [] ->
-         let e = mk_e () in
-         let sug = "\nHint: If you're trying to use a contextual call you need to import the corresponding module." in
-         Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
+         Diag.add_msg env.msgs (mk_e ()); raise Recover
       | Error suggestions ->
          let e = mk_e () in
          let sug = Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
