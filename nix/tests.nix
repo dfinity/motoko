@@ -40,7 +40,10 @@ let
     cleanSourceWith {
       filter = path: type:
         let relPath = removePrefix (toString ../test + "/") (toString path); in
-        type != "directory" || hasPrefix "${dir}/" "${relPath}/";
+        type != "directory"
+        || hasPrefix "${dir}/" "${relPath}/"
+        || hasPrefix "core-stub/" "${relPath}/"
+        || hasPrefix "base-stub/" "${relPath}/";
       src = ../test;
       name = "test-${dir}-src";
     };

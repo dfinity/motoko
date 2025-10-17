@@ -1,5 +1,15 @@
 # Motoko compiler changelog
 
+## Unreleased
+
+* motoko (`moc`)
+
+  * Experimental support for `implicit` argument declarations (#5517).
+
+  * Experimental support for Mixins (#5459).
+
+  * bugfix: importing of `blob:file:` URLs in subdirectories should work now (#5507, #5569).
+
 ## 0.16.3 (2025-09-29)
 
 * motoko (`moc`)

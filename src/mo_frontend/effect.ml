@@ -49,14 +49,16 @@ let effect_exp (exp:Syntax.exp) : T.eff = eff exp
 (* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated es *)
 let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   match exp.it with
+  | HoleE _ -> T.Triv (* TBR *)
   | CallE (_, exp1, inst, exp2) when is_async_call exp1 inst exp2 ->
     T.Await
-  | CallE (Some par, exp1, _, exp2) ->
-    map_max_effs effect_exp [par; exp1; exp2]
+  | CallE (Some par, exp1, _, (_, exp2)) ->
+    map_max_effs effect_exp [par; exp1; !exp2]
   | PrimE _
   | VarE _
   | LitE _
   | ImportE _
+  | ImplicitLibE _
   | FuncE _ ->
     T.Triv
   | ActorUrlE exp1
@@ -83,7 +85,6 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | IdxE (exp1, exp2)
   | RelE (_, exp1, _, exp2)
   | AssignE (exp1, exp2)
-  | CallE (None, exp1, _, exp2)
   | AndE (exp1, exp2)
   | OrE (exp1, exp2)
   | ImpliesE (exp1, exp2)
@@ -91,6 +92,8 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | LoopE (exp1, Some exp2)
   | ForE (_, exp1, exp2) ->
     map_max_effs effect_exp [exp1; exp2]
+  | CallE (None, exp1, _, (_, exp2)) ->
+    map_max_effs effect_exp [exp1; !exp2]
   | DebugE exp1 ->
     effect_exp exp1
   | ToCandidE exps
@@ -147,5 +150,7 @@ and infer_effect_dec dec =
   | VarD (_, e) ->
     effect_exp e
   | TypD _
-  | ClassD _ ->
+  | ClassD _
+  | MixinD _
+  | IncludeD _ ->
     T.Triv

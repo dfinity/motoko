@@ -34,6 +34,7 @@ let dump_tc = ref false
 let dump_lowering = ref false
 let check_ir = ref true
 let package_urls : string M.t ref = ref M.empty
+let implicit_package : string option ref = ref None
 let actor_aliases : string M.t ref = ref M.empty
 let actor_idl_path : string option ref = ref None
 let max_stable_pages_default = 65536
