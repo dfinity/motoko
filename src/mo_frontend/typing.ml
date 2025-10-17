@@ -1549,6 +1549,7 @@ let has_matching_self receiver_ty tf = match tf with
 
 let check_can_dot env (exp : Syntax.exp) tys es at =
   if not env.pre then
+  if Flags.get_warning_level "M0256" <> Flags.Allow then
   match exp.it, tys, es with
   | (DotE(obj_exp, id, _), receiver_ty :: tys, e::es) ->
      if id.it <> "equal" && id.it <> "compare" && List.length tys = 1 then ()
