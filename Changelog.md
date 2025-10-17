@@ -4,7 +4,7 @@
 
 * motoko (`moc`)
 
-  * Add (caffeine) deprecation code `M0235`.
+  * Add (caffeine) deprecation code `M0235` (#5583).
     Deprecates any public types and values with special doc comment
     `/// @deprecated M0235`.
     (allowed by default, warn with `-W 0235`).
