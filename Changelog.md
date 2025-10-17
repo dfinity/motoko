@@ -4,6 +4,13 @@
 
 * motoko (`moc`)
 
+  * Add partial type instantiation syntax, allows omitting type arguments for types that can be inferred from other arguments.
+    For example:
+    ```motoko
+    let result = VarArray.map<_, Nat>(varAr, func x = x * 2);
+    ```
+    will infer the type of the result to be `[var Nat]`.
+
   * Add (caffeine) deprecation code `M0235` (#5583).
     Deprecates any public types and values with special doc comment
     `/// @deprecated M0235`.
