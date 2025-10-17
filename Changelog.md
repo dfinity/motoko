@@ -4,6 +4,11 @@
 
 * motoko (`moc`)
 
+  * Add (caffeine) deprecation code `M0235`.
+    Deprecates any public types and values with special doc comment
+    `/// @deprecated M0235`.
+    (allowed by default, warn with `-W 0235`).
+
   * Experimental support for `implicit` argument declarations (#5517).
 
   * Experimental support for Mixins (#5459).

@@ -83,6 +83,7 @@ let typechecker_combine_srcs = ref false (* useful for the language server *)
 
 let default_warning_levels = M.empty
   |> M.add "M0223" Allow
+  |> M.add "M0235" Allow
 
 let warning_levels = ref default_warning_levels
 
