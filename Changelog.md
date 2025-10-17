@@ -7,7 +7,7 @@
   * Add (caffeine) warning `M0236` (#5584).
     Warns if contextual dot notation could have been used,
     e.g. `Map.filter(map, ...)` vs `map.filter(...)`.
-    Does not warn for binary `M.equals(e1, e2)` or `M.compare(e1, e2)`.
+    Does not warn for binary `M.equals(e1, e2)` or `M.compareXXX(e1, e2)`.
     (allowed by default, warn with `-W 0236`).
 
   * Add (caffeine) deprecation code `M0235` (#5583).
