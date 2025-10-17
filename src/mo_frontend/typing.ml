@@ -240,6 +240,8 @@ let info env at fmt =
 
 let check_deprecation env at desc id depr =
   match depr with
+  | Some ("M0235" as code) ->
+    warn env at code "%s %s is deprecated for caffeine" desc id
   | Some ("M0199" as code) ->
     if !(env.reported_stable_memory) then ()
     else begin
