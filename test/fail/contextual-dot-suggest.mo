@@ -66,8 +66,8 @@ persistent actor {
   ignore Text.compare("", ""); // no-warn
   ignore Text.equal("", ""); // no-warn
 
-  ignore Odd.equal(#odd); // no-warn non-binary
-  ignore Odd.compare(#odd, #odd, #odd); // no-warn non-binary
+  ignore Odd.equal(#odd); // warn non-binary
+  ignore Odd.compare(#odd, #odd, #odd); // warn non-binary
 
   // get
   ignore Map.get(peopleMap, Nat.compare, 1); // warn
