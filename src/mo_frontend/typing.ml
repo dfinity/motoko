@@ -1552,7 +1552,7 @@ let check_can_dot env (exp : Syntax.exp) tys es at =
   if Flags.get_warning_level "M0256" <> Flags.Allow then
   match exp.it, tys, es with
   | (DotE(obj_exp, id, _), receiver_ty :: tys, e::es) ->
-     if id.it <> "equal" && id.it <> "compare" && List.length tys = 1 then ()
+     if (id.it = "equal" || Lib.String.chop_prefix "compare" id.it <> None) && List.length tys = 1 then ()
      else
        let can_dot = match T.normalize obj_exp.note.note_typ with
          | T.Obj(_, fs) ->

@@ -1,7 +1,7 @@
-inf-error-W-M0236.mo:37.5-37.8: type error [M0057], unbound variable map
-Did you mean variable Map or _map?
-inf-error-W-M0236.mo:50.10-50.44: warning [M0236], You can use the dot notation `peopleMap.get(...)` here
-inf-error-W-M0236.mo:51.10-51.31: warning [M0236], You can use the dot notation `peopleMap.get(...)` here
-inf-error-W-M0236.mo:52.10-52.29: warning [M0236], You can use the dot notation `peopleMap.size(...)` here
-inf-error-W-M0236.mo:54.10-54.55: warning [M0236], You can use the dot notation `Map.clone(peopleMap).get(...)` here
-inf-error-W-M0236.mo:54.18-54.38: warning [M0236], You can use the dot notation `peopleMap.clone(...)` here
+inf-error-W-M0236.mo:69.10-69.25: warning [M0236], You can use the dot notation `#odd.equal(...)` here
+inf-error-W-M0236.mo:70.10-70.39: warning [M0236], You can use the dot notation `#odd.compare(...)` here
+inf-error-W-M0236.mo:73.10-73.44: warning [M0236], You can use the dot notation `peopleMap.get(...)` here
+inf-error-W-M0236.mo:74.10-74.31: warning [M0236], You can use the dot notation `peopleMap.get(...)` here
+inf-error-W-M0236.mo:75.10-75.29: warning [M0236], You can use the dot notation `peopleMap.size(...)` here
+inf-error-W-M0236.mo:77.10-77.55: warning [M0236], You can use the dot notation `Map.clone(peopleMap).get(...)` here
+inf-error-W-M0236.mo:77.18-77.38: warning [M0236], You can use the dot notation `peopleMap.clone(...)` here
