@@ -76,10 +76,14 @@
 <typ_args> ::= 
     '<' <list(<typ>, ',')> '>'
 
+<typ_or_wildcard> ::= 
+    <typ>
+    '_'
+
 <inst> ::= 
     <empty>
-    '<' <list(<typ>, ',')> '>'
-    '<' 'system' (',' <typ>)* '>'
+    '<' <list(<typ_or_wildcard>, ',')> '>'
+    '<' 'system' (',' <typ_or_wildcard>)* '>'
 
 <typ_params_opt> ::= 
     ('<' <list(<typ_bind>, ',')> '>')?

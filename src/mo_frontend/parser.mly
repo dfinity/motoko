@@ -290,7 +290,7 @@ and objblock eo s id ty dec_fields =
 %type<Mo_def.Syntax.typ_item list> seplist(typ_item,COMMA)
 %type<Mo_def.Syntax.typ_field list> typ_obj seplist(typ_field,semicolon)
 %type<Mo_def.Syntax.typ_bind list> seplist(typ_bind,COMMA)
-%type<Mo_def.Syntax.typ list> seplist(typ,COMMA)
+%type<Mo_def.Syntax.typ_or_wildcard list> seplist(typ_or_wildcard,COMMA)
 %type<Mo_def.Syntax.pat_field list> seplist(pat_field,semicolon)
 %type<Mo_def.Syntax.pat list> seplist(pat_bin,COMMA)
 %type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec,semicolon) seplist(dec,SEMICOLON)
@@ -492,12 +492,16 @@ typ_item :
 typ_args :
   | LT ts=seplist(typ, COMMA) GT { ts }
 
+typ_or_wildcard :
+  | t=typ { { t with it = Some t.it } }
+  | UNDERSCORE { None @! at $sloc }
+
 inst :
   | (* empty *)
     { { it = None; at = no_region; note = [] } }
-  | LT ts=seplist(typ, COMMA) GT
+  | LT ts=seplist(typ_or_wildcard, COMMA) GT
     { { it = Some (false, ts); at = at $sloc; note = [] } }
-  | LT SYSTEM ts=preceded(COMMA, typ)* GT
+  | LT SYSTEM ts=preceded(COMMA, typ_or_wildcard)* GT
     { { it = Some (true, ts); at = at $sloc; note = [] } }
 
 %inline type_typ_params_opt :

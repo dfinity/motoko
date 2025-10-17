@@ -240,7 +240,8 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (N N_seplist_pat_bin_COMMA_) -> seplist ("<pat_bin>", eg_pat) comma
   | X (N N_seplist_pat_field_semicolon_) -> seplist ("<pat_field", eg_pat) semi
   | X (N N_seplist_typ_COMMA_) -> seplist ("<typ>", eg_typ) comma
-  | X (N N_list_preceded_COMMA_typ__) -> "(, <typ>)*", ", " ^ eg_typ
+  | X (N N_seplist_typ_or_wildcard_COMMA_) -> seplist ("<typ_or_wildcard>", eg_typ) comma
+  | X (N N_list_preceded_COMMA_typ_or_wildcard__) -> "(, <typ_or_wildcard>)*", ", " ^ eg_typ
   | X (N N_seplist_typ_bind_COMMA_) -> seplist ("<typ_bind>", eg_upat) comma
   | X (N N_list_preceded_COMMA_typ_bind__) -> "(, <typ_bind>)*", ", " ^ eg_upat
   | X (N N_seplist_typ_field_semicolon_) -> seplist ("typ_field", eg_typ_dec) semi
@@ -251,6 +252,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (N N_seplist1_typ_tag_semicolon_) -> "seplist1(<typ_tag>,<semicolon>)", eg_typ_tag
   | X (N N_pat_opt) -> "<pat_opt>", eg_pat
   | X (N N_typ) -> "<typ>", eg_typ
+  | X (N N_typ_or_wildcard) -> "<typ_or_wildcard>", eg_typ
   | X (N N_typ_dec) -> "<typ_dec>", eg_typ_dec
   | X (N N_typ_args) -> "<typ_args>", eg_typ_args
   | X (N N_typ_bind) -> "<typ_bind>", eg_upat
