@@ -1530,21 +1530,41 @@ type ctx_dot_candidate =
     matching module could be imported, and reports an ambiguity error
     when finding multiple resolutions.
  *)
+
+(* Does an instantiation for [tbs] exist that makes [t1] <: [t2]? *)
+let permissive_sub t1 (tbs, t2) =
+  try
+    let (inst, c) = Bi_match.bi_match_subs None tbs None [t1, t2] [] in
+    ignore (Bi_match.finalize inst c []);
+    Some inst
+  with _ ->
+    None
+
+let has_matching_self receiver_ty tf = match tf with
+  | T.{ lab = "Self"; typ = T.Typ con; _ } ->
+     (match Cons.kind con with
+      | T.Def(tbs, t') -> permissive_sub receiver_ty (tbs, t') <> None
+      | _ -> false)
+  | _ -> false
+
+let check_can_dot env (exp : Syntax.exp) tys es at =
+  if not env.pre then
+  if Flags.get_warning_level "M0256" <> Flags.Allow then
+  match exp.it, tys, es with
+  | (DotE(obj_exp, id, _), receiver_ty :: tys, e::es) ->
+     if (id.it = "equal" || Lib.String.chop_prefix "compare" id.it <> None) && List.length tys = 1 then ()
+     else
+       let can_dot = match T.normalize obj_exp.note.note_typ with
+         | T.Obj(_, fs) ->
+           List.exists (has_matching_self receiver_ty) fs
+         | _ -> false
+       in
+       if can_dot then warn env at "M0236" "You can use the dot notation `%s.%s(...)` here"
+                         (match Source.read_region e.at with Some s -> s | None -> "<arg0>") id.it
+  | _, _, _ -> ()
+
 let contextual_dot env name receiver_ty =
-  (* Does an instantiation for [tbs] exist that makes [t1] <: [t2]? *)
-  let permissive_sub t1 (tbs, t2) =
-    try
-      let (inst, c) = Bi_match.bi_match_subs None tbs None [t1, t2] [] in
-      ignore (Bi_match.finalize inst c []);
-      Some inst
-    with _ ->
-      None in
-  let has_matching_self tf = match tf with
-    | T.{ lab = "Self"; typ = T.Typ con; _ } ->
-       (match Cons.kind con with
-       | T.Def(tbs, t') -> permissive_sub receiver_ty (tbs, t') <> None
-       | _ -> false)
-    | _ -> false in
+  let has_matching_self tf = has_matching_self receiver_ty tf in
   let has_matching_self_type (_, (_, fs)) = List.exists has_matching_self fs in
   let is_matching_func field =
     if not (String.equal field.T.lab name.it) then None
@@ -2591,7 +2611,8 @@ and infer_callee env exp =
   match exp.it with
   | DotE(exp1, id, note) -> begin
     match try_infer_dot_exp env exp.at exp1 id ("a function", is_func_typ) with
-    | Ok t -> infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
+    | Ok t ->
+      infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
     | Error (t1, mk_e) ->
       match contextual_dot env id t1 with
       | Error [] ->
@@ -2678,7 +2699,9 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     | _ -> [exp2]
   in
   let t_args, extra_subtype_problems = match ctx_dot with
-    | None -> t_args, []
+    | None ->
+      check_can_dot env exp1 t_args syntax_args at;
+      t_args, []
     | Some(e, t, _id, _inst) -> begin
       match t_args with
       | t'::ts -> ts, [(t, t')]
