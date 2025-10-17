@@ -243,6 +243,7 @@ let warning_codes = [
   "M0222", None, "Ignored `async*`";
   "M0223", None, "Redundant type instantiation";
   "M0235", None, "Deprecate for caffeine";
+  "M0236", None, "Suggest contextual dot notation";
   ]
 
 let try_find_explanation code =

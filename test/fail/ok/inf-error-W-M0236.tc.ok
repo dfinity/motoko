@@ -1,0 +1,16 @@
+inf-error-W-M0236.mo:50.10-50.44: warning [M0236], You can use the dot notation `peopleMap.get(...)` here
+inf-error-W-M0236.mo:51.10-51.31: warning [M0236], You can use the dot notation `peopleMap.get(...)` here
+inf-error-W-M0236.mo:52.10-52.29: warning [M0236], You can use the dot notation `peopleMap.size(...)` here
+inf-error-W-M0236.mo:54.10-54.55: warning [M0236], You can use the dot notation `Map.clone(peopleMap).get(...)` here
+inf-error-W-M0236.mo:54.18-54.38: warning [M0236], You can use the dot notation `peopleMap.clone(...)` here
+inf-error-W-M0236.mo:11.23-11.24: warning [M0194], unused identifier n (delete or rename to wildcard `_` or `_n`)
+inf-error-W-M0236.mo:11.32-11.33: warning [M0194], unused identifier m (delete or rename to wildcard `_` or `_m`)
+inf-error-W-M0236.mo:15.23-15.24: warning [M0194], unused identifier n (delete or rename to wildcard `_` or `_n`)
+inf-error-W-M0236.mo:15.33-15.34: warning [M0194], unused identifier m (delete or rename to wildcard `_` or `_m`)
+inf-error-W-M0236.mo:24.5-24.8: warning [M0194], unused identifier map (delete or rename to wildcard `_` or `_map`)
+inf-error-W-M0236.mo:25.5-25.12: warning [M0194], unused identifier compare (delete or rename to wildcard `_` or `_compare`)
+inf-error-W-M0236.mo:26.5-26.6: warning [M0194], unused identifier n (delete or rename to wildcard `_` or `_n`)
+inf-error-W-M0236.mo:33.5-33.12: warning [M0194], unused identifier compare (delete or rename to wildcard `_` or `_compare`)
+inf-error-W-M0236.mo:34.5-34.6: warning [M0194], unused identifier n (delete or rename to wildcard `_` or `_n`)
+inf-error-W-M0236.mo:35.5-35.6: warning [M0194], unused identifier v (delete or rename to wildcard `_` or `_v`)
+inf-error-W-M0236.mo:42.26-42.29: warning [M0194], unused identifier map (delete or rename to wildcard `_` or `_map`)
