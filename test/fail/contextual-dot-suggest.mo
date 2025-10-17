@@ -1,0 +1,83 @@
+//MOC-FLAG -W M0236
+// test suggestion of contextual dot notation,
+// excluding binary equals and compare(XXX)
+type Order = {
+  #less; #equal; #greater;
+};
+
+module Any {
+//  public func compare(n : Any, m : Any) : Order { #equal };
+};
+
+module Nat {
+  public type Self = Nat;
+  public func compare(_n : Nat, _m : Nat) : Order { #equal };
+  public func compareBy(_n : Nat, _m : Nat) : Order { #equal };
+  public func equal(_n : Nat, _m : Nat) : Bool { true };
+};
+
+module Text {
+  public func compare(_n : Text, _m : Text) : Order { #equal };
+  public func equal(_n : Text, _m : Text) : Bool { true };
+};
+
+module Odd {
+  public type Self = {#odd};
+  public func compare(_n : Self, _m : Self, _o :  Self) : Order { #equal };
+  public func equal(_n : Self) : Bool { true };
+};
+
+
+module Map {
+  public type Map<K,V> = {map : [(K, [var V])]};
+  public type Self<K, V> = Map<K, V>;
+  public func empty<K, V>() : Map<K,V> = { map= []};
+
+  public func get<K, V>(
+    _map : Map<K, V>,
+    _compare: (implicit : (compare : (K, K) -> Order)),
+    _n : K)
+  : ?V {
+    null
+  };
+
+  public func set<K, V>(
+    map : Map<K, V>,
+    _compare: (implicit : (compare : (K, K) -> Order)),
+    _n : K,
+    _v : V)
+  : Map<K, V> {
+    map
+  };
+
+  public func clone<K, V>(map : Map<K, V>) : Map<K,V> { map };
+
+  public func size<K, V>(_map : Map<K, V>) : Nat { 0 };
+
+};
+
+persistent actor {
+  let peopleMap = Map.empty<Nat, Text>();
+
+  ignore Nat.compare(0, 1); // no-warn
+  ignore Nat.compareBy(0, 1); // no-warn
+  ignore Nat.equal(0, 1); // no-warn
+
+  ignore Text.compare("", ""); // no-warn
+  ignore Text.equal("", ""); // no-warn
+
+  ignore Odd.equal(#odd); // no-warn non-binary
+  ignore Odd.compare(#odd, #odd, #odd); // no-warn non-binary
+
+  // get
+  ignore Map.get(peopleMap, Nat.compare, 1); // warn
+  ignore Map.get(peopleMap, 1); // warn
+  ignore Map.size(peopleMap); // warn
+
+  ignore Map.get(Map.clone(peopleMap), Nat.compare, 1); // warn x 2
+
+  ignore peopleMap.get(Nat.compare, 1); // ok
+  ignore peopleMap.get(1); // ok
+
+
+}

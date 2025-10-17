@@ -1,7 +1,0 @@
-inf-error-W-M0236.mo:69.10-69.25: warning [M0236], You can use the dot notation `#odd.equal(...)` here
-inf-error-W-M0236.mo:70.10-70.39: warning [M0236], You can use the dot notation `#odd.compare(...)` here
-inf-error-W-M0236.mo:73.10-73.44: warning [M0236], You can use the dot notation `peopleMap.get(...)` here
-inf-error-W-M0236.mo:74.10-74.31: warning [M0236], You can use the dot notation `peopleMap.get(...)` here
-inf-error-W-M0236.mo:75.10-75.29: warning [M0236], You can use the dot notation `peopleMap.size(...)` here
-inf-error-W-M0236.mo:77.10-77.55: warning [M0236], You can use the dot notation `Map.clone(peopleMap).get(...)` here
-inf-error-W-M0236.mo:77.18-77.38: warning [M0236], You can use the dot notation `peopleMap.clone(...)` here
