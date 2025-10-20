@@ -2759,12 +2759,32 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
           "shared function call result contains abstract type%a"
           display_typ_expand t_ret';
     end;
-    match T.(is_shared_sort sort || is_async t_ret'), inst.it, tbs with
+    begin match T.(is_shared_sort sort || is_async t_ret'), inst.it, tbs with
     | false, Some (true, _), ([] | T.{ sort = Type; _ } :: _) ->
        local_error env inst.at "M0196" "unexpected `system` capability (try deleting it)"
     | false, (None | Some (false, _)), T.{ sort = Scope; _ } :: _ ->
        warn env at "M0195" "this function call implicitly requires `system` capability and may perform undesired actions (please review the call and provide a type instantiation `<system%s>` to suppress this warning)" (if List.length tbs = 1 then "" else ", ...")
     | _ -> ()
+    end;
+    if Flags.get_warning_level "M0237" <> Flags.Allow then
+      if List.length syntax_args = saturated_arity && implicits_arity < saturated_arity then
+        let explicit_implicits = List.fold_right2
+          (fun typ arg acc ->
+            match as_implicit typ with
+            | Some name ->
+               (match arg.it with
+                | VarE {it = id; note = Const; _} when id = name ->
+                   (name, arg) :: acc
+                | DotE ({ it = VarE {it = mod_id; note = Const; _}; at; note = {note_typ = T.Obj(T.Module, _);_ } },
+                        id,
+                        _) when id.it = name  ->
+                   (mod_id ^ "." ^ name, arg) :: acc
+                | _ -> acc)
+            | None -> acc)
+          t_args syntax_args []
+        in
+        if (List.length explicit_implicits) = saturated_arity - implicits_arity then
+          List.iter (fun (name, exp) -> warn env exp.at "M0237" "The explicit `%s` argument could be `implicit` and omitted here." name)  explicit_implicits
   end;
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
