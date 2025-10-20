@@ -29,8 +29,8 @@ persistent actor {
 
   public func install_all() : async () {
     let controller = Prim.getSelfPrincipal<system>();
-    Prim.debugPrint(debug_show (controller));
-    let result = await ic.create_canister({
+    Prim.debugPrint(debug_show {controller});
+    let result = await ic.create_canister {
       settings = ?{
         controllers = ?[controller];
         compute_allocation = null;
@@ -42,10 +42,10 @@ persistent actor {
         wasm_memory_threshold = null;
       };
       sender_canister_version = null;
-    });
+    };
 
     let canister_id = result.canister_id;
-    Prim.debugPrint(debug_show (canister_id));
+    Prim.debugPrint(debug_show {canister_id});
     let res = await ic.install_code {
       mode = #install;
       canister_id = canister_id;
@@ -54,7 +54,7 @@ persistent actor {
       sender_canister_version = null;
     };
 
-    Prim.debugPrint(debug_show (res));
+    Prim.debugPrint(debug_show res);
 
     let installModalities = {
       mode = #upgrade(
