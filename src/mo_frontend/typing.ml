@@ -2768,23 +2768,32 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     end;
     if Flags.get_warning_level "M0237" <> Flags.Allow then
       if List.length syntax_args = saturated_arity && implicits_arity < saturated_arity then
-        let explicit_implicits = List.fold_right2
-          (fun typ arg acc ->
-            match as_implicit typ with
-            | Some name ->
-               (match arg.it with
-                | VarE {it = id; note = Const; _} when id = name ->
-                   (name, arg) :: acc
-                | DotE ({ it = VarE {it = mod_id; note = Const; _}; at; note = {note_typ = T.Obj(T.Module, _);_ } },
-                        id,
-                        _) when id.it = name  ->
-                   (mod_id ^ "." ^ name, arg) :: acc
-                | _ -> acc)
-            | None -> acc)
-          t_args syntax_args []
+        let _, explicit_implicits = List.fold_right2
+          (fun typ arg (pos, acc) ->
+             pos + 1,
+             match as_implicit typ with
+             | None -> acc
+             | Some name ->
+                match resolve_hole env arg.at (match name with "_" -> Anon pos | id -> Named id) (T.normalize (T.open_ ts typ)) with
+                | Error _ -> acc
+                | Ok {path;_} ->
+                   match path.it, arg.it with
+                   | VarE {it = id0; _},
+                     VarE {it = id1; note = Const; _}
+                        when id0 = id1 ->
+                      (id1, arg) :: acc
+                   | DotE ({ it = VarE {it = mod_id0; _};_ },
+                           { it = id0; _},
+                           _),
+                     DotE ({ it = VarE {it = mod_id1; note = Const; _};_ },
+                           { it = id1; _},
+                           _) when mod_id0 = mod_id1 && id0 = id1 ->
+                      (mod_id1 ^ "." ^ id1, arg) :: acc
+                   | _ -> acc)
+          t_args syntax_args (0, [])
         in
         if (List.length explicit_implicits) = saturated_arity - implicits_arity then
-          List.iter (fun (name, exp) -> warn env exp.at "M0237" "The explicit `%s` argument could be `implicit` and omitted here." name)  explicit_implicits
+          List.iter (fun (name, exp) -> warn env exp.at "M0237" "The `%s` argument can be inferred and omitted here (the function parameter is `implicit`)." name)  explicit_implicits
   end;
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
