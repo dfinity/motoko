@@ -60,6 +60,7 @@ type ctx
   [bi_match_subs scope_opt tbs ret_opt subs deferred]:
   - [scope_opt] is the optional async scope
   - [tbs] is the list of type parameters to instantiate
+  - [partial_inst_opt] is the optional partial instantiation for tbs
   - [ret_opt] is the optional return type mentioning tbs determining polarities
   - [subs] is the list of sub-type problems mentioning tbs either on left or right, but never both sides
   - [deferred] is the list of types deferred until the next round; types containing tbs that are part of the subtype problems in the 2nd round
@@ -71,6 +72,7 @@ type ctx
 val bi_match_subs :
   scope option ->
   bind list ->
+  typ option list option ->
   typ option ->
   (typ * typ) list ->
   typ list ->

@@ -4,6 +4,13 @@
 
 * motoko (`moc`)
 
+  * Add partial type instantiation syntax, allows omitting type arguments for types that can be inferred from other arguments.
+    For example:
+    ```motoko
+    let result = VarArray.map<_, Nat>(varAr, func x = x * 2);
+    ```
+    will infer the type of the result to be `[var Nat]`.
+
   * Add (caffeine) warning `M0236` (#5584).
     Warns if contextual dot notation could have been used,
     e.g. `Map.filter(map, ...)` vs `map.filter(...)`.

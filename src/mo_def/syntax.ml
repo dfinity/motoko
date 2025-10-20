@@ -48,6 +48,7 @@ and async_sort = Type.async_sort
 and await_sort = Type.await_sort
 
 type typ = (typ', Type.typ) Source.annotated_phrase
+and typ_or_wildcard = (typ' option, Type.typ) Source.annotated_phrase
 and typ' =
   | PathT of path * typ list                       (* type path *)
   | PrimT of string                                (* primitive *)
@@ -150,7 +151,7 @@ and stab' = Stable | Flexible
 
 type op_typ = Type.typ ref (* For overloaded resolution; initially Type.Pre. *)
 
-type inst = ((bool * typ list) option, Type.typ list) Source.annotated_phrase (* For implicit scope instantiation *)
+type inst = ((bool * typ_or_wildcard list) option, Type.typ list) Source.annotated_phrase (* For implicit scope instantiation *)
 
 type sort_pat = (Type.shared_sort * pat) Type.shared Source.phrase
 
