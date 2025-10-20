@@ -25,6 +25,8 @@ import (v20 : Blob) = "blob:file:wasms/v20.wasm";
 
 persistent actor {
 
+  let canisters = [v0, v1, v2];
+
   public func install_all() : async () {
     let controller = Prim.getSelfPrincipal<system>();
     Prim.debugPrint(debug_show (controller));
@@ -54,7 +56,8 @@ persistent actor {
 
     Prim.debugPrint(debug_show (res));
 
-    await ic.install_code({
+
+    let installModalities = {
       mode = #upgrade(
         ?{
           wasm_memory_persistence = ?#keep;
@@ -62,10 +65,11 @@ persistent actor {
         }
       );
       canister_id = canister_id;
-      wasm_module = v1;
+      wasm_module = "";
       arg = "";
       sender_canister_version = null;
-    });
+    };
+    await ic.install_code { installModalities with wasm_module = v0 };
 
     await ic.install_code({
       mode = #upgrade(
