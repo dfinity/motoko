@@ -4,6 +4,11 @@
 
 * motoko (`moc`)
 
+  * Add (caffeine) warning `M0237` (#5588).
+    Warns if explicit argument could have been inferred and omitted,
+    e.g. `a.sort(Nat.compare)` vs `a.sort()`.
+    (allowed by default, warn with `-W 0237`).
+
   * Add (caffeine) warning `M0236` (#5584).
     Warns if contextual dot notation could have been used,
     e.g. `Map.filter(map, ...)` vs `map.filter(...)`.

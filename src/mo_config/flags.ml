@@ -85,6 +85,7 @@ let default_warning_levels = M.empty
   |> M.add "M0223" Allow (* don't report redundant instantions *)
   |> M.add "M0235" Allow (* don't deprecate for non-caffeine *)
   |> M.add "M0236" Allow (* don't suggest contextual dot notation *)
+  |> M.add "M0237" Allow (* don't report redundant explicit arguments *)
 
 let warning_levels = ref default_warning_levels
 
