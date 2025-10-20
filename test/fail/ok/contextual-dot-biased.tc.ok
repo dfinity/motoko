@@ -3,4 +3,3 @@ contextual-dot-biased.mo:23.12-23.17: type error [M0234], field other does exist
 but is not a function.
 
 Did you mean field other?
-Hint: If you're trying to use a contextual call you need to import the corresponding module.

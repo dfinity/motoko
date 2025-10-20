@@ -42,7 +42,7 @@ let inclusion_args = [
 
 let ai_args = [
   "--ai-errors", Arg.Set Flags.ai_errors, " emit AI tailored errors";
-  "--implicit-lib-vals", Arg.Set Flags.implicit_lib_vals, _UNDOCUMENTED_ " expose library modules as values for contextual dot and implicits resolution"
+  "--implicit-package", Arg.String (fun s -> Flags.implicit_package := Some s), _UNDOCUMENTED_ " allow contextual dot and implicits resolution from all modules in the given package"
 ]
 
 let persistent_actors_args = [
