@@ -2675,6 +2675,36 @@ and insert_holes at ts es =
   | [arg] -> arg.it
   | args -> TupE args
 
+and check_explicit_arguments env saturated_arity implicits_arity arg_typs syntax_args =
+    if Flags.get_warning_level "M0237" <> Flags.Allow then
+      if List.length syntax_args = saturated_arity && implicits_arity < saturated_arity then
+        let _, explicit_implicits = List.fold_right2
+          (fun typ arg (pos, acc) ->
+             pos + 1,
+             match as_implicit typ with
+             | None -> acc
+             | Some name ->
+                match resolve_hole env arg.at (match name with "_" -> Anon pos | id -> Named id) typ with
+                | Error _ -> acc
+                | Ok {path;_} ->
+                   match path.it, arg.it with
+                   | VarE {it = id0; _},
+                     VarE {it = id1; note = Const; _}
+                        when id0 = id1 ->
+                      (id1, arg) :: acc
+                   | DotE ({ it = VarE {it = mod_id0; _};_ },
+                           { it = id0; _},
+                           _),
+                     DotE ({ it = VarE {it = mod_id1; note = Const; _};_ },
+                           { it = id1; _},
+                           _) when mod_id0 = mod_id1 && id0 = id1 ->
+                      (mod_id1 ^ "." ^ id1, arg) :: acc
+                   | _ -> acc)
+          arg_typs syntax_args (0, [])
+        in
+        if (List.length explicit_implicits) = saturated_arity - implicits_arity then
+          List.iter (fun (name, exp) -> warn env exp.at "M0237" "The `%s` argument can be inferred and omitted here (the function parameter is `implicit`)." name)  explicit_implicits
+
 and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   let exp2 = !ref_exp2 in
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
@@ -2766,34 +2796,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
        warn env at "M0195" "this function call implicitly requires `system` capability and may perform undesired actions (please review the call and provide a type instantiation `<system%s>` to suppress this warning)" (if List.length tbs = 1 then "" else ", ...")
     | _ -> ()
     end;
-    if Flags.get_warning_level "M0237" <> Flags.Allow then
-      if List.length syntax_args = saturated_arity && implicits_arity < saturated_arity then
-        let _, explicit_implicits = List.fold_right2
-          (fun typ arg (pos, acc) ->
-             pos + 1,
-             match as_implicit typ with
-             | None -> acc
-             | Some name ->
-                match resolve_hole env arg.at (match name with "_" -> Anon pos | id -> Named id) (T.normalize (T.open_ ts typ)) with
-                | Error _ -> acc
-                | Ok {path;_} ->
-                   match path.it, arg.it with
-                   | VarE {it = id0; _},
-                     VarE {it = id1; note = Const; _}
-                        when id0 = id1 ->
-                      (id1, arg) :: acc
-                   | DotE ({ it = VarE {it = mod_id0; _};_ },
-                           { it = id0; _},
-                           _),
-                     DotE ({ it = VarE {it = mod_id1; note = Const; _};_ },
-                           { it = id1; _},
-                           _) when mod_id0 = mod_id1 && id0 = id1 ->
-                      (mod_id1 ^ "." ^ id1, arg) :: acc
-                   | _ -> acc)
-          t_args syntax_args (0, [])
-        in
-        if (List.length explicit_implicits) = saturated_arity - implicits_arity then
-          List.iter (fun (name, exp) -> warn env exp.at "M0237" "The `%s` argument can be inferred and omitted here (the function parameter is `implicit`)." name)  explicit_implicits
+    check_explicit_arguments env saturated_arity implicits_arity (List.map (T.open_ ts) t_args) syntax_args;
   end;
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
