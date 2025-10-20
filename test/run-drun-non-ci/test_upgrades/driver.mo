@@ -25,7 +25,7 @@ import (v20 : Blob) = "blob:file:wasms/v20.wasm";
 
 persistent actor {
 
-  let canisters = [v0, v1, v2];
+    let canisters = [v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18, v19, v20];
 
   public func install_all() : async () {
     let controller = Prim.getSelfPrincipal<system>();
@@ -46,16 +46,15 @@ persistent actor {
 
     let canister_id = result.canister_id;
     Prim.debugPrint(debug_show (canister_id));
-    let res = await ic.install_code({
+    let res = await ic.install_code {
       mode = #install;
       canister_id = canister_id;
       wasm_module = v0;
       arg = "";
       sender_canister_version = null;
-    });
+    };
 
     Prim.debugPrint(debug_show (res));
-
 
     let installModalities = {
       mode = #upgrade(
@@ -65,258 +64,11 @@ persistent actor {
         }
       );
       canister_id = canister_id;
-      wasm_module = "";
-      arg = "";
+      arg = "" : Blob;
       sender_canister_version = null;
     };
-    await ic.install_code { installModalities with wasm_module = v0 };
 
-    await ic.install_code({
-      mode = #upgrade(
-        ?{
-          wasm_memory_persistence = ?#keep;
-          skip_pre_upgrade = null; // or ?true or ?false
-        }
-      );
-      canister_id = canister_id;
-      wasm_module = v2;
-      arg = "";
-      sender_canister_version = null;
-    });
-
-    await ic.install_code({
-      mode = #upgrade(
-        ?{
-          wasm_memory_persistence = ?#keep;
-          skip_pre_upgrade = null; // or ?true or ?false
-        }
-      );
-      canister_id = canister_id;
-      wasm_module = v3;
-      arg = "";
-      sender_canister_version = null;
-    });
-
-    await ic.install_code({
-      mode = #upgrade(
-        ?{
-          wasm_memory_persistence = ?#keep;
-          skip_pre_upgrade = null;
-        }
-      );
-      canister_id = canister_id;
-      wasm_module = v4;
-      arg = "";
-      sender_canister_version = null;
-    });
-
-    await ic.install_code({
-      mode = #upgrade(
-        ?{
-          wasm_memory_persistence = ?#keep;
-          skip_pre_upgrade = null;
-        }
-      );
-      canister_id = canister_id;
-      wasm_module = v5;
-      arg = "";
-      sender_canister_version = null;
-    });
-
-    await ic.install_code({
-      mode = #upgrade(
-        ?{
-          wasm_memory_persistence = ?#keep;
-          skip_pre_upgrade = null;
-        }
-      );
-      canister_id = canister_id;
-      wasm_module = v6;
-      arg = "";
-      sender_canister_version = null;
-    });
-
-    await ic.install_code({
-      mode = #upgrade(
-        ?{
-          wasm_memory_persistence = ?#keep;
-          skip_pre_upgrade = null;
-        }
-      );
-      canister_id = canister_id;
-      wasm_module = v7;
-      arg = "";
-      sender_canister_version = null;
-    });
-
-    await ic.install_code({
-      mode = #upgrade(
-        ?{
-          wasm_memory_persistence = ?#keep;
-          skip_pre_upgrade = null;
-        }
-      );
-      canister_id = canister_id;
-      wasm_module = v8;
-      arg = "";
-      sender_canister_version = null;
-    });
-
-    await ic.install_code({
-      mode = #upgrade(
-        ?{
-          wasm_memory_persistence = ?#keep;
-          skip_pre_upgrade = null;
-        }
-      );
-      canister_id = canister_id;
-      wasm_module = v9;
-      arg = "";
-      sender_canister_version = null;
-    });
-
-    await ic.install_code({
-      mode = #upgrade(
-        ?{
-          wasm_memory_persistence = ?#keep;
-          skip_pre_upgrade = null;
-        }
-      );
-      canister_id = canister_id;
-      wasm_module = v10;
-      arg = "";
-      sender_canister_version = null;
-    });
-
-    await ic.install_code({
-      mode = #upgrade(
-        ?{
-          wasm_memory_persistence = ?#keep;
-          skip_pre_upgrade = null;
-        }
-      );
-      canister_id = canister_id;
-      wasm_module = v11;
-      arg = "";
-      sender_canister_version = null;
-    });
-
-    await ic.install_code({
-      mode = #upgrade(
-        ?{
-          wasm_memory_persistence = ?#keep;
-          skip_pre_upgrade = null;
-        }
-      );
-      canister_id = canister_id;
-      wasm_module = v12;
-      arg = "";
-      sender_canister_version = null;
-    });
-
-    await ic.install_code({
-      mode = #upgrade(
-        ?{
-          wasm_memory_persistence = ?#keep;
-          skip_pre_upgrade = null;
-        }
-      );
-      canister_id = canister_id;
-      wasm_module = v13;
-      arg = "";
-      sender_canister_version = null;
-    });
-
-    await ic.install_code({
-      mode = #upgrade(
-        ?{
-          wasm_memory_persistence = ?#keep;
-          skip_pre_upgrade = null;
-        }
-      );
-      canister_id = canister_id;
-      wasm_module = v14;
-      arg = "";
-      sender_canister_version = null;
-    });
-
-    await ic.install_code({
-      mode = #upgrade(
-        ?{
-          wasm_memory_persistence = ?#keep;
-          skip_pre_upgrade = null;
-        }
-      );
-      canister_id = canister_id;
-      wasm_module = v15;
-      arg = "";
-      sender_canister_version = null;
-    });
-
-    await ic.install_code({
-      mode = #upgrade(
-        ?{
-          wasm_memory_persistence = ?#keep;
-          skip_pre_upgrade = null;
-        }
-      );
-      canister_id = canister_id;
-      wasm_module = v16;
-      arg = "";
-      sender_canister_version = null;
-    });
-
-    await ic.install_code({
-      mode = #upgrade(
-        ?{
-          wasm_memory_persistence = ?#keep;
-          skip_pre_upgrade = null;
-        }
-      );
-      canister_id = canister_id;
-      wasm_module = v17;
-      arg = "";
-      sender_canister_version = null;
-    });
-
-    await ic.install_code({
-      mode = #upgrade(
-        ?{
-          wasm_memory_persistence = ?#keep;
-          skip_pre_upgrade = null;
-        }
-      );
-      canister_id = canister_id;
-      wasm_module = v18;
-      arg = "";
-      sender_canister_version = null;
-    });
-
-    await ic.install_code({
-      mode = #upgrade(
-        ?{
-          wasm_memory_persistence = ?#keep;
-          skip_pre_upgrade = null;
-        }
-      );
-      canister_id = canister_id;
-      wasm_module = v19;
-      arg = "";
-      sender_canister_version = null;
-    });
-
-    await ic.install_code({
-      mode = #upgrade(
-        ?{
-          wasm_memory_persistence = ?#keep;
-          skip_pre_upgrade = null;
-        }
-      );
-      canister_id = canister_id;
-      wasm_module = v20;
-      arg = "";
-      sender_canister_version = null;
-    });
-
+    for (wasm_module in canisters.values())
+      await ic.install_code { installModalities with wasm_module };
   };
 };
