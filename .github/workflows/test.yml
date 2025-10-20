@@ -8,7 +8,7 @@ jobs:
   common-tests:
     strategy:
       matrix:
-        os: [ ubuntu-latest, ubuntu-24.04-arm, macos-latest ]
+        os: [ ubuntu-24-large, arm64-linux-16 ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -25,7 +25,7 @@ jobs:
   gc-tests:
     strategy:
       matrix:
-        os: [ ubuntu-latest, ubuntu-24.04-arm, macos-latest ]
+        os: [ ubuntu-24-large, arm64-linux-16 ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -42,7 +42,7 @@ jobs:
   tests:
     strategy:
       matrix:
-        os: [ ubuntu-latest, ubuntu-24.04-arm, macos-latest ]
+        os: [ ubuntu-24-large, arm64-linux-16 ]
         build_type: [ release, debug ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
@@ -132,14 +132,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Common and GC tests passed
-        run: echo "Common and GC tests completed successfully"
+        run: echo "Common and GC tests completed successfully."
 
   verify-main-tests:
     needs: tests
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - name: Main tests passed
-        run: echo "Main tests completed successfully on ${{ matrix.os }}"
+        run: echo "Main tests completed successfully."
+
+  autoclose:
+    if: github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'autoclose')
+    needs: [verify-common-gc, verify-main-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: 'master'
+      - name: Automatically closing successful trials
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr close ${{ github.event.pull_request.number }} --delete-branch --comment "CI looks good, this dependency bump would not cause problems, hence closing this trial PR."
+          gh pr edit ${{ github.event.pull_request.number }} --remove-label "autoclose"

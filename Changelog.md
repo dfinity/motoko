@@ -1,8 +1,77 @@
 # Motoko compiler changelog
 
+## Unreleased
+
+* motoko (`moc`)
+
+  * Add (caffeine) warning `M0236` (#5584).
+    Warns if contextual dot notation could have been used,
+    e.g. `Map.filter(map, ...)` vs `map.filter(...)`.
+    Does not warn for binary `M.equals(e1, e2)` or `M.compareXXX(e1, e2)`.
+    (allowed by default, warn with `-W 0236`).
+
+  * Add (caffeine) deprecation code `M0235` (#5583).
+    Deprecates any public types and values with special doc comment
+    `/// @deprecated M0235`.
+    (allowed by default, warn with `-W 0235`).
+
+  * Experimental support for `implicit` argument declarations (#5517).
+
+  * Experimental support for Mixins (#5459).
+
+  * bugfix: importing of `blob:file:` URLs in subdirectories should work now (#5507, #5569).
+
+## 0.16.3 (2025-09-29)
+
+* motoko (`moc`)
+
+  * Added `Prim.getSelfPrincipal<system>() : Principal` to get the principal of the current actor (#5518).
+
+  * Contextual dot notation (#5458):
+
+    Writing `e0.f(<Ts>)(e1,...,en)` is short-hand for `M.f(<Ts>)(e0, e1, ..., en)`, provided:
+
+    * `f` is not already a field or special member of `e0`.
+    * There is a unique module `M` with member `f` in the context that declares:
+      * a public type `Self<T1,..., Tn>` that can be instantiated to the type of `e0`;
+      * a public field `f` that accepts `(e0, e2, ..., en)` as arguments.
+
+  * Added an optional warning for **redundant type instantiations** in generic function calls (#5468).
+    Note that this warning is off by default.
+    It can be enabled with the `-W M0223` flag.
+
+  * Added `-A` and `-W` flags to disable and enable warnings given their message codes (#5496).
+
+    For example, to disable the warning for redundant `stable` keyword, use `-A M0217`.
+    To enable the warning for redundant type instantiations, use `-W M0223`.
+    Multiple warnings can be disabled or enabled by comma-separating the message codes, e.g. `-A M0217,M0218`.
+    Both flags can be used multiple times.
+
+  * Added `-E` flag to treat specified warnings as errors given their message codes (#5502).
+
+  * Added `--warn-help` flag to show available warning codes, current lint level (**A**llowed, **W**arn or **E**rror), and descriptions (#5502).
+
+  * `moc.js` : Added `setExtraFlags` method for passing some of the `moc` flags (#5506).
+
+## 0.16.2 (2025-09-12)
+
+* motoko (`moc`)
+
+  * Added primitives to access canister environment variables (#5443):
+
+    ```motoko
+    Prim.envVarNames : <system>() -> [Text]
+    Prim.envVar : <system>(name : Text) -> ?Text
+    ```
+
+    These require `system` capability to prevent supply-chain attacks.
+
+  * Added ability to import `Blob`s from the local file system by means of the `blob:file:` URI scheme (#4935).
+
 ## 0.16.1 (2025-08-25)
 
 * motoko (`moc`)
+
   * bugfix: fix compile-time exception showing `???` type when using 'improved type inference' (#5423).
 
   * Allow inference of invariant type parameters, but only when the bound/solution is an 'isolated' type (meaning it has no proper subtypes nor supertypes other than `Any`/`None`) (#5359).

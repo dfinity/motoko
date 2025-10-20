@@ -154,55 +154,28 @@
       buildableReleaseMoPackages = buildableMoPackages releaseMoPackages;
       buildableDebugMoPackages = buildableMoPackages debugMoPackages;
 
+      # Common cargo lock configuration for test-runner packages.
+      test-runner-cargo-lock = {
+        lockFile = ./test-runner/Cargo.lock;
+        outputHashes = {
+          "pocket-ic-10.0.0" = "sha256-Y71hDHsqxcDlUzKBP9fd9HyO1L51kqwTbIyTrGMRftk=";
+        };
+      };
+
       # Define test-runner package.
       test-runner = pkgs.rustPlatform-stable.buildRustPackage {
         pname = "test-runner";
         version = "0.1.0";
         src = ./test-runner;
-        cargoLock = {
-          lockFile = ./test-runner/Cargo.lock;
-        };
+        cargoLock = test-runner-cargo-lock;
         buildInputs = [
-          pkgs.pocket-ic.server
-        ];
-        POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
-        
-        # Explicitly disable tests for the main package
-        doCheck = false;
-      };
-
-      # Separate derivation for running test-runner's Cargo tests in CI.
-      # TODO: Not run now, will add them later.
-      test-runner-tests = pkgs.rustPlatform-stable.buildRustPackage {
-        pname = "test-runner-tests";
-        version = "0.1.0";
-        src = ./test-runner;
-        cargoLock = {
-          lockFile = ./test-runner/Cargo.lock;
-        };
-        buildInputs = [
-          pkgs.pocket-ic.server
-          pkgs.cacert
-        ];
-        nativeBuildInputs = [
           pkgs.pocket-ic.server
         ];
         POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
         SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
         
-        # Skip building, only run tests
-        dontBuild = true;
+        # Enable tests when building the package.
         doCheck = true;
-        checkPhase = ''
-          runHook preCheck
-          export POCKET_IC_BIN="${pkgs.pocket-ic.server}/bin/pocket-ic-server"
-          export PATH="${pkgs.pocket-ic.server}/bin:$PATH"
-          cargo test
-          runHook postCheck
-        '';
-        installPhase = ''
-          touch $out
-        '';
       };
 
       tests = import ./nix/tests.nix { 
@@ -260,7 +233,9 @@
 
       common-constituents = rec {
         samples = import ./nix/samples.nix { inherit pkgs; inherit (debugMoPackages) moc; };
-        base-tests = import ./nix/base-tests.nix { inherit pkgs; inherit (debugMoPackages) moc; };
+        # TODO: Re-enable base tests once we recalibrate them so they
+        # don't OOM anymore.
+        # base-tests = import ./nix/base-tests.nix { inherit pkgs; inherit (debugMoPackages) moc; };
         base-doc = import ./nix/base-doc.nix { inherit pkgs; inherit (debugMoPackages) mo-doc; };
         report-site = import ./nix/report-site.nix { inherit pkgs base-doc docs; inherit (tests) coverage; };
 
@@ -272,7 +247,7 @@
         release = buildableReleaseMoPackages;
         debug = buildableDebugMoPackages;
 
-        inherit nix-update tests js test-runner test-runner-tests;
+        inherit nix-update tests js test-runner;
 
         inherit (pkgs) nix-build-uncached ic-wasm pocket-ic;
 

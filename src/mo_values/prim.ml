@@ -436,6 +436,9 @@ let prim trap =
   | "root_key" ->
       fun _ v k -> as_unit v; k (Blob "")
 
+  | "canister_self" ->
+      fun _ v k -> as_unit v; k (Blob "")
+
   (* fake *)
   | "setCandidLimits" ->
       fun _ v k -> k unit
@@ -461,5 +464,13 @@ let prim trap =
      fun _ v k ->
        let w = as_weak v in
        k (Bool (Weak.check w 0))
+
+  | "env_var_names" ->
+     fun _ v k ->
+       k (Array (Array.of_list []))
+
+  | "env_var" ->
+     fun _ v k ->
+       k Null
 
   | s -> trap.trap ("Value.prim: " ^ s)
