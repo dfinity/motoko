@@ -170,6 +170,7 @@ jobs:
           gh pr diff ${{ github.event.pull_request.number }} | grep -E '^--- a/Changelog.md$' \
           && gh pr review ${{ github.event.pull_request.number }} --approve --body 'A change to `Changelog.md`? I can handle that!'
 
+Handles open PRs filed by `dependabot[bot]` that carry the `dependencies` label. The single changed file must be `doc/docusaurus/package-lock.json`. If so, the PR gets approved with a comment.
   approvals2:
     if: github.event_name == 'pull_request' && github.event.pull_request.login == 'dependabot[bot]' && github.event.pull_request.state == 'open' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.base.ref == 'master' && github.event.pull_request.changed_files == 1 && contains(github.event.pull_request.labels.*.name, 'dependencies')
     runs-on: ubuntu-latest
@@ -184,6 +185,7 @@ jobs:
           gh pr diff ${{ github.event.pull_request.number }} | grep -E '^--- a/doc/docusaurus/package-lock.json$' \
           && gh pr review ${{ github.event.pull_request.number }} --approve --body 'A change to `doc/docusaurus/package-lock.json`? I can handle that!'
 
+Handles open PRs filed by the GH automation bot (not checked here yet) that carry the `automerge-squash` label. The single changed file must be `flake.lock`. If so, the PR gets approved with a comment, auto-merge activated and the label removed.
   approvals3:
     if: github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.base.ref == 'master' && github.event.pull_request.changed_files == 1 && contains(github.event.pull_request.labels.*.name, 'automerge-squash')
     runs-on: ubuntu-latest
@@ -200,3 +202,7 @@ jobs:
           && gh pr review ${{ github.event.pull_request.number }} --approve --body 'A change to `flake.lock`? I can handle that!' \
           && gh pr merge ${{ github.event.pull_request.number }} --auto \
           && gh pr edit ${{ github.event.pull_request.number }} --remove-label 'automerge-squash'
+
+# Note: the above 3 steps can be joined to just one step by factoring out the common `if:` condition fragments,
+#       merging the `run:` parts and and re-adding the differing conditions as a prefix to the pipelines using the `${{ <condition> }}` syntax.
+#       Since that evaluates to textual `true` or `false` (which are UNIX commands) the corresponding pipelines will be predicated on that.
