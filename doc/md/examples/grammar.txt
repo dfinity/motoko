@@ -265,6 +265,7 @@
 
 <block> ::= 
     '{' <list(<dec>, ';')> '}'
+    '{' error '}'
 
 <case> ::= 
     'case' <pat_nullary> <exp_nest>
