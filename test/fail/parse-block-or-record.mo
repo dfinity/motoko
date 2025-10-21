@@ -1,0 +1,29 @@
+
+func _m1() {
+  let _r = { var x = 1 }; // record with var field
+  let _b = do { var x = 1 }; // block with var definition, same syntax...
+  switch 1 {
+    case _ { var x = 1 } // ambiguous, block preferred
+  }
+};
+
+func _m2() {
+  let _r = { x = 1 }; // record with value field
+  // let _b = do { x = 1 }; // syntax error
+  switch 1 {
+    case _ { x = 1 } // ambiguous, block preferred, syntax error
+  }
+};
+
+func _hasSyntaxError() {
+  ;
+};
+
+func _m3() {
+  let r = { x = 1 };
+  let _r = { r with x = 1 }; // record update syntax
+  let _b = do { r with x = 1 }; // syntax error
+  switch 1 {
+    case _ { r with x = 1 } // ambiguous, block preferred, syntax error
+  }
+};

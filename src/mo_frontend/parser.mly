@@ -825,6 +825,8 @@ exp [@recover.expr mk_stub_expr loc] (B) :
 block :
   | LCURLY ds=seplist(dec, semicolon) RCURLY
     { BlockE(ds) @? at $sloc }
+  | LCURLY error RCURLY
+    { BlockE([]) @? at $sloc }
 
 case :
   | CASE p=pat_nullary e=exp_nest

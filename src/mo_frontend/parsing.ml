@@ -86,14 +86,34 @@ let slice_lexeme lexbuf i1 i2 =
 module I = Parser.MenhirInterpreter
 
 (* For debug *)
-(* module RecoveryTracer = MenhirRecoveryLib.MakePrinter ( *)
-(*   struct *)
-(*     module I = Parser.MenhirInterpreter *)
-(*     let print s = Printf.eprintf "%s" s *)
-(*     let print_symbol s = print (Printers.string_of_symbol s) *)
-(*     let print_element = None *)
-(*     let print_token t = print (Source_token.string_of_parser_token t) *)
-(*   end) *)
+module DebugPrinter = MenhirRecoveryLib.MakePrinter (
+  struct
+    module I = Parser.MenhirInterpreter
+    let print s = Printf.eprintf "%s" s
+    let print_symbol s = print (Printers.string_of_symbol s)
+    let print_element = None
+    let print_token t = print (Source_token.string_of_parser_token t)
+  end)
+
+let print_checkpoint = function
+  | I.InputNeeded env ->
+    Printf.eprintf "InputNeeded";
+    DebugPrinter.print_env env
+  | I.Shifting (env1, env2, _) ->
+    Printf.eprintf "Shifting";
+    DebugPrinter.print_env env1;
+    Printf.eprintf " -> ";
+    DebugPrinter.print_env env2
+  | I.HandlingError env ->
+    Printf.eprintf "HandlingError";
+    DebugPrinter.print_env env
+  | I.AboutToReduce (env, _) ->
+    Printf.eprintf "AboutToReduce";
+    DebugPrinter.print_env env
+  | I.Accepted _ ->
+    Printf.eprintf "Accepted"
+  | I.Rejected ->
+    Printf.eprintf "Rejected"
 
 module RecoveryTracer = MenhirRecoveryLib.DummyPrinter (I)
 
@@ -118,6 +138,45 @@ module RecoveryConfig = struct
 end
 
 module R = MenhirRecoveryLib.Make (Parser.MenhirInterpreter) (RecoveryConfig) (RecoveryTracer)
+
+(** [I.loop_handle_undo] alternative with error recovery.
+  Should behave the same as [I.loop_handle_undo], but resume on [I.HandlingError].
+  The extra [should_log_error] flag is used to avoid consecutive errors,
+  it should report the first error only, discard subsequent errors until a successful resume.
+  
+  This strategy synergizes well with the 'error token'.
+ *)
+let loop_handle_recover     
+  (succeed : 'a -> 'answer)
+  (fail : 'a I.checkpoint -> 'answer)
+  (log_error : 'a I.checkpoint -> 'a I.checkpoint -> unit)
+  (read : I.supplier)
+  (inputneeded : 'a I.checkpoint) : 'answer =
+  let rec loop (should_log_error : bool) inputneeded checkpoint =
+    match checkpoint with
+    | I.InputNeeded _ ->
+      let inputneeded = checkpoint in
+      let triple = read() in
+      let checkpoint = I.offer checkpoint triple in
+      let should_log_error = should_log_error || match checkpoint with
+        | I.HandlingError _ -> false
+        | _ -> true (* log error again after a successful resume *)
+      in
+      loop should_log_error inputneeded checkpoint
+    | I.Shifting _
+    | I.AboutToReduce _ ->
+      let checkpoint = I.resume checkpoint in
+      loop should_log_error inputneeded checkpoint
+    | I.Rejected ->
+      fail checkpoint
+    | I.Accepted v ->
+      succeed v
+    | I.HandlingError _ as failure_cp ->
+      (* log only the first error, avoid immediate errors after resuming *)
+      if should_log_error then log_error inputneeded failure_cp;
+      loop false inputneeded (I.resume failure_cp)
+  in
+  loop true inputneeded inputneeded
 
 let handle_error lexbuf error_detail message_store (start, end_) explanations =
   let at =
@@ -149,6 +208,14 @@ let handle_error lexbuf error_detail message_store (start, end_) explanations =
     | _ ->
       Printf.sprintf "unexpected %s" token
   in
+  (* Heuristic hint: if the failing token is '=' or 'with', users might have
+     intended a record/object literal where a block was parsed. Suggest wrapping
+     the record with an extra pair of braces to force an expression context. *)
+  (* let msg =
+    match String.trim lexeme with
+    | "=" | "with" -> msg ^ "\n  Hint: If you intended a record literal here, wrap it in extra braces: { { … } }"
+    | _ -> msg
+  in *)
   Diag.add_msg message_store (Diag.error_message at "M0001" "syntax" msg)
 
 (* We drive the parser in the usual way, but records the last [InputNeeded]
@@ -171,11 +238,9 @@ let parse ?(recovery = false) mode error_detail start lexer lexbuf =
       | _ -> assert false
     in
     let fail cp = None in
-    let save_error_and_fail cp1 cp2 = save_error cp1 cp2; fail cp2 in
     let succ e =  Some e in
     if recovery then
       R.loop_handle_recover succ fail save_error lexer start
     else
-      I.loop_handle_undo succ save_error_and_fail lexer start
+      loop_handle_recover succ fail save_error lexer start
   )
-

@@ -1,0 +1,66 @@
+parse-block-or-record.mo:14.16-14.17: syntax error [M0001], unexpected token '=', expected one of token or <phrase> sequence:
+  }
+  .<nat>
+  !
+  <exp_nullary(ob)>
+  <binop> <exp(ob)>
+  ; seplist(<dec>,<semicolon>)
+  |> <exp_bin(ob)>
+  or <exp_bin(ob)>
+  <unassign> <exp(ob)>
+  implies <exp_bin(ob)>
+  <relop> <exp_bin(ob)>
+  . <id>
+  : <typ_nobin>
+  := <exp(ob)>
+  <binop> <exp_bin(ob)>
+  <binassign> <exp(ob)>
+  and <exp_bin(ob)>
+  <unop> <exp_bin(ob)>
+  <inst> <exp_nullary(ob)>
+  [ <exp(ob)> ]
+parse-block-or-record.mo:19.3-19.4: syntax error [M0001], unexpected token ';', expected one of token or <phrase> sequence:
+  }
+  seplist(<dec>,<semicolon>) }
+parse-block-or-record.mo:25.19-25.23: syntax error [M0001], unexpected token 'with', expected one of token or <phrase> sequence:
+  }
+  .<nat>
+  !
+  <exp_nullary(ob)>
+  <binop> <exp(ob)>
+  ; seplist(<dec>,<semicolon>)
+  |> <exp_bin(ob)>
+  or <exp_bin(ob)>
+  <unassign> <exp(ob)>
+  implies <exp_bin(ob)>
+  <relop> <exp_bin(ob)>
+  . <id>
+  : <typ_nobin>
+  := <exp(ob)>
+  <binop> <exp_bin(ob)>
+  <binassign> <exp(ob)>
+  and <exp_bin(ob)>
+  <unop> <exp_bin(ob)>
+  <inst> <exp_nullary(ob)>
+  [ <exp(ob)> ]
+parse-block-or-record.mo:27.16-27.20: syntax error [M0001], unexpected token 'with', expected one of token or <phrase> sequence:
+  }
+  .<nat>
+  !
+  <exp_nullary(ob)>
+  <binop> <exp(ob)>
+  ; seplist(<dec>,<semicolon>)
+  |> <exp_bin(ob)>
+  or <exp_bin(ob)>
+  <unassign> <exp(ob)>
+  implies <exp_bin(ob)>
+  <relop> <exp_bin(ob)>
+  . <id>
+  : <typ_nobin>
+  := <exp(ob)>
+  <binop> <exp_bin(ob)>
+  <binassign> <exp(ob)>
+  and <exp_bin(ob)>
+  <unop> <exp_bin(ob)>
+  <inst> <exp_nullary(ob)>
+  [ <exp(ob)> ]
