@@ -1,6 +1,7 @@
 (* common flags for the moc compiler *)
 
 module M = Map.Make(String)
+module S = Set.Make(String)
 
 type compile_mode = WasmMode | ICMode | RefMode | WASIMode
 
@@ -12,6 +13,9 @@ type instruction_limits = {
 }
 
 type actors = LegacyActors | RequirePersistentActors | DefaultPersistentActors
+
+type lint_level = Allow | Warn | Error
+
 let ai_errors = ref false
 let trace = ref false
 let verbose = ref false
@@ -30,6 +34,7 @@ let dump_tc = ref false
 let dump_lowering = ref false
 let check_ir = ref true
 let package_urls : string M.t ref = ref M.empty
+let implicit_package : string option ref = ref None
 let actor_aliases : string M.t ref = ref M.empty
 let actor_idl_path : string option ref = ref None
 let max_stable_pages_default = 65536
@@ -75,3 +80,22 @@ let stable_memory_access_limit = ref stable_memory_access_limit_default
 let experimental_stable_memory_default = 0 (* _ < 0: error; _ = 0: warn, _ > 0: allow *)
 let experimental_stable_memory = ref experimental_stable_memory_default
 let typechecker_combine_srcs = ref false (* useful for the language server *)
+
+let default_warning_levels = M.empty
+  |> M.add "M0223" Allow (* don't report redundant instantions *)
+  |> M.add "M0235" Allow (* don't deprecate for non-caffeine *)
+  |> M.add "M0236" Allow (* don't suggest contextual dot notation *)
+  |> M.add "M0237" Allow (* don't report redundant explicit arguments *)
+
+let warning_levels = ref default_warning_levels
+
+let set_warning_level code level =
+  warning_levels := M.add code level !warning_levels
+
+let get_warning_level code =
+  match M.find_opt code !warning_levels with
+  | None -> Warn
+  | Some level -> level
+
+let is_warning_disabled code = get_warning_level code = Allow
+let is_warning_enabled code = not (is_warning_disabled code)

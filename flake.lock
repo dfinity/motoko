@@ -3,11 +3,11 @@
     "candid-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1756934685,
-        "narHash": "sha256-N6PQHFrcteQs53c3TOG+eJJbtBsCmSr9qv7u2ht9Bv8=",
+        "lastModified": 1759412512,
+        "narHash": "sha256-7/aBuCJUtH5nofVfgyedqI6t7a21H+14kwmYOGFbO8g=",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "1ddf879f368f765145223c08bbe2c8c8f4782dcc",
+        "rev": "1725ea211e928a4dc18c4147d27ed5764f00df5c",
         "type": "github"
       },
       "original": {
@@ -87,11 +87,11 @@
     "ic-wasm-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1754580726,
-        "narHash": "sha256-uHmlVhRLycd4X29OwwpzQJS3jR/ZqfINY/i+sJgR++0=",
+        "lastModified": 1759325426,
+        "narHash": "sha256-PTwtdFVGGofm934tlikb2cNq932yuBjXYtN5TKXfwmg=",
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "f2011bb84fe821188c1395fa2e5729b6811d3886",
+        "rev": "d61f15ea363eebb952195f57cf9c5db3b2cade21",
         "type": "github"
       },
       "original": {
@@ -120,11 +120,11 @@
     "motoko-base-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1757601964,
-        "narHash": "sha256-MO/AAJltPtfEBSgo3Ba7Sc3So3b6iwzCuY9UX2nzoBI=",
+        "lastModified": 1759588547,
+        "narHash": "sha256-p7Z+cy9F0abuCWh4hvUpoOROhIPiYJfAO3f4hTXMKow=",
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "81ea2e83f71207bfaf80c58cbce633e0758ff848",
+        "rev": "15f79638ab493b985f9a0c45d62460781a728d33",
         "type": "github"
       },
       "original": {
@@ -137,11 +137,11 @@
     "motoko-core-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1756913868,
-        "narHash": "sha256-zLJShje+X/+4yM0wTwNB9Bri00SH6G3vOvyUP56KdwU=",
+        "lastModified": 1760458014,
+        "narHash": "sha256-INchg3S6uo8qKUvShjHmGVhgKq2FdQkcYKJkE2GLDoY=",
         "owner": "dfinity",
         "repo": "motoko-core",
-        "rev": "e397d7e577491703d94a1f82dc88ff01c59c0dbd",
+        "rev": "c49a060df3e066463d81664f27065238ca7cc23f",
         "type": "github"
       },
       "original": {
@@ -240,11 +240,11 @@
     "pocket-ic-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1751943485,
-        "narHash": "sha256-4w5yW6maOFUuJmkclUeZBThem0M6GOJhEZ5tIlmN6P0=",
+        "lastModified": 1757573980,
+        "narHash": "sha256-yOjLoRCMsi29tEK8M1XNC8AaU1ixkHE3B5sdGSr6u6s=",
         "owner": "dfinity",
         "repo": "ic",
-        "rev": "894e3501dcba0f14cdc2466a821da84afae94352",
+        "rev": "861616d46ded00091fecbfe01f441b38b56b483c",
         "type": "github"
       },
       "original": {

@@ -86,6 +86,7 @@ module Make (Cfg : Config) = struct
   let obj_sort s = match s.it with
     | Type.Object -> Atom "Object"
     | Type.Actor -> Atom "Actor"
+    | Type.Mixin -> Atom "Mixin"
     | Type.Module -> Atom "Module"
     | Type.Memory -> Atom "Memory"
 
@@ -97,6 +98,7 @@ module Make (Cfg : Config) = struct
      currently. As a compromise, we annotate only the nodes that currently
      matter for the language server, i.e. the left expression of a [DotE] node. *)
   let rec exp ?(arrange_typ = false) e = source e.at (annot ~arrange_typ e.note (match e.it with
+    | HoleE (_, e) -> "HoleE" $$ [exp !e]
     | VarE x              -> "VarE"      $$ [id x]
     | LitE l              -> "LitE"      $$ [lit !l]
     | ActorUrlE e         -> "ActorUrlE" $$ [exp e]
@@ -119,7 +121,7 @@ module Make (Cfg : Config) = struct
                                                 ] @ List.map dec_field dfs
     | ObjE ([], efs)      -> "ObjE"      $$ List.map exp_field efs
     | ObjE (bases, efs)   -> "ObjE"      $$ exps bases @ [Atom "with"] @ List.map exp_field efs
-    | DotE (e, x)         -> "DotE"      $$ [exp ~arrange_typ:true e; id x]
+    | DotE (e, x, ol)     -> "DotE"      $$ [exp ~arrange_typ:true e; match !ol with None -> id x | Some e -> exp e]
     | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
     | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ exps es
     | IdxE (e1, e2)       -> "IdxE"      $$ [exp e1; exp e2]
@@ -134,7 +136,7 @@ module Make (Cfg : Config) = struct
         Atom (if sugar then "" else "=");
         exp e'
       ]
-    | CallE (par_opt, e1, ts, e2) -> "CallE" $$ parenthetical par_opt ([exp e1] @ inst ts @ [exp e2])
+    | CallE (par_opt, e1, ts, (_, e2)) -> "CallE" $$ parenthetical par_opt ([exp e1] @ inst ts @ [exp !e2])
     | BlockE ds           -> "BlockE"  $$ List.map dec ds
     | NotE e              -> "NotE"    $$ [exp e]
     | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
@@ -174,6 +176,7 @@ module Make (Cfg : Config) = struct
     | TagE (i, e)         -> "TagE"    $$ [id i; exp e]
     | PrimE p             -> "PrimE"   $$ [Atom p]
     | ImportE (f, _fp)    -> "ImportE" $$ [Atom f]
+    | ImplicitLibE l      -> "ImplicitLibE" $$ [Atom l]
     | ThrowE e            -> "ThrowE"  $$ [exp e]
     | TryE (e, cs, None)  -> "TryE"    $$ [exp e] @ List.map catch cs
     | TryE (e, cs, Some f)-> "TryE"    $$ [exp e] @ List.map catch cs @ Atom ";" :: [exp f]
@@ -323,7 +326,9 @@ module Make (Cfg : Config) = struct
         (match rt with None -> Atom "_" | Some t -> typ t);
         obj_sort s;
         id i
-      ] @ List.map dec_field dfs)))
+      ] @ List.map dec_field dfs)
+    | MixinD (_, dfs) -> "MixinD" $$ List.map dec_field dfs
+    | IncludeD (i, e, _) -> "IncludeD" $$ [id i; exp e]))
 
   and prog p = "Prog" $$ List.map dec p.it
 end

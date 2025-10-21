@@ -70,7 +70,9 @@ let un_prog prog =
       imports
   in
   match body.it with
-  | ProgU decs -> Ok ([], []) (* treat all fields as private *)
+  | ProgU _ -> Ok ([], []) (* treat all fields as private *)
+  | MixinU (_, decs) ->
+      Ok ([], decs) (* TODO figure out how to document mixin parameters *)
   | ModuleU (_, decs) -> Ok (imports, decs)
   | ActorU (_, _, _, decs) -> Ok (imports, decs)
   | ActorClassU (_, _, _, _, _, _, _, _, decs) ->

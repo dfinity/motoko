@@ -22,7 +22,7 @@ This section explores Motoko’s rich and expressive type system.
 
 10. [Options](https://internetcomputer.org/docs/motoko/fundamentals/types/options)
 
-11. [Results](https://internetcomputer.org/docs/motoko/fundamentals/types/results);
+11. [Results](https://internetcomputer.org/docs/motoko/fundamentals/types/results)
 
 12. [Stable types](https://internetcomputer.org/docs/motoko/fundamentals/types/stable-types)
 
