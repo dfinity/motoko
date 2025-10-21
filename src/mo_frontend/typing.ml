@@ -1551,16 +1551,9 @@ let check_can_dot env (exp : Syntax.exp) tys es at =
   if not env.pre then
   if Flags.get_warning_level "M0236" <> Flags.Allow then
   match exp.it, tys, es with
-  | (DotE(obj_exp, id, _), receiver_ty :: tys, e::es) ->
-     if (id.it = "equal" || Lib.String.chop_prefix "compare" id.it <> None) && List.length tys = 1 then ()
-     else
-       let can_dot = match T.normalize obj_exp.note.note_typ with
-         | T.Obj(_, fs) ->
-           List.exists (has_matching_self receiver_ty) fs
-         | _ -> false
-       in
-       if can_dot then warn env at "M0236" "You can use the dot notation `%s.%s(...)` here"
-                         (match Source.read_region e.at with Some s -> s | None -> "<arg0>") id.it
+  | (DotE(_, id, _), T.Named("self", _) :: _, e::_) ->
+      warn env at "M0236" "You can use the dot notation `%s.%s(...)` here"
+        (match Source.read_region e.at with Some s -> s | None -> "<arg0>") id.it
   | _, _, _ -> ()
 
 let contextual_dot env name receiver_ty =

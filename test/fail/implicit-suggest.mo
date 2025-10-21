@@ -13,11 +13,10 @@ module Text {
 
 module Map {
   public type Map<K,V> = {map : [(K, [var V])]};
-  public type Self<K, V> = Map<K, V>;
   public func empty<K, V>() : Map<K,V> = { map= []};
 
   public func get<K, V>(
-    _map : Map<K, V>,
+    self : Map<K, V>,
     _compare: (implicit : (compare : (K, K) -> Order)),
     _n : K)
   : ?V {
@@ -25,12 +24,12 @@ module Map {
   };
 
   public func set<K, V>(
-    map : Map<K, V>,
+    self : Map<K, V>,
     _compare: (implicit : (compare : (K, K) -> Order)),
     _n : K,
     _v : V)
   : Map<K, V> {
-    map
+    self
   };
 };
 
