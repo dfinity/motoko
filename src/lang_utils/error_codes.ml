@@ -244,6 +244,7 @@ let warning_codes = [
   "M0223", None, "Redundant type instantiation";
   "M0235", None, "Deprecate for caffeine";
   "M0236", None, "Suggest contextual dot notation";
+  "M0237", None, "Suggest redundant explicit arguments";
   ]
 
 let try_find_explanation code =
