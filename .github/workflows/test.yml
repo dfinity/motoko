@@ -201,7 +201,7 @@ jobs:
         run: |
           gh pr diff ${{ github.event.pull_request.number }} | grep -E '^--- a/flake.lock$' \
           && gh pr review ${{ github.event.pull_request.number }} --approve --body 'A change to `flake.lock`? I can handle that!' \
-          && gh pr merge ${{ github.event.pull_request.number }} --auto \
+          && gh pr merge ${{ github.event.pull_request.number }} --squash --auto \
           && gh pr edit ${{ github.event.pull_request.number }} --remove-label 'automerge-squash'
 
 # Note: the above 3 steps can be joined to just one step by factoring out the common `if:` condition fragments,
