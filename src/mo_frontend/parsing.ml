@@ -146,7 +146,7 @@ module R = MenhirRecoveryLib.Make (Parser.MenhirInterpreter) (RecoveryConfig) (R
   
   This strategy synergizes well with the 'error token'.
  *)
-let loop_handle_recover     
+let loop_handle_recover
   (succeed : 'a -> 'answer)
   (fail : 'a I.checkpoint -> 'answer)
   (log_error : 'a I.checkpoint -> 'a I.checkpoint -> unit)
@@ -218,6 +218,42 @@ let handle_error lexbuf error_detail message_store (start, end_) explanations =
   in *)
   Diag.add_msg message_store (Diag.error_message at "M0001" "syntax" msg)
 
+let string_of_production (prod : I.production) =
+  Printf.sprintf "%s -> %s"
+    (Printers.string_of_symbol (I.lhs prod))
+    (String.concat " . " (List.map Printers.string_of_symbol (I.rhs prod)))
+
+let inspect_state_items st =
+  let symbol = I.incoming_symbol st in
+  DebugPrinter.print_symbol (I.X symbol);
+  Printf.eprintf "\n";
+  I.items st |> List.iter (fun (prod, _dot) ->
+    Printf.eprintf "  %s\n" (string_of_production prod))
+
+let rec inspect_env (env : 'a I.env) =
+  match I.top env, I.pop env with
+  | Some (I.Element (st, _, _, _)), Some env' ->
+    inspect_state_items st; inspect_env env'
+  | _ -> Printf.eprintf "inspect_env done\n"
+
+let is_lcurly (type a) (symbol : a I.symbol) = match symbol with
+  | I.T (I.T_LCURLY) -> true
+  | _ -> false
+
+let rec inside_block (env : 'a I.env) =
+  match I.top env, I.pop env with
+  | Some (I.Element (st, _, _, _)), Some env' ->
+    if is_lcurly (I.incoming_symbol st) then
+      (* check if the closest '{' comes from the 'block' *)
+      match I.items st with
+      | (prod, _dot) :: _ ->
+        I.lhs prod = I.X (I.N I.N_block)
+      | _ -> false
+    else
+      (* keep looking for the closest '{' *)
+      inside_block env'
+  | _ -> false
+
 (* We drive the parser in the usual way, but records the last [InputNeeded]
    checkpoint. If a syntax error is detected, we go back to this checkpoint
    and analyze it in order to produce a meaningful diagnostic. *)
@@ -232,9 +268,19 @@ let parse ?(recovery = false) mode error_detail start lexer lexbuf =
          last [InputNeeded] checkpoint and investigate. *)
       match fail_cp with
       | I.HandlingError env ->
-        let (startp, _) as positions = I.positions env in
-        let explanations = E.investigate startp inputneeded_cp in
-        handle_error lexbuf error_detail m positions explanations
+        (* inspect_env env; *)
+        let (startp, endp) as positions = I.positions env in
+        let at = Source.{left = Lexer.convert_pos startp; right = Lexer.convert_pos endp} in
+        let lexeme = slice_lexeme lexbuf startp endp in
+        (match lexeme with
+        | ("=" | "with") when inside_block env ->
+          (* TODO: fix the [at] to cover the whole record/block *)
+          Diag.add_msg m (Diag.error_message at "M0001" "syntax"
+            (Printf.sprintf "expected block but got record, the record should be wrapped in braces: { { … } }"))
+        | _ ->
+          let explanations = E.investigate startp inputneeded_cp in
+          handle_error lexbuf error_detail m positions explanations
+        )
       | _ -> assert false
     in
     let fail cp = None in

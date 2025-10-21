@@ -15,11 +15,27 @@ func _m2() {
   }
 };
 
+func _var0() {
+  switch 1 {
+    case _ { y = 2 }
+  }
+};
+func _var1() {
+  switch 1 {
+    case _ { var x = 1; y = 2 }
+  }
+};
+func _var2() {
+  switch 1 {
+    case _ { var x = 1; var y = 2; z = 3 }
+  }
+};
+
 func _hasSyntaxError() {
   ;
 };
 
-func _m3() {
+func _mWith() {
   let r = { x = 1 };
   let _r = { r with x = 1 }; // record update syntax
   let _b = do { r with x = 1 }; // syntax error
