@@ -240,6 +240,8 @@ let info env at fmt =
 
 let check_deprecation env at desc id depr =
   match depr with
+  | Some ("M0235" as code) ->
+    warn env at code "%s %s is deprecated for caffeine" desc id
   | Some ("M0199" as code) ->
     if !(env.reported_stable_memory) then ()
     else begin
@@ -1528,21 +1530,41 @@ type ctx_dot_candidate =
     matching module could be imported, and reports an ambiguity error
     when finding multiple resolutions.
  *)
+
+(* Does an instantiation for [tbs] exist that makes [t1] <: [t2]? *)
+let permissive_sub t1 (tbs, t2) =
+  try
+    let (inst, c) = Bi_match.bi_match_subs None tbs None [t1, t2] [] in
+    ignore (Bi_match.finalize inst c []);
+    Some inst
+  with _ ->
+    None
+
+let has_matching_self receiver_ty tf = match tf with
+  | T.{ lab = "Self"; typ = T.Typ con; _ } ->
+     (match Cons.kind con with
+      | T.Def(tbs, t') -> permissive_sub receiver_ty (tbs, t') <> None
+      | _ -> false)
+  | _ -> false
+
+let check_can_dot env (exp : Syntax.exp) tys es at =
+  if not env.pre then
+  if Flags.get_warning_level "M0236" <> Flags.Allow then
+  match exp.it, tys, es with
+  | (DotE(obj_exp, id, _), receiver_ty :: tys, e::es) ->
+     if (id.it = "equal" || Lib.String.chop_prefix "compare" id.it <> None) && List.length tys = 1 then ()
+     else
+       let can_dot = match T.normalize obj_exp.note.note_typ with
+         | T.Obj(_, fs) ->
+           List.exists (has_matching_self receiver_ty) fs
+         | _ -> false
+       in
+       if can_dot then warn env at "M0236" "You can use the dot notation `%s.%s(...)` here"
+                         (match Source.read_region e.at with Some s -> s | None -> "<arg0>") id.it
+  | _, _, _ -> ()
+
 let contextual_dot env name receiver_ty =
-  (* Does an instantiation for [tbs] exist that makes [t1] <: [t2]? *)
-  let permissive_sub t1 (tbs, t2) =
-    try
-      let (inst, c) = Bi_match.bi_match_subs None tbs None [t1, t2] [] in
-      ignore (Bi_match.finalize inst c []);
-      Some inst
-    with _ ->
-      None in
-  let has_matching_self tf = match tf with
-    | T.{ lab = "Self"; typ = T.Typ con; _ } ->
-       (match Cons.kind con with
-       | T.Def(tbs, t') -> permissive_sub receiver_ty (tbs, t') <> None
-       | _ -> false)
-    | _ -> false in
+  let has_matching_self tf = has_matching_self receiver_ty tf in
   let has_matching_self_type (_, (_, fs)) = List.exists has_matching_self fs in
   let is_matching_func field =
     if not (String.equal field.T.lab name.it) then None
@@ -2589,7 +2611,8 @@ and infer_callee env exp =
   match exp.it with
   | DotE(exp1, id, note) -> begin
     match try_infer_dot_exp env exp.at exp1 id ("a function", is_func_typ) with
-    | Ok t -> infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
+    | Ok t ->
+      infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
     | Error (t1, mk_e) ->
       match contextual_dot env id t1 with
       | Error [] ->
@@ -2652,6 +2675,36 @@ and insert_holes at ts es =
   | [arg] -> arg.it
   | args -> TupE args
 
+and check_explicit_arguments env saturated_arity implicits_arity arg_typs syntax_args =
+    if Flags.get_warning_level "M0237" <> Flags.Allow then
+      if List.length syntax_args = saturated_arity && implicits_arity < saturated_arity then
+        let _, explicit_implicits = List.fold_right2
+          (fun typ arg (pos, acc) ->
+             pos + 1,
+             match as_implicit typ with
+             | None -> acc
+             | Some name ->
+                match resolve_hole env arg.at (match name with "_" -> Anon pos | id -> Named id) typ with
+                | Error _ -> acc
+                | Ok {path;_} ->
+                   match path.it, arg.it with
+                   | VarE {it = id0; _},
+                     VarE {it = id1; note = Const; _}
+                        when id0 = id1 ->
+                      (id1, arg) :: acc
+                   | DotE ({ it = VarE {it = mod_id0; _};_ },
+                           { it = id0; _},
+                           _),
+                     DotE ({ it = VarE {it = mod_id1; note = Const; _};_ },
+                           { it = id1; _},
+                           _) when mod_id0 = mod_id1 && id0 = id1 ->
+                      (mod_id1 ^ "." ^ id1, arg) :: acc
+                   | _ -> acc)
+          arg_typs syntax_args (0, [])
+        in
+        if (List.length explicit_implicits) = saturated_arity - implicits_arity then
+          List.iter (fun (name, exp) -> warn env exp.at "M0237" "The `%s` argument can be inferred and omitted here (the function parameter is `implicit`)." name)  explicit_implicits
+
 and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   let exp2 = !ref_exp2 in
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
@@ -2676,7 +2729,9 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     | _ -> [exp2]
   in
   let t_args, extra_subtype_problems = match ctx_dot with
-    | None -> t_args, []
+    | None ->
+      check_can_dot env exp1 t_args syntax_args at;
+      t_args, []
     | Some(e, t, _id, _inst) -> begin
       match t_args with
       | t'::ts -> ts, [(t, t')]
@@ -2734,12 +2789,14 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
           "shared function call result contains abstract type%a"
           display_typ_expand t_ret';
     end;
-    match T.(is_shared_sort sort || is_async t_ret'), inst.it, tbs with
+    begin match T.(is_shared_sort sort || is_async t_ret'), inst.it, tbs with
     | false, Some (true, _), ([] | T.{ sort = Type; _ } :: _) ->
        local_error env inst.at "M0196" "unexpected `system` capability (try deleting it)"
     | false, (None | Some (false, _)), T.{ sort = Scope; _ } :: _ ->
        warn env at "M0195" "this function call implicitly requires `system` capability and may perform undesired actions (please review the call and provide a type instantiation `<system%s>` to suppress this warning)" (if List.length tbs = 1 then "" else ", ...")
     | _ -> ()
+    end;
+    check_explicit_arguments env saturated_arity implicits_arity (List.map (T.open_ ts) t_args) syntax_args;
   end;
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
