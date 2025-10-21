@@ -156,6 +156,7 @@ jobs:
           gh pr close ${{ github.event.pull_request.number }} --delete-branch --comment "CI looks good, this dependency bump would not cause problems, hence closing this trial PR."
           gh pr edit ${{ github.event.pull_request.number }} --remove-label "autoclose"
 
+# Handles open PRs that address `master` and only have one changed file. The body checks whether that is the `Changelog.md` (since the `if:` condition can't). If so, the PR gets approved with a comment.
   approvals1:
     if: github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.base.ref == 'master' && github.event.pull_request.changed_files == 1
     runs-on: ubuntu-latest
@@ -170,7 +171,7 @@ jobs:
           gh pr diff ${{ github.event.pull_request.number }} | grep -E '^--- a/Changelog.md$' \
           && gh pr review ${{ github.event.pull_request.number }} --approve --body 'A change to `Changelog.md`? I can handle that!'
 
-Handles open PRs filed by `dependabot[bot]` that carry the `dependencies` label. The single changed file must be `doc/docusaurus/package-lock.json`. If so, the PR gets approved with a comment.
+# Handles open PRs filed by `dependabot[bot]` that carry the `dependencies` label. The single changed file must be `doc/docusaurus/package-lock.json`. If so, the PR gets approved with a comment.
   approvals2:
     if: github.event_name == 'pull_request' && github.event.pull_request.login == 'dependabot[bot]' && github.event.pull_request.state == 'open' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.base.ref == 'master' && github.event.pull_request.changed_files == 1 && contains(github.event.pull_request.labels.*.name, 'dependencies')
     runs-on: ubuntu-latest
@@ -185,7 +186,7 @@ Handles open PRs filed by `dependabot[bot]` that carry the `dependencies` label.
           gh pr diff ${{ github.event.pull_request.number }} | grep -E '^--- a/doc/docusaurus/package-lock.json$' \
           && gh pr review ${{ github.event.pull_request.number }} --approve --body 'A change to `doc/docusaurus/package-lock.json`? I can handle that!'
 
-Handles open PRs filed by the GH automation bot (not checked here yet) that carry the `automerge-squash` label. The single changed file must be `flake.lock`. If so, the PR gets approved with a comment, auto-merge activated and the label removed.
+# Handles open PRs filed by the GH automation bot (not checked here yet) that carry the `automerge-squash` label. The single changed file must be `flake.lock`. If so, the PR gets approved with a comment, auto-merge activated and the label removed.
   approvals3:
     if: github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.base.ref == 'master' && github.event.pull_request.changed_files == 1 && contains(github.event.pull_request.labels.*.name, 'automerge-squash')
     runs-on: ubuntu-latest
