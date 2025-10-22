@@ -11,23 +11,24 @@ func _m2() {
   let _r = { x = 1 }; // record with value field
   // let _b = do { x = 1 }; // syntax error
   switch 1 {
-    case _ { x = 1 } // ambiguous, block preferred, syntax error
+    case _ { x = 1 }; // ambiguous, block preferred, syntax error
+    case _ { x = 1    // also missing '}'
   }
 };
 
 func _var0() {
   switch 1 {
-    case _ { y = 2 }
+    case _ { y = 2; z = 3; w = 4 }
   }
 };
 func _var1() {
   switch 1 {
-    case _ { var x = 1; y = 2 }
+    case _ { var x = 1; y = 2; z = 3; w = 4 }
   }
 };
 func _var2() {
   switch 1 {
-    case _ { var x = 1; var y = 2; z = 3 }
+    case _ { var x = 1; var y = 2; z = 3; w = 4 }
   }
 };
 

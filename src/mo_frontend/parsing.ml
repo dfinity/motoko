@@ -152,21 +152,21 @@ let loop_handle_recover
   (log_error : 'a I.checkpoint -> 'a I.checkpoint -> unit)
   (read : I.supplier)
   (inputneeded : 'a I.checkpoint) : 'answer =
-  let rec loop (should_log_error : bool) inputneeded checkpoint =
+  let rec loop (should_log_error : bool) inputneeded checkpoint triple =
     match checkpoint with
     | I.InputNeeded _ ->
       let inputneeded = checkpoint in
-      let triple = read() in
       let checkpoint = I.offer checkpoint triple in
+      let triple = read () in (* read the next token *)
       let should_log_error = should_log_error || match checkpoint with
         | I.HandlingError _ -> false
         | _ -> true (* log error again after a successful resume *)
       in
-      loop should_log_error inputneeded checkpoint
+      loop should_log_error inputneeded checkpoint triple
     | I.Shifting _
     | I.AboutToReduce _ ->
       let checkpoint = I.resume checkpoint in
-      loop should_log_error inputneeded checkpoint
+      loop should_log_error inputneeded checkpoint triple
     | I.Rejected ->
       fail checkpoint
     | I.Accepted v ->
@@ -174,9 +174,13 @@ let loop_handle_recover
     | I.HandlingError _ as failure_cp ->
       (* log only the first error, avoid immediate errors after resuming *)
       if should_log_error then log_error inputneeded failure_cp;
-      loop false inputneeded (I.resume failure_cp)
+      (* Make progress explicitly: read one token and offer it to the last
+         InputNeeded checkpoint. If EOF, stop to avoid infinite loops. *)
+      let (tok, _, _) as triple = read () in
+      if tok = Parser.EOF then fail failure_cp else
+      loop false inputneeded (I.resume failure_cp) triple
   in
-  loop true inputneeded inputneeded
+  loop true inputneeded inputneeded (read ())
 
 let handle_error lexbuf error_detail message_store (start, end_) explanations =
   let at =
@@ -288,5 +292,5 @@ let parse ?(recovery = false) mode error_detail start lexer lexbuf =
     if recovery then
       R.loop_handle_recover succ fail save_error lexer start
     else
-      loop_handle_recover succ fail save_error lexer start
+      R.loop_handle_recover succ fail save_error lexer start
   )
