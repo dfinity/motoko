@@ -1616,7 +1616,7 @@ let check_can_dot env ctx_dot (exp : Syntax.exp) tys es at =
                | e -> "("^s^")"
           in
           match contextual_dot env id receiver_ty with
-          | Error sugs -> ()
+          | Error _ -> ()
           | Ok {path;_} ->
             (match path.it, exp.it with
              | DotE ({ it = VarE {it = mod_id0; _};_ },
