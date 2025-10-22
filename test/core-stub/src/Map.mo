@@ -4,7 +4,6 @@ import Types "Types";
 
 module {
   public type Map<K, V> = Types.Map<K, V>;
-  public type Self<K, V> = Map<K, V>;
 
   type Node<K, V> = Types.Map.Node<K, V>;
   type Data<K, V> = Types.Map.Data<K, V>;
@@ -23,8 +22,8 @@ module {
     }
   };
 
-  public func get<K, V>(map : Map<K, V>, compare : (implicit : (K, K) -> Types.Order), key : K) : ?V {
-    switch (map.root) {
+  public func get<K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Types.Order), key : K) : ?V {
+    switch (self.root) {
       case (#internal _) { null };
       case (#leaf(leafNode)) {
         let ?x = leafNode.data.kvs[0] else return null;
@@ -33,8 +32,8 @@ module {
     }
   };
 
-  public func add<K, V>(map : Map<K, V>, compare : (implicit : (K, K) -> Types.Order), key : K, value : V) {
-    switch (map.root) {
+  public func add<K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Types.Order), key : K, value : V) {
+    switch (self.root) {
       case (#internal _) { };
       case (#leaf(leafNode)) {
         switch (leafNode.data.kvs[0]) {
@@ -42,7 +41,7 @@ module {
             if (compare(key, x.0) == #less) return;
             leafNode.data.kvs[0] := ?(key, value);
           };
-          case null { 
+          case null {
             leafNode.data.kvs[0] := ?(key, value);
            }
         }
