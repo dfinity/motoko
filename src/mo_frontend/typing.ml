@@ -1547,22 +1547,6 @@ let has_matching_self receiver_ty tf = match tf with
       | _ -> false)
   | _ -> false
 
-let check_can_dot env (exp : Syntax.exp) tys es at =
-  if not env.pre then
-  if Flags.get_warning_level "M0236" <> Flags.Allow then
-  match exp.it, tys, es with
-  | (DotE(obj_exp, id, _), receiver_ty :: tys, e::es) ->
-     if (id.it = "equal" || Lib.String.chop_prefix "compare" id.it <> None) && List.length tys = 1 then ()
-     else
-       let can_dot = match T.normalize obj_exp.note.note_typ with
-         | T.Obj(_, fs) ->
-           List.exists (has_matching_self receiver_ty) fs
-         | _ -> false
-       in
-       if can_dot then warn env at "M0236" "You can use the dot notation `%s.%s(...)` here"
-                         (match Source.read_region e.at with Some s -> s | None -> "<arg0>") id.it
-  | _, _, _ -> ()
-
 let contextual_dot env name receiver_ty =
   let has_matching_self tf = has_matching_self receiver_ty tf in
   let has_matching_self_type (_, (_, fs)) = List.exists has_matching_self fs in
@@ -1610,6 +1594,46 @@ let contextual_dot env name receiver_ty =
     | None ->
       let candidates = List.map (fun c -> c.module_name) cs in
       error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
+
+let check_can_dot env ctx_dot (exp : Syntax.exp) tys es at =
+  if not env.pre then
+  if Flags.get_warning_level "M0236" <> Flags.Allow then
+  match ctx_dot with
+  | Some _ -> () (* already dotted *)
+  | None ->
+    match exp.it, tys, es with
+    | (DotE(obj_exp, id, _), receiver_ty :: tys, e::es) ->
+      begin
+        if (id.it = "equal" || Lib.String.chop_prefix "compare" id.it <> None) && List.length tys = 1 then ()
+        else
+          let quote e =
+            if e.at.left.line <> e.at.right.line then "..." else
+            match Source.read_region e.at with
+            | None -> "..."
+            | Some s ->
+               match e.it with
+               | VarE _ -> s
+               | CallE _ -> s
+               | DotE _ -> s
+               | e -> "("^s^")"
+          in
+          match contextual_dot env id receiver_ty with
+          | Error sugs -> ()
+          | Ok {path;_} ->
+            (match path.it, exp.it with
+             | DotE ({ it = VarE {it = mod_id0; _};_ },
+                     { it = id0; _},
+                    _),
+               DotE ({ it = VarE {it = mod_id1; note = Const; _};_ },
+                     { it = id1; _},
+                     _)  when mod_id0 = mod_id1 && id0 = id1 ->
+                warn env at "M0236" "You can use the dot notation `%s.%s(...)` here"
+                  (quote e)
+                  id.it
+             | _ -> ())
+      end
+    | _, _, _ -> ()
+
 
 let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
@@ -2730,7 +2754,6 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   in
   let t_args, extra_subtype_problems = match ctx_dot with
     | None ->
-      check_can_dot env exp1 t_args syntax_args at;
       t_args, []
     | Some(e, t, _id, _inst) -> begin
       match t_args with
@@ -2796,6 +2819,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
        warn env at "M0195" "this function call implicitly requires `system` capability and may perform undesired actions (please review the call and provide a type instantiation `<system%s>` to suppress this warning)" (if List.length tbs = 1 then "" else ", ...")
     | _ -> ()
     end;
+    check_can_dot env ctx_dot exp1 (List.map (T.open_ ts) t_args) syntax_args at;
     check_explicit_arguments env saturated_arity implicits_arity (List.map (T.open_ ts) t_args) syntax_args;
   end;
   (* note t_ret' <: t checked by caller if necessary *)
