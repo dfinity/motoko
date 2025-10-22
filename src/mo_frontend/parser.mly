@@ -825,8 +825,6 @@ exp [@recover.expr mk_stub_expr loc] (B) :
 block :
   | LCURLY ds=seplist(dec, semicolon) RCURLY
     { BlockE(ds) @? at $sloc }
-  // | LCURLY error RCURLY
-  //   { BlockE([]) @? at $sloc }
 
 case :
   | CASE p=pat_nullary e=exp_nest
@@ -933,7 +931,6 @@ func_pat :
 
 (* Declarations *)
 
-(* TODO: how it differs from the exp_obj var case? *)
 dec_var :
   | VAR x=id t=annot_opt EQ e=exp(ob)
     { VarD(x, annot_exp e t) @? at $sloc }

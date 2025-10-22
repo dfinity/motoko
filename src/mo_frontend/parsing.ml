@@ -88,34 +88,54 @@ let slice_lexeme lexbuf i1 i2 =
 module I = Parser.MenhirInterpreter
 
 (* For debug *)
-module DebugPrinter = MenhirRecoveryLib.MakePrinter (
-  struct
-    module I = Parser.MenhirInterpreter
-    let print s = Printf.eprintf "%s" s
-    let print_symbol s = print (Printers.string_of_symbol s)
-    let print_element = None
-    let print_token t = print (Source_token.string_of_parser_token t)
-  end)
+module Debug = struct
+  module Printer = MenhirRecoveryLib.MakePrinter (
+    struct
+      module I = Parser.MenhirInterpreter
+      let print s = Printf.eprintf "%s" s
+      let print_symbol s = print (Printers.string_of_symbol s)
+      let print_element = None
+      let print_token t = print (Source_token.string_of_parser_token t)
+    end)
 
-let print_checkpoint = function
-  | I.InputNeeded env ->
-    Printf.eprintf "InputNeeded";
-    DebugPrinter.print_env env
-  | I.Shifting (env1, env2, _) ->
-    Printf.eprintf "Shifting";
-    DebugPrinter.print_env env1;
-    Printf.eprintf " -> ";
-    DebugPrinter.print_env env2
-  | I.HandlingError env ->
-    Printf.eprintf "HandlingError";
-    DebugPrinter.print_env env
-  | I.AboutToReduce (env, _) ->
-    Printf.eprintf "AboutToReduce";
-    DebugPrinter.print_env env
-  | I.Accepted _ ->
-    Printf.eprintf "Accepted"
-  | I.Rejected ->
-    Printf.eprintf "Rejected"
+  let print_checkpoint = function
+    | I.InputNeeded env ->
+      Printf.eprintf "InputNeeded";
+      Printer.print_env env
+    | I.Shifting (env1, env2, _) ->
+      Printf.eprintf "Shifting";
+      Printer.print_env env1;
+      Printf.eprintf " -> ";
+      Printer.print_env env2
+    | I.HandlingError env ->
+      Printf.eprintf "HandlingError";
+      Printer.print_env env
+    | I.AboutToReduce (env, _) ->
+      Printf.eprintf "AboutToReduce";
+      Printer.print_env env
+    | I.Accepted _ ->
+      Printf.eprintf "Accepted"
+    | I.Rejected ->
+      Printf.eprintf "Rejected"
+
+  let string_of_production (prod : I.production) =
+    Printf.sprintf "%s -> %s"
+      (Printers.string_of_symbol (I.lhs prod))
+      (String.concat " . " (List.map Printers.string_of_symbol (I.rhs prod)))
+
+  let inspect_state_items st =
+    let symbol = I.incoming_symbol st in
+    Printer.print_symbol (I.X symbol);
+    Printf.eprintf "\n";
+    I.items st |> List.iter (fun (prod, _dot) ->
+      Printf.eprintf "  %s\n" (string_of_production prod))
+
+  let rec inspect_env (env : 'a I.env) =
+    match I.top env, I.pop env with
+    | Some (I.Element (st, _, _, _)), Some env' ->
+      inspect_state_items st; inspect_env env'
+    | _ -> Printf.eprintf "inspect_env done\n"
+end
 
 module RecoveryTracer = MenhirRecoveryLib.DummyPrinter (I)
 
@@ -140,49 +160,6 @@ module RecoveryConfig = struct
 end
 
 module R = MenhirRecoveryLib.Make (Parser.MenhirInterpreter) (RecoveryConfig) (RecoveryTracer)
-
-(** [I.loop_handle_undo] alternative with error recovery.
-  Should behave the same as [I.loop_handle_undo], but resume on [I.HandlingError].
-  The extra [should_log_error] flag is used to avoid consecutive errors,
-  it should report the first error only, discard subsequent errors until a successful resume.
-  
-  This strategy synergizes well with the 'error token'.
- *)
-let loop_handle_recover
-  (succeed : 'a -> 'answer)
-  (fail : 'a I.checkpoint -> 'answer)
-  (log_error : 'a I.checkpoint -> 'a I.checkpoint -> unit)
-  (read : I.supplier)
-  (inputneeded : 'a I.checkpoint) : 'answer =
-  let rec loop (should_log_error : bool) inputneeded checkpoint triple =
-    match checkpoint with
-    | I.InputNeeded _ ->
-      let inputneeded = checkpoint in
-      let checkpoint = I.offer checkpoint triple in
-      let triple = read () in (* read the next token *)
-      let should_log_error = should_log_error || match checkpoint with
-        | I.HandlingError _ -> false
-        | _ -> true (* log error again after a successful resume *)
-      in
-      loop should_log_error inputneeded checkpoint triple
-    | I.Shifting _
-    | I.AboutToReduce _ ->
-      let checkpoint = I.resume checkpoint in
-      loop should_log_error inputneeded checkpoint triple
-    | I.Rejected ->
-      fail checkpoint
-    | I.Accepted v ->
-      succeed v
-    | I.HandlingError _ as failure_cp ->
-      (* log only the first error, avoid immediate errors after resuming *)
-      if should_log_error then log_error inputneeded failure_cp;
-      (* Make progress explicitly: read one token and offer it to the last
-         InputNeeded checkpoint. If EOF, stop to avoid infinite loops. *)
-      let (tok, _, _) as triple = read () in
-      if tok = Parser.EOF then fail failure_cp else
-      loop false inputneeded (I.resume failure_cp) triple
-  in
-  loop true inputneeded inputneeded (read ())
 
 let region_of_pos (start, end_) =
   Source.{left = Lexer.convert_pos start; right = Lexer.convert_pos end_}
@@ -254,24 +231,6 @@ let handle_error env lexbuf reported msg_store inputneeded_cp error_detail =
   let lexeme = slice_lexeme lexbuf startp endp in
   if not (try_add_custom_error env lexeme reported msg_store) then
     handle_generic_error error_detail msg_store positions lexeme inputneeded_cp
-
-let string_of_production (prod : I.production) =
-  Printf.sprintf "%s -> %s"
-    (Printers.string_of_symbol (I.lhs prod))
-    (String.concat " . " (List.map Printers.string_of_symbol (I.rhs prod)))
-
-let inspect_state_items st =
-  let symbol = I.incoming_symbol st in
-  DebugPrinter.print_symbol (I.X symbol);
-  Printf.eprintf "\n";
-  I.items st |> List.iter (fun (prod, _dot) ->
-    Printf.eprintf "  %s\n" (string_of_production prod))
-
-let rec inspect_env (env : 'a I.env) =
-  match I.top env, I.pop env with
-  | Some (I.Element (st, _, _, _)), Some env' ->
-    inspect_state_items st; inspect_env env'
-  | _ -> Printf.eprintf "inspect_env done\n"
 
 (* We drive the parser in the usual way, but records the last [InputNeeded]
    checkpoint. If a syntax error is detected, we go back to this checkpoint
