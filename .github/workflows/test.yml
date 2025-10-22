@@ -132,7 +132,21 @@ jobs:
     if: ${{ always() }}  # run even if dependencies failed/skipped/cancelled
     runs-on: ubuntu-latest
     steps:
+      - name: Show dependency results
+        run: |
+          echo "common-tests: ${{ needs.common-tests.result }}"
+          echo "gc-tests: ${{ needs.gc-tests.result }}"
+      - name: Fail if any dependency did not succeed
+        run: |
+          failed=0
+          [ "${{ needs.common-tests.result }}" = "success" ] || failed=1
+          [ "${{ needs.gc-tests.result }}" = "success" ] || failed=1
+          if [ "$failed" -ne 0 ]; then
+            echo "One or more dependencies failed/skipped/cancelled."
+            exit 1
+          fi
       - name: Common and GC tests passed
+        if: ${{ success() }}
         run: echo "Common and GC tests completed successfully."
 
   verify-main-tests:
@@ -140,8 +154,21 @@ jobs:
     if: ${{ always() }}  # run even if dependencies failed/skipped/cancelled
     runs-on: ubuntu-latest
     steps:
-      - name: Main tests passed
+      - name: Show dependency results
+        run: |
+          echo "gc-tests: ${{ needs.tests.result }}"
+      - name: Fail if any dependency did not succeed
+        run: |
+          failed=0
+          [ "${{ needs.tests.result }}" = "success" ] || failed=1
+          if [ "$failed" -ne 0 ]; then
+            echo "One or more dependencies failed/skipped/cancelled."
+            exit 1
+          fi
+      - name: Main test passed
+        if: ${{ success() }}
         run: echo "Main tests completed successfully."
+
 
   autoclose:
     if: github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.base.ref == 'master' && contains(github.event.pull_request.labels.*.name, 'autoclose')
