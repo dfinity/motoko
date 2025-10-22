@@ -155,8 +155,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Show dependency results
-        run: |
-          echo "gc-tests: ${{ needs.tests.result }}"
+        run: echo "gc-tests: ${{ needs.tests.result }}"
       - name: Fail if any dependency did not succeed
         run: |
           failed=0
