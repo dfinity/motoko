@@ -54,6 +54,10 @@ module Map {
 
   public func size<K, V>(_map : Map<K, V>) : Nat { 0 };
 
+  public func singleton<K, V>(k : K, v : V) : Map<K, V> {
+    { map = [(k, [var v])] }
+  };
+
 };
 
 persistent actor {
@@ -78,6 +82,8 @@ persistent actor {
 
   ignore peopleMap.get(Nat.compare, 1); // ok
   ignore peopleMap.get(1); // ok
+
+  ignore Map.singleton(1,"hello"); // ok - don't warn (no appropriate receiver)
 
 
 }
