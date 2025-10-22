@@ -179,7 +179,7 @@ git add Changelog.md && \
 git commit -m "chore: Releasing $NEXT_MOC_VERSION" && \
 git push --set-upstream origin $USER/$NEXT_MOC_VERSION && \
 gh pr create --title "chore: Releasing $NEXT_MOC_VERSION" --label "release" --base master --head $USER/$NEXT_MOC_VERSION --body "" && \
-gh pr merge --auto
+gh pr merge --squash --auto
 ```
 
 <details>
@@ -210,7 +210,7 @@ Create a PR from this commit:
 
 To create the PR, you can use `gh` CLI:
 ```bash
-gh pr create --title "chore: Releasing $NEXT_MOC_VERSION" --label "release" --base master --head $USER/$NEXT_MOC_VERSION --body "" && gh pr merge --auto
+gh pr create --title "chore: Releasing $NEXT_MOC_VERSION" --label "release" --base master --head $USER/$NEXT_MOC_VERSION --body "" && gh pr merge --squash --auto
 ```
 </details>
 
