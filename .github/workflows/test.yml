@@ -158,7 +158,7 @@ jobs:
         run: echo "gc-tests: ${{ needs.tests.result }}"
       - name: Fail if any dependency did not succeed
         run: |
-          if ${{ needs.tests.result != 'success' }}; then
+          if ${{ needs.tests.result == 'success' }}; then
             echo "One or more dependencies failed/skipped/cancelled."
             exit 1
           fi
