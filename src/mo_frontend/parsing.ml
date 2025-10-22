@@ -248,14 +248,10 @@ let parse ?(recovery = false) mode error_detail start lexer lexbuf =
          last [InputNeeded] checkpoint and investigate. *)
       match fail_cp with
       | I.HandlingError env ->
-        (* inspect_env env; *)
         handle_error env lexbuf reported m inputneeded_cp error_detail
       | _ -> assert false
     in
     let fail cp = None in
     let succ e = Some e in
-    if recovery then
-      R.loop_handle_recover succ fail save_error lexer start
-    else
-      R.loop_handle_recover succ fail save_error lexer start
+    R.loop_handle_recover succ fail save_error lexer start
   )
