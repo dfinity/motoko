@@ -1612,9 +1612,7 @@ let check_can_dot env ctx_dot (exp : Syntax.exp) tys es at =
             | None -> "..."
             | Some s ->
                match e.it with
-               | VarE _ -> s
-               | CallE _ -> s
-               | DotE _ -> s
+               | VarE _ | CallE _ | DotE _ -> s
                | e -> "("^s^")"
           in
           match contextual_dot env id receiver_ty with
