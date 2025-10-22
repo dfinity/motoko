@@ -1123,6 +1123,21 @@ and is_explicit_dec d =
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
   | IncludeD (_, e, _) -> is_explicit_exp e
 
+(* Check if a pattern has a type annotation *)
+let rec has_annot p =
+  match p.it with
+  | WildP | VarP _ -> false
+  | LitP l | SignP (_, l) -> false
+  | OptP p1 | TagP (_, p1) | ParP p1 -> has_annot p1
+  | TupP ps -> List.exists has_annot ps
+  | ObjP pfs -> List.exists has_annot_field pfs
+  | AltP (p1, p2) -> has_annot p1 || has_annot p2
+  | AnnotP _ -> true
+
+and has_annot_field pf =
+  match pf.it with
+  | ValPF(_, p) -> has_annot p
+  | TypPF(_) -> false
 
 (* Literals *)
 
@@ -1877,7 +1892,7 @@ and infer_exp'' env exp : T.typ =
           "expected array type or Blob, but expression produces type%a"
           display_typ_expand t1
     end
-  | FuncE (_, shared_pat, typ_binds, pat, typ_opt, _sugar, exp1) ->
+  | FuncE (func_name, shared_pat, typ_binds, pat, typ_opt, _sugar, exp1) ->
     if not env.pre && not in_actor && T.is_shared_sort shared_pat.it then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0076"
         "shared functions are not supported";
@@ -1885,6 +1900,7 @@ and infer_exp'' env exp : T.typ =
         error_in [Flags.ICMode; Flags.RefMode] env exp1.at "M0077"
           "a shared function is only allowed as a public field of an actor";
     end;
+    warn_typed_anonymous_function env exp1.at func_name pat typ_opt;
     let typ = match typ_opt with
       | Some typ -> typ
       | None -> {it = TupT []; at = no_region; note = T.Pre}
@@ -2496,8 +2512,8 @@ and check_exp' env0 t exp : T.typ =
       Option.iter (check_exp_strong { env with async = C.NullCap; rets = None; labs = T.Env.empty; } T.unit) exp2_opt;
     t
   (* TODO: allow shared with one scope par *)
-  | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
-    let env', t2, codom = check_func_step env0.in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) in
+  | FuncE (func_name, shared_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
+    let env', t2, codom = check_func_step env0.in_actor env (func_name, shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) in
     if not (sub env Source.no_region t2 codom) then
       error env exp.at "M0095"
         "function return type%a\ndoes not match expected return type%a"
@@ -2552,6 +2568,11 @@ and check_exp_field env (ef : exp_field) fts =
   | None ->
     ignore (infer_exp env exp)
 
+and warn_typed_anonymous_function env at func_name pat typ_opt = 
+  if not env.pre && Flags.get_warning_level "M0238" <> Flags.Allow && is_anon_string func_name
+    && (Option.is_some typ_opt || has_annot pat) then
+    warn env at "M0238" "Avoid type annotations on anonymous functions";
+
 (** Performs the first step of checking that the given [FuncE (_, shared_pat, [], pat, typ_opt, _, exp)] expression has type [T.Func (s, c, [], ts1, ts2)].
   Used to prepare the new env for checking the [exp] (body of the function).
   Returns:
@@ -2559,11 +2580,12 @@ and check_exp_field env (ef : exp_field) fts =
   - [exp_typ], the expected type of the body,
   - [codom], the codomain of the function (built from [ts2]). The caller must check that [sub exp_typ codom].
  *)
-and check_func_step in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) : env * T.typ * T.typ =
+and check_func_step in_actor env (func_name, shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) : env * T.typ * T.typ =
   let sort, ve = check_shared_pat env shared_pat in
   if not env.pre && not in_actor && T.is_shared_sort sort then
     error_in [Flags.ICMode; Flags.RefMode] env exp.at "M0077"
       "a shared function is only allowed as a public field of an actor";
+  warn_typed_anonymous_function env exp.at func_name pat typ_opt;
   let ve1 = check_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env (T.seq ts1) pat in
   let ve2 = T.Env.adjoin ve ve1 in
   let codom = T.codom c (fun () -> assert false) ts2 in
@@ -2924,11 +2946,11 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
       (* Substitute fixed type variables *)
       let typ = T.open_ ts typ in
       match exp.it, T.normalize typ with
-      | FuncE (_, shared_pat, [], pat, typ_opt, _, body), T.Func (s, c, [], ts1, ts2) ->
+      | FuncE (func_name, shared_pat, [], pat, typ_opt, _, body), T.Func (s, c, [], ts1, ts2) ->
         (* Check that all type variables in the function input type are fixed, fail otherwise *)
         Bi_match.fail_when_types_are_not_closed remaining ts1;
         (* Check the function input type and prepare for inferring the body *)
-        let env', body_typ, codom = check_func_step false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
+        let env', body_typ, codom = check_func_step false env (func_name, shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
         (* [codom] comes from [ts2] which might contain unsolved type variables. *)
         let closed = Bi_match.is_closed remaining codom in
         if not env.pre && (closed || body_typ <> codom) then begin

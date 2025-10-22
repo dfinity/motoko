@@ -1,0 +1,4 @@
+warn-typed-anonymous-func.mo:9.47-9.52: warning [M0238], Avoid type annotations on anonymous functions
+warn-typed-anonymous-func.mo:10.35-10.40: warning [M0238], Avoid type annotations on anonymous functions
+warn-typed-anonymous-func.mo:11.35-11.40: warning [M0238], Avoid type annotations on anonymous functions
+warn-typed-anonymous-func.mo:12.35-12.40: warning [M0238], Avoid type annotations on anonymous functions

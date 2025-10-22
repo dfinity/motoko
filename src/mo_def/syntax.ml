@@ -336,7 +336,8 @@ open Source
 (* Identifiers *)
 
 let anon_id sort at = "@anon-" ^ sort ^ "-" ^ string_of_pos at.left
-let is_anon_id id = Lib.String.chop_prefix "@anon-" id.it <> None
+let is_anon_string str = Lib.String.chop_prefix "@anon-" str <> None
+let is_anon_id id = is_anon_string id.it
 
 let is_privileged name =
   String.length name > 0 && name.[0] = '@'
