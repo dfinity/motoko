@@ -12,6 +12,8 @@ module E =
     (Parser.MenhirInterpreter)
     (Error_reporting)
 
+module S = Source.Region_set
+
 (* Define a printer for explanations. We treat an explanation as if it
    were just an item: that is, we ignore the position information that
    is provided in the explanation. Indeed, this information is hard to
@@ -182,10 +184,11 @@ let loop_handle_recover
   in
   loop true inputneeded inputneeded (read ())
 
-let handle_error lexbuf error_detail message_store (start, end_) explanations =
-  let at =
-        Source.{left = Lexer.convert_pos start; right = Lexer.convert_pos end_}
-  in
+let region_of_pos (start, end_) =
+  Source.{left = Lexer.convert_pos start; right = Lexer.convert_pos end_}
+
+let handle_error lexbuf error_detail message_store ((start, end_) as pos) explanations =
+  let at = region_of_pos pos in
   let lexeme = slice_lexeme lexbuf start end_ in
   let token =
     if lexeme = "" then "end of input" else
@@ -244,19 +247,17 @@ let is_lcurly (type a) (symbol : a I.symbol) = match symbol with
   | I.T (I.T_LCURLY) -> true
   | _ -> false
 
+(** Find closest '{' on the stack and check if it comes from the 'block' production. *)
 let rec inside_block (env : 'a I.env) =
   match I.top env, I.pop env with
-  | Some (I.Element (st, _, _, _)), Some env' ->
+  | Some (I.Element (st, _, start_pos, end_pos)), Some env' ->
     if is_lcurly (I.incoming_symbol st) then
-      (* check if the closest '{' comes from the 'block' *)
       match I.items st with
-      | (prod, _dot) :: _ ->
-        I.lhs prod = I.X (I.N I.N_block)
-      | _ -> false
+      | (prod, _dot) :: _ when I.lhs prod = I.X (I.N I.N_block) -> Some (start_pos, end_pos)
+      | _ -> None
     else
-      (* keep looking for the closest '{' *)
       inside_block env'
-  | _ -> false
+  | _ -> None
 
 (* We drive the parser in the usual way, but records the last [InputNeeded]
    checkpoint. If a syntax error is detected, we go back to this checkpoint
@@ -266,6 +267,8 @@ let parse ?(recovery = false) mode error_detail start lexer lexbuf =
   Diag.with_message_store ~allow_errors:recovery (fun m ->
     Parser_lib.msg_store := Some m;
     Parser_lib.mode := Some mode;
+    (* Avoid repeated custom errors for the same position *)
+    let reported = ref S.empty in
     let save_error (inputneeded_cp : 'a I.checkpoint) (fail_cp : 'a I.checkpoint) : unit =
     (* The parser signals a syntax error. Note the position of the
          problematic token, which is useful. Then, go back to the
@@ -274,17 +277,18 @@ let parse ?(recovery = false) mode error_detail start lexer lexbuf =
       | I.HandlingError env ->
         (* inspect_env env; *)
         let (startp, endp) as positions = I.positions env in
-        let at = Source.{left = Lexer.convert_pos startp; right = Lexer.convert_pos endp} in
         let lexeme = slice_lexeme lexbuf startp endp in
-        (match lexeme with
-        | ("=" | "with") when inside_block env ->
-          (* TODO: fix the [at] to cover the whole record/block *)
-          Diag.add_msg m (Diag.error_message at "M0001" "syntax"
-            (Printf.sprintf "expected block but got record, the record should be wrapped in braces: { { … } }"))
+        (match lexeme, inside_block env with
+        | (("=" | "with"), Some block_pos) ->
+          let at = region_of_pos block_pos in
+          if not (S.mem at !reported) then begin
+            reported := S.add at !reported;
+            Diag.add_msg m (Diag.error_message at "M0001" "syntax"
+              (Printf.sprintf "expected block but got record; wrap the record in braces: { { … } }"))
+          end
         | _ ->
           let explanations = E.investigate startp inputneeded_cp in
-          handle_error lexbuf error_detail m positions explanations
-        )
+          handle_error lexbuf error_detail m positions explanations)
       | _ -> assert false
     in
     let fail cp = None in
