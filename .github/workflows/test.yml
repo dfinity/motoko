@@ -185,8 +185,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set +e
           gh pr diff ${{ github.event.pull_request.number }} | grep -E '^--- a/doc/docusaurus/package-lock.json$' \
           && gh pr review ${{ github.event.pull_request.number }} --approve --body 'A change to `doc/docusaurus/package-lock.json`? I can handle that!'
+          true
 
 # Handles open PRs filed by the GH automation bot (not checked here yet) that carry the `automerge-squash` label. The single changed file must be `flake.lock`. If so, the PR gets approved with a comment, auto-merge activated and the label removed.
   approvals3:
@@ -199,12 +201,13 @@ jobs:
       - name: Hand out approvals
         env:
           GH_TOKEN: ${{ github.token }}
-          OUTPUT: ${{ toJson(github.event.pull_request) }}
         run: |
+          set +e
           gh pr diff ${{ github.event.pull_request.number }} | grep -E '^--- a/flake.lock$' \
           && gh pr review ${{ github.event.pull_request.number }} --approve --body 'A change to `flake.lock`? I can handle that!' \
           && gh pr merge ${{ github.event.pull_request.number }} --squash --auto \
           && gh pr edit ${{ github.event.pull_request.number }} --remove-label 'automerge-squash'
+          true
 
 # Note: the above 3 steps can be joined to just one step by factoring out the common `if:` condition fragments,
 #       merging the `run:` parts and and re-adding the differing conditions as a prefix to the pipelines using the `${{ <condition> }}` syntax.
