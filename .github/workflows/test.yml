@@ -129,6 +129,7 @@ jobs:
 
   verify-common-gc:
     needs: [common-tests, gc-tests]
+    if: ${{ always() }}  # run even if dependencies failed/skipped/cancelled
     runs-on: ubuntu-latest
     steps:
       - name: Common and GC tests passed
@@ -136,6 +137,7 @@ jobs:
 
   verify-main-tests:
     needs: tests
+    if: ${{ always() }}  # run even if dependencies failed/skipped/cancelled
     runs-on: ubuntu-latest
     steps:
       - name: Main tests passed
