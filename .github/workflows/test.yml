@@ -166,7 +166,7 @@ jobs:
           fi
       - name: Main test passed
         if: ${{ success() }}
-        run: echo "Main tests completed successfully."
+        run: echo "Main test completed successfully."
 
   autoclose:
     if: github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.base.ref == 'master' && contains(github.event.pull_request.labels.*.name, 'autoclose')
