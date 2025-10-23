@@ -1553,8 +1553,8 @@ let has_matching_self receiver_ty tf = match tf with
   | _ -> false
 
 type 'a context_dot_error =
-  | Suggestions of (env -> string list)
-  | Ambiguous of (env -> 'a)
+  | DotSuggestions of (env -> string list)
+  | DotAmbiguous of (env -> 'a)
 
 let contextual_dot env name receiver_ty : (ctx_dot_candidate, 'a context_dot_error) Result.t =
   let has_matching_self tf = has_matching_self receiver_ty tf in
@@ -1597,10 +1597,10 @@ let contextual_dot env name receiver_ty : (ctx_dot_candidate, 'a context_dot_err
     | lib_candidates ->
       match if Option.is_some !Flags.implicit_package then disambiguate_candidates lib_candidates else None with
       | Some c -> Ok c
-      | None ->  Error (Suggestions (fun env -> List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)))
+      | None ->  Error (DotSuggestions (fun env -> List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)))
   | cs -> match disambiguate_candidates cs with
     | Some c -> Ok c
-    | None -> Error (Ambiguous (fun env ->
+    | None -> Error (DotAmbiguous (fun env ->
        let modules =  (List.map (fun c -> c.module_name) cs) in
        error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " modules)))
 
@@ -2650,13 +2650,18 @@ and infer_callee env exp =
       infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
     | Error (t1, mk_e) ->
       match contextual_dot env id t1 with
-      | Error (Suggestions mk_suggestions) ->
+      | Error (DotSuggestions mk_suggestions) ->
         let suggestions = mk_suggestions env in
         let e = mk_e () in
-        let sug = if suggestions = [] then "" else
-          Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
-        Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
-      | Error (Ambiguous mk_error) ->
+        let e1 =
+          if suggestions = []
+          then e
+          else Diag.{e with text =
+            e.text ^
+            Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions)}
+        in
+        Diag.add_msg env.msgs e1; raise Recover
+      | Error (DotAmbiguous mk_error) ->
         mk_error env
       | Ok { module_name; path; func_ty; inst; _ } ->
         note := Some path;
