@@ -264,7 +264,7 @@
     <exp>
 
 <block> ::= 
-    '{' <list(<dec>, ';')> '}'
+    '{' <list(<block_dec>, ';')> '}'
 
 <case> ::= 
     'case' <pat_nullary> <exp_nest>
@@ -344,6 +344,10 @@
     <dec_nonvar>
     <exp_nondec>
     'let' <pat> '=' <exp> 'else' <exp_nest>
+
+<block_dec> ::= 
+    <dec>
+    <id> '=' <exp>
 
 <func_body> ::= 
     '=' <exp>

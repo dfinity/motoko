@@ -186,6 +186,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (N N_exp_obj) -> "<exp_obj>", eg_exp_obj
   | X (N N_exp_nest) -> "<exp_nest>", eg_exp
   | X (N N_block) -> "<block>", "{}"
+  | X (N N_block_dec) -> "<block>", "{}"
   | X (N N_exp_field) -> "<exp_field>", eg_exp_field
   | X (N N_exp_nondec_bl_) -> "<exp_nondec(bl)>", eg_exp
   | X (N N_exp_nondec_ob_) -> "<exp_nondec(ob)>", eg_exp
@@ -228,6 +229,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (N N_seplist_case_semicolon_) -> seplist ("<case>", eg_case) semi
   | X (N N_seplist_dec_SEMICOLON_) -> seplist ("<dec>", eg_dec) semi2
   | X (N N_seplist_dec_semicolon_) -> seplist ("<dec>", eg_dec) semi
+  | X (N N_seplist_block_dec_semicolon_) -> seplist ("<dec>", eg_dec) semi
   | X (N N_seplist_typ_dec_semicolon_) -> seplist ("<typ_dec>", eg_typ_dec) semi
   | X (N N_seplist_dec_field_semicolon_) -> seplist ("<dec_field>", eg_dec_field) semi
   | X (N N_seplist_exp_ob__COMMA_) -> seplist ("<exp(ob)>", eg_exp) comma

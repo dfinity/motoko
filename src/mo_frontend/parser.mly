@@ -823,7 +823,7 @@ exp [@recover.expr mk_stub_expr loc] (B) :
     { e }
 
 block :
-  | LCURLY ds=seplist(dec, semicolon) RCURLY
+  | LCURLY ds=seplist(block_dec, semicolon) RCURLY
     { BlockE(ds) @? at $sloc }
 
 case :
@@ -1006,6 +1006,12 @@ dec :
   | LET p=pat EQ e=exp(ob) ELSE fail=exp_nest
     { let p', e' = normalize_let p e in
       LetD (p', e', Some fail) @? at $sloc }
+
+block_dec :
+  | d=dec { d }
+  | id EQ exp(ob)
+    { syntax_error (at $sloc) "M0XXX" "record field in block, missing brackets";
+      ExpD (TupE([]) @? at $sloc) @? at $sloc}
 
 func_body :
   | EQ e=exp(ob) { (false, e) }
