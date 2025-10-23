@@ -29,12 +29,12 @@ module Odd {
 
 module Amb1 {
   public type Self = {#amb};
-  public func method(self : Self) {};
+  public func method(_self : Self) {};
 };
 
 module Amb2 {
   public type Self = {#amb};
-  public func method(self : Self) {}; // ambiguous with Amb1.method();
+  public func method(_self : Self) {}; // ambiguous with Amb1.method();
 };
 
 
@@ -95,6 +95,6 @@ persistent actor {
 
   ignore Map.singleton(1,"hello"); // ok - don't warn (no appropriate receiver)
 
-  ignore Amb1.method(#amb); // don't suggest, ambiguous
+  Amb1.method(#amb); // don't suggest, ambiguous
 
 }

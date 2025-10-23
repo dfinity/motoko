@@ -1547,7 +1547,11 @@ let has_matching_self receiver_ty tf = match tf with
       | _ -> false)
   | _ -> false
 
-let contextual_dot env name receiver_ty =
+type context_dot_error =
+  | Suggestions of string list
+  | Ambiguous of string list
+
+let contextual_dot env name receiver_ty : (ctx_dot_candidate, context_dot_error) Result.t =
   let has_matching_self tf = has_matching_self receiver_ty tf in
   let has_matching_self_type (_, (_, fs)) = List.exists has_matching_self fs in
   let is_matching_func field =
@@ -1588,12 +1592,10 @@ let contextual_dot env name receiver_ty =
     | lib_candidates ->
       match if Option.is_some !Flags.implicit_package then disambiguate_candidates lib_candidates else None with
       | Some c -> Ok c
-      | None ->  Error (List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates))
+      | None ->  Error (Suggestions (List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)))
   | cs -> match disambiguate_candidates cs with
     | Some c -> Ok c
-    | None ->
-      let candidates = List.map (fun c -> c.module_name) cs in
-      error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
+    | None -> Error (Ambiguous (List.map (fun c -> c.module_name) cs))
 
 let check_can_dot env ctx_dot (exp : Syntax.exp) tys es at =
   if not env.pre then
@@ -2637,12 +2639,14 @@ and infer_callee env exp =
       infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
     | Error (t1, mk_e) ->
       match contextual_dot env id t1 with
-      | Error [] ->
-         Diag.add_msg env.msgs (mk_e ()); raise Recover
-      | Error suggestions ->
-         let e = mk_e () in
-         let sug = Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
-         Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
+      | Error (Suggestions []) ->
+        Diag.add_msg env.msgs (mk_e ()); raise Recover
+      | Error (Suggestions suggestions) ->
+        let e = mk_e () in
+        let sug = Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
+        Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
+      | Error (Ambiguous modules) ->
+        error env id.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" id.it (String.concat ", " modules)
       | Ok { module_name; path; func_ty; inst; _ } ->
         note := Some path;
         if not env.pre then
@@ -2651,7 +2655,6 @@ and infer_callee env exp =
      end
   | _ ->
      infer_exp_promote env exp, None
-
 and as_implicit = function
   | T.Named ("implicit", T.Named (arg_name, t)) ->
     Some arg_name
