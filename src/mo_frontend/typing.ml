@@ -1395,6 +1395,11 @@ let module_exp in_libs env module_name =
     matching module could be imported, and reports an ambiguity error
     when finding multiple resolutions.
  *)
+
+type hole_error =
+  | HoleSuggestions of (env -> string list * string list * (env -> unit))
+  | HoleAmbiguous of (env -> unit)
+
 let resolve_hole env at hole_sort typ =
   let is_matching_lab lab =
     match hole_sort with
@@ -1497,14 +1502,14 @@ let resolve_hole env at hole_sort typ =
     (match if Option.is_some !Flags.implicit_package then disambiguate_holes lib_terms else None with
     | Some term -> Ok term
     | None ->
-      Error (List.map suggestion_of_candidate lib_terms,
-              List.map (fun candidate -> candidate.desc) explicit_terms,
-              renaming_hints)
-    )
+      Error (HoleSuggestions (fun env ->
+        (List.map suggestion_of_candidate lib_terms,
+         List.map (fun candidate -> candidate.desc) explicit_terms,
+         renaming_hints))))
   | terms -> begin
      match disambiguate_holes terms with
      | Some term -> Ok term
-     | None ->
+     | None -> Error (HoleAmbiguous (fun env ->
        let terms = List.map (fun term -> term.desc) terms in
        error env at "M0231" "ambiguous implicit argument %s of type%a.\nThe ambiguous implicit candidates are: %s%s."
          (match hole_sort with Named n -> "named " ^ quote n | Anon i -> "at argument position " ^ Int.to_string i)
@@ -1513,7 +1518,7 @@ let resolve_hole env at hole_sort typ =
          (if explicit_terms = [] then ""
           else
             ".\nThe other explicit candidates are: "^
-              (String.concat ", " (List.map (fun oc -> oc.desc) explicit_terms)))
+              (String.concat ", " (List.map (fun oc -> oc.desc) explicit_terms)))))
      end
 
 type ctx_dot_candidate =
@@ -1547,7 +1552,11 @@ let has_matching_self receiver_ty tf = match tf with
       | _ -> false)
   | _ -> false
 
-let contextual_dot env name receiver_ty =
+type 'a context_dot_error =
+  | DotSuggestions of (env -> string list)
+  | DotAmbiguous of (env -> 'a)
+
+let contextual_dot env name receiver_ty : (ctx_dot_candidate, 'a context_dot_error) Result.t =
   let has_matching_self tf = has_matching_self receiver_ty tf in
   let has_matching_self_type (_, (_, fs)) = List.exists has_matching_self fs in
   let is_matching_func field =
@@ -1588,12 +1597,12 @@ let contextual_dot env name receiver_ty =
     | lib_candidates ->
       match if Option.is_some !Flags.implicit_package then disambiguate_candidates lib_candidates else None with
       | Some c -> Ok c
-      | None ->  Error (List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates))
+      | None ->  Error (DotSuggestions (fun env -> List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)))
   | cs -> match disambiguate_candidates cs with
     | Some c -> Ok c
-    | None ->
-      let candidates = List.map (fun c -> c.module_name) cs in
-      error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
+    | None -> Error (DotAmbiguous (fun env ->
+       let modules =  (List.map (fun c -> c.module_name) cs) in
+       error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " modules)))
 
 let check_can_dot env ctx_dot (exp : Syntax.exp) tys es at =
   if not env.pre then
@@ -2336,7 +2345,12 @@ and check_exp' env0 t exp : T.typ =
       e := path;
       check_exp env t path;
       t
-    | Error (import_suggestions, explicit_suggestions, renaming_hints) ->
+    | Error (HoleAmbiguous mk_error) ->
+      mk_error env;
+      t
+    | Error (HoleSuggestions mk_suggestions) ->
+      let (import_suggestions, explicit_suggestions, renaming_hints) = mk_suggestions env in
+      (* TODO: move this logic into mk_suggestions *)
       if not env.pre then begin
         let import_sug =
           if import_suggestions = [] then
@@ -2637,12 +2651,20 @@ and infer_callee env exp =
       infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
     | Error (t1, mk_e) ->
       match contextual_dot env id t1 with
-      | Error [] ->
-         Diag.add_msg env.msgs (mk_e ()); raise Recover
-      | Error suggestions ->
-         let e = mk_e () in
-         let sug = Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
-         Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
+      | Error (DotSuggestions mk_suggestions) ->
+        (* TODO: move this logic into mk_suggestions *)
+        let suggestions = mk_suggestions env in
+        let e = mk_e () in
+        let e1 =
+          if suggestions = []
+          then e
+          else Diag.{e with text =
+            e.text ^
+            Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions)}
+        in
+        Diag.add_msg env.msgs e1; raise Recover
+      | Error (DotAmbiguous mk_error) ->
+        mk_error env
       | Ok { module_name; path; func_ty; inst; _ } ->
         note := Some path;
         if not env.pre then
@@ -2651,7 +2673,6 @@ and infer_callee env exp =
      end
   | _ ->
      infer_exp_promote env exp, None
-
 and as_implicit = function
   | T.Named ("implicit", T.Named (arg_name, t)) ->
     Some arg_name
