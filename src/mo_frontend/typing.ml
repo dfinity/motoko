@@ -3989,6 +3989,14 @@ and infer_block_exps env decs : T.typ =
     if not env.pre then recover (check_dec env T.unit) dec;
     infer_block_exps env decs'
 
+and warn_unit_binding binder env (dec : dec) (exp : exp) =
+  let binder = match binder with
+    | `Let -> "let"
+    | `Var -> "var"
+  in
+  let at = Source.{dec.at with right = exp.at.left} in
+  warn env at "M0239" "Avoid binding a unit '()' result; remove '%s' and keep the expression" binder
+
 and infer_dec env dec : T.typ =
   let t =
   match dec.it with
@@ -4018,15 +4026,16 @@ and infer_dec env dec : T.typ =
     let t = infer_exp env exp in
     if !Flags.typechecker_combine_srcs then
       combine_pat_srcs env t pat;
-    if not env.pre && T.is_unit (T.normalize t) then (
-      let at = Source.{dec.at with right = exp.at.left} in
-      warn env at "M0239" "Avoid binding a unit `()` result; remove `let` and keep the expression");
+    if not env.pre && T.is_unit (T.normalize t) then
+      warn_unit_binding `Let env dec exp;
     t
   | VarD (id, exp) ->
     if not env.pre then begin
       let t = infer_exp env exp in
       if !Flags.typechecker_combine_srcs then
-        combine_id_srcs env t id
+        combine_id_srcs env t id;
+      if T.is_unit (T.normalize t) then
+        warn_unit_binding `Var env dec exp;
     end;
     T.unit
   | ClassD (exp_opt, shared_pat, obj_sort, id, typ_binds, pat, typ_opt, self_id, dec_fields) ->
