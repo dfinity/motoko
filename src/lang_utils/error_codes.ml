@@ -205,7 +205,8 @@ let error_codes : (string * string option) list =
     "M0231", None; (* Ambiguous implicit argument *)
     "M0232", None; (* Cannot infer type of implicit argument *)
     "M0233", None; (* Wrong number of arguments *)
-    "M0234", None; (* Wasm components support not enabled, use -wasm-components flag *)
+    "M0234", None; (* Field exists but is not a function *)
+    "M0240", None; (* Wasm components support not enabled, use -wasm-components flag *)
   ]
 
 (** Message codes that can be both used as warnings and errors *)
@@ -242,6 +243,9 @@ let warning_codes = [
   "M0218", None, "Redundant `stable`";
   "M0222", None, "Ignored `async*`";
   "M0223", None, "Redundant type instantiation";
+  "M0235", None, "Deprecate for caffeine";
+  "M0236", None, "Suggest contextual dot notation";
+  "M0237", None, "Suggest redundant explicit arguments";
   ]
 
 let try_find_explanation code =

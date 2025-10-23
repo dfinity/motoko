@@ -37,7 +37,7 @@ let valid_metadata_names =
      "motoko:compiler"]
 
 let argspec = 
-  Args.ai_errors_args
+  Args.ai_args
   @ [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
   "-g", Arg.Set Flags.debug_info, " generate source-level debug information";
