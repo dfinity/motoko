@@ -141,10 +141,9 @@ some dependency, it should only be _tested_ if it builds, but not merged.
 
 **Implementation:**
  * Multiple files (with different settings) in `.github/workflows/` use
-   flake-updater to create
-   pull requests with the version bumps, as `dfinity-bot`, setting
-   `automerge-squash` or `autoclose`.
- * (obsolete) Mergify automatically approves PRs from `dfinity-bot`.
+   flake-updater to create pull requests with the version bumps,
+   as `github-actions[bot]`, setting `automerge-squash` or `autoclose`.
+ * A GH action automatically approves PRs from `github-actions[bot]`.
  * Once CI passes, the `test.yml` GitHub action merges or closes PRs, as per label.
 
 (obsolete) Updates to the Changelog require no review
