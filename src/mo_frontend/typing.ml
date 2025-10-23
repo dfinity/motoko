@@ -4003,22 +4003,24 @@ and infer_dec env dec : T.typ =
     end;
     T.unit
   | ExpD exp -> infer_exp env exp
-  | LetD (pat, exp, None) ->
-    (* For developer convenience, ignore top-level actor and module identifiers in unused detection. *)
-    (if env.in_prog && CompUnit.(is_actor_def exp || is_module_def exp) then
-      match pat.it with
-      | VarP id -> use_identifier env id.it
-      | _ -> ());
+  | LetD (pat, exp, fail_opt) ->
+    (match fail_opt with
+    | None ->
+      (* For developer convenience, ignore top-level actor and module identifiers in unused detection. *)
+      (if env.in_prog && CompUnit.(is_actor_def exp || is_module_def exp) then
+        match pat.it with
+        | VarP id -> use_identifier env id.it
+        | _ -> ())
+    | Some fail ->
+      if not env.pre then
+        check_exp env T.Non fail
+    );
     let t = infer_exp env exp in
     if !Flags.typechecker_combine_srcs then
       combine_pat_srcs env t pat;
-    t
-  | LetD (pat, exp, Some fail) ->
-    if not env.pre then
-      check_exp env T.Non fail;
-    let t = infer_exp env exp in
-    if !Flags.typechecker_combine_srcs then
-      combine_pat_srcs env t pat;
+    if not env.pre && T.is_unit (T.normalize t) then (
+      let at = Source.{dec.at with right = exp.at.left} in
+      warn env at "M0239" "Avoid binding a unit `()` result; remove `let` and keep the expression");
     t
   | VarD (id, exp) ->
     if not env.pre then begin
