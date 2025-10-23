@@ -27,6 +27,16 @@ module Odd {
   public func equal(_n : Self) : Bool { true };
 };
 
+module Amb1 {
+  public type Self = {#amb};
+  public func method(_self : Self) {};
+};
+
+module Amb2 {
+  public type Self = {#amb};
+  public func method(_self : Self) {}; // ambiguous with Amb1.method();
+};
+
 
 module Map {
   public type Map<K,V> = {map : [(K, [var V])]};
@@ -85,5 +95,6 @@ persistent actor {
 
   ignore Map.singleton(1,"hello"); // ok - don't warn (no appropriate receiver)
 
+  Amb1.method(#amb); // don't suggest, ambiguous
 
 }
