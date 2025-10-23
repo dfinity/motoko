@@ -8,3 +8,13 @@ parse-block-or-record.mo:36.3-36.4: syntax error [M0001], unexpected token ';', 
   seplist(<dec>,<semicolon>) }
 parse-block-or-record.mo:42.15-42.16: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
 parse-block-or-record.mo:44.12-44.13: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:50.11-50.12: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:51.11-51.12: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:53.9-53.10: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:57.20-57.21: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:61.11-61.12: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:62.8-62.9: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:64.14-64.15: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:66.8-66.9: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:70.10-70.11: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:71.9-71.10: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }

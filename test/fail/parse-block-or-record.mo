@@ -44,3 +44,29 @@ func _mWith() {
     case _ { r with x = 1 } // ambiguous, block preferred, syntax error
   }
 };
+
+func mcatch() : async () {
+  try await mcatch()
+  catch _ { var x = 1; y = 2; z = 3; w = 4 }
+  finally { var x = 1; y = 2; z = 3; w = 4 };
+
+  throw { var x = 1; y = 2; z = 3; w = 4 };
+};
+
+func _letFail() {
+  let ?x = ?1 else { var x = 1; y = 2; z = 3; w = 4 };
+};
+
+func _conds() {
+  if true { var x = 1; y = 2; z = 3; w = 4 }
+  else { var x = 1; y = 2; z = 3; w = 4 };
+
+  while true { var x = 1; y = 2; z = 3; w = 4 };
+
+  loop { var x = 1; y = 2; z = 3; w = 4 };
+};
+
+func _weird() : async () {
+  ignore { var x = 1; y = 2; z = 3; w = 4 };
+  async { var x = 1; y = 2; z = 3; w = 4 };
+}
