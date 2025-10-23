@@ -240,7 +240,8 @@ let parse ?(recovery = false) mode error_detail start lexer lexbuf =
   Diag.with_message_store ~allow_errors:recovery (fun m ->
     Parser_lib.msg_store := Some m;
     Parser_lib.mode := Some mode;
-    (* Avoid repeated custom errors for the same position *)
+    (* Avoid repeated custom errors for the same position.
+      A single custom error can replace multiple generic 'unexpected token' errors at different positions. *)
     let reported = ref S.empty in
     let save_error (inputneeded_cp : 'a I.checkpoint) (fail_cp : 'a I.checkpoint) : unit =
     (* The parser signals a syntax error. Note the position of the
