@@ -1502,10 +1502,10 @@ let resolve_hole env at hole_sort typ =
     (match if Option.is_some !Flags.implicit_package then disambiguate_holes lib_terms else None with
     | Some term -> Ok term
     | None ->
-      Error (HoleSuggestions (fun env -> (List.map suggestion_of_candidate lib_terms,
-                                         List.map (fun candidate -> candidate.desc) explicit_terms,
-                                         renaming_hints)))
-    )
+      Error (HoleSuggestions (fun env ->
+        (List.map suggestion_of_candidate lib_terms,
+         List.map (fun candidate -> candidate.desc) explicit_terms,
+         renaming_hints))))
   | terms -> begin
      match disambiguate_holes terms with
      | Some term -> Ok term
@@ -2350,6 +2350,7 @@ and check_exp' env0 t exp : T.typ =
       t
     | Error (HoleSuggestions mk_suggestions) ->
       let (import_suggestions, explicit_suggestions, renaming_hints) = mk_suggestions env in
+      (* TODO: move this logic into mk_suggestions *)
       if not env.pre then begin
         let import_sug =
           if import_suggestions = [] then
@@ -2651,6 +2652,7 @@ and infer_callee env exp =
     | Error (t1, mk_e) ->
       match contextual_dot env id t1 with
       | Error (DotSuggestions mk_suggestions) ->
+        (* TODO: move this logic into mk_suggestions *)
         let suggestions = mk_suggestions env in
         let e = mk_e () in
         let e1 =
