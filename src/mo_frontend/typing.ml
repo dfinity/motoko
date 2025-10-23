@@ -1395,6 +1395,11 @@ let module_exp in_libs env module_name =
     matching module could be imported, and reports an ambiguity error
     when finding multiple resolutions.
  *)
+
+type hole_error =
+  | HoleSuggestions of string list * string list * (env -> unit) (* hints *)
+  | HoleAmbiguous of (unit -> unit)
+
 let resolve_hole env at hole_sort typ =
   let is_matching_lab lab =
     match hole_sort with
@@ -1497,14 +1502,14 @@ let resolve_hole env at hole_sort typ =
     (match if Option.is_some !Flags.implicit_package then disambiguate_holes lib_terms else None with
     | Some term -> Ok term
     | None ->
-      Error (List.map suggestion_of_candidate lib_terms,
-              List.map (fun candidate -> candidate.desc) explicit_terms,
-              renaming_hints)
+      Error (HoleSuggestions (List.map suggestion_of_candidate lib_terms,
+                             List.map (fun candidate -> candidate.desc) explicit_terms,
+                             renaming_hints))
     )
   | terms -> begin
      match disambiguate_holes terms with
      | Some term -> Ok term
-     | None ->
+     | None -> Error (HoleAmbiguous (fun () ->
        let terms = List.map (fun term -> term.desc) terms in
        error env at "M0231" "ambiguous implicit argument %s of type%a.\nThe ambiguous implicit candidates are: %s%s."
          (match hole_sort with Named n -> "named " ^ quote n | Anon i -> "at argument position " ^ Int.to_string i)
@@ -1513,7 +1518,7 @@ let resolve_hole env at hole_sort typ =
          (if explicit_terms = [] then ""
           else
             ".\nThe other explicit candidates are: "^
-              (String.concat ", " (List.map (fun oc -> oc.desc) explicit_terms)))
+              (String.concat ", " (List.map (fun oc -> oc.desc) explicit_terms)))))
      end
 
 type ctx_dot_candidate =
@@ -2338,7 +2343,10 @@ and check_exp' env0 t exp : T.typ =
       e := path;
       check_exp env t path;
       t
-    | Error (import_suggestions, explicit_suggestions, renaming_hints) ->
+    | Error (HoleAmbiguous mk_e) ->
+      mk_e();
+      t
+    | Error (HoleSuggestions (import_suggestions, explicit_suggestions, renaming_hints)) ->
       if not env.pre then begin
         let import_sug =
           if import_suggestions = [] then
@@ -2646,6 +2654,7 @@ and infer_callee env exp =
         let sug = Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
         Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
       | Error (Ambiguous modules) ->
+       (* if not env.pre then? *)
         error env id.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" id.it (String.concat ", " modules)
       | Ok { module_name; path; func_ty; inst; _ } ->
         note := Some path;
