@@ -44,6 +44,24 @@ fn embed_wit(wasm_module: &mut Vec<u8>, wit_file: &PathBuf) -> Result<()> {
     )
 }
 
+fn has_component_type_embedded(wasm_module: &mut Vec<u8>) -> Result<bool> {
+    let parser = wasmparser::Parser::new(0);
+    let mut section_count = 0;
+
+    for payload in parser.parse_all(wasm_module) {
+        match payload? {
+            wasmparser::Payload::CustomSection(reader)=> {
+                println!("Custom section #{}: {}", section_count, reader.name());
+                section_count += 1;
+                if reader.name() == "component-type" {
+                    return Ok(true);
+                }
+            }
+            _ => continue,
+        }
+    }
+    Ok(false)
+}
 fn create_motoko_component(wasm_module: &Vec<u8>) -> Result<Vec<u8>> {
     let mut encoder = wit_component::ComponentEncoder::default()
         .validate(true)
@@ -99,9 +117,13 @@ impl ComposeCommand {
                 path = self.wasm_module_file.display()
             )
         })?;
-
-        embed_wit(&mut wasm_module, &self.wit_file)?;
-        log::info!("--- done embedding WIT.");
+        if !has_component_type_embedded(&mut wasm_module)? {
+            log::info!("--- component_type is not embedded, embedding it now...");
+            embed_wit(&mut wasm_module, &self.wit_file)?;
+            log::info!("--- done embedding WIT.");
+        } else {
+            log::info!("--- component_type is already embedded, skipping embed operation");
+        }
 
         let wasm_component = create_motoko_component(&wasm_module)?;
         log::info!("--- done creating core Motoko component.");
