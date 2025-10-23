@@ -1848,10 +1848,7 @@ and infer_exp'' env exp : T.typ =
   | DotE (exp1, id, _) ->
     (match try_infer_dot_exp env exp.at exp1 id ("", (fun dot_typ -> true))  with
     | Ok t -> t
-    | Error (_, mk_e) ->
-      let e = mk_e() in
-      Diag.add_msg env.msgs e;
-      raise Recover)
+    | Error (_, error_with) -> error_with "")
   | AssignE (exp1, exp2) ->
     if not env.pre then begin
       let t1 = infer_exp_mut env exp1 in
@@ -2175,18 +2172,25 @@ and infer_bin_exp env exp1 exp2 =
 (* Returns `Ok` when finding an object with a matching field or
    `Error` with the type of the receiver as well as the error message
    to report. This is used to delay the reporting for contextual dot resulution *)
-and try_infer_dot_exp env at exp id (desc, pred) =
+and try_infer_dot_exp :
+  'a.
+  env ->
+  region ->
+  exp ->
+  id ->
+  string * (T.typ -> sugar) ->
+  (T.typ, T.typ * (string -> 'a)) result = fun env at exp id (desc, pred) ->
   let t0, t1 = infer_exp_and_promote env exp in
   let fields =
     try Ok(T.as_obj_sub [id.it] t1) with Invalid_argument _ ->
     try Ok(array_obj (T.as_array_sub t1)) with Invalid_argument _ ->
     try Ok(blob_obj (T.as_prim_sub T.Blob t1)) with Invalid_argument _ ->
     try Ok(text_obj (T.as_prim_sub T.Text t1)) with Invalid_argument _ ->
-      Error(t1, fun () ->
-        type_error exp.at "M0070"
-          (Format.asprintf
-             "expected object type, but expression produces type%a"
-             display_typ_expand t0))
+      Error(t1, fun extra ->
+        error env exp.at "M0070"
+          "expected object type, but expression produces type%a%s"
+          display_typ_expand t0
+          extra)
   in
   match fields with
   | Error e -> Error e
@@ -2208,24 +2212,26 @@ and try_infer_dot_exp env at exp id (desc, pred) =
         check_deprecation env at "field" id.it (T.lookup_val_deprecation id.it tfs);
       Ok(t)
     | t (* when not (pred t) *) ->
-      Error(t1, fun () ->
-        type_error id.at "M0234"
-          (Format.asprintf "field %s does exist in %a\nbut is not %s.\n%s"
-             id.it
-             display_obj t0
-             desc
-             (suggest ())))
+      Error(t1, fun extra ->
+        error env id.at "M0234"
+          "field %s does exist in %a\nbut is not %s.\n%s%s"
+          id.it
+          display_obj t0
+          desc
+          (suggest ())
+          extra)
     | exception Invalid_argument _ ->
-      Error(t1, fun () ->
-        type_error id.at "M0072"
-          (Format.asprintf "field %s does not exist in %a%s"
+      Error(t1, fun extra ->
+        error env id.at "M0072"
+          "field %s does not exist in %a%s%s"
              id.it
              display_obj t0
              (Suggest.suggest_id "field" id.it
                 (List.filter_map
                    (function
                       { T.typ=T.Typ _;_} -> None
-                    | {T.lab;_} -> Some lab) tfs))))
+                    | {T.lab;_} -> Some lab) tfs))
+              extra)
     end
 
 and infer_exp_field env rf =
@@ -2649,20 +2655,13 @@ and infer_callee env exp =
     match try_infer_dot_exp env exp.at exp1 id ("a function", is_func_typ) with
     | Ok t ->
       infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
-    | Error (t1, mk_e) ->
+    | Error (t1, error_with) ->
       match contextual_dot env id t1 with
       | Error (DotSuggestions mk_suggestions) ->
         (* TODO: move this logic into mk_suggestions *)
         let suggestions = mk_suggestions env in
-        let e = mk_e () in
-        let e1 =
-          if suggestions = []
-          then e
-          else Diag.{e with text =
-            e.text ^
-            Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions)}
-        in
-        Diag.add_msg env.msgs e1; raise Recover
+        if suggestions = [] then error_with "" else
+        error_with (Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions))
       | Error (DotAmbiguous mk_error) ->
         mk_error env
       | Ok { module_name; path; func_ty; inst; _ } ->
