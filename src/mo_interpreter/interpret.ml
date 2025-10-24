@@ -459,9 +459,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     | LibPath {path; _} ->
       k (find path env.libs)
     | ImportedValuePath path ->
-      let contents = Lib.FilePath.contents path in
-      assert T.(exp.note.note_typ = Prim Blob);
-      k (V.Blob contents)
+      if !Mo_config.Flags.blob_import_placeholders then
+        trap exp.at "blob import placeholder"
+      else begin
+        let contents = Lib.FilePath.contents path in
+        assert T.(exp.note.note_typ = Prim Blob);
+        k (V.Blob contents)
+      end
     | IDLPath _ -> trap exp.at "actor import"
     | PrimPath -> k (find "@prim" env.libs)
     )
