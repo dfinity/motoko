@@ -4,6 +4,8 @@
 
 * motoko (`moc`)
 
+  * Add warning `M0239` that warns when binding a unit `()` value to `let` or `var` (#5599).
+
   * Add (caffeine) warning `M0237` (#5588).
     Warns if explicit argument could have been inferred and omitted,
     e.g. `a.sort(Nat.compare)` vs `a.sort()`.
