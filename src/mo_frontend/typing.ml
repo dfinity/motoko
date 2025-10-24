@@ -55,6 +55,7 @@ type env =
     in_prog : bool;
     context : exp' list;
     pre : bool;
+    skip_note_typ : bool;
     weak : bool;
     msgs : Diag.msg_store;
     scopes : Source.region T.ConEnv.t;
@@ -81,6 +82,7 @@ let env_of_scope ?(viper_mode=false) msgs scope =
     in_prog = true;
     context = [];
     pre = false;
+    skip_note_typ = false;
     weak = false;
     msgs;
     scopes = T.ConEnv.empty;
@@ -1662,11 +1664,11 @@ and infer_exp_and_promote env exp : T.typ * T.typ =
 
 
 and infer_exp_wrapper inf f env exp : T.typ =
-  assert (exp.note.note_typ = T.Pre);
+  assert (env.skip_note_typ || exp.note.note_typ = T.Pre);
   let t = inf env exp in
   assert (t <> T.Pre);
   let t' = f t in
-  if not env.pre then begin
+  if not (env.pre || env.skip_note_typ) then begin
     let t'' = T.normalize t' in
     assert (t'' <> T.Pre);
     let note_eff = A.infer_effect_exp exp in
@@ -2325,12 +2327,14 @@ and check_exp_weak env t exp =
   check_exp {env with weak = true} t exp
 
 and check_exp env t exp =
-  assert (not env.pre);
-  assert (exp.note.note_typ = T.Pre);
+  assert (env.skip_note_typ || not env.pre);
+  assert (env.skip_note_typ || exp.note.note_typ = T.Pre);
   assert (t <> T.Pre);
   let t' = check_exp' env (T.normalize t) exp in
-  let e = A.infer_effect_exp exp in
-  exp.note <- {exp.note with note_typ = t'; note_eff = e}
+  if not (env.skip_note_typ) then begin
+    let e = A.infer_effect_exp exp in
+    exp.note <- {exp.note with note_typ = t'; note_eff = e}
+  end
 
 and check_exp' env0 t exp : T.typ =
   let env = {env0 with in_prog = false; in_actor = false; context = exp.it :: env0.context } in
@@ -2951,18 +2955,17 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
         (* Check the function input type and prepare for inferring the body *)
         let env', body_typ, codom = check_func_step false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
         (* [codom] comes from [ts2] which might contain unsolved type variables. *)
-        let closed = Bi_match.is_closed remaining codom in
-        if not env.pre && (closed || body_typ <> codom) then begin
-          (* Closed [codom] implies closed [body_typ].
-            * [body_typ] is closed when it comes from [typ_opt] (which is when it is different from [codom])
-            *)
+        let closed_codom = Bi_match.is_closed remaining codom in
+        (* Closed [codom] implies closed [body_typ]. [body_typ] is closed when it comes from [typ_opt] *)
+        let closed_body_typ = closed_codom || Option.is_some typ_opt in
+        let env' = if closed_body_typ then env' else { env' with rets = None } in
+        if closed_body_typ && not (env.pre || env.skip_note_typ) then begin
           assert (Bi_match.is_closed remaining body_typ);
-          (* Since [body_typ] is closed, no need to infer *)
           check_exp env' body_typ body;
         end;
 
         (* When [codom] is open, we need to solve it *)
-        if not closed then
+        if not closed_codom then
           if body_typ <> codom then
             (* [body_typ] is closed, body is already checked above, we just need to solve the subtype problem *)
             subs := (body_typ, codom) :: !subs
@@ -2972,7 +2975,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
             subs := (actual_t, body_typ) :: !subs;
         end
       | HoleE _, typ ->
-         if not env.pre then begin
+         if not (env.pre || env.skip_note_typ) then begin
            (* Check that all type variables in the type are fixed, fail otherwise *)
            Bi_match.fail_when_types_are_not_closed remaining [typ];
            check_exp env typ exp
@@ -3062,7 +3065,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
 and is_redundant_instantiation ts env infer_instantiation =
   assert env.pre;
   match Diag.with_message_store (recover_opt (fun msgs ->
-    let env_without_errors = { env with msgs } in
+    let env_without_errors = { env with msgs; skip_note_typ = true } in
     let ts', _, _ = infer_instantiation env_without_errors in
     List.length ts = List.length ts' && List.for_all2 (T.eq ?src_fields:None) ts ts'
     ))
@@ -4007,7 +4010,7 @@ and infer_block_exps env decs : T.typ =
   | [] -> T.unit
   | [dec] -> infer_dec env dec
   | dec::decs' ->
-    if not env.pre then recover (check_dec env T.unit) dec;
+    if not (env.pre || env.skip_note_typ) then recover (check_dec env T.unit) dec;
     infer_block_exps env decs'
 
 and infer_dec env dec : T.typ =
