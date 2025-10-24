@@ -1712,29 +1712,31 @@ and infer_exp'' env exp : T.typ =
     let t1 = infer_exp_promote env exp1 in
     let t = Operator.type_unop op t1 in
     if not env.pre then begin
-      assert (!ot = Type.Pre);
+      assert (env.skip_note_typ || !ot = T.Pre);
       if not (Operator.has_unop op t) then
         error env exp.at "M0059" "operator is not defined for operand type%a"
           display_typ_expand t;
-      ot := t;
+      if not env.skip_note_typ then
+        ot := t
     end;
     t
   | BinE (ot, exp1, op, exp2) ->
     let t1, t2 = infer_bin_exp env exp1 exp2 in
     let t = Operator.type_binop op (T.lub ~src_fields:env.srcs (T.promote t1) (T.promote t2)) in
-    if not env.pre then begin
-      assert (!ot = Type.Pre);
+    if not env.pre && not env.skip_note_typ then begin
+      assert (env.skip_note_typ || !ot = T.Pre);
       if not (Operator.has_binop op t) then
         error_bin_op env exp.at t1 t2
       else if op = Operator.SubOp && eq env exp.at t T.nat then
         warn env exp.at "M0155" "operator may trap for inferred type%a"
           display_typ_expand t;
-      ot := t
+      if not env.skip_note_typ then
+        ot := t
     end;
     t
   | RelE (ot, exp1, op, exp2) ->
-    if not env.pre then begin
-      assert (!ot = Type.Pre);
+    if not env.pre && not env.skip_note_typ then begin
+      assert (env.skip_note_typ || !ot = T.Pre);
       let t1, t2 = infer_bin_exp env exp1 exp2 in
       let t = Operator.type_relop op (T.lub ~src_fields:env.srcs (T.promote t1) (T.promote t2)) in
       if not (Operator.has_relop op t) then
@@ -1751,7 +1753,8 @@ and infer_exp'' env exp : T.typ =
             display_typ_expand t1
             display_typ_expand t2
             display_typ_expand t;
-      ot := t;
+      if not env.skip_note_typ then
+        ot := t
     end;
     T.bool
   | ShowE (ot, exp1) ->
@@ -1760,7 +1763,8 @@ and infer_exp'' env exp : T.typ =
       if not (Show.can_show t) then
         error env exp.at "M0063" "show is not defined for operand type%a"
           display_typ_expand t;
-      ot := t
+      if not env.skip_note_typ then
+        ot := t
     end;
     T.text
   | ToCandidE exps ->
@@ -1914,7 +1918,8 @@ and infer_exp'' env exp : T.typ =
     let t1, ve1 = infer_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env' pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let ts2 = List.map (check_typ_item env') ts2 in
-    typ.note <- T.seq ts2; (* HACK *)
+    if not env.skip_note_typ then
+      typ.note <- T.seq ts2; (* HACK *)
     let codom = T.codom c (fun () -> T.Con(List.hd cs,[])) ts2 in
     if not env.pre then begin
       let env'' =
@@ -2389,11 +2394,13 @@ and check_exp' env0 t exp : T.typ =
     | _ -> error env exp.at "M0090" "actor reference must have an actor type"
     end
   | UnE (ot, op, exp1), _ when Operator.has_unop op t ->
-    ot := t;
+    if not env.skip_note_typ then
+      ot := t;
     check_exp env t exp1;
     t
   | BinE (ot, exp1, op, exp2), _ when Operator.has_binop op t ->
-    ot := t;
+    if not env.skip_note_typ then
+      ot := t;
     check_exp env t exp1;
     check_exp env t exp2;
     if env.weak && op = Operator.SubOp && eq env exp.at t T.nat then
@@ -2803,7 +2810,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     then wrong_call_args env tbs exp2.at t_args implicits_arity syntax_args
     else T.seq t_args
   in
-  if not env.pre then ref_exp2 := exp2; (* TODO: is this good enough *)
+  if not env.pre && not env.skip_note_typ then ref_exp2 := exp2; (* TODO: is this good enough *)
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
     | [], (None | Some (_, []))  (* no inference required *)
@@ -2814,16 +2821,19 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       let ts = check_inst_bounds env sort tbs typs t_ret at in
       let t_arg' = T.open_ ts t_arg in
       let t_ret' = T.open_ ts t_ret in
-      if not env.pre then check_exp_strong env t_arg' exp2
-      else if typs <> [] && Flags.is_warning_enabled "M0223" &&
-        is_redundant_instantiation ts env (fun env' ->
-          infer_call_instantiation env' t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
-            warn env inst.at "M0223" "redundant type instantiation";
+      if not env.pre then begin
+        check_exp_strong env t_arg' exp2;
+        if typs <> [] && Flags.is_warning_enabled "M0223" &&
+          is_redundant_instantiation ts env (fun env' ->
+            infer_call_instantiation env' t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
+              warn env inst.at "M0223" "redundant type instantiation";
+      end;
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
       infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
-  inst.note <- ts;
+  if not env.skip_note_typ then
+    inst.note <- ts;
   if not env.pre then begin
     if Type.is_shared_sort sort then begin
       if not (T.concrete t_arg') then
@@ -2959,7 +2969,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
         (* Closed [codom] implies closed [body_typ]. [body_typ] is closed when it comes from [typ_opt] *)
         let closed_body_typ = closed_codom || Option.is_some typ_opt in
         let env' = if closed_body_typ then env' else { env' with rets = None } in
-        if closed_body_typ && not (env.pre || env.skip_note_typ) then begin
+        if closed_body_typ && not env.pre then begin
           assert (Bi_match.is_closed remaining body_typ);
           check_exp env' body_typ body;
         end;
@@ -2975,7 +2985,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
             subs := (actual_t, body_typ) :: !subs;
         end
       | HoleE _, typ ->
-         if not (env.pre || env.skip_note_typ) then begin
+         if not env.pre then begin
            (* Check that all type variables in the type are fixed, fail otherwise *)
            Bi_match.fail_when_types_are_not_closed remaining [typ];
            check_exp env typ exp
@@ -3063,7 +3073,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
            Format.asprintf "\nto produce result of expected type%a" display_typ t)
 
 and is_redundant_instantiation ts env infer_instantiation =
-  assert env.pre;
+  assert (not env.pre);
   match Diag.with_message_store (recover_opt (fun msgs ->
     let env_without_errors = { env with msgs; skip_note_typ = true } in
     let ts', _, _ = infer_instantiation env_without_errors in
@@ -3125,9 +3135,9 @@ and infer_pat_exhaustive warnOrError env pat : T.typ * Scope.val_env =
   t, ve
 
 and infer_pat name_types env pat : T.typ * Scope.val_env =
-  assert (pat.note = T.Pre);
+  assert (env.skip_note_typ || pat.note = T.Pre);
   let t, ve = infer_pat' name_types env pat in
-  if not env.pre then
+  if not env.pre && not env.skip_note_typ then
     pat.note <- T.normalize t;
   t, ve
 
@@ -3239,11 +3249,11 @@ and check_pat env t pat : Scope.val_env =
   check_pat_aux env t pat Scope.Declaration
 
 and check_pat_aux env t pat val_kind : Scope.val_env =
-  assert (pat.note = T.Pre);
+  assert (env.skip_note_typ || pat.note = T.Pre);
   if t = T.Pre then snd (infer_pat false env pat) else
   let t' = T.normalize t in
   let ve = check_pat_aux' env t' pat val_kind in
-  if not env.pre then pat.note <- t';
+  if not env.pre && not env.skip_note_typ then pat.note <- t';
   ve
 
 and check_pat_aux' env t pat val_kind : Scope.val_env =
@@ -4010,7 +4020,7 @@ and infer_block_exps env decs : T.typ =
   | [] -> T.unit
   | [dec] -> infer_dec env dec
   | dec::decs' ->
-    if not (env.pre || env.skip_note_typ) then recover (check_dec env T.unit) dec;
+    if not env.pre then recover (check_dec env T.unit) dec;
     infer_block_exps env decs'
 
 and infer_dec env dec : T.typ =
@@ -4113,8 +4123,9 @@ and infer_dec env dec : T.typ =
   | TypD _ ->
     T.unit
   in
-  let eff = A.infer_effect_dec dec in
-  dec.note <- {empty_typ_note with note_typ = t; note_eff = eff};
+  if not env.skip_note_typ then (
+    let eff = A.infer_effect_dec dec in
+    dec.note <- {empty_typ_note with note_typ = t; note_eff = eff});
   t
 
 
@@ -4141,7 +4152,8 @@ and check_dec env t dec =
   match dec.it with
   | ExpD exp ->
     check_exp env t exp;
-    dec.note <- exp.note
+    if not env.skip_note_typ then
+      dec.note <- exp.note
   | _ ->
     let t' = infer_dec env dec in
     if not (eq env dec.at t T.unit || sub env dec.at t' t) then
@@ -4236,7 +4248,9 @@ and gather_dec env scope dec : Scope.t =
     in
     let pre_k = T.Abs (pre_tbs, T.Pre) in
     let c = match id.note with
-      | None -> let c = Cons.fresh id.it pre_k in id.note <- Some c; c
+      | None ->
+        assert (not env.skip_note_typ);
+        let c = Cons.fresh id.it pre_k in id.note <- Some c; c
       | Some c -> c
     in
     let val_env = match dec.it with
@@ -4408,7 +4422,9 @@ and infer_dec_typdecs env dec : Scope.t =
 and infer_id_typdecs env at id c k : Scope.con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
   (match Cons.kind c with
-  | T.Abs (_, T.Pre) -> T.set_kind c k; id.note <- Some c
+  | T.Abs (_, T.Pre) ->
+    assert (not env.skip_note_typ);
+    T.set_kind c k; id.note <- Some c
   | k' -> assert (eq_kind env at k' k) (* may diverge on expansive types *)
   );
   T.ConSet.singleton c
@@ -4564,6 +4580,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
           let typ, _ = infer_block env (imp_ds @ ds) lib.at false in
+          assert (not env.skip_note_typ);
           List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
           cub.note <- {empty_typ_note with note_typ = typ};
           let imp_scope = match cub.it with
