@@ -229,7 +229,7 @@ let try_add_custom_error env lexeme reported msg_store =
 let handle_error env lexbuf reported msg_store inputneeded_cp error_detail = 
   let (startp, endp) as positions = I.positions env in
   let lexeme = slice_lexeme lexbuf startp endp in
-  if not (try_add_custom_error env lexeme reported msg_store) then
+  (* if not (try_add_custom_error env lexeme reported msg_store) then *)
     handle_generic_error error_detail msg_store positions lexeme inputneeded_cp
 
 (* We drive the parser in the usual way, but records the last [InputNeeded]
