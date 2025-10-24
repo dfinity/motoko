@@ -4,6 +4,11 @@
 
 * motoko (`moc`)
 
+  * Add (caffeine) warning `M0238` (#5597).
+    Warns if type annotations are used on anonymous functions.
+    Used to avoid unnecessary type annotations and rely on explicit type instantiations to propagate the type information instead.
+    (allowed by default, warn with `-W 0238`).
+
   * Add (caffeine) warning `M0237` (#5588).
     Warns if explicit argument could have been inferred and omitted,
     e.g. `a.sort(Nat.compare)` vs `a.sort()`.
