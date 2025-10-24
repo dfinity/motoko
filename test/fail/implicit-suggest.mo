@@ -57,5 +57,22 @@ persistent actor {
      ignore peopleMap.get(compare, 1); // warn
      ignore Map.get(peopleMap, Nat.compare, 1); // ok
      ignore peopleMap.get(1); // ok
+   };
+
+  func _test3() {
+    module Amb1 {
+      public type T = {#amb};
+      public func compare(_ : T, _ : T) : Order { #equal };
+    };
+
+    module _Amb2 {
+      public type T = {#amb};
+      public func compare(_ : T, _ : T) : Order { #equal };
+    };
+
+    let ambMap = Map.empty<Amb1.T, Text>();
+    ignore Map.get(ambMap, Amb1.compare, #amb); // don't warn (suggestion would be ambiguous)
+    ignore Map.get(ambMap, #amb); // reject // ambiguous
    }
+
 }
