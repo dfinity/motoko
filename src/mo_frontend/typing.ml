@@ -1150,6 +1150,10 @@ let check_text env at s =
     local_error env at "M0049" "string literal \"%s\": is not valid utf8" (String.escaped s);
   s
 
+let set_lit env lit t =
+  if not env.skip_note_typ then
+    lit := t
+
 let infer_lit env lit at : T.prim =
   match !lit with
   | NullLit -> T.Null
@@ -1170,19 +1174,19 @@ let infer_lit env lit at : T.prim =
   | BlobLit _ -> T.Blob
   | PreLit (s, T.Nat) ->
     if not env.pre then
-      lit := NatLit (check_nat env at s); (* default *)
+      set_lit env lit (NatLit (check_nat env at s)); (* default *)
     T.Nat
   | PreLit (s, T.Int) ->
     if not env.pre then
-      lit := IntLit (check_int env at s); (* default *)
+      set_lit env lit (IntLit (check_int env at s)); (* default *)
     T.Int
   | PreLit (s, T.Float) ->
     if not env.pre then
-      lit := FloatLit (check_float env at s); (* default *)
+      set_lit env lit (FloatLit (check_float env at s)); (* default *)
     T.Float
   | PreLit (s, T.Text) ->
     if not env.pre then
-      lit := TextLit (check_text env at s); (* default *)
+      set_lit env lit (TextLit (check_text env at s)); (* default *)
     T.Text
   | PreLit _ ->
     assert false
@@ -1190,29 +1194,29 @@ let infer_lit env lit at : T.prim =
 let check_lit env t lit at suggest =
   match t, !lit with
   | T.Prim T.Nat, PreLit (s, T.Nat) ->
-    lit := NatLit (check_nat env at s)
+    set_lit env lit (NatLit (check_nat env at s))
   | T.Prim T.Nat8, PreLit (s, T.Nat) ->
-    lit := Nat8Lit (check_nat8 env at s)
+    set_lit env lit (Nat8Lit (check_nat8 env at s))
   | T.Prim T.Nat16, PreLit (s, T.Nat) ->
-    lit := Nat16Lit (check_nat16 env at s)
+    set_lit env lit (Nat16Lit (check_nat16 env at s))
   | T.Prim T.Nat32, PreLit (s, T.Nat) ->
-    lit := Nat32Lit (check_nat32 env at s)
+    set_lit env lit (Nat32Lit (check_nat32 env at s))
   | T.Prim T.Nat64, PreLit (s, T.Nat) ->
-    lit := Nat64Lit (check_nat64 env at s)
+    set_lit env lit (Nat64Lit (check_nat64 env at s))
   | T.Prim T.Int, PreLit (s, (T.Nat | T.Int)) ->
-    lit := IntLit (check_int env at s)
+    set_lit env lit (IntLit (check_int env at s))
   | T.Prim T.Int8, PreLit (s, (T.Nat | T.Int)) ->
-    lit := Int8Lit (check_int8 env at s)
+    set_lit env lit (Int8Lit (check_int8 env at s))
   | T.Prim T.Int16, PreLit (s, (T.Nat | T.Int)) ->
-    lit := Int16Lit (check_int16 env at s)
+    set_lit env lit (Int16Lit (check_int16 env at s))
   | T.Prim T.Int32, PreLit (s, (T.Nat | T.Int)) ->
-    lit := Int32Lit (check_int32 env at s)
+    set_lit env lit (Int32Lit (check_int32 env at s))
   | T.Prim T.Int64, PreLit (s, (T.Nat | T.Int)) ->
-    lit := Int64Lit (check_int64 env at s)
+    set_lit env lit (Int64Lit (check_int64 env at s))
   | T.Prim T.Float, PreLit (s, (T.Nat | T.Int | T.Float)) ->
-    lit := FloatLit (check_float env at s)
+    set_lit env lit (FloatLit (check_float env at s))
   | T.Prim T.Blob, PreLit (s, T.Text) ->
-    lit := BlobLit s
+    set_lit env lit (BlobLit s)
   | t, _ ->
     let t' = T.Prim (infer_lit env lit at) in
     if not (sub env at t' t) then
@@ -2822,11 +2826,11 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       let t_arg' = T.open_ ts t_arg in
       let t_ret' = T.open_ ts t_ret in
       if not env.pre then begin
-        check_exp_strong env t_arg' exp2;
         if typs <> [] && Flags.is_warning_enabled "M0223" &&
           is_redundant_instantiation ts env (fun env' ->
             infer_call_instantiation env' t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
               warn env inst.at "M0223" "redundant type instantiation";
+        check_exp_strong env t_arg' exp2;
       end;
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
