@@ -1723,7 +1723,7 @@ and infer_exp'' env exp : T.typ =
   | BinE (ot, exp1, op, exp2) ->
     let t1, t2 = infer_bin_exp env exp1 exp2 in
     let t = Operator.type_binop op (T.lub ~src_fields:env.srcs (T.promote t1) (T.promote t2)) in
-    if not env.pre && not env.skip_note_typ then begin
+    if not env.pre then begin
       assert (env.skip_note_typ || !ot = T.Pre);
       if not (Operator.has_binop op t) then
         error_bin_op env exp.at t1 t2
@@ -1735,7 +1735,7 @@ and infer_exp'' env exp : T.typ =
     end;
     t
   | RelE (ot, exp1, op, exp2) ->
-    if not env.pre && not env.skip_note_typ then begin
+    if not env.pre then begin
       assert (env.skip_note_typ || !ot = T.Pre);
       let t1, t2 = infer_bin_exp env exp1 exp2 in
       let t = Operator.type_relop op (T.lub ~src_fields:env.srcs (T.promote t1) (T.promote t2)) in
