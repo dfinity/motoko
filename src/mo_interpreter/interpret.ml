@@ -460,7 +460,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       k (find path env.libs)
     | ImportedValuePath path ->
       if !Mo_config.Flags.blob_import_placeholders then
-        trap exp.at "M0238: blob import placeholder"
+        trap exp.at "blob import placeholder"
       else begin
         let contents = Lib.FilePath.contents path in
         assert T.(exp.note.note_typ = Prim Blob);

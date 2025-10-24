@@ -1216,7 +1216,7 @@ and transform_import (i : S.import) : Ir.dec list =
       primE (I.ActorOfIdBlob t) [blobE canister_id]
     | S.ImportedValuePath path ->
        if !Mo_config.Flags.blob_import_placeholders then
-         raise (Invalid_argument ("M0238: blob import placeholder"))
+         raise (Invalid_argument ("blob import placeholder"))
        else begin
          let contents = Lib.FilePath.contents path in
          assert T.(t = Prim Blob);

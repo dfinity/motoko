@@ -251,6 +251,6 @@ Motoko.saveFile("blob.mo", 'import MyBlob "blob:file:path/to/blob.txt"; MyBlob.s
 assert(Motoko.parseMotoko(/*enable_recovery=*/true, "blob.mo").code != null);
 assert.deepStrictEqual(Motoko.run([], "blob.mo"), {
   stdout: "",
-  stderr: "blob.mo:1.1-1.43: execution error, M0238: blob import placeholder\n",
+  stderr: "blob.mo:1.1-1.43: execution error, blob import placeholder\n",
   result: { error: {} },
 });
