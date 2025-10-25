@@ -1385,7 +1385,7 @@ let is_val_module (n, ((t, _, _, _) : val_info)) =
 
 let module_exp in_libs env module_name =
   if not in_libs then
-    VarE {it = module_name; at = no_region; note = Const}
+    VarE {it = module_name; at = no_region; note = (Const, None)}
   else
     ImplicitLibE module_name
 
@@ -1438,7 +1438,7 @@ let resolve_hole env at hole_sort typ =
     if is_matching_typ t
     then
       let path =
-        { it = VarE {it = id; at = no_region; note = Const};
+        { it = VarE {it = id; at = no_region; note = (Const, None)};
           at = Source.no_region;
           note = empty_typ_note }
       in
@@ -1631,7 +1631,7 @@ let check_can_dot env ctx_dot (exp : Syntax.exp) tys es at =
              | DotE ({ it = VarE {it = mod_id0; _};_ },
                      { it = id0; _},
                     _),
-               DotE ({ it = VarE {it = mod_id1; note = Const; _};_ },
+               DotE ({ it = VarE {it = mod_id1; note = (Const, _); _};_ },
                      { it = id1; _},
                      _)  when mod_id0 = mod_id1 && id0 = id1 ->
                 warn env at "M0236" "You can use the dot notation `%s.%s(...)` here"
@@ -1695,11 +1695,25 @@ and infer_exp'' env exp : T.typ =
       if !Flags.compiled then
         error env id.at "M0056" "variable %s is in scope but not available in compiled code" id.it
       else t
-    | Some (t, _, _, Available) -> id.note <- (if T.is_mut t then Var else Const); t
+    | Some (t, _, _, Available) -> id.note <- (if T.is_mut t then (Var, None) else (Const, None)); t
     | None ->
-      error env id.at "M0057" "unbound variable %s%a%s" id.it
-        display_vals env.vals
-        (Suggest.suggest_id "variable" id.it (T.Env.keys env.vals))
+      let candidate_lib =
+        if Option.is_some(!Flags.implicit_package) then
+          T.Env.to_seq env.libs |>
+            Seq.find (fun (name, typ) ->
+                let lib_id = Filename.basename name |> Filename.chop_extension in
+                lib_id = id.it)
+        else None
+      in
+      match candidate_lib with
+      | Some (name, typ) ->
+        id.note <-
+          (Const, Some { it = ImplicitLibE name; at = exp.at; note = {note_typ = typ; note_eff = T.Triv} });
+        typ
+      | None ->
+        error env id.at "M0057" "unbound variable %s%a%s" id.it
+          display_vals env.vals
+          (Suggest.suggest_id "variable" id.it (T.Env.keys env.vals))
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
@@ -2176,6 +2190,7 @@ and infer_bin_exp env exp1 exp2 =
    `Error` with the type of the receiver as well as the error message
    to report. This is used to delay the reporting for contextual dot resulution *)
 and try_infer_dot_exp env at exp id (desc, pred) =
+  (* CRUSSO *)
   let t0, t1 = infer_exp_and_promote env exp in
   let fields =
     try Ok(T.as_obj_sub [id.it] t1) with Invalid_argument _ ->
@@ -2732,13 +2747,13 @@ and check_explicit_arguments env saturated_arity implicits_arity arg_typs syntax
                 | Ok {path;_} ->
                    match path.it, arg.it with
                    | VarE {it = id0; _},
-                     VarE {it = id1; note = Const; _}
+                     VarE {it = id1; note = (Const, _); _}
                         when id0 = id1 ->
                       (id1, arg) :: acc
                    | DotE ({ it = VarE {it = mod_id0; _};_ },
                            { it = id0; _},
                            _),
-                     DotE ({ it = VarE {it = mod_id1; note = Const; _};_ },
+                     DotE ({ it = VarE {it = mod_id1; note = (Const, _); _};_ },
                            { it = id1; _},
                            _) when mod_id0 = mod_id1 && id0 = id1 ->
                       (mod_id1 ^ "." ^ id1, arg) :: acc
