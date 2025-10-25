@@ -1,2 +1,0 @@
-implicit-import-var.mo:6.8-6.11: type error [M0057], unbound variable MapDid you meant to import Map
-implicit-import-var.mo:8.8-8.11: type error [M0057], unbound variable NatDid you meant to import Nat

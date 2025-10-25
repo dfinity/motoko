@@ -37,7 +37,6 @@ type func_sort = Type.func_sort Source.phrase
 
 type mut = mut' Source.phrase
 and mut' = Const | Var
-and id_ref = (string, mut') Source.annotated_phrase
 
 and path = (path', Type.typ) Source.annotated_phrase
 and path' =
@@ -163,8 +162,9 @@ type sugar = bool (* Is the source of a function body a block `<block>`,
                      This flag is used to correctly desugar an actor's
                      public functions as oneway, shared functions *)
 
-type exp = (exp', typ_note) Source.annotated_phrase
+type id_ref = (string, mut' * exp option) Source.annotated_phrase
 and hole_sort = Named of string | Anon of int
+and exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
   | HoleE of hole_sort * exp ref
   | PrimE of string                            (* primitive *)
@@ -233,7 +233,7 @@ and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}
 
 (* When `Some`, this holds the expression that produces the function to apply to the receiver.
-   eg. when `f.x(args...)` desugars to `M.f(x, args...)` the note will hold `M.f` *)
+   eg. when `x.f(args...)` desugars to `M.f(x, args...)` the note will hold `M.f` *)
 and contextual_dot_note = exp option ref
 
 (* Declarations *)
@@ -293,7 +293,7 @@ type lib = comp_unit
 (* Helpers *)
 
 let (@@) = Source.(@@)
-let (@~) it at = Source.annotate Const it at
+let (@~) it at = Source.annotate (Const, None) it at
 let (@?) it at = Source.annotate empty_typ_note it at
 let (@!) it at = Source.annotate Type.Pre it at
 let (@=) it at = Source.annotate None it at
