@@ -171,11 +171,7 @@ let parse ?(recovery = false) mode error_detail start lexer lexbuf =
       | _ -> assert false
     in
     let fail cp = None in
-    let save_error_and_fail cp1 cp2 = save_error cp1 cp2; fail cp2 in
     let succ e =  Some e in
-    if recovery then
-      R.loop_handle_recover succ fail save_error lexer start
-    else
-      I.loop_handle_undo succ save_error_and_fail lexer start
+    R.loop_handle_recover succ fail save_error lexer start
   )
 
