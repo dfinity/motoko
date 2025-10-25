@@ -1697,9 +1697,23 @@ and infer_exp'' env exp : T.typ =
       else t
     | Some (t, _, _, Available) -> id.note <- (if T.is_mut t then Var else Const); t
     | None ->
-      error env id.at "M0057" "unbound variable %s%a%s" id.it
-        display_vals env.vals
-        (Suggest.suggest_id "variable" id.it (T.Env.keys env.vals))
+      let candidate_lib =
+        if Option.is_some(!Flags.implicit_package) then
+          T.Env.to_seq env.libs |>
+            Seq.find (fun (name, typ) ->
+                let lib_id = Filename.basename name |> Filename.chop_extension in
+                lib_id = id.it)
+        else None
+      in
+      match candidate_lib with
+      | Some (name, lib) ->
+        error env id.at "M0057" "unbound variable %s%a%s" id.it
+          display_vals env.vals
+         ("Did you meant to import " ^ Suggest.module_name_as_url id.it)
+      | None ->
+        error env id.at "M0057" "unbound variable %s%a%s" id.it
+          display_vals env.vals
+          (Suggest.suggest_id "variable" id.it (T.Env.keys env.vals))
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
@@ -2176,6 +2190,7 @@ and infer_bin_exp env exp1 exp2 =
    `Error` with the type of the receiver as well as the error message
    to report. This is used to delay the reporting for contextual dot resulution *)
 and try_infer_dot_exp env at exp id (desc, pred) =
+  (* CRUSSO *)
   let t0, t1 = infer_exp_and_promote env exp in
   let fields =
     try Ok(T.as_obj_sub [id.it] t1) with Invalid_argument _ ->
