@@ -4,6 +4,10 @@
 
 * motoko (`moc`)
 
+  * Enable parser recovery to gather more syntax errors at once (previously only enabled for `moc.js`) (#5589).
+
+  * Custom syntax error message when a record is provided where a block is expected (#5589).
+
   * Add (caffeine) warning `M0237` (#5588).
     Warns if explicit argument could have been inferred and omitted,
     e.g. `a.sort(Nat.compare)` vs `a.sort()`.

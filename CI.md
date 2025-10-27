@@ -81,7 +81,7 @@ reliably be acted on once requirements are fulfilled.
 
 **Implementation:**
 Use the "Enable auto-merge (squash)" button of the GitHub PR web page.
-Alternatively from the CLI `gh pr merge --auto` will do. Note that you have to update
+Alternatively from the CLI `gh pr merge --squash --auto` will do. Note that you have to update
 the PR with `master` first, so that the tests can run on the most recent codebase.
 From the command line issue `gh pr update-branch` to that effect.
 
@@ -141,10 +141,9 @@ some dependency, it should only be _tested_ if it builds, but not merged.
 
 **Implementation:**
  * Multiple files (with different settings) in `.github/workflows/` use
-   flake-updater to create
-   pull requests with the version bumps, as `dfinity-bot`, setting
-   `automerge-squash` or `autoclose`.
- * (obsolete) Mergify automatically approves PRs from `dfinity-bot`.
+   flake-updater to create pull requests with the version bumps,
+   as `github-actions[bot]`, setting `automerge-squash` or `autoclose`.
+ * A GH action automatically approves PRs from `github-actions[bot]`.
  * Once CI passes, the `test.yml` GitHub action merges or closes PRs, as per label.
 
 (obsolete) Updates to the Changelog require no review

@@ -1395,6 +1395,11 @@ let module_exp in_libs env module_name =
     matching module could be imported, and reports an ambiguity error
     when finding multiple resolutions.
  *)
+
+type hole_error =
+  | HoleSuggestions of (env -> string list * string list * (env -> unit))
+  | HoleAmbiguous of (env -> unit)
+
 let resolve_hole env at hole_sort typ =
   let is_matching_lab lab =
     match hole_sort with
@@ -1497,14 +1502,14 @@ let resolve_hole env at hole_sort typ =
     (match if Option.is_some !Flags.implicit_package then disambiguate_holes lib_terms else None with
     | Some term -> Ok term
     | None ->
-      Error (List.map suggestion_of_candidate lib_terms,
-              List.map (fun candidate -> candidate.desc) explicit_terms,
-              renaming_hints)
-    )
+      Error (HoleSuggestions (fun env ->
+        (List.map suggestion_of_candidate lib_terms,
+         List.map (fun candidate -> candidate.desc) explicit_terms,
+         renaming_hints))))
   | terms -> begin
      match disambiguate_holes terms with
      | Some term -> Ok term
-     | None ->
+     | None -> Error (HoleAmbiguous (fun env ->
        let terms = List.map (fun term -> term.desc) terms in
        error env at "M0231" "ambiguous implicit argument %s of type%a.\nThe ambiguous implicit candidates are: %s%s."
          (match hole_sort with Named n -> "named " ^ quote n | Anon i -> "at argument position " ^ Int.to_string i)
@@ -1513,7 +1518,7 @@ let resolve_hole env at hole_sort typ =
          (if explicit_terms = [] then ""
           else
             ".\nThe other explicit candidates are: "^
-              (String.concat ", " (List.map (fun oc -> oc.desc) explicit_terms)))
+              (String.concat ", " (List.map (fun oc -> oc.desc) explicit_terms)))))
      end
 
 type ctx_dot_candidate =
@@ -1540,23 +1545,11 @@ let permissive_sub t1 (tbs, t2) =
   with _ ->
     None
 
-let has_matching_self receiver_ty tf = match tf with
-  | T.{ lab = "Self"; typ = T.Typ con; _ } ->
-     (match Cons.kind con with
-      | T.Def(tbs, t') -> permissive_sub receiver_ty (tbs, t') <> None
-      | _ -> false)
-  | _ -> false
+type 'a context_dot_error =
+  | DotSuggestions of (env -> string list)
+  | DotAmbiguous of (env -> 'a)
 
-let check_can_dot env (exp : Syntax.exp) tys es at =
-  if not env.pre then
-  if Flags.get_warning_level "M0236" <> Flags.Allow then
-  match exp.it, tys, es with
-  | (DotE(_, id, _), T.Named("self", _) :: _, e::_) ->
-      warn env at "M0236" "You can use the dot notation `%s.%s(...)` here"
-        (match Source.read_region e.at with Some s -> s | None -> "<arg0>") id.it
-  | _, _, _ -> ()
-
-let contextual_dot env name receiver_ty =
+let contextual_dot env name receiver_ty : (ctx_dot_candidate, 'a context_dot_error) Result.t =
   let is_matching_func field =
     if not (String.equal field.T.lab name.it) then None
     else match T.normalize field.T.typ with
@@ -1594,12 +1587,50 @@ let contextual_dot env name receiver_ty =
     | lib_candidates ->
       match if Option.is_some !Flags.implicit_package then disambiguate_candidates lib_candidates else None with
       | Some c -> Ok c
-      | None ->  Error (List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates))
+      | None ->  Error (DotSuggestions (fun env -> List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)))
   | cs -> match disambiguate_candidates cs with
     | Some c -> Ok c
-    | None ->
-      let candidates = List.map (fun c -> c.module_name) cs in
-      error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
+    | None -> Error (DotAmbiguous (fun env ->
+       let modules =  (List.map (fun c -> c.module_name) cs) in
+       error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " modules)))
+
+let check_can_dot env ctx_dot (exp : Syntax.exp) tys es at =
+  if not env.pre then
+  if Flags.get_warning_level "M0236" <> Flags.Allow then
+  match ctx_dot with
+  | Some _ -> () (* already dotted *)
+  | None ->
+    match exp.it, tys, es with
+    | (DotE(obj_exp, id, _), receiver_ty :: tys, e::es) ->
+      begin
+        if (id.it = "equal" || Lib.String.chop_prefix "compare" id.it <> None) && List.length tys = 1 then ()
+        else
+          let quote e =
+            if e.at.left.line <> e.at.right.line then "..." else
+            match Source.read_region e.at with
+            | None -> "..."
+            | Some s ->
+               match e.it with
+               | VarE _ | CallE _ | DotE _ -> s
+               | e -> "("^s^")"
+          in
+          match contextual_dot env id receiver_ty with
+          | Error _ -> ()
+          | Ok {path;_} ->
+            (match path.it, exp.it with
+             | DotE ({ it = VarE {it = mod_id0; _};_ },
+                     { it = id0; _},
+                    _),
+               DotE ({ it = VarE {it = mod_id1; note = Const; _};_ },
+                     { it = id1; _},
+                     _)  when mod_id0 = mod_id1 && id0 = id1 ->
+                warn env at "M0236" "You can use the dot notation `%s.%s(...)` here"
+                  (quote e)
+                  id.it
+             | _ -> ())
+      end
+    | _, _, _ -> ()
+
 
 let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
@@ -2304,7 +2335,12 @@ and check_exp' env0 t exp : T.typ =
       e := path;
       check_exp env t path;
       t
-    | Error (import_suggestions, explicit_suggestions, renaming_hints) ->
+    | Error (HoleAmbiguous mk_error) ->
+      mk_error env;
+      t
+    | Error (HoleSuggestions mk_suggestions) ->
+      let (import_suggestions, explicit_suggestions, renaming_hints) = mk_suggestions env in
+      (* TODO: move this logic into mk_suggestions *)
       if not env.pre then begin
         let import_sug =
           if import_suggestions = [] then
@@ -2605,12 +2641,20 @@ and infer_callee env exp =
       infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
     | Error (t1, mk_e) ->
       match contextual_dot env id t1 with
-      | Error [] ->
-         Diag.add_msg env.msgs (mk_e ()); raise Recover
-      | Error suggestions ->
-         let e = mk_e () in
-         let sug = Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
-         Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
+      | Error (DotSuggestions mk_suggestions) ->
+        (* TODO: move this logic into mk_suggestions *)
+        let suggestions = mk_suggestions env in
+        let e = mk_e () in
+        let e1 =
+          if suggestions = []
+          then e
+          else Diag.{e with text =
+            e.text ^
+            Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions)}
+        in
+        Diag.add_msg env.msgs e1; raise Recover
+      | Error (DotAmbiguous mk_error) ->
+        mk_error env
       | Ok { module_name; path; func_ty; inst; _ } ->
         note := Some path;
         if not env.pre then
@@ -2619,7 +2663,6 @@ and infer_callee env exp =
      end
   | _ ->
      infer_exp_promote env exp, None
-
 and as_implicit = function
   | T.Named ("implicit", T.Named (arg_name, t)) ->
     Some arg_name
@@ -2720,7 +2763,6 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   in
   let t_args, extra_subtype_problems = match ctx_dot with
     | None ->
-      check_can_dot env exp1 t_args syntax_args at;
       t_args, []
     | Some(e, t, _id, _inst) -> begin
       match t_args with
@@ -2786,6 +2828,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
        warn env at "M0195" "this function call implicitly requires `system` capability and may perform undesired actions (please review the call and provide a type instantiation `<system%s>` to suppress this warning)" (if List.length tbs = 1 then "" else ", ...")
     | _ -> ()
     end;
+    check_can_dot env ctx_dot exp1 (List.map (T.open_ ts) t_args) syntax_args at;
     check_explicit_arguments env saturated_arity implicits_arity (List.map (T.open_ ts) t_args) syntax_args;
   end;
   (* note t_ret' <: t checked by caller if necessary *)
