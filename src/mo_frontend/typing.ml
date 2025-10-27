@@ -3078,6 +3078,8 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
 
 and is_redundant_instantiation ts env infer_instantiation =
   assert (not env.pre);
+  (* Perf: Skip checking nested instantiations to ensure that every instantiation is checked for redundancy exactly once *)
+  if env.skip_note_typ then false else
   match Diag.with_message_store (recover_opt (fun msgs ->
     let env_without_errors = { env with msgs; skip_note_typ = true } in
     let ts', _, _ = infer_instantiation env_without_errors in

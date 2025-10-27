@@ -1,4 +1,6 @@
 //MOC-FLAG -W M0223
+import Prim "mo:prim";
+
 // Empty instantiations, no warning
 func empty<>(x : Int): Int = x;
 assert empty<>(1) == 1;
@@ -44,3 +46,31 @@ let t2 = inferred<Text>("abc"); // Redundant
 vaText[0] := t2;
 let t3 = inferred<Blob>("blob");
 vaBlob[0] := t3;
+
+module Nested {
+  public func test() : Bool {
+    Prim.Array_tabulate<Bool>(2, func i { // Redundant
+      if (i == 0) false else
+      Prim.Array_tabulate<Bool>(2, func i { // Redundant
+        if (i == 0) false else
+        Prim.Array_tabulate<Bool>(2, func i { // Redundant
+          if (i == 0) false else
+          true;
+        })[1];
+      })[1];
+    })[1];
+  };
+  // Future work: improve type inference to handle `return` and detect these redundant instantiations
+  public func testWithReturns() : Bool {
+    Prim.Array_tabulate<Bool>(2, func i {
+      if (i == 0) return false;
+      Prim.Array_tabulate<Bool>(2, func i {
+        if (i == 0) return false;
+        Prim.Array_tabulate<Bool>(2, func i {
+          if (i == 0) return false;
+          true;
+        })[1];
+      })[1];
+    })[1];
+  };
+};
