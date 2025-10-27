@@ -54,7 +54,9 @@ type env =
     in_actor : bool;
     in_prog : bool;
     context : exp' list;
+    (* [pre] phase skips thorough checks and avoids recording note types (and other internal state modifications) *)
     pre : bool;
+    (* [skip_note_typ] avoids recording note types. Used to perform full checking ([not pre]) without modifying the internal state *)
     skip_note_typ : bool;
     weak : bool;
     msgs : Diag.msg_store;
@@ -100,6 +102,14 @@ let use_identifier env id =
 
 let is_unused_identifier env id =
   not (S.mem id !(env.used_identifiers))
+
+let set env lit t =
+  if not env.skip_note_typ then
+    lit := t
+
+let set_note env ap n =
+  if not env.skip_note_typ then
+    ap.note <- n
 
 let get_identifiers identifiers =
   T.Env.fold (fun id _ set -> S.add id set) identifiers S.empty
@@ -1150,10 +1160,6 @@ let check_text env at s =
     local_error env at "M0049" "string literal \"%s\": is not valid utf8" (String.escaped s);
   s
 
-let set_lit env lit t =
-  if not env.skip_note_typ then
-    lit := t
-
 let infer_lit env lit at : T.prim =
   match !lit with
   | NullLit -> T.Null
@@ -1174,19 +1180,19 @@ let infer_lit env lit at : T.prim =
   | BlobLit _ -> T.Blob
   | PreLit (s, T.Nat) ->
     if not env.pre then
-      set_lit env lit (NatLit (check_nat env at s)); (* default *)
+      set env lit (NatLit (check_nat env at s)); (* default *)
     T.Nat
   | PreLit (s, T.Int) ->
     if not env.pre then
-      set_lit env lit (IntLit (check_int env at s)); (* default *)
+      set env lit (IntLit (check_int env at s)); (* default *)
     T.Int
   | PreLit (s, T.Float) ->
     if not env.pre then
-      set_lit env lit (FloatLit (check_float env at s)); (* default *)
+      set env lit (FloatLit (check_float env at s)); (* default *)
     T.Float
   | PreLit (s, T.Text) ->
     if not env.pre then
-      set_lit env lit (TextLit (check_text env at s)); (* default *)
+      set env lit (TextLit (check_text env at s)); (* default *)
     T.Text
   | PreLit _ ->
     assert false
@@ -1194,29 +1200,29 @@ let infer_lit env lit at : T.prim =
 let check_lit env t lit at suggest =
   match t, !lit with
   | T.Prim T.Nat, PreLit (s, T.Nat) ->
-    set_lit env lit (NatLit (check_nat env at s))
+    set env lit (NatLit (check_nat env at s))
   | T.Prim T.Nat8, PreLit (s, T.Nat) ->
-    set_lit env lit (Nat8Lit (check_nat8 env at s))
+    set env lit (Nat8Lit (check_nat8 env at s))
   | T.Prim T.Nat16, PreLit (s, T.Nat) ->
-    set_lit env lit (Nat16Lit (check_nat16 env at s))
+    set env lit (Nat16Lit (check_nat16 env at s))
   | T.Prim T.Nat32, PreLit (s, T.Nat) ->
-    set_lit env lit (Nat32Lit (check_nat32 env at s))
+    set env lit (Nat32Lit (check_nat32 env at s))
   | T.Prim T.Nat64, PreLit (s, T.Nat) ->
-    set_lit env lit (Nat64Lit (check_nat64 env at s))
+    set env lit (Nat64Lit (check_nat64 env at s))
   | T.Prim T.Int, PreLit (s, (T.Nat | T.Int)) ->
-    set_lit env lit (IntLit (check_int env at s))
+    set env lit (IntLit (check_int env at s))
   | T.Prim T.Int8, PreLit (s, (T.Nat | T.Int)) ->
-    set_lit env lit (Int8Lit (check_int8 env at s))
+    set env lit (Int8Lit (check_int8 env at s))
   | T.Prim T.Int16, PreLit (s, (T.Nat | T.Int)) ->
-    set_lit env lit (Int16Lit (check_int16 env at s))
+    set env lit (Int16Lit (check_int16 env at s))
   | T.Prim T.Int32, PreLit (s, (T.Nat | T.Int)) ->
-    set_lit env lit (Int32Lit (check_int32 env at s))
+    set env lit (Int32Lit (check_int32 env at s))
   | T.Prim T.Int64, PreLit (s, (T.Nat | T.Int)) ->
-    set_lit env lit (Int64Lit (check_int64 env at s))
+    set env lit (Int64Lit (check_int64 env at s))
   | T.Prim T.Float, PreLit (s, (T.Nat | T.Int | T.Float)) ->
-    set_lit env lit (FloatLit (check_float env at s))
+    set env lit (FloatLit (check_float env at s))
   | T.Prim T.Blob, PreLit (s, T.Text) ->
-    set_lit env lit (BlobLit s)
+    set env lit (BlobLit s)
   | t, _ ->
     let t' = T.Prim (infer_lit env lit at) in
     if not (sub env at t' t) then
@@ -1720,8 +1726,7 @@ and infer_exp'' env exp : T.typ =
       if not (Operator.has_unop op t) then
         error env exp.at "M0059" "operator is not defined for operand type%a"
           display_typ_expand t;
-      if not env.skip_note_typ then
-        ot := t
+      set env ot t
     end;
     t
   | BinE (ot, exp1, op, exp2) ->
@@ -1734,8 +1739,7 @@ and infer_exp'' env exp : T.typ =
       else if op = Operator.SubOp && eq env exp.at t T.nat then
         warn env exp.at "M0155" "operator may trap for inferred type%a"
           display_typ_expand t;
-      if not env.skip_note_typ then
-        ot := t
+      set env ot t
     end;
     t
   | RelE (ot, exp1, op, exp2) ->
@@ -1757,8 +1761,7 @@ and infer_exp'' env exp : T.typ =
             display_typ_expand t1
             display_typ_expand t2
             display_typ_expand t;
-      if not env.skip_note_typ then
-        ot := t
+      set env ot t
     end;
     T.bool
   | ShowE (ot, exp1) ->
@@ -1767,8 +1770,7 @@ and infer_exp'' env exp : T.typ =
       if not (Show.can_show t) then
         error env exp.at "M0063" "show is not defined for operand type%a"
           display_typ_expand t;
-      if not env.skip_note_typ then
-        ot := t
+      set env ot t
     end;
     T.text
   | ToCandidE exps ->
@@ -1922,8 +1924,7 @@ and infer_exp'' env exp : T.typ =
     let t1, ve1 = infer_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env' pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let ts2 = List.map (check_typ_item env') ts2 in
-    if not env.skip_note_typ then
-      typ.note <- T.seq ts2; (* HACK *)
+    set_note env typ (T.seq ts2); (* HACK *)
     let codom = T.codom c (fun () -> T.Con(List.hd cs,[])) ts2 in
     if not env.pre then begin
       let env'' =
@@ -2398,13 +2399,11 @@ and check_exp' env0 t exp : T.typ =
     | _ -> error env exp.at "M0090" "actor reference must have an actor type"
     end
   | UnE (ot, op, exp1), _ when Operator.has_unop op t ->
-    if not env.skip_note_typ then
-      ot := t;
+    set env ot t;
     check_exp env t exp1;
     t
   | BinE (ot, exp1, op, exp2), _ when Operator.has_binop op t ->
-    if not env.skip_note_typ then
-      ot := t;
+    set env ot t;
     check_exp env t exp1;
     check_exp env t exp2;
     if env.weak && op = Operator.SubOp && eq env exp.at t T.nat then
@@ -2814,7 +2813,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     then wrong_call_args env tbs exp2.at t_args implicits_arity syntax_args
     else T.seq t_args
   in
-  if not env.pre && not env.skip_note_typ then ref_exp2 := exp2; (* TODO: is this good enough *)
+  if not env.pre then set env ref_exp2 exp2; (* TODO: is this good enough *)
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
     | [], (None | Some (_, []))  (* no inference required *)
@@ -2836,8 +2835,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     | _::_, None -> (* implicit, infer *)
       infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
-  if not env.skip_note_typ then
-    inst.note <- ts;
+  set_note env inst ts;
   if not env.pre then begin
     if Type.is_shared_sort sort then begin
       if not (T.concrete t_arg') then
@@ -3143,8 +3141,7 @@ and infer_pat_exhaustive warnOrError env pat : T.typ * Scope.val_env =
 and infer_pat name_types env pat : T.typ * Scope.val_env =
   assert (env.skip_note_typ || pat.note = T.Pre);
   let t, ve = infer_pat' name_types env pat in
-  if not env.pre && not env.skip_note_typ then
-    pat.note <- T.normalize t;
+  if not env.pre then set_note env pat (T.normalize t);
   t, ve
 
 and infer_pat' name_types env pat : T.typ * Scope.val_env =
@@ -3259,7 +3256,7 @@ and check_pat_aux env t pat val_kind : Scope.val_env =
   if t = T.Pre then snd (infer_pat false env pat) else
   let t' = T.normalize t in
   let ve = check_pat_aux' env t' pat val_kind in
-  if not env.pre && not env.skip_note_typ then pat.note <- t';
+  if not env.pre then set_note env pat t';
   ve
 
 and check_pat_aux' env t pat val_kind : Scope.val_env =
@@ -4158,8 +4155,7 @@ and check_dec env t dec =
   match dec.it with
   | ExpD exp ->
     check_exp env t exp;
-    if not env.skip_note_typ then
-      dec.note <- exp.note
+    set_note env dec exp.note
   | _ ->
     let t' = infer_dec env dec in
     if not (eq env dec.at t T.unit || sub env dec.at t' t) then
