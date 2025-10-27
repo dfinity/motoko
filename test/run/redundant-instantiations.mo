@@ -73,4 +73,34 @@ module Nested {
       })[1];
     })[1];
   };
+
+  type R = { x : Int; y : Nat };
+  public func testVarTab0() {
+    var grid = Prim.Array_tabulate<[var ?R]>( // Redundant
+      3,
+      func _ = Prim.Array_tabulateVar<?R>(5, func _ = null), // TODO: Should not be redundant because the other already is
+    );
+    ignore grid;
+  };
+  public func testVarTab1() {
+    var grid = Prim.Array_tabulate<[var ?R]>(
+      3,
+      func _ = Prim.Array_tabulateVar(5, func _ = null),
+    );
+    ignore grid;
+  };
+  public func testVarTab2() {
+    var grid = Prim.Array_tabulate(
+      3,
+      func _ = Prim.Array_tabulateVar<?R>(5, func _ = null),
+    );
+    ignore grid;
+  };
+  public func testVarTab3() {
+    var grid : [[var ?R]] = Prim.Array_tabulate(
+      3,
+      func _ = Prim.Array_tabulateVar<?R>(5, func _ = null) // TODO: why this instantiation is not redundant?
+    );
+    ignore grid;
+  };
 };
