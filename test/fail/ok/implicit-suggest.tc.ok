@@ -1,7 +1,7 @@
-implicit-suggest.mo:42.32-42.43: warning [M0237], The `Nat.compare` argument can be inferred and omitted here (the function parameter is `implicit`).
-implicit-suggest.mo:45.27-45.38: warning [M0237], The `Nat.compare` argument can be inferred and omitted here (the function parameter is `implicit`).
-implicit-suggest.mo:53.32-53.39: warning [M0237], The `compare` argument can be inferred and omitted here (the function parameter is `implicit`).
-implicit-suggest.mo:57.27-57.34: warning [M0237], The `compare` argument can be inferred and omitted here (the function parameter is `implicit`).
-implicit-suggest.mo:75.12-75.33: type error [M0231], ambiguous implicit argument named `compare` of type
+implicit-suggest.mo:41.32-41.43: warning [M0237], The `Nat.compare` argument can be inferred and omitted here (the function parameter is `implicit`).
+implicit-suggest.mo:44.27-44.38: warning [M0237], The `Nat.compare` argument can be inferred and omitted here (the function parameter is `implicit`).
+implicit-suggest.mo:52.32-52.39: warning [M0237], The `compare` argument can be inferred and omitted here (the function parameter is `implicit`).
+implicit-suggest.mo:56.27-56.34: warning [M0237], The `compare` argument can be inferred and omitted here (the function parameter is `implicit`).
+implicit-suggest.mo:74.12-74.33: type error [M0231], ambiguous implicit argument named `compare` of type
   (T, T) -> Order.
 The ambiguous implicit candidates are: `Amb1.compare`, `_Amb2.compare`.
