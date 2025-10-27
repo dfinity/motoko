@@ -250,6 +250,9 @@ let info env at fmt =
   Format.kasprintf (fun s ->
     if not env.errors_only then Diag.add_msg env.msgs (type_info at s)) fmt
 
+let is_warning_enabled env code =
+  not env.errors_only && Flags.is_warning_enabled code
+
 let check_deprecation env at desc id depr =
   match depr with
   | Some ("M0235" as code) ->
@@ -1618,7 +1621,7 @@ let contextual_dot env name receiver_ty : (ctx_dot_candidate, 'a context_dot_err
 
 let check_can_dot env ctx_dot (exp : Syntax.exp) tys es at =
   if not env.pre then
-  if Flags.get_warning_level "M0236" <> Flags.Allow then
+  if is_warning_enabled env "M0236" then
   match ctx_dot with
   | Some _ -> () (* already dotted *)
   | None ->
@@ -2733,7 +2736,7 @@ and insert_holes at ts es =
   | args -> TupE args
 
 and check_explicit_arguments env saturated_arity implicits_arity arg_typs syntax_args =
-    if Flags.get_warning_level "M0237" <> Flags.Allow then
+    if is_warning_enabled env "M0237" then
       if List.length syntax_args = saturated_arity && implicits_arity < saturated_arity then
         let _, explicit_implicits = List.fold_right2
           (fun typ arg (pos, acc) ->
@@ -2825,7 +2828,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       let t_arg' = T.open_ ts t_arg in
       let t_ret' = T.open_ ts t_ret in
       if not env.pre then begin
-        if typs <> [] && Flags.is_warning_enabled "M0223" &&
+        if typs <> [] && is_warning_enabled env "M0223" &&
           is_redundant_instantiation ts env (fun env' ->
             infer_call_instantiation env' t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
               warn env inst.at "M0223" "redundant type instantiation";
