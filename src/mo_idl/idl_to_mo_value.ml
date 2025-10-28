@@ -53,7 +53,7 @@ let rec value v t =
   | BlobV b, T.Array _ ->
     brackets_comma (List.of_seq (Seq.map (fun c -> Printf.sprintf "%d" (Char.code c)) (String.to_seq b)))
   | TextV s, _ -> text_lit s
-  | RecordV fs, T.Obj (T.Object, tfs) ->
+  | RecordV fs, T.(Obj (Object, tfs)) ->
     "{" ^ String.concat "; " (List.map (fun f ->
       Idl_to_mo.check_label (fst f.it) ^ " = " ^ value (snd f.it) (find_typ tfs f)
     ) fs) ^ "}"
@@ -81,7 +81,20 @@ let rec value v t =
 
 let rec args vs = function
   | ts when List.(compare_lengths vs.it ts < 0 && for_all null (Lib.List.drop (length vs.it) ts)) ->
-     let vs' = vs.it @ Lib.List.replicate { vs with it = NullV } List.(length ts - length vs.it) in
-     parens_comma (List.map2 value vs' ts)
+    let vs' = vs.it @ Lib.List.replicate { vs with it = NullV } List.(length ts - length vs.it) in
+    args {vs with it = vs'} ts
+  | T.[Obj (Object, _) as t] as ts when apart t (List.hd vs.it).it -> args {vs with it = [enrich t (List.hd vs.it)]} ts
   | ts -> parens_comma (List.map2 value vs.it ts)
 and null t = t = T.(Prim Null)
+and [@warning "-8"] apart (T.(Obj (Object, tfs))) = function
+  | RecordV vfs ->
+    (*List.for_all (fun vf ->
+        try T.lookup_val_field (Idl_to_mo.check_label (fst (vf.it))) tfs
+        with Invalid_argument _ -> true) vfs*)
+    let defaultable = diff (List.map (fun T.{lab; _} -> lab) tfs) (List.map (fun {it; _} -> Idl_to_mo.check_label (fst it)) vfs) in
+    defaultable <> []
+    (*let defaultable = diff (List.map (fun {label} -> label) tfs) (List.map fst vfs) in
+    defaultable <> []*)
+  | _ -> false
+and diff l1 l2 = List.filter (fun x -> not (List.mem x l2)) l1
+and enrich t v = { v with it = RecordV [{ v with it = { v with it = Unnamed (Lib.Uint32.of_int32 2l) }, { v with it = NullV } }] }
