@@ -956,6 +956,8 @@ dec_nonvar :
      MixinD(p, dfs) @? at $sloc
   }
   | INCLUDE x=id e=exp(ob) { IncludeD(x, e, ref None) @? at $sloc }
+  | FUNC s=TEXT
+    { ExpD (PrimE(s) @? at $sloc) @? at $sloc }
 
 obj_or_class_dec :
   | ds=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
