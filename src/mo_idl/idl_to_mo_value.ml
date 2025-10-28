@@ -79,4 +79,5 @@ let rec value v t =
   | _ -> raise (UnsupportedCandidFeature
     (Diag.error_message v.at "M0165" "import" "odd expected type"))
 
-let args vs ts = parens_comma List.(map2 value vs.it (Lib.List.take (length vs.it) ts))
+let args vs = function
+  | ts -> parens_comma List.(map2 value vs.it (Lib.List.take (length vs.it) ts))
