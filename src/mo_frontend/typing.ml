@@ -1563,24 +1563,15 @@ let permissive_sub t1 (tbs, t2) =
   with _ ->
     None
 
-let has_matching_self receiver_ty tf = match tf with
-  | T.{ lab = "Self"; typ = T.Typ con; _ } ->
-     (match Cons.kind con with
-      | T.Def(tbs, t') -> permissive_sub receiver_ty (tbs, t') <> None
-      | _ -> false)
-  | _ -> false
-
 type 'a context_dot_error =
   | DotSuggestions of (env -> string list)
   | DotAmbiguous of (env -> 'a)
 
 let contextual_dot env name receiver_ty : (ctx_dot_candidate, 'a context_dot_error) Result.t =
-  let has_matching_self tf = has_matching_self receiver_ty tf in
-  let has_matching_self_type (_, (_, fs)) = List.exists has_matching_self fs in
   let is_matching_func field =
     if not (String.equal field.T.lab name.it) then None
     else match T.normalize field.T.typ with
-    | T.Func (_, _, tbs, first_arg::_, _) as typ ->
+    | T.Func (_, _, tbs, T.Named("self", first_arg)::_, _) as typ ->
       (match permissive_sub receiver_ty (tbs, first_arg) with
         | Some inst -> Some (T.open_ inst first_arg, typ, inst)
         | _ -> None)
@@ -1601,7 +1592,6 @@ let contextual_dot env name receiver_ty : (ctx_dot_candidate, 'a context_dot_err
   let candidates in_libs xs f =
     T.Env.to_seq xs |>
       Seq.filter_map f |>
-      Seq.filter has_matching_self_type |>
       Seq.filter_map (find_candidate in_libs) |>
       List.of_seq in
   (* All candidate functions accept supertypes of the required type as their first arguments.

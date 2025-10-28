@@ -1,13 +1,13 @@
 wrong-call-args.mo:26.5-26.13: type error [M0098], cannot apply function of type
   Nat -> ()
 to argument of type
-  (Nat, (t1 : Text, t2 : Text) -> Order)
+  (Nat, (self : Text, t2 : Text) -> Order)
 to produce result of expected type
   ()
 wrong-call-args.mo:29.5-29.12: type error [M0098], cannot apply function of type
   Nat -> ()
 to argument of type
-  (Nat, (t1 : Text, t2 : Text) -> Order)
+  (Nat, (self : Text, t2 : Text) -> Order)
 to produce result of expected type
   ()
 wrong-call-args.mo:35.12-35.14: type error [M0233], wrong number of arguments: expected 1 but got 0
@@ -17,30 +17,30 @@ But got no arguments
 wrong-call-args.mo:39.5-39.31: type error [M0098], cannot apply function `.add` of type
   (key : Text, value : Text) -> ()
 to argument of type
-  ((t1 : Text, t2 : Text) -> Order, Text)
+  ((self : Text, t2 : Text) -> Order, Text)
 to produce result of expected type
   ()
 wrong-call-args.mo:45.5-45.17: type error [M0098], cannot apply function of type
-  (map : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K) -> ?V
+  (self : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K) -> ?V
 to argument of type
   {var root : Node<Text, Text>; var size_ : Nat}
 to produce result of expected type
   ()
 wrong-call-args.mo:48.27-48.39: type error [M0096], expression of type
-  (t1 : Text, t2 : Text) -> Order
+  (self : Text, t2 : Text) -> Order
 cannot produce expected type
   ()
 wrong-call-args.mo:51.5-51.28: type error [M0098], cannot apply function of type
   () -> Map<K, V>
 to argument of type
-  (t1 : Text, t2 : Text) -> Order
+  (self : Text, t2 : Text) -> Order
 to produce result of expected type
   {var root : Node<Text, Text>; var size_ : Nat}
 wrong-call-args.mo:55.5-55.36: type error [M0098], cannot apply function of type
-  (map : Map<K, V>, key : K, value : V) -> ()
+  (self : Map<K, V>, key : K, value : V) -> ()
 to argument of type
   ({var root : Node<Text, Text>; var size_ : Nat},
-   (t1 : Text, t2 : Text) -> Order, Text)
+   (self : Text, t2 : Text) -> Order, Text)
 to produce result of expected type
   ()
 wrong-call-args.mo:107.8-107.9: type error [M0050], literal of type
