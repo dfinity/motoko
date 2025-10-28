@@ -4255,8 +4255,7 @@ and gather_dec env scope dec : Scope.t =
     in
     let pre_k = T.Abs (pre_tbs, T.Pre) in
     let c = match id.note with
-      | None ->
-        let c = Cons.fresh id.it pre_k in id.note <- Some c; c
+      | None -> let c = Cons.fresh id.it pre_k in id.note <- Some c; c
       | Some c -> c
     in
     let val_env = match dec.it with
@@ -4428,8 +4427,7 @@ and infer_dec_typdecs env dec : Scope.t =
 and infer_id_typdecs env at id c k : Scope.con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
   (match Cons.kind c with
-  | T.Abs (_, T.Pre) ->
-    T.set_kind c k; id.note <- Some c
+  | T.Abs (_, T.Pre) -> T.set_kind c k; id.note <- Some c
   | k' -> assert (eq_kind env at k' k) (* may diverge on expansive types *)
   );
   T.ConSet.singleton c
