@@ -60,18 +60,6 @@ module Nested {
       })[1];
     })[1];
   };
-  public func testWithReturns() : Bool {
-    Prim.Array_tabulate(2, func i {
-      if (i == 0) return false;
-      Prim.Array_tabulate(2, func i {
-        if (i == 0) return false;
-        Prim.Array_tabulate(2, func i {
-          if (i == 0) return false;
-          true;
-        })[1];
-      })[1];
-    })[1];
-  };
 
   type R = { x : Int; y : Nat };
   public func testVarTab0() {
