@@ -4,6 +4,8 @@
 
 * motoko (`moc`)
 
+  * Use `self` parameter, not `Self` type, to enable contextual dot notation (#5574).
+
   * Enable parser recovery to gather more syntax errors at once (previously only enabled for `moc.js`) (#5589).
 
   * Custom syntax error message when a record is provided where a block is expected (#5589).

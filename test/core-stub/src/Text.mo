@@ -5,10 +5,9 @@ import Prim "mo:⛔";
 
 module {
   public type Text = Prim.Types.Text;
-  public type Self = Text;
 
-  public func compare(t1 : Text, t2 : Text) : Types.Order {
-    let c = Prim.textCompare(t1, t2);
+  public func compare(self : Text, t2 : Text) : Types.Order {
+    let c = Prim.textCompare(self, t2);
     if (c < 0) #less else if (c == 0) #equal else #greater
   };
 }
