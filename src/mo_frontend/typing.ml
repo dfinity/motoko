@@ -19,6 +19,7 @@ module S = Set.Make(String)
 type avl = Available | Unavailable
 
 type lab_env = T.typ T.Env.t
+type ret_env = T.typ option
 type val_info = T.typ * Source.region * Scope.val_kind * avl
 type val_env  = val_info T.Env.t
 

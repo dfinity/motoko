@@ -6,9 +6,6 @@
 
   * Fix the `M0223` warning check for redundant type instantiations to avoid false positives (#5605).
 
-  * Fixes type inference of deferred funcs that use `return` in their body (#5605).
-    Avoids confusing errors like `Bool does not have expected type T` on `return` expressions. Should type check successfully now.
-
   * Use `self` parameter, not `Self` type, to enable contextual dot notation (#5574).
 
   * Enable parser recovery to gather more syntax errors at once (previously only enabled for `moc.js`) (#5589).
