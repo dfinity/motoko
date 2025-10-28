@@ -83,7 +83,8 @@ let rec args vs = function
   | ts when List.(compare_lengths vs.it ts < 0 && for_all null (Lib.List.drop (length vs.it) ts)) ->
     let vs' = vs.it @ Lib.List.replicate { vs with it = NullV } List.(length ts - length vs.it) in
     args {vs with it = vs'} ts
-  | ts when List.(exists (fun (t, v) -> apart t v.it) (combine ts vs.it)) -> args {vs with it = List.map2 enrich ts vs.it} ts
+  | ts when List.(exists (fun (t, v) -> apart t v.it) (combine ts vs.it)) ->
+    args {vs with it = List.map2 enrich ts vs.it} ts
   | ts -> parens_comma (List.map2 value vs.it ts)
 and null t = t = T.(Prim Null)
 and apart t v = match t, v with
