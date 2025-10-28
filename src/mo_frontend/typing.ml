@@ -69,10 +69,6 @@ type env =
     errors_only : bool;
     srcs : Field_sources.t;
   }
-and ret_env =
-  | NoRet
-  | Ret of T.typ
-  | BimatchRet of (env -> exp -> unit)
 
 let env_of_scope ?(viper_mode=false) msgs scope =
   { vals = available scope.Scope.val_env;
@@ -82,7 +78,7 @@ let env_of_scope ?(viper_mode=false) msgs scope =
     cons = scope.Scope.con_env;
     objs = T.Env.empty;
     labs = T.Env.empty;
-    rets = NoRet;
+    rets = None;
     async = Async_cap.NullCap;
     in_actor = false;
     in_prog = true;
@@ -1927,7 +1923,7 @@ and infer_exp'' env exp : T.typ =
       let env'' =
         { env' with
           labs = T.Env.empty;
-          rets = Ret codom;
+          rets = Some codom;
           (* async = None; *) }
       in
       let initial_usage = enter_scope env'' in
@@ -2017,7 +2013,7 @@ and infer_exp'' env exp : T.typ =
       check_ErrorCap env "try" exp.at;
       if cases <> [] then
         coverage_cases "try handler" env cases T.catch exp.at;
-      Option.iter (check_exp_strong { env with async = C.NullCap; rets = NoRet; labs = T.Env.empty } T.unit) exp2_opt
+      Option.iter (check_exp_strong { env with async = C.NullCap; rets = None; labs = T.Env.empty } T.unit) exp2_opt
     end;
     T.lub ~src_fields:env.srcs t1 t2
   | WhileE (exp1, exp2) ->
@@ -2079,13 +2075,11 @@ and infer_exp'' env exp : T.typ =
   | RetE exp1 ->
     if not env.pre then begin
       match env.rets with
-      | Ret T.Pre ->
+      | Some T.Pre ->
         local_error env exp.at "M0084" "cannot infer return type"
-      | Ret t ->
+      | Some t ->
         check_exp_strong env t exp1
-      | BimatchRet k ->
-        k env exp1
-      | NoRet ->
+      | None ->
         local_error env exp.at "M0085" "misplaced return"
     end;
     T.Non
@@ -2105,7 +2099,7 @@ and infer_exp'' env exp : T.typ =
     let env' =
       {(adjoin_typs env ce_scope cs) with
         labs = T.Env.empty;
-        rets = Ret T.Pre;
+        rets = Some T.Pre;
         async = next_cap c;
         scopes = T.ConEnv.add c exp.at env.scopes } in
     let t = infer_exp env' exp1 in
@@ -2493,7 +2487,7 @@ and check_exp' env0 t exp : T.typ =
     let env' =
       {(adjoin_typs env ce_scope cs) with
         labs = T.Env.empty;
-        rets = Ret t';
+        rets = Some t';
         async = next_cap c;
         scopes = T.ConEnv.add c exp.at env.scopes;
       } in
@@ -2520,7 +2514,7 @@ and check_exp' env0 t exp : T.typ =
     if cases <> []
     then coverage_cases "try handler" env cases T.catch exp.at;
     if not env.pre then
-      Option.iter (check_exp_strong { env with async = C.NullCap; rets = NoRet; labs = T.Env.empty } T.unit) exp2_opt;
+      Option.iter (check_exp_strong { env with async = C.NullCap; rets = None; labs = T.Env.empty } T.unit) exp2_opt;
     t
   (* TODO: allow shared with one scope par *)
   | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
@@ -2606,7 +2600,7 @@ and check_func_step in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2
   let env' =
     { env with
       labs = T.Env.empty;
-      rets = Ret exp_typ;
+      rets = Some exp_typ;
       async = C.NullCap; }
   in
   (adjoin_vals env' ve2), exp_typ, codom
@@ -3667,7 +3661,7 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
       { env with
         in_actor = true;
         labs = T.Env.empty;
-        rets = NoRet;
+        rets = None;
       }
   in
   let decs = List.map (fun (df : dec_field) -> df.it.dec) dec_fields in
@@ -3787,7 +3781,7 @@ and infer_migration env obj_sort exp_opt =
       if obj_sort.it <> T.Actor then
         local_error env exp.at "M0209"
           "misplaced actor migration expression on module or object";
-      infer_exp_promote { env with async = C.NullCap; rets = NoRet; labs = T.Env.empty } exp)
+      infer_exp_promote { env with async = C.NullCap; rets = None; labs = T.Env.empty } exp)
     exp_opt
 
 and check_migration env (stab_tfs : T.field list) exp_opt =
@@ -4100,7 +4094,7 @@ and infer_dec env dec : T.typ =
       let env''' =
         { (add_val env'' self_id self_typ) with
           labs = T.Env.empty;
-          rets = NoRet;
+          rets = None;
           async = async_cap;
           in_actor;
         }
@@ -4421,7 +4415,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let env'' =
      { (add_val (adjoin_vals env' ve) self_id self_typ) with
           labs = T.Env.empty;
-          rets = NoRet;
+          rets = None;
           async = async_cap;
           in_actor}
     in
