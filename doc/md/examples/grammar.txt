@@ -334,6 +334,7 @@
     <parenthetical>? <obj_or_class_dec>
     'mixin' <pat_plain> <obj_body>
     'include' <id> <exp>
+    'func' <text>
 
 <obj_or_class_dec> ::= 
     <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
