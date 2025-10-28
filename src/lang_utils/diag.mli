@@ -62,3 +62,7 @@ val is_error_free : msg_store -> bool
 val add_msg : msg_store -> message -> unit
 val add_msgs : msg_store -> messages -> unit
 val with_message_store : ?allow_errors:bool -> (msg_store -> 'a option) -> 'a result
+
+type save
+val save_store : msg_store -> save
+val load_store : msg_store -> save -> unit
