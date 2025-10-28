@@ -88,13 +88,8 @@ let rec args vs = function
 and null t = t = T.(Prim Null)
 and [@warning "-8"] apart (T.(Obj (Object, tfs))) = function
   | RecordV vfs ->
-    (*List.for_all (fun vf ->
-        try T.lookup_val_field (Idl_to_mo.check_label (fst (vf.it))) tfs
-        with Invalid_argument _ -> true) vfs*)
-    let defaultable = diff (List.map (fun T.{lab; _} -> lab) tfs) (List.map (fun {it; _} -> Idl_to_mo.check_label (fst it)) vfs) in
-    defaultable <> []
-    (*let defaultable = diff (List.map (fun {label} -> label) tfs) (List.map fst vfs) in
-    defaultable <> []*)
+    let defaultable = diff tfs (List.map (fun {it; _} -> Idl_to_mo.check_label (fst it)) vfs) in
+    defaultable <> [] && List.for_all (fun {T.typ; _} -> null typ) defaultable
   | _ -> false
-and diff l1 l2 = List.filter (fun x -> not (List.mem x l2)) l1
+and diff tfs vls = List.filter (fun T.{lab; _} -> not (List.mem lab vls)) tfs
 and enrich t v = { v with it = RecordV [{ v with it = { v with it = Unnamed (Lib.Uint32.of_int32 2l) }, { v with it = NullV } }] }
