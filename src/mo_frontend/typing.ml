@@ -259,6 +259,8 @@ let info env at fmt =
 let is_warning_enabled env code =
   not env.errors_only && Flags.is_warning_enabled code
 
+let is_warning_disabled env code = not (is_warning_enabled env code)
+
 let check_deprecation env at desc id depr =
   match depr with
   | Some ("M0235" as code) ->
@@ -2819,20 +2821,15 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       (* explicit instantiation, check argument against instantiated domain *)
       let typs = match inst.it with None -> [] | Some (_, typs) -> typs in
       let ts = check_inst_bounds env sort tbs typs t_ret at in
-      let t_arg' = T.open_ ts t_arg in
-      let t_ret' = T.open_ ts t_ret in
-      
-      let try_redundant =
-        (* TODO: refactor all this into try_redundant_instantiation *)
-        if not env.pre && typs <> [] && is_warning_enabled env "M0223" then try_redundant_instantiation ts env (fun env' ->
-          infer_call_instantiation env' t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems)
-        else None
-      in
-      (match try_redundant with
+      (match try_redundant_instantiation typs ts env (fun env' ->
+        infer_call_instantiation env' t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems)
+      with
       | Some result ->
         warn env inst.at "M0223" "redundant type instantiation";
         result
-      | None -> 
+      | None ->
+        let t_arg' = T.open_ ts t_arg in
+        let t_ret' = T.open_ ts t_ret in
         if not env.pre then
           check_exp_strong { env with redo = true } t_arg' exp2;
         ts, t_arg', t_ret')
@@ -3079,8 +3076,8 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
          | Some t ->
            Format.asprintf "\nto produce result of expected type%a" display_typ t)
 
-and try_redundant_instantiation ts env infer_instantiation : (T.typ list * T.typ * T.typ) option =
-  assert (not env.pre);
+and try_redundant_instantiation typs ts env infer_instantiation : (T.typ list * T.typ * T.typ) option =
+  if env.pre || typs = [] || is_warning_disabled env "M0223" then None else
   let reverts = ref [] in
   let env = { env with reverts = Some reverts } in
   let save = Diag.save_store env.msgs in
