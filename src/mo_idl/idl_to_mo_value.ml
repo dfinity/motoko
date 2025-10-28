@@ -80,10 +80,8 @@ let rec value v t =
     (Diag.error_message v.at "M0165" "import" "odd expected type"))
 
 let rec args vs = function
-  | ts when List.(length vs.it < length ts && for_all null (Lib.List.drop (length vs.it) ts)) ->
-     let vs' = vs.it in
-     let vs' = vs' @ [{vs with it = NullV}] in
-     (*failwith List.(Printf.sprintf "NOOOO! %d %d\n" (length vs') (length ts));*)
+  | ts when List.(compare_lengths vs.it ts < 0 && for_all null (Lib.List.drop (length vs.it) ts)) ->
+     let vs' = vs.it @ Lib.List.replicate { vs with it = NullV } List.(length ts - length vs.it) in
      parens_comma (List.map2 value vs' ts)
   | ts -> parens_comma (List.map2 value vs.it ts)
 and null t = t = T.(Prim Null)
