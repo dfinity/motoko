@@ -553,17 +553,16 @@ module Return {
     });
     assert ar == [];
   };
-  // Future work: improve type inference to handle `return`
-  // public func test2() {
-  //   let ar = Array.tabulate(3, func i {
-  //     if (i == 0) return false;
-  //     true;
-  //   });
-  //   assert ar == [false, true, true];
-  // };
+  public func test2() {
+    let ar = Array.tabulate(3, func i {
+      if (i == 0) return false;
+      true;
+    });
+    assert ar == [];
+  };
 };
 Return.test1();
-// Return.test2();
+Return.test2();
 
 //SKIP comp
 //SKIP run-ir

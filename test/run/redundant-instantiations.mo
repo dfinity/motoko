@@ -60,13 +60,12 @@ module Nested {
       })[1];
     })[1];
   };
-  // Future work: improve type inference to handle `return` and detect these redundant instantiations
   public func testWithReturns() : Bool {
-    Prim.Array_tabulate<Bool>(2, func i {
+    Prim.Array_tabulate(2, func i {
       if (i == 0) return false;
-      Prim.Array_tabulate<Bool>(2, func i {
+      Prim.Array_tabulate(2, func i {
         if (i == 0) return false;
-        Prim.Array_tabulate<Bool>(2, func i {
+        Prim.Array_tabulate(2, func i {
           if (i == 0) return false;
           true;
         })[1];
