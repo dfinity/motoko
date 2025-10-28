@@ -356,6 +356,10 @@ struct
     | n, _::xs' when n > 0 -> drop (n - 1) xs'
     | _ -> failwith "drop"
 
+  let rec replicate e = function
+    | 0 -> []
+    | n -> e :: replicate e (n - 1)
+
   let split_at n xs =
     if n <= List.length xs
     then (take n xs, drop n xs)
