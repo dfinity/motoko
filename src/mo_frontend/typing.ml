@@ -2960,10 +2960,6 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
 
     (* Prepare subtyping constraints for the 2nd round *)
     let subs = ref [] in
-    let infer_body body_typ env body =
-      let actual_t = infer_exp env body in
-      subs := (actual_t, body_typ) :: !subs
-    in
     deferred |> List.iter (fun (exp, typ) ->
       (* Substitute fixed type variables *)
       let typ = T.open_ ts typ in
@@ -2974,23 +2970,25 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
         (* Check the function input type and prepare for inferring the body *)
         let env', body_typ, codom = check_func_step false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
         (* [codom] comes from [ts2] which might contain unsolved type variables. *)
-        let closed_codom = Bi_match.is_closed remaining codom in
-        (* Closed [codom] implies closed [body_typ]. [body_typ] is closed when it comes from [typ_opt] *)
-        let closed_body_typ = closed_codom || Option.is_some typ_opt in
-        let env' = if closed_body_typ then env' else { env' with rets = BimatchRet (infer_body body_typ) } in
-        if closed_body_typ && not env.pre then begin
+        let closed = Bi_match.is_closed remaining codom in
+        if not env.pre && (closed || body_typ <> codom) then begin
+          (* Closed [codom] implies closed [body_typ].
+            * [body_typ] is closed when it comes from [typ_opt] (which is when it is different from [codom])
+            *)
           assert (Bi_match.is_closed remaining body_typ);
+          (* Since [body_typ] is closed, no need to infer *)
           check_exp env' body_typ body;
         end;
 
         (* When [codom] is open, we need to solve it *)
-        if not closed_codom then
+        if not closed then
           if body_typ <> codom then
             (* [body_typ] is closed, body is already checked above, we just need to solve the subtype problem *)
             subs := (body_typ, codom) :: !subs
           else begin
             (* We just have open [codom], we need to infer the body *)
-            infer_body body_typ env' body;
+            let actual_t = infer_exp env' body in
+            subs := (actual_t, body_typ) :: !subs;
         end
       | HoleE _, typ ->
          if not env.pre then begin
