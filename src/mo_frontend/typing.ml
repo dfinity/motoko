@@ -2827,14 +2827,24 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       let ts = check_inst_bounds env sort tbs typs t_ret at in
       let t_arg' = T.open_ ts t_arg in
       let t_ret' = T.open_ ts t_ret in
-      if not env.pre then begin
-        if typs <> [] && is_warning_enabled env "M0223" &&
-          is_redundant_instantiation ts env (fun env' ->
-            infer_call_instantiation env' t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
-              warn env inst.at "M0223" "redundant type instantiation";
-        check_exp_strong env t_arg' exp2;
-      end;
-      ts, t_arg', t_ret'
+      
+      if not env.pre && typs <> [] && is_warning_enabled env "M0223" &&
+        is_redundant_instantiation ts env (fun env' ->
+          infer_call_instantiation env' t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems)
+      then (
+        warn env inst.at "M0223" "redundant type instantiation";
+        (* Continue as if there was no instantiation. Needed because:
+          1. Correctly influences nested instantiations, avoiding emitting too many warnings, e.g.
+            When there are 2 nested instantiations, one of them might be necessary,
+            but in isolation both might be redundant. Emit a warning only for the 1st one)
+          2. Infer again, but now without the skip_note_typ to commit the state
+        *)
+        let env = { env with weak = false } in
+        infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems)
+      else (
+        if not env.pre then
+          check_exp_strong env t_arg' exp2;
+        ts, t_arg', t_ret')
     | _::_, None -> (* implicit, infer *)
       infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in

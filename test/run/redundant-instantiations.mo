@@ -78,7 +78,7 @@ module Nested {
   public func testVarTab0() {
     var grid = Prim.Array_tabulate<[var ?R]>( // Redundant
       3,
-      func _ = Prim.Array_tabulateVar<?R>(5, func _ = null), // TODO: Should not be redundant because the other already is
+      func _ = Prim.Array_tabulateVar<?R>(5, func _ = null), // Should NOT be redundant. Only one of these two is redundant.
     );
     ignore grid;
   };
