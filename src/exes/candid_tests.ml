@@ -49,7 +49,7 @@ let write_file f s =
   close_out oc_
 
 let print_type = function
-  | [t] -> "(" ^ Pretty.string_of_typ t ^ ")" (* add parens to make this unary *)
+  | [t] -> Pretty.string_of_typ t |> Idl_to_mo_value.parens (* add parens to make this unary *)
   | ts -> Pretty.string_of_typ (Type.Tup ts)
 
 type expected_behaviour = ShouldPass | ShouldTrap
@@ -65,14 +65,14 @@ let mo_of_test tenv test : (string * expected_behaviour, string) result =
     | TextualInput x ->
       match Pipeline.parse_values x with
       | Error msgs -> raise (TextualParseError (x, msgs))
-      | Ok (vals, _) -> "(" ^ Idl_to_mo_value.args vals ts ^ " : " ^ print_type ts ^ ")"
+      | Ok (vals, _) -> Idl_to_mo_value.(args vals ts ^ " : " ^ print_type ts |> parens)
   in
-  let equal e1 e2     = "assert (" ^ e1 ^ " == " ^ e2 ^ ")\n" in
-  let not_equal e1 e2 = "assert (" ^ e1 ^ " != " ^ e2 ^ ")\n" in
+  let equal e1 e2     = "assert " ^ e1 ^ " == " ^ e2 ^ "\n" in
+  let not_equal e1 e2 = "assert " ^ e1 ^ " != " ^ e2 ^ "\n" in
   let ignore ts e =
     let open Type in
     if sub (seq ts) unit then e (* avoid warning about redundant ignore *)
-    else "ignore (" ^ e ^ ")\n" in
+    else "ignore " ^ e ^ "\n" in
 
   try
     let defs =
