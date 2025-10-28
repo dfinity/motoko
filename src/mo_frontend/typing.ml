@@ -2068,7 +2068,7 @@ and infer_exp'' env exp : T.typ =
       | Ret t ->
         check_exp_strong env t exp1
       | BimatchRet k ->
-        k { env with weak = false } exp1
+        k env exp1
       | NoRet ->
         local_error env exp.at "M0085" "misplaced return"
     end;
