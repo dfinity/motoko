@@ -86,10 +86,14 @@ let rec args vs = function
   | T.[Obj (Object, _) as t] as ts when apart t (List.hd vs.it).it -> args {vs with it = [enrich t (List.hd vs.it)]} ts
   | ts -> parens_comma (List.map2 value vs.it ts)
 and null t = t = T.(Prim Null)
-and [@warning "-8"] apart (T.(Obj (Object, tfs))) = function
+and [@warning "-8"] apart T.(Obj (Object, tfs)) = function
   | RecordV vfs ->
     let defaultable = diff tfs (List.map (fun {it; _} -> Idl_to_mo.check_label (fst it)) vfs) in
     defaultable <> [] && List.for_all (fun {T.typ; _} -> null typ) defaultable
   | _ -> false
 and diff tfs vls = List.filter (fun T.{lab; _} -> not (List.mem lab vls)) tfs
-and enrich t v = { v with it = RecordV [{ v with it = { v with it = Unnamed (Lib.Uint32.of_int32 2l) }, { v with it = NullV } }] }
+and enrich t v = match t, v.it with
+  | T.(Obj (Object, tfs)), RecordV vfs ->
+    let _defaultable = diff tfs (List.map (fun {it; _} -> Idl_to_mo.check_label (fst it)) vfs) in
+    { v with it = RecordV (vfs @ [{ v with it = { v with it = Unnamed (Lib.Uint32.of_int32 2l) }, { v with it = NullV } }]) }
+  | _ -> v
