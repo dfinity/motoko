@@ -4,7 +4,7 @@
 *)
 open Idllib
 open Source
-open Idllib.Syntax
+open Syntax
 open Mo_idl
 open Printf
 open Mo_types
