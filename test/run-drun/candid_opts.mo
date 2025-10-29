@@ -265,6 +265,14 @@ do {
   assert o3.x == ??null;
 };
 
+// Do not deserialise `reserved` to `Null`.
+do {
+  label good {
+    let ?null : ?Null = from_candid "DIDL\00\01\70" else break good;
+    assert false
+  }
+};
+
 }
 
 //SKIP run
