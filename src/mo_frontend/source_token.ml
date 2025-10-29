@@ -116,6 +116,7 @@ type token =
   | ROTRASSIGN
   | NULL
   | DOT_NUM of string
+  | NUM_DOT_ID of string * string
   | NAT of string
   | FLOAT of string
   | CHAR of Mo_values.Value.unicode
@@ -251,6 +252,7 @@ let to_parser_token :
   | ROTLASSIGN -> Ok Parser.ROTLASSIGN
   | ROTRASSIGN -> Ok Parser.ROTRASSIGN
   | NULL -> Ok Parser.NULL
+  | NUM_DOT_ID (ns, id) -> Ok (Parser.NUM_DOT_ID (ns, id))
   | DOT_NUM s -> Ok (Parser.DOT_NUM s)
   | NAT s -> Ok (Parser.NAT s)
   | FLOAT s -> Ok (Parser.FLOAT s)
@@ -388,6 +390,7 @@ let string_of_parser_token = function
   | Parser.ROTLASSIGN -> "ROTLASSIGN"
   | Parser.ROTRASSIGN -> "ROTRASSIGN"
   | Parser.NULL -> "NULL"
+  | Parser.NUM_DOT_ID _ -> "NUM_DOT_IDENT of string * string"
   | Parser.DOT_NUM _ -> "DOT_NUM of string"
   | Parser.NAT _ -> "NAT of string"
   | Parser.FLOAT _ -> "FLOAT of string"
