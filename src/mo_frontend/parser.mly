@@ -676,8 +676,16 @@ exp_post(B) :
     { DotE(e, x, ref None) @? at $sloc }
   | nid = NUM_DOT_ID
     { let (num, id) = nid in
-      let e = LitE(ref (PreLit (num, Type.Nat))) @? at $sloc in
-      let x = id @@ at $sloc in
+      let {left; right} = at $sloc in
+      let e =
+	LitE(ref (PreLit (num, Type.Nat))) @?
+	{ left;
+	  right = { right with column = left.column + String.length num }}
+      in
+      let x =
+	id @@
+	{ left = { left with column = right.column - String.length id };
+	  right } in
       DotE(e, x, ref None) @? at $sloc
     }
   | e1=exp_post(B) inst=inst e2=exp_arg
