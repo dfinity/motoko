@@ -8390,8 +8390,11 @@ module Serialization = struct
             ; Bool.lit true
             ]
         end
-      | Prim Null ->
-        with_prim_typ t (Opt.null_lit env)
+      | Prim Null as ty ->
+        check_prim_typ ty ^^
+        E.if1 I64Type
+          (with_prim_typ t (Opt.null_lit env))
+          (coercion_failed "IDL error: reserved is not null")
       | Any ->
         skip get_idltyp ^^
         (* Any vanilla value works here *)
@@ -8540,6 +8543,7 @@ module Serialization = struct
         ) ^^
         get_x ^^
         Tagged.allocation_barrier env)
+      (*| Prim Null -> failwith "Null"*)
       | Opt t ->
         check_prim_typ (Prim Null) ^^
         E.if1 I64Type (Opt.null_lit env)
