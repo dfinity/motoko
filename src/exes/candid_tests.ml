@@ -252,7 +252,7 @@ let () =
             (* Printf.printf "\n%s" src *)
             Unix.putenv "MOC_UNLOCK_PRIM" "yesplease";
             write_file "tmp.mo" src;
-            match run_cmd "moc -Werror -wasi-system-api tmp.mo -o tmp.wasm" with
+            match run_cmd "moc -A M0215 -Werror -wasi-system-api tmp.mo -o tmp.wasm" with
             | ((Fail | Timeout), stdout, stderr) -> CantCompile (stdout, stderr, src)
             | (Ok, _, _) ->
               match must_not_trap, run_cmd ("timeout 10s wasmtime "^ _WASMTIME_OPTIONS_ ^" tmp.wasm") with
