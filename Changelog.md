@@ -32,6 +32,8 @@
 
   * bugfix: importing of `blob:file:` URLs in subdirectories should work now (#5507, #5569).
 
+  * bugfix: escape `composite_query` fields on the Candid side, as it is a keyword (#5617).
+
 ## 0.16.3 (2025-09-29)
 
 * motoko (`moc`)
