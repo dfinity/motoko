@@ -246,6 +246,7 @@ and objblock eo s id ty dec_fields =
 %token TRANSIENT PERSISTENT
 %token<string> DOT_NUM
 %token<string> NAT
+%token<string * string> NUM_DOT_ID
 %token<string> FLOAT
 %token<Mo_values.Value.unicode> CHAR
 %token<bool> BOOL
@@ -673,6 +674,12 @@ exp_post(B) :
     { ProjE (e, int_of_string s) @? at $sloc }
   | e=exp_post(B) DOT x=id
     { DotE(e, x, ref None) @? at $sloc }
+  | nid = NUM_DOT_ID
+    { let (num, id) = nid in
+      let e = LitE(ref (PreLit (num, Type.Nat))) @? at $sloc in
+      let x = id @@ at $sloc in
+      DotE(e, x, ref None) @? at $sloc
+    }
   | e1=exp_post(B) inst=inst e2=exp_arg
     {
       let e2, sugar = e2 in
