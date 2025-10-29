@@ -1,0 +1,4 @@
+contextual-dot-biased-oddity.mo:17.18-17.20: type error [M0096], expression of type
+  ()
+cannot produce expected type
+  Nat

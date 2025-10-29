@@ -1,5 +1,39 @@
 # Motoko compiler changelog
 
+## Unreleased
+
+* motoko (`moc`)
+
+  * Use `self` parameter, not `Self` type, to enable contextual dot notation (#5574).
+
+  * Enable parser recovery to gather more syntax errors at once (previously only enabled for `moc.js`) (#5589).
+
+  * Custom syntax error message when a record is provided where a block is expected (#5589).
+
+  * Add (caffeine) warning `M0237` (#5588).
+    Warns if explicit argument could have been inferred and omitted,
+    e.g. `a.sort(Nat.compare)` vs `a.sort()`.
+    (allowed by default, warn with `-W 0237`).
+
+  * Add (caffeine) warning `M0236` (#5584).
+    Warns if contextual dot notation could have been used,
+    e.g. `Map.filter(map, ...)` vs `map.filter(...)`.
+    Does not warn for binary `M.equals(e1, e2)` or `M.compareXXX(e1, e2)`.
+    (allowed by default, warn with `-W 0236`).
+
+  * Add (caffeine) deprecation code `M0235` (#5583).
+    Deprecates any public types and values with special doc comment
+    `/// @deprecated M0235`.
+    (allowed by default, warn with `-W 0235`).
+
+  * Experimental support for `implicit` argument declarations (#5517).
+
+  * Experimental support for Mixins (#5459).
+
+  * bugfix: importing of `blob:file:` URLs in subdirectories should work now (#5507, #5569).
+
+  * bugfix: escape `composite_query` fields on the Candid side, as it is a keyword (#5617).
+
 ## 0.16.3 (2025-09-29)
 
 * motoko (`moc`)

@@ -168,8 +168,7 @@ let share_stab default_stab stab_opt dec =
   | None ->
     (match dec.it with
      | VarD _
-     | LetD _ ->
-	Some default_stab
+     | LetD _ -> Some default_stab
      | _ -> None)
   | _ -> stab_opt
 
@@ -202,6 +201,7 @@ let share_dec_field default_stab (df : dec_field) =
              (match df.it.dec.it with
              | ExpD _
              | TypD _
+             | MixinD _
              | ClassD _ -> None
              | _ -> Some default_stab)
           | some -> some}
@@ -228,7 +228,7 @@ and objblock eo s id ty dec_fields =
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
 %token AND OR NOT
-%token IMPORT MODULE
+%token IMPORT INCLUDE MODULE MIXIN
 %token DEBUG_SHOW
 %token TO_CANDID FROM_CANDID
 %token ASSERT
@@ -276,6 +276,7 @@ and objblock eo s id ty dec_fields =
 %left POWOP WRAPPOWOP
 
 %type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_obj exp_nest
+%type<Mo_def.Syntax.exp * bool> exp_arg
 %type<Mo_def.Syntax.typ_item> typ_item
 %type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre typ_nobin
 %type<Mo_def.Syntax.vis> vis
@@ -355,6 +356,11 @@ seplist1(X, SEP) :
   | x=X { [x] }
   | x=X SEP xs=seplist(X, SEP) { x::xs }
 
+seplist_er(X, E, SEP) :
+  | (* empty *) { [] }
+  | x=X { [x] } [@recover.cost inf]
+  | E { [] }
+  | x=X SEP xs=seplist_er(X, E, SEP) { x::xs }
 
 (* Basics *)
 
@@ -364,6 +370,9 @@ seplist1(X, SEP) :
 
 %inline id :
   | id=ID { id @@ at $sloc }
+
+%inline id_wild :
+  | UNDERSCORE { "_" @@ at $sloc }
 
 %inline typ_id :
   | id=ID { id @= at $sloc }
@@ -482,6 +491,7 @@ typ :
 
 typ_item :
   | i=id COLON t=typ { Some i, t }
+  | i=id_wild COLON t=typ { Some i, t }
   | t=typ { None, t }
 
 typ_args :
@@ -613,8 +623,12 @@ exp_obj :
     { ObjE ([], efs) @? at $sloc }
   | LCURLY base=exp_post(ob) AND bases=separated_nonempty_list(AND, exp_post(ob)) RCURLY
     { ObjE (base :: bases, []) @? at $sloc }
-  | LCURLY bases=separated_nonempty_list(AND, exp_post(ob)) WITH efs=seplist1(exp_field, semicolon) RCURLY
+  | LCURLY bases=separated_nonempty_list(AND, exp_post(ob)) efs=with_exp_fields RCURLY
     { ObjE (bases, efs) @? at $sloc }
+
+%inline with_exp_fields :
+  | WITH efs=seplist1(exp_field, semicolon)
+    { efs }
 
 exp_plain :
   | l=lit
@@ -634,6 +648,20 @@ exp_nullary [@recover.expr mk_stub_expr loc] (B) :
   | UNDERSCORE
     { VarE ("_" @~ at $sloc) @? at $sloc }
 
+exp_arg:
+  | e=ob { e, false }
+  | l=lit
+    { LitE(ref l) @? at $sloc, false }
+  | LPAR es=seplist(exp(ob), COMMA) RPAR
+    { match es with [e] -> e, true | _ -> TupE(es) @? at $sloc, false }
+  | x=id
+    { VarE (x.it @~ x.at) @? at $sloc, false }
+  | PRIM s=TEXT
+    { PrimE(s) @? at $sloc, false }
+  | UNDERSCORE
+    { VarE ("_" @~ at $sloc) @? at $sloc, false }
+
+
 exp_post(B) :
   | e=exp_nullary(B)
     { e }
@@ -645,8 +673,11 @@ exp_post(B) :
     { ProjE (e, int_of_string s) @? at $sloc }
   | e=exp_post(B) DOT x=id
     { DotE(e, x, ref None) @? at $sloc }
-  | e1=exp_post(B) inst=inst e2=exp_nullary(ob)
-    { CallE(None, e1, inst, e2) @? at $sloc }
+  | e1=exp_post(B) inst=inst e2=exp_arg
+    {
+      let e2, sugar = e2 in
+      CallE(None, e1, inst, (sugar, ref e2)) @? at $sloc
+    }
   | e1=exp_post(B) BANG
     { BangE(e1) @? at $sloc }
   | LPAR SYSTEM e1=exp_post(B) DOT x=id RPAR
@@ -657,8 +688,9 @@ exp_post(B) :
 exp_un(B) :
   | e=exp_post(B)
     { e }
-  | par=parenthetical e1=exp_post(B) inst=inst e2=exp_nullary(ob)
-    { CallE(par, e1, inst, e2) @? at $sloc }
+  | par=parenthetical e1=exp_post(B) inst=inst e2=exp_arg
+     { let e2, sugar = e2 in
+       CallE(par, e1, inst, (sugar, ref e2)) @? at $sloc }
   | HASH x=id
     { TagE (x, TupE([]) @? at $sloc) @? at $sloc }
   | HASH x=id e=exp_nullary(ob)
@@ -800,8 +832,16 @@ exp [@recover.expr mk_stub_expr loc] (B) :
     { e }
 
 block :
-  | LCURLY ds=seplist(dec, semicolon) RCURLY
+  | LCURLY ds=seplist_er(dec, block_dec_error, semicolon) RCURLY
     { BlockE(ds) @? at $sloc }
+
+// When block is actually a record, emit custom errors
+// Idea: `id EQ` and `id WITH` indicate a record, continue parsing as it was a record `exp_obj`
+block_dec_error :
+  | id EQ exp(ob) [@recover.cost inf]
+  | id EQ exp(ob) semicolon seplist(exp_field, semicolon)
+  | id with_exp_fields
+    { syntax_error (at $sloc) "M0001" "expected block but got record; wrap the record in braces: { { … } }" }
 
 case :
   | CASE p=pat_nullary e=exp_nest
@@ -928,6 +968,11 @@ dec_nonvar :
       let is_sugar, e = desugar_func_body sp x t fb in
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
   | eo=parenthetical_opt mk_d=obj_or_class_dec  { mk_d eo }
+  | MIXIN p=pat_plain dfs=obj_body {
+     let dfs = List.map (share_dec_field (Stable @@ no_region)) dfs in
+     MixinD(p, dfs) @? at $sloc
+  }
+  | INCLUDE x=id e=exp(ob) { IncludeD(x, e, ref None) @? at $sloc }
 
 obj_or_class_dec :
   | ds=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body

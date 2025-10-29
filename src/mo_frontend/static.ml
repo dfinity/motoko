@@ -35,6 +35,7 @@ let pat_err m at =
 
 let rec exp m e = match e.it with
   (* Plain values *)
+  | HoleE (s, e) -> exp m !e
   | (PrimE _ | LitE _ | ActorUrlE _ | FuncE _) -> ()
   | (TagE (_, exp1) | OptE exp1) -> exp m exp1
   | TupE es -> List.iter (exp m) es
@@ -50,7 +51,7 @@ let rec exp m e = match e.it with
     List.iter (exp m) bases; exp_fields m efs
 
   (* Variable access. Dangerous, due to loops. *)
-  | (VarE _ | ImportE _) -> ()
+  | (VarE _ | ImportE _ | ImplicitLibE _) -> ()
 
   (* Projections. These are a form of evaluation. *)
   | ProjE (exp1, _)
@@ -99,10 +100,10 @@ and exp_fields m efs = List.iter (fun (ef : exp_field) ->
   exp m ef.it.exp) efs
 
 and dec m d = match d.it with
-  | TypD _ | ClassD _ -> ()
+  | TypD _ | ClassD _ | MixinD _ -> ()
   | ExpD e -> exp m e
   | LetD (p, e, fail) -> pat m p; exp m e; Option.iter (exp m) fail
-  | VarD _ -> err m d.at
+  | VarD _ | IncludeD _ -> err m d.at
 
 and pat m p = match p.it with
   | (WildP | VarP _) -> ()

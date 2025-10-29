@@ -1,15 +1,22 @@
 module A {
-  public type Self = { x : Nat };
-  public func getX(self : Self) : Nat { self.x }
+  public type T = { x : Nat };
+  public func getX(self : T) : Nat { self.x }
 };
 
 module B {
-  public type Self = { x : Int };
-  public func getX(self : Self) : Int { self.x }
+  public type T = { x : Int };
+  public func getX(self : T) : Int { self.x };
+  public func getX1(self : T) : Int { self.x + 1 };
 };
 
-let a : A.Self = { x = 10 };
-let b : B.Self = { x = +10 };
+module C {
+  public type T = { x : Int };
+  public func getX1(self : T) : Int { self.x };
+};
 
+let a : A.T = { x = 10 };
+let b : B.T = { x = +10 };
+
+ignore a.getX(); // Fine (with disambiguation)
 ignore b.getX(); // Fine
-ignore a.getX(); // overlapping resolution
+ignore b.getX1(); // overlaps

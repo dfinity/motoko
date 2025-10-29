@@ -164,7 +164,9 @@ type sugar = bool (* Is the source of a function body a block `<block>`,
                      public functions as oneway, shared functions *)
 
 type exp = (exp', typ_note) Source.annotated_phrase
+and hole_sort = Named of string | Anon of int
 and exp' =
+  | HoleE of hole_sort * exp ref
   | PrimE of string                            (* primitive *)
   | VarE of id_ref                             (* variable *)
   | LitE of lit ref                            (* literal *)
@@ -188,7 +190,7 @@ and exp' =
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
   | FuncE of string * sort_pat * typ_bind list * pat * typ option * sugar * exp  (* function *)
-  | CallE of exp option * exp * inst * exp     (* function call *)
+  | CallE of exp option * exp * inst * arg_exp     (* function call *)
   | BlockE of dec list                         (* block (with type after avoidance) *)
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)
@@ -209,12 +211,14 @@ and exp' =
   | AssertE of assert_kind * exp               (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
   | ImportE of (string * resolved_import ref)  (* import statement *)
+  | ImplicitLibE of string                     (* implicitly imported library *)
   | ThrowE of exp                              (* throw exception *)
   | TryE of exp * case list * exp option       (* catch exception / finally *)
   | IgnoreE of exp                             (* ignore *)
 (*
   | AtomE of string                            (* atom *)
-*)
+ *)
+and arg_exp = (bool * (exp ref))
 
 and assert_kind =
   | Runtime | Static | Invariant | Precondition | Postcondition | Concurrency of string | Loop_entry | Loop_continue | Loop_exit | Loop_invariant
@@ -242,6 +246,13 @@ and dec' =
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
       exp option * sort_pat * obj_sort * typ_id * typ_bind list * pat * typ option * id * dec_field list
+  | MixinD of pat * dec_field list             (* mixin *)
+  | IncludeD of id * exp * include_note (* mixin include *)
+and include_note' = { imports : import list; pat : pat; decs : dec_field list }
+and include_note = include_note' option ref
+
+and import = (import', Type.typ) Source.annotated_phrase
+and import' = pat * string * resolved_import ref
 
 (* Program (pre unit detection) *)
 
@@ -261,9 +272,6 @@ and req = bool Source.phrase
 
 (* Compilation units *)
 
-type import = (import', Type.typ) Source.annotated_phrase
-and import' = pat * string * resolved_import ref
-
 type comp_unit_body = (comp_unit_body', typ_note) Source.annotated_phrase
 and comp_unit_body' =
  | ProgU of dec list                         (* main programs *)
@@ -271,6 +279,7 @@ and comp_unit_body' =
  | ModuleU of id option * dec_field list     (* module library *)
  | ActorClassU of                            (* IC actor class, main or library *)
      persistence * exp option * sort_pat * typ_id * typ_bind list * pat * typ option * id * dec_field list
+ | MixinU of pat * dec_field list            (* Mixins *)
 
 type comp_unit = (comp_unit', prog_note) Source.annotated_phrase
 and comp_unit' = {
@@ -310,7 +319,13 @@ let string_of_lit = function
   | FloatLit f    -> Numerics.Float.to_pretty_string f
   | PreLit _      -> assert false
 
-
+(** Used for debugging *)
+let string_of_resolved_import = function
+  | LibPath {path; package } -> Printf.sprintf "LibPath {path = %s, package = %s}" path (match package with | Some p -> p | None -> "None")
+  | IDLPath (path, _) -> Printf.sprintf "IDLPath (%s, _)" path
+  | ImportedValuePath path -> Printf.sprintf "ImportedValuePath %s" path
+  | PrimPath -> "PrimPath"
+  | Unresolved -> "Unresolved"
 
 (* Miscellaneous *)
 (* TODO: none of what follows should probably be in this file *)
