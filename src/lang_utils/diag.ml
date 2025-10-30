@@ -120,3 +120,7 @@ let flush_messages : 'a result -> 'a option = function
 let run r = match flush_messages r with
   | None -> exit 1
   | Some x -> x
+
+type save = messages
+let save_store s = !s
+let load_store s msgs = s := msgs

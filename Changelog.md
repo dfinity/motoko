@@ -4,6 +4,8 @@
 
 * motoko (`moc`)
 
+  * Fix the `M0223` warning check for redundant type instantiations to avoid false positives (#5605).
+
   * Use `self` parameter, not `Self` type, to enable contextual dot notation (#5574).
 
   * Enable parser recovery to gather more syntax errors at once (previously only enabled for `moc.js`) (#5589).
