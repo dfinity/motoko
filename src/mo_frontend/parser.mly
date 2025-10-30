@@ -712,7 +712,7 @@ exp_un(B) :
     { TagE (x, e) @? at $sloc }
   | QUEST e=exp_un(ob)
     { OptE(e) @? at $sloc }
-  | op=unop e=exp_un(ob)
+  | op=unop e=exp_nullary(ob)
     { match op, e.it with
       | (PosOp | NegOp), LitE {contents = PreLit (s, (Type.(Nat | Float) as typ))} ->
         let signed = match op with NegOp -> "-" ^ s | _ -> "+" ^ s in
