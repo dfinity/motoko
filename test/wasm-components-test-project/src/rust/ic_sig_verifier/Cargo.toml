@@ -1,0 +1,19 @@
+[package]
+name = "ic-sig-verifier"
+version = "0.1.0"
+edition = "2024"
+
+[package.metadata.component]
+package = "rust:ic-sig-verifier-component"
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+candid = "0.6"
+ic-verify-bls-signature = "0.6"
+ic-signature-verification = "0.2.0"
+ic-canister-sig-creation = "1.3"
+serde = "1.0"
+wit-bindgen = "0.46"
