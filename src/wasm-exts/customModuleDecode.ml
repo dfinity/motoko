@@ -199,7 +199,6 @@ let limits vu s =
 let table_type s =
   let t = elem_type s in
   let lim, is64 = limits vu32 s in
-  require (not is64) s (pos s - 1) "tables cannot have 64-bit indices";
   TableType (lim, t)
 
 let memory_type s =
