@@ -156,15 +156,22 @@ let add_idl_import msgs imported ri_ref at full_path bytes =
     err_file_does_not_exist msgs at full_path
 
 let add_value_import msgs imported ri_ref at path =
-  let add_no_extension _file_exists f = f in
-  match resolve_lib_import at path add_no_extension with
-  | Ok full_path -> begin
-      let ri = ImportedValuePath full_path in
-      ri_ref := ri;
-      imported := RIM.add ri at !imported
-    end
-  | Error err ->
-    Diag.add_msg msgs err
+  if !Mo_config.Flags.blob_import_placeholders then begin
+    (* When placeholders are enabled, skip file existence check *)
+    let ri = ImportedValuePath path in
+    ri_ref := ri;
+    imported := RIM.add ri at !imported
+  end else begin
+    let add_no_extension _file_exists f = f in
+    match resolve_lib_import at path add_no_extension with
+    | Ok full_path -> begin
+        let ri = ImportedValuePath full_path in
+        ri_ref := ri;
+        imported := RIM.add ri at !imported
+      end
+    | Error err ->
+      Diag.add_msg msgs err
+  end
 
 let add_prim_import imported ri_ref at =
   ri_ref := PrimPath;
@@ -282,9 +289,15 @@ let list_files : string -> string list =
     let all_files = list_files_recursively source in
     List.filter (fun f -> Filename.extension f = ".mo") all_files
 
+let skip_libs_from_package package =
+  match !Mo_config.Flags.implicit_package with
+  | None -> false
+  | Some implicit_package -> package <> implicit_package
+
 let package_imports base packages =
   let base_norm = Lib.FilePath.normalise base in
-  let imports = M.fold (fun pname url acc ->
+  let imports = M.fold (fun package url acc ->
+    if skip_libs_from_package package then acc else
     let url_norm = Lib.FilePath.normalise url in
     (* Skip when it is a sub-directory, because list_files adds all files recursively *)
     if base_norm = url_norm || Lib.FilePath.relative_to url_norm base_norm <> None then
@@ -292,7 +305,7 @@ let package_imports base packages =
     else
       let files = list_files url in
       List.map (fun path ->
-          LibPath {package = Some pname; path = path}
+          LibPath {package = Some package; path = path}
         ) files::acc)
     packages []
   in

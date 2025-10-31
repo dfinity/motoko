@@ -3,8 +3,7 @@ module Box {
     value : T;
   };
   public func Box<T>(t : T) : Box<T> = { value = t };
-  public type Self<T> = Box<T>;
-  public func value<T>(self : Self<T>) : T { self.value };
+  public func value<T>(self : Box<T>) : T { self.value };
 };
 
 let b1 = Box.Box<Nat>(1);
