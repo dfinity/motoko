@@ -86,6 +86,22 @@ func reportBothInvariantErrors() {
   let _ = VarArray.map2(va, func x = (x, null)); // (Nat, Null)
 };
 
+type User = {
+  var name : Text;
+  var age : Nat;
+};
+
+module ComplexTypes {
+  let user : User = { var name = "John"; var age = 30 };
+  let users : [User] = [user];
+  func failing1() {
+    let _ = VarArray.map(va, func x = user);
+  };
+  func failing2() {
+    let _ = VarArray.map(va, func x = users);
+  };
+}
+
 //SKIP comp
 //SKIP run
 //SKIP run-drun
