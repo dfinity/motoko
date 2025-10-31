@@ -8041,6 +8041,11 @@ module Serialization = struct
         compile_eq_const (Wasm.I64_convert.extend_i32_s (Int32.neg (Option.get (to_idl_prim Candid t))))
       in
 
+      let _check_reserved () =
+        get_idltyp ^^
+        compile_eq_const (Wasm.I64_convert.extend_i32_s (-16l))
+      in
+
       let with_prim_typ t f =
         check_prim_typ t ^^
         E.if1 I64Type f
@@ -8390,11 +8395,12 @@ module Serialization = struct
             ; Bool.lit true
             ]
         end
-      | Prim Null as ty ->
-        check_prim_typ ty ^^
+      | Prim Null ->
+        check_prim_typ Any ^^
         E.if1 I64Type
-          (with_prim_typ t (Opt.null_lit env))
-          (coercion_failed "IDL error: reserved is not null")
+           ( skip get_idltyp ^^
+             coercion_failed ("IDL error: reserved is not null"))
+           (with_prim_typ t (Opt.null_lit env))
       | Any ->
         skip get_idltyp ^^
         (* Any vanilla value works here *)
@@ -8821,11 +8827,12 @@ module Serialization = struct
             | Prim Null | Opt _ | Any ->
               (Bool.lit true, fun msg -> Opt.null_lit env)
             | _ ->
-              (get_can_recover, fun msg ->
+              let default_or_trap msg =
                 get_can_recover ^^
                 E.if1 I64Type
                    (compile_unboxed_const (coercion_error_value env))
-                   (E.trap_with env msg)))
+                   (E.trap_with env msg) in
+              (get_can_recover, default_or_trap))
           in
           get_arg_count ^^
           compile_eq_const 0L ^^
