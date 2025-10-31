@@ -44,7 +44,10 @@ open Type
    (modulo mixing my left foot with my right)
 *)
 
-exception Bimatch of string
+exception Bimatch of {
+  message : string;
+  hint : string option;
+}
 
 (** Opaque context type for bi-matching *)
 type ctx
