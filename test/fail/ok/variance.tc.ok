@@ -38,3 +38,4 @@ variance.mo:84.15-84.20: type error [M0098], cannot apply function of type
   () -> Inv<A>
 to argument of type
   ()
+Hint: Add explicit type instantiation, e.g. <Any>
