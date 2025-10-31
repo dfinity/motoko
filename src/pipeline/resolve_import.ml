@@ -156,15 +156,22 @@ let add_idl_import msgs imported ri_ref at full_path bytes =
     err_file_does_not_exist msgs at full_path
 
 let add_value_import msgs imported ri_ref at path =
-  let add_no_extension _file_exists f = f in
-  match resolve_lib_import at path add_no_extension with
-  | Ok full_path -> begin
-      let ri = ImportedValuePath full_path in
-      ri_ref := ri;
-      imported := RIM.add ri at !imported
-    end
-  | Error err ->
-    Diag.add_msg msgs err
+  if !Mo_config.Flags.blob_import_placeholders then begin
+    (* When placeholders are enabled, skip file existence check *)
+    let ri = ImportedValuePath path in
+    ri_ref := ri;
+    imported := RIM.add ri at !imported
+  end else begin
+    let add_no_extension _file_exists f = f in
+    match resolve_lib_import at path add_no_extension with
+    | Ok full_path -> begin
+        let ri = ImportedValuePath full_path in
+        ri_ref := ri;
+        imported := RIM.add ri at !imported
+      end
+    | Error err ->
+      Diag.add_msg msgs err
+  end
 
 let add_prim_import imported ri_ref at =
   ri_ref := PrimPath;

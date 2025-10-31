@@ -4,7 +4,13 @@
 
 * motoko (`moc`)
 
-  * Add warning `M0239` that warns when binding a unit `()` value to `let` or `var` (#5599).
+  * Add warning `M0239` that warns when binding a unit `()` value by `let` or `var` (#5599).
+
+  * Use `self` parameter, not `Self` type, to enable contextual dot notation (#5574).
+
+  * Enable parser recovery to gather more syntax errors at once (previously only enabled for `moc.js`) (#5589).
+
+  * Custom syntax error message when a record is provided where a block is expected (#5589).
 
   * Add (caffeine) warning `M0237` (#5588).
     Warns if explicit argument could have been inferred and omitted,
@@ -27,6 +33,8 @@
   * Experimental support for Mixins (#5459).
 
   * bugfix: importing of `blob:file:` URLs in subdirectories should work now (#5507, #5569).
+
+  * bugfix: escape `composite_query` fields on the Candid side, as it is a keyword (#5617).
 
 ## 0.16.3 (2025-09-29)
 

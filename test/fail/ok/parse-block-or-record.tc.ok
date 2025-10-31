@@ -1,0 +1,20 @@
+parse-block-or-record.mo:14.14-14.19: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:15.14-15.19: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:21.14-21.33: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:26.25-26.44: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:31.36-31.48: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:36.3-36.4: syntax error [M0001], unexpected token ';', expected one of token or <phrase> sequence:
+  }
+  seplist(<dec>,<semicolon>) }
+parse-block-or-record.mo:42.17-42.29: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:44.14-44.26: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:50.24-50.43: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:51.24-51.43: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:53.22-53.41: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:57.33-57.52: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:61.24-61.43: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:62.21-62.40: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:64.27-64.46: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:66.21-66.40: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:70.23-70.42: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
+parse-block-or-record.mo:71.22-71.41: syntax error [M0001], expected block but got record; wrap the record in braces: { { … } }
