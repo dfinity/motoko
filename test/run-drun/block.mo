@@ -16,7 +16,7 @@ actor a {
     let c = async {
        func f(a:Text,b:Text):(){ Prim.debugPrint a; Prim.debugPrint b;};
        let (a,b) = await (async ("a3","b3"));
-       let _ = f(a,b);
+       f(a,b);
     };
 
     let d = async {
