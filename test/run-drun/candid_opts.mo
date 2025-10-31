@@ -1,7 +1,7 @@
 import Prim "mo:prim";
 
 actor {
-
+    /*
 let ?o1 = from_candid(to_candid({x = (5 : Nat32)})) :?({x : ?Nat32});
 let ?o2 = from_candid(to_candid({x = (5 : Nat32)})) :?({x : ??Nat32});
 let ?o3 = from_candid(to_candid({x = (5 : Nat32)})) :?({x : ???Nat32});
@@ -263,17 +263,42 @@ do {
   assert o1.x == null;
   assert o2.x == ?null;
   assert o3.x == ??null;
-};
+  };
+
+  
+     */
 
 // Do not deserialise `reserved` to `Null`.
 do {
   label good {
+    Prim.debugPrint (debug_show (to_candid ((null, 5), -6)));
+    //break good;
+    let ?((null, 5), null) : ?((Null, Nat), Null) = from_candid "DIDL\01\6C\02\00\70\01\7D\02\00\7C\05\7A" else break good;
+    let ?(null, null) : ?(Null, Null) = from_candid "DIDL\00\02\70\7D\05" else break good;
+    let ?(null, 5) : ?(Null, Nat) = from_candid "DIDL\00\02\70\7D\05" else break good;
     let ?null : ?Null = from_candid "DIDL\00\01\70" else break good;
     assert false
   }
 };
 
+
+public func go(null) {
+    assert false;
+};
+
+public func go2(null, null) {
+    assert false;
+};
+
 }
+
+//CALL ingress go "DIDL\x00\x01\x70"
+//CALL ingress go "DIDL\x00\x01\x7D\x05"
+//CALL ingress go "DIDL\x00\x02\x70\x7D\x05"
+
+//CALL ingress go2 "DIDL\x00\x02\x70\x70"
+//CALL ingress go2 "DIDL\x00\x02\x70\x7F"
+//CALL ingress go2 "DIDL\x00\x02\x70\x7D\x05"
 
 //SKIP run
 //SKIP run-ir
