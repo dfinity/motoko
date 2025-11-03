@@ -161,18 +161,6 @@ end = struct
       display_rels (List.map (fun (lb, _, ub) -> (lb,"=/=",ub)) parts)
 end
 
-let fail_under_constrained lb c ub =
-(*  if debug then *)
-    error (Format.asprintf
-      "implicit instantiation of type parameter `%s` is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
-      (Cons.name c)
-      display_constraint (lb, c, ub)
-      display_rel (lb,"=/=",ub))
-(*  else
-    raise (Bimatch (Format.asprintf
-      "type parameter `%s` has no best solution, please provide an explicit instantiation."
-      (Cons.name c))) *)
-
 let fail_over_constrained lb c ub =
 (*  if debug then *)
     error (Format.asprintf
@@ -204,9 +192,6 @@ let choose_under_constrained ctx er lb c ub =
     | t, _ ->
       ErrorUnderconstrained.add er lb c ub;
       if t = Non then ub else lb
-
-    (* | _ ->
-     fail_under_constrained lb c ub *)
      
 let bi_match_typs ctx =
   let flexible c = ConSet.mem c ctx.var_set in
@@ -398,7 +383,7 @@ let is_closed ctx t = if is_ctx_empty ctx then true else
   let all_cons = cons_typs [t] in
   ConSet.disjoint ctx.var_set all_cons
 
-(** Raises when [er] is non-empty, optionally with a suggested return type annotation. *)
+(** Raises when [er] is non-empty, optionally with a suggested type instantiation. *)
 let maybe_raise_underconstrained ctx env er =
   let error_msg = ErrorUnderconstrained.to_string er in
   if error_msg = "" then () else
