@@ -42,7 +42,6 @@ type Workout = {
   timestamp : Int;
 };
 
-// Test 1: Record creation - type inference works without explicit <Nat, Exercise>
 func createWorkout(duration : Nat) : Workout {
   {
     exercises = Map.empty();
@@ -51,11 +50,10 @@ func createWorkout(duration : Nat) : Workout {
   }
 };
 
-// Test 2: Record update - type inference should now work (the fix)
 func updateWorkout(workout : Workout, duration : Nat) : Workout {
   {
     workout with
-    exercises = Map.empty();
+    exercises = Map.empty(); // should typecheck without instantiation
     duration;
   }
 };
