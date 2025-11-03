@@ -35,6 +35,9 @@
 
     Note that the error message suggests only one possible solution, but there may be alternatives. In the example above, `<Nat, Int>` would also be a valid instantiation.
 
+  * Fixes type inference of deferred funcs that use `return` in their body (#5615).
+    Avoids confusing errors like `Bool does not have expected type T` on `return` expressions. Should type check successfully now.
+
   * Add warning `M0239` that warns when binding a unit `()` value by `let` or `var` (#5599).
 
   * Use `self` parameter, not `Self` type, to enable contextual dot notation (#5574).
