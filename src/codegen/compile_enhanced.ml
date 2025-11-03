@@ -8041,11 +8041,6 @@ module Serialization = struct
         compile_eq_const (Wasm.I64_convert.extend_i32_s (Int32.neg (Option.get (to_idl_prim Candid t))))
       in
 
-      let _check_reserved () =
-        get_idltyp ^^
-        compile_eq_const (Wasm.I64_convert.extend_i32_s (-16l))
-      in
-
       let with_prim_typ t f =
         check_prim_typ t ^^
         E.if1 I64Type f
@@ -8545,7 +8540,6 @@ module Serialization = struct
         ) ^^
         get_x ^^
         Tagged.allocation_barrier env)
-      (*| Prim Null -> failwith "Null"*)
       | Opt t ->
         check_prim_typ (Prim Null) ^^
         E.if1 I64Type (Opt.null_lit env)
