@@ -2411,11 +2411,13 @@ and check_exp' env0 t exp : T.typ =
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;
     t
-  | ObjE ([], exp_fields) as e, T.Obj(T.Object, fts) -> (* TODO: infer bases? Default does a decent job. *)
-    check_ids env "object" "field"
+  | ObjE (exp_bases, exp_fields), T.Obj(T.Object, fts) -> (* TODO: infer bases? Default does a decent job. *)
+    let t' = infer_check_bases_fields env fts exp.at exp_bases exp_fields in
+    check_inferred env0 env t t' exp
+    (* check_ids env "object" "field"
       (List.map (fun (ef : exp_field) -> ef.it.id) exp_fields);
-    List.iter (fun ef -> check_exp_field env ef fts) exp_fields;
-    if List.for_all (fun ft ->
+    List.iter (fun ef -> check_exp_field env ef fts) exp_fields; *)
+    (* if List.for_all (fun ft ->
       if not (List.exists (fun (ef : exp_field) -> ft.T.lab = ef.it.id.it) exp_fields)
       then begin
       local_error env exp.at "M0151"
@@ -2427,6 +2429,7 @@ and check_exp' env0 t exp : T.typ =
     ) fts
     then detect_lost_fields env t e;
     t
+    *)
   | OptE exp1, _ when T.is_opt t ->
     check_exp env (T.as_opt t) exp1;
     t
@@ -2529,18 +2532,21 @@ and check_exp' env0 t exp : T.typ =
     t
   | (ImportE _ | ImplicitLibE _), t ->
     t
-  | e, _ ->
+  | _, _ ->
     let t' = infer_exp env0 exp in
-    if not (sub env exp.at t' t) then
-    begin
-      local_error env0 exp.at "M0096"
-        "expression of type%a\ncannot produce expected type%a%s"
-        display_typ_expand t'
-        display_typ_expand t
-        (Suggest.suggest_conversion env.libs env.vals t' t)
-    end
-    else detect_lost_fields env t e;
-    t'
+    check_inferred env0 env t t' exp
+
+and check_inferred env0 env t t' exp = 
+  if not (sub env exp.at t' t) then
+  begin
+    local_error env0 exp.at "M0096"
+      "expression of type%a\ncannot produce expected type%a%s"
+      display_typ_expand t'
+      display_typ_expand t
+      (Suggest.suggest_conversion env.libs env.vals t' t)
+  end
+  else detect_lost_fields env t exp.it;
+  t'
 
 and check_exp_field env (ef : exp_field) fts =
   let { mut; id; exp } = ef.it in
