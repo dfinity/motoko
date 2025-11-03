@@ -8822,9 +8822,11 @@ module Serialization = struct
         ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
 
         G.concat_map (fun t ->
-          let can_recover, argument_default_or_trap, coecion_default_or_trap = Type.(
+          let can_recover, argument_default_or_trap, coercion_default_or_trap = Type.(
             match normalize t with
-            | Prim Null | Opt _ | Any ->
+            | Prim Null ->
+              (Bool.lit true, (fun _ -> Opt.null_lit env), fun _ -> compile_unboxed_const (coercion_error_value env))
+            | Opt _ | Any ->
               (Bool.lit true, (fun _ -> Opt.null_lit env), fun _ -> Opt.null_lit env)
             | _ ->
               let default_or_trap msg =
@@ -8856,7 +8858,7 @@ module Serialization = struct
              get_arg_count ^^ compile_sub_const 1L ^^ set_arg_count ^^
              get_val ^^ compile_eq_const (coercion_error_value env) ^^
              (E.if1 I64Type
-               (coecion_default_or_trap "IDL error: coercion failure encountered")
+               (coercion_default_or_trap "IDL error: coercion failure encountered")
                get_val)
             end)
         ) ts ^^
