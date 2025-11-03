@@ -8396,11 +8396,7 @@ module Serialization = struct
             ]
         end
       | Prim Null ->
-        check_prim_typ Any ^^
-        E.if1 I64Type
-           ( skip get_idltyp ^^
-             coercion_failed ("IDL error: reserved is not null"))
-           (with_prim_typ t (Opt.null_lit env))
+        with_prim_typ t (Opt.null_lit env)
       | Any ->
         skip get_idltyp ^^
         (* Any vanilla value works here *)
