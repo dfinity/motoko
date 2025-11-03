@@ -7,6 +7,8 @@
   * Fixes type inference of deferred funcs that use `return` in their body (#5615).
     Avoids confusing errors like `Bool does not have expected type T` on `return` expressions. Should type check successfully now.
 
+  * Add warning `M0239` that warns when binding a unit `()` value by `let` or `var` (#5599).
+
   * Use `self` parameter, not `Self` type, to enable contextual dot notation (#5574).
 
   * Enable parser recovery to gather more syntax errors at once (previously only enabled for `moc.js`) (#5589).
@@ -34,6 +36,8 @@
   * Experimental support for Mixins (#5459).
 
   * bugfix: importing of `blob:file:` URLs in subdirectories should work now (#5507, #5569).
+
+  * bugfix: escape `composite_query` fields on the Candid side, as it is a keyword (#5617).
 
 ## 0.16.3 (2025-09-29)
 

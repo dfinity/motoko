@@ -4007,6 +4007,14 @@ and infer_block_exps env decs : T.typ =
     if not env.pre then recover (check_dec env T.unit) dec;
     infer_block_exps env decs'
 
+and warn_unit_binding binder env (dec : dec) (exp : exp) =
+  let binder = match binder with
+    | `Let -> "let"
+    | `Var -> "var"
+  in
+  let at = Source.{dec.at with right = exp.at.left} in
+  warn env at "M0239" "Avoid binding a unit '()' result; remove '%s' and keep the expression" binder
+
 and infer_dec env dec : T.typ =
   let t =
   match dec.it with
@@ -4021,28 +4029,31 @@ and infer_dec env dec : T.typ =
     end;
     T.unit
   | ExpD exp -> infer_exp env exp
-  | LetD (pat, exp, None) ->
-    (* For developer convenience, ignore top-level actor and module identifiers in unused detection. *)
-    (if env.in_prog && CompUnit.(is_actor_def exp || is_module_def exp) then
-      match pat.it with
-      | VarP id -> use_identifier env id.it
-      | _ -> ());
+  | LetD (pat, exp, fail_opt) ->
+    (match fail_opt with
+    | None ->
+      (* For developer convenience, ignore top-level actor and module identifiers in unused detection. *)
+      (if env.in_prog && CompUnit.(is_actor_def exp || is_module_def exp) then
+        match pat.it with
+        | VarP id -> use_identifier env id.it
+        | _ -> ())
+    | Some fail ->
+      if not env.pre then
+        check_exp env T.Non fail
+    );
     let t = infer_exp env exp in
     if !Flags.typechecker_combine_srcs then
       combine_pat_srcs env t pat;
-    t
-  | LetD (pat, exp, Some fail) ->
-    if not env.pre then
-      check_exp env T.Non fail;
-    let t = infer_exp env exp in
-    if !Flags.typechecker_combine_srcs then
-      combine_pat_srcs env t pat;
+    if not env.pre && T.is_unit (T.normalize t) then
+      warn_unit_binding `Let env dec exp;
     t
   | VarD (id, exp) ->
     if not env.pre then begin
       let t = infer_exp env exp in
       if !Flags.typechecker_combine_srcs then
-        combine_id_srcs env t id
+        combine_id_srcs env t id;
+      if T.is_unit (T.normalize t) then
+        warn_unit_binding `Var env dec exp;
     end;
     T.unit
   | ClassD (exp_opt, shared_pat, obj_sort, id, typ_binds, pat, typ_opt, self_id, dec_fields) ->
