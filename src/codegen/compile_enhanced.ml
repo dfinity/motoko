@@ -802,13 +802,13 @@ module E = struct
       [ nr {mtype = MemoryType ({min = Int64.zero; max = None}, I64IndexType)} ]
     | _ -> []
 
-  let get_dedup (env : t) =
+  let get_dedup (env : t) : int32 option =
     match !(env.dedup2) with
-    | Some mk_fi -> mk_fi()
-    | _ -> assert false
+    | Some mk_fi -> Some (mk_fi())
+    | None -> None
 
-  let set_dedup (env : t) mk_fi =
-    env.dedup2 := Some mk_fi
+  let set_dedup (env : t) (mk_fi_opt : (unit -> int32) option) =
+    env.dedup2 := mk_fi_opt
 
 end
 
@@ -6919,7 +6919,13 @@ module Internals = struct
   let add_cycles env ae = call_prelude_function env ae "@add_cycles"
   let reset_cycles env ae = call_prelude_function env ae "@reset_cycles"
   let reset_refund env ae = call_prelude_function env ae "@reset_refund"
-  let dedup2 env = G.i (Call (nr (E.get_dedup env))) 
+  let dedup2 env = 
+    match E.get_dedup env with
+    | Some dedup_fi -> G.i (Call (nr dedup_fi))
+    | None -> 
+      (* No dedup available: drop closure, return blob unchanged *)
+      G.i Drop  (* Drop the closure parameter, leaving blob on stack *)
+
 end
 
 module Serialization = struct
@@ -13643,10 +13649,9 @@ and main_actor as_opt mod_env ds fs up =
     in
     let _ = match VarEnv.lookup_var ae2 "@dedup2" with
     | Some (VarEnv.Const Const.Fun (_, mk_fi, _)) ->
-      E.set_dedup env mk_fi
-    | _ -> assert false
+      E.set_dedup env (Some mk_fi)
+    | _ -> E.set_dedup env None
     in
-    let _fi = E.get_dedup env in
 
     (* Export the public functions *)
     List.iter (export_actor_field env ae2) fs;
