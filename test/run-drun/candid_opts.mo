@@ -1,7 +1,6 @@
 import Prim "mo:prim";
 
 actor {
-    /*
 let ?o1 = from_candid(to_candid({x = (5 : Nat32)})) :?({x : ?Nat32});
 let ?o2 = from_candid(to_candid({x = (5 : Nat32)})) :?({x : ??Nat32});
 let ?o3 = from_candid(to_candid({x = (5 : Nat32)})) :?({x : ???Nat32});
@@ -265,21 +264,12 @@ do {
   assert o3.x == ??null;
   };
 
-  
-     */
 
 // Do not deserialise `reserved` to `Null`.
-do {
-  label good {
-    Prim.debugPrint (debug_show (to_candid ((null, 5), -6)));
-    //break good;
-    let ?((null, 5), null) : ?((Null, Nat), Null) = from_candid "DIDL\01\6C\02\00\70\01\7D\02\00\7C\05\7A" else break good;
-    let ?(null, null) : ?(Null, Null) = from_candid "DIDL\00\02\70\7D\05" else break good;
-    let ?(null, 5) : ?(Null, Nat) = from_candid "DIDL\00\02\70\7D\05" else break good;
-    let ?null : ?Null = from_candid "DIDL\00\01\70" else break good;
-    assert false
-  }
-};
+label good do {let ?((null, 5), null) : ?((Null, Nat), Null) = from_candid "DIDL\01\6C\02\00\7F\01\7D\02\00\7C\05\7A" else break good;assert false};
+label good do {let ?(null, null) : ?(Null, Null) = from_candid "DIDL\00\02\70\7D\05" else break good;assert false};
+label good do {let ?(null, 5) : ?(Null, Nat) = from_candid "DIDL\00\02\70\7D\05" else break good;assert false};
+label good do {let ?null : ?Null = from_candid "DIDL\00\01\70" else break good;assert false};
 
 
 public func go(null) {
