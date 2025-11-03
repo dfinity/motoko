@@ -8823,11 +8823,12 @@ module Serialization = struct
 
         G.concat_map (fun t ->
           let can_recover, argument_default_or_trap, coercion_default_or_trap = Type.(
+            let null_result _ = Opt.null_lit env in
             match normalize t with
             | Prim Null ->
-              (Bool.lit true, (fun _ -> Opt.null_lit env), fun _ -> compile_unboxed_const (coercion_error_value env))
+              (Bool.lit true, null_result, fun _ -> compile_unboxed_const (coercion_error_value env))
             | Opt _ | Any ->
-              (Bool.lit true, (fun _ -> Opt.null_lit env), fun _ -> Opt.null_lit env)
+              (Bool.lit true, null_result, null_result)
             | _ ->
               let default_or_trap msg =
                 get_can_recover ^^
