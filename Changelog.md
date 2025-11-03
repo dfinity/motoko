@@ -2,7 +2,8 @@
 
 * motoko (`moc`)
 
-  * Improved solving and error messages for invariant type parameters. Suggested return type annotations are now included in the error message when there is no principal solution (#5464).
+  * Improved solving and error messages for invariant type parameters (#5464).
+    Error messages now include suggested type instantiations when there is no principal solution.
 
     Invariant type parameters with bounds like `Int  <:  U  <:  Any` (when the upper bound is `Any`) can now be solved by choosing the lower bound (`Int` here) when it has no proper supertypes other than `Any`.
     This means that when choosing between **exactly two** solutions: the lower bound and `Any` as the upper bound, the lower bound is chosen as the solution for the invariant type parameter (`U` here).
@@ -16,36 +17,23 @@
     let result = VarArray.map(varAr, func x = x : Int);
     ```
 
-    Why does it compile? Because the body of `func x = x : Int` has type `Int`, which implies that `Int  <:  U  <:  Any`.
-    Since `Int` has no proper supertypes other than `Any`, it can be chosen as the solution for the invariant type parameter `U`.
-    This implies that the output of the `VarArray.map` call has type `[var Int]`.
+    This compiles because the body of `func x = x : Int` has type `Int`, which implies that `Int  <:  U  <:  Any`.
+    Since `Int` has no proper supertypes other than `Any`, it can be chosen as the solution for the invariant type parameter `U`, resulting in the output type `[var Int]`.
 
-    However, note that if the body of the func was of type `Nat`, it would not compile, because `Nat` has a proper subtype `Int` (`Nat <: Int`).
-    The error message would say:
+    However, note that if the function body was of type `Nat`, it would not compile, because `Nat` is a proper subtype of `Int` (`Nat <: Int`).
+    In this case, there would be no principal solution with `Nat  <:  U  <:  Any`, and the error message would suggest:
 
     ```
-    ... cannot solve invariant type parameter U, no principal solution with
-      Nat  <:  U  <:  Any
-    where
-      Nat  =/=  Any
-    Add a return type annotation or an explicit type instantiation
-    Suggested return type annotation : 
-      [var Nat]
+    Hint: Add explicit type instantiation, e.g. <Nat, Nat>
     ```
 
-    The suggested return type annotation can be used to fix the code like this:
+    The suggested type instantiation can be used to fix the code:
 
     ```motoko
-    let result : [var Nat] = VarArray.map(varAr, func x = x);
+    let result = VarArray.map<Nat, Nat>(varAr, func x = x);
     ```
 
-    Or directly after the call:
-
-    ```motoko
-    VarArray.map(varAr, func x = x) : [var Nat]
-    ```
-
-    Note that the type annotation suggests only one possible solution. In the example above, the alternative is `[var Int]`.
+    Note that the error message suggests only one possible solution, but there may be alternatives. In the example above, `<Nat, Int>` would also be a valid instantiation.
 
   * Add warning `M0239` that warns when binding a unit `()` value by `let` or `var` (#5599).
 
