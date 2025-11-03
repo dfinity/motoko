@@ -4,6 +4,8 @@
 
 * motoko (`moc`)
 
+  * Add warning `M0239` that warns when binding a unit `()` value by `let` or `var` (#5599).
+
   * Use `self` parameter, not `Self` type, to enable contextual dot notation (#5574).
 
   * Enable parser recovery to gather more syntax errors at once (previously only enabled for `moc.js`) (#5589).
