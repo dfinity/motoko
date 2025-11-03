@@ -267,18 +267,18 @@ do {
 
 
 // Do not deserialise `reserved` to `Null`.
-label good do {let ?((null, 5), null) : ?((Null, Nat), Null) = from_candid "DIDL\01\6C\02\00\7F\01\7D\02\00\7C\05\7A" else break good;assert false};
-label good do {let ?(null, null) : ?(Null, Null) = from_candid "DIDL\00\02\70\7D\05" else break good;assert false};
-label good do {let ?(null, 5) : ?(Null, Nat) = from_candid "DIDL\00\02\70\7D\05" else break good;assert false};
-label good do {let ?null : ?Null = from_candid "DIDL\00\01\70" else break good;assert false};
+label good do {let ?((null, 5), null) : ?((Null, Nat), Null) = from_candid "DIDL\01\6C\02\00\7F\01\7D\02\00\7C\05\7A" else break good; assert false};
+label good do {let ?(null, null) : ?(Null, Null) = from_candid "DIDL\00\02\70\7D\05" else break good; assert false};
+label good do {let ?(null, 5) : ?(Null, Nat) = from_candid "DIDL\00\02\70\7D\05" else break good; assert false};
+label good do {let ?null : ?Null = from_candid "DIDL\00\01\70" else break good; assert false};
 
 
 public func go(null) {
-    assert false;
+  assert false; // should never arrive here
 };
 
 public func go2(null, null) {
-    assert false;
+  assert false; // should never arrive here
 };
 
 }
