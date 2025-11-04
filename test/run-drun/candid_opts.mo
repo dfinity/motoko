@@ -263,9 +263,33 @@ do {
   assert o1.x == null;
   assert o2.x == ?null;
   assert o3.x == ??null;
+  };
+
+
+// Do not deserialise `reserved` to `Null`.
+label good do {let ?((null, 5), null) : ?((Null, Nat), Null) = from_candid "DIDL\01\6C\02\00\7F\01\7D\02\00\7C\05\7A" else break good; assert false};
+label good do {let ?(null, null) : ?(Null, Null) = from_candid "DIDL\00\02\70\7D\05" else break good; assert false};
+label good do {let ?(null, 5) : ?(Null, Nat) = from_candid "DIDL\00\02\70\7D\05" else break good; assert false};
+label good do {let ?null : ?Null = from_candid "DIDL\00\01\70" else break good; assert false};
+
+
+public func go(null) {
+  assert false; // should never arrive here
+};
+
+public func go2(null, null) {
+  assert false; // should never arrive here
 };
 
 }
+
+//CALL ingress go "DIDL\x00\x01\x70"
+//CALL ingress go "DIDL\x00\x01\x7D\x05"
+//CALL ingress go "DIDL\x00\x02\x70\x7D\x05"
+
+//CALL ingress go2 "DIDL\x00\x02\x70\x70"
+//CALL ingress go2 "DIDL\x00\x02\x70\x7F"
+//CALL ingress go2 "DIDL\x00\x02\x70\x7D\x05"
 
 //SKIP run
 //SKIP run-ir

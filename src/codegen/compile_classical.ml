@@ -8322,21 +8322,25 @@ module MakeSerialization (Strm : Stream) = struct
         ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
 
         G.concat_map (fun t ->
-          let can_recover, default_or_trap = Type.(
+          let can_recover, argument_default_or_trap, coercion_default_or_trap = Type.(
+            let null_result _ = Opt.null_lit env in
             match normalize t with
-            | Prim Null | Opt _ | Any ->
-              (Bool.lit true, fun msg -> Opt.null_lit env)
+            | Prim Null ->
+              (get_can_recover, null_result, fun _ -> compile_unboxed_const (coercion_error_value env))
+            | Opt _ | Any ->
+              (Bool.lit true, null_result, null_result)
             | _ ->
-              (get_can_recover, fun msg ->
+              let default_or_trap msg =
                 get_can_recover ^^
                 G.if1 I32Type
                    (compile_unboxed_const (coercion_error_value env))
-                   (E.trap_with env msg)))
+                   (E.trap_with env msg) in
+              (get_can_recover, default_or_trap, default_or_trap))
           in
           get_arg_count ^^
           compile_eq_const 0l ^^
           G.if1 I32Type
-           (default_or_trap ("IDL error: too few arguments " ^ ts_name))
+           (argument_default_or_trap ("IDL error: too few arguments " ^ ts_name))
            (begin
               (* set up variable frame arguments *)
               Stack.with_frame env "frame_ptr" 3l (fun () ->
@@ -8355,7 +8359,7 @@ module MakeSerialization (Strm : Stream) = struct
              get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count ^^
              get_val ^^ compile_eq_const (coercion_error_value env) ^^
              (G.if1 I32Type
-               (default_or_trap "IDL error: coercion failure encountered")
+               (coercion_default_or_trap "IDL error: coercion failure encountered")
                get_val)
             end)
         ) ts ^^
