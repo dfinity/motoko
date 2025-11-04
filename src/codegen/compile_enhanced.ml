@@ -8816,7 +8816,7 @@ module Serialization = struct
             let null_result _ = Opt.null_lit env in
             match normalize t with
             | Prim Null ->
-              (Bool.lit true, null_result, fun _ -> compile_unboxed_const (coercion_error_value env))
+              (get_can_recover, null_result, fun _ -> compile_unboxed_const (coercion_error_value env))
             | Opt _ | Any ->
               (Bool.lit true, null_result, null_result)
             | _ ->

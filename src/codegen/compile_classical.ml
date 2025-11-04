@@ -7932,7 +7932,7 @@ module MakeSerialization (Strm : Stream) = struct
             ]
         end
       | Prim Null ->
-        with_prim_typ t (Opt.null_lit env)
+         failwith "BUMMERclassic"(*;with_prim_typ t (Opt.null_lit env)*)
       | Any ->
         skip get_idltyp ^^
         (* Any vanilla value works here *)
