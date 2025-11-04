@@ -729,6 +729,10 @@ let infer_class_cap env obj_sort (tbs : T.bind list) cs =
   | _ ->
     C.NullCap, tbs, cs
 
+let find_field (ef : exp_field) (fts : T.field list) = 
+  let id = ef.it.id.it in
+  List.find_opt T.(fun ft -> ft.lab = id && not (is_typ ft.typ)) fts
+
 (* Types *)
 
 let rec check_typ env (typ : typ) : T.typ =
@@ -2235,14 +2239,13 @@ and infer_check_bases_fields env (check_fields : T.field list) exp_at exp_bases 
   check_ids env "object" "field"
     (map (fun (ef : exp_field) -> ef.it.id) exp_fields);
 
-  let infer_or_check rf =
-    let { mut; id; exp } = rf.it in
-    match List.find_opt T.(fun ft -> ft.lab = id.it && not (is_typ ft.typ)) check_fields with
-    | Some exp_field ->
-      check_exp_field env rf [exp_field];
-      exp_field
-    | _ -> infer_exp_field env rf in
-
+  let infer_or_check exp_field =
+    match find_field exp_field check_fields with
+    | Some ft ->
+      check_exp_field env exp_field [ft];
+      ft
+    | _ -> infer_exp_field env exp_field
+  in
   let fts = map infer_or_check exp_fields in
   let bases = map (fun b -> infer_exp_promote env b, b) exp_bases in
   let homonymous_fields ft1 ft2 = T.compare_field ft1 ft2 = 0 in
@@ -2413,17 +2416,18 @@ and check_exp' env0 t exp : T.typ =
     t
   | ObjE (exp_bases, exp_fields), T.Obj(T.Object, fts) ->
     let t' = infer_check_bases_fields env fts exp.at exp_bases exp_fields in
-    let fields = match T.promote t' with
-      | T.Obj(T.Object, fts) -> fts
+    let fts' = match T.promote t' with
+      | T.Obj(T.Object, fts') -> fts'
       | _ -> []
     in
-    let missing_fields = List.filter (fun ft ->
-      not (List.exists (fun ft2 -> ft.T.lab = ft2.T.lab) fields)) fts
+    let missing_field_labs =
+      List.filter (fun ft -> not (List.exists (fun ft' -> ft.T.lab = ft'.T.lab) fts')) fts
       |> List.map (fun ft -> Printf.sprintf "'%s'" ft.T.lab)
     in
-    begin match missing_fields with
+    begin match missing_field_labs with
     | [] -> check_inferred env0 env t t' exp
     | fts ->
+      (* Future work: Replace this error with a general subtyping error once better explanations are available. *)
       let s = if List.length fts = 1 then "" else "s" in
       local_error env exp.at "M0151" "missing field%s %s from expected type%a" s (String.concat ", " fts) display_typ_expand t;
       t'
