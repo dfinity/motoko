@@ -43,7 +43,7 @@ let find_typ ?(infer=fun _ -> None) tfs f =
 
 let infer_typ = function
   | NullV -> Some (T.(Prim Null))
-  (*| NumV n when n < 0 -> Some (T.(Prim Int))*)
+  | NumV n when int_of_string n < 0 -> Some (T.(Prim Int))
   | NumV _ -> Some (T.(Prim Nat))
   | _ -> None
 
