@@ -8407,7 +8407,7 @@ module Serialization = struct
             get_blob ^^                  (* Put blob on stack *)
             Internals.dedup env          (* Call dedup *)
           | None ->
-            read_blob ()          
+            assert false
         )
       | Prim Principal ->
         with_prim_typ t
@@ -13587,7 +13587,12 @@ and compile_init_func mod_env ((cu, flavor) : Ir.prog) =
   | LibU _ -> fatal "compile_start_func: Cannot compile library"
   | ProgU ds ->
     Func.define_built_in mod_env "init" [] [] (fun env ->
-      let _ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in
+      let ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in
+      let _ = match VarEnv.lookup_var ae "@dedup" with
+        | Some (VarEnv.Const Const.Fun (_, mk_fi, _)) ->
+           E.set_dedup env (Some mk_fi)
+        | _ -> E.set_dedup env None
+      in
       codeW G.nop
     )
   | ActorU (as_opt, ds, fs, up, t) ->
@@ -13651,7 +13656,6 @@ and main_actor as_opt mod_env ds fs up =
       E.set_dedup env (Some mk_fi)
     | _ -> E.set_dedup env None
     in
-
     (* Export the public functions *)
     List.iter (export_actor_field env ae2) fs;
 
