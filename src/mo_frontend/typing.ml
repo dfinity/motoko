@@ -2237,7 +2237,7 @@ and infer_check_bases_fields env (check_fields : T.field list) exp_at exp_bases 
 
   let infer_or_check rf =
     let { mut; id; exp } = rf.it in
-    match List.find_opt (fun ft -> ft.T.lab = id.it) check_fields with
+    match List.find_opt T.(fun ft -> ft.lab = id.it && not (is_typ ft.typ)) check_fields with
     | Some exp_field ->
       check_exp_field env rf [exp_field];
       exp_field
