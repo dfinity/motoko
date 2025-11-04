@@ -1,8 +1,44 @@
 # Motoko compiler changelog
 
-## Unreleased
-
 * motoko (`moc`)
+
+  * Improved solving and error messages for invariant type parameters (#5464).
+    Error messages now include suggested type instantiations when there is no principal solution.
+
+    Invariant type parameters with bounds like `Int  <:  U  <:  Any` (when the upper bound is `Any`) can now be solved by choosing the lower bound (`Int` here) when it has no proper supertypes other than `Any`.
+    This means that when choosing between **exactly two** solutions: the lower bound and `Any` as the upper bound, the lower bound is chosen as the solution for the invariant type parameter (`U` here).
+    Symmetrically, with bounds like `Non  <:  U  <:  Nat` (when the lower bound is `Non`), the upper bound (`Nat` here) is chosen when it has no proper subtypes other than `Non`.
+
+    For example, the following code now compiles without explicit type arguments:
+
+    ```motoko
+    import VarArray "mo:core/VarArray";
+    let varAr = [var 1, 2, 3];
+    let result = VarArray.map(varAr, func x = x : Int);
+    ```
+
+    This compiles because the body of `func x = x : Int` has type `Int`, which implies that `Int  <:  U  <:  Any`.
+    Since `Int` has no proper supertypes other than `Any`, it can be chosen as the solution for the invariant type parameter `U`, resulting in the output type `[var Int]`.
+
+    However, note that if the function body was of type `Nat`, it would not compile, because `Nat` is a proper subtype of `Int` (`Nat <: Int`).
+    In this case, there would be no principal solution with `Nat  <:  U  <:  Any`, and the error message would suggest:
+
+    ```
+    Hint: Add explicit type instantiation, e.g. <Nat, Nat>
+    ```
+
+    The suggested type instantiation can be used to fix the code:
+
+    ```motoko
+    let result = VarArray.map<Nat, Nat>(varAr, func x = x);
+    ```
+
+    Note that the error message suggests only one possible solution, but there may be alternatives. In the example above, `<Nat, Int>` would also be a valid instantiation.
+
+  * Fixes type inference of deferred funcs that use `return` in their body (#5615).
+    Avoids confusing errors like `Bool does not have expected type T` on `return` expressions. Should type check successfully now.
+
+  * Add warning `M0239` that warns when binding a unit `()` value by `let` or `var` (#5599).
 
   * Use `self` parameter, not `Self` type, to enable contextual dot notation (#5574).
 
