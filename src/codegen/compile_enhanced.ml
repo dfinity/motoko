@@ -6919,12 +6919,7 @@ module Internals = struct
   let add_cycles env ae = call_prelude_function env ae "@add_cycles"
   let reset_cycles env ae = call_prelude_function env ae "@reset_cycles"
   let reset_refund env ae = call_prelude_function env ae "@reset_refund"
-  let dedup env = 
-    match E.get_dedup env with
-    | Some dedup_fi -> G.i (Call (nr dedup_fi))
-    | None -> 
-      (* No dedup available: drop closure, return blob unchanged *)
-      G.i Drop  (* Drop the closure parameter, leaving blob on stack *)
+  let dedup env = G.i (Call (nr (E.get_dedup env |> Option.get)))
 
 end
 
@@ -8406,10 +8401,14 @@ module Serialization = struct
         with_blob_typ env (
           let (set_blob, get_blob) = new_local env "blob" in
           read_blob () ^^ set_blob ^^           (* Read blob and save it *)
-          compile_unboxed_zero ^^               (* Put closure on stack first *)
-          get_blob ^^                           (* Put blob on stack second *)
-          Internals.dedup env            
-          )
+          match E.get_dedup env with
+          | Some _ ->
+            compile_unboxed_zero ^^      (* Put closure on stack *)
+            get_blob ^^                  (* Put blob on stack *)
+            Internals.dedup env          (* Call dedup *)
+          | None ->
+            get_blob                     (* Just put blob on stack, skip dedup *)           
+        )
       | Prim Principal ->
         with_prim_typ t
         begin
