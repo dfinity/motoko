@@ -2999,7 +2999,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
         (String.concat ", " (List.map T.string_of_typ ts));
   *)
     ts, T.open_ ts t_arg, T.open_ ts t_ret
-  with Bi_match.Bimatch msg ->
+  with Bi_match.Bimatch { message; hint } ->
     let t1 = match T.normalize t1 with
       | T.Func(s, c, tbs, ts1, ts2) ->
         T.Func(s, c, [], List.map err_subst ts1, List.map err_subst ts2)
@@ -3048,10 +3048,10 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
          | None -> ""
          | Some t ->
            Format.asprintf "\nto produce result of expected type%a" display_typ t)
-        msg
+        message
     else
       error env at "M0098"
-        "cannot apply %s of type%a\nto argument of type%a%s"
+        "cannot apply %s of type%a\nto argument of type%a%s%s"
         desc
         display_typ t1''
         display_typ (err_subst t2')
@@ -3059,6 +3059,9 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
          | None -> ""
          | Some t ->
            Format.asprintf "\nto produce result of expected type%a" display_typ t)
+        (match hint with
+         | None -> ""
+         | Some hint -> Format.asprintf "\n%s" hint)
 
 and is_redundant_instantiation ts env infer_instantiation =
   assert env.pre;

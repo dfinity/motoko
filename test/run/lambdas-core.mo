@@ -319,6 +319,7 @@ func natToText(_n : Nat) : Text = "";
 
 let ar = [1, 2, 3];
 let varAr : [var Nat] = [var 1, 2, 3];
+let varArInt : [var Int] = [var 1, 2, 3];
 let iter : Iter<Nat> = { next = func() : ?Nat = null };
 let iterText : Iter<Text> = { next = func() : ?Text = null };
 let iterChar : Iter<Char> = { next = func() : ?Char = null };
@@ -360,6 +361,7 @@ VarArray.forEach(varAr, func(x) {});
 let va3 = VarArray.map<Nat, Int>(varAr, func x = x * 2);
 let va4 : [var Int] = VarArray.map(varAr, func x = x * 2);
 let _ = check(va3, va4);
+let _ = VarArray.map(varArInt, func x = x * 2);
 let _ = VarArray.mapToImmutable(varAr, func x = x * 2);
 VarArray.mapInPlace(varAr, func x = x * 3);
 let _ = VarArray.filter(varAr, func x = x % 2 == 0);
