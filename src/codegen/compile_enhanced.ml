@@ -8399,15 +8399,15 @@ module Serialization = struct
         Opt.null_lit env
       | Prim Blob ->
         with_blob_typ env (
-          let (set_blob, get_blob) = new_local env "blob" in
-          read_blob () ^^ set_blob ^^           (* Read blob and save it *)
           match E.get_dedup env with
           | Some _ ->
+            let (set_blob, get_blob) = new_local env "blob" in
+            read_blob () ^^ set_blob ^^  (* Read blob and save it *)
             compile_unboxed_zero ^^      (* Put closure on stack *)
             get_blob ^^                  (* Put blob on stack *)
             Internals.dedup env          (* Call dedup *)
           | None ->
-            get_blob                     (* Just put blob on stack, skip dedup *)           
+            read_blob ()          
         )
       | Prim Principal ->
         with_prim_typ t
