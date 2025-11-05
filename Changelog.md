@@ -61,7 +61,6 @@
     Deprecates any public types and values with special doc comment
     `/// @deprecated M0235`.
     (allowed by default, warn with `-W 0235`).
->>>>>>> master
 
   * Experimental support for `implicit` argument declarations (#5517).
 
