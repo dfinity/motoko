@@ -19,7 +19,6 @@ module S = Set.Make(String)
 type avl = Available | Unavailable
 
 type lab_env = T.typ T.Env.t
-type ret_env = T.typ option
 type val_info = T.typ * Source.region * Scope.val_kind * avl
 type val_env  = val_info T.Env.t
 
@@ -66,6 +65,10 @@ type env =
     errors_only : bool;
     srcs : Field_sources.t;
   }
+and ret_env =
+  | NoRet
+  | Ret of T.typ
+  | BimatchRet of (env -> exp -> unit)
 
 let env_of_scope ?(viper_mode=false) msgs scope =
   { vals = available scope.Scope.val_env;
@@ -75,7 +78,7 @@ let env_of_scope ?(viper_mode=false) msgs scope =
     cons = scope.Scope.con_env;
     objs = T.Env.empty;
     labs = T.Env.empty;
-    rets = None;
+    rets = NoRet;
     async = Async_cap.NullCap;
     in_actor = false;
     in_prog = true;
@@ -240,6 +243,8 @@ let info env at fmt =
 
 let check_deprecation env at desc id depr =
   match depr with
+  | Some ("M0235" as code) ->
+    warn env at code "%s %s is deprecated for caffeine" desc id
   | Some ("M0199" as code) ->
     if !(env.reported_stable_memory) then ()
     else begin
@@ -1348,23 +1353,19 @@ type hole_candidate =
 let suggestion_of_candidate candidate =
   Option.fold ~none:candidate.desc ~some:Suggest.module_name_as_url candidate.module_name_opt
 
-(* All candidates are subtypes of the required type. The "greatest" of
-   these types is the "closest" to the required type. If we can
-   uniquely identify a single candidate that is the supertype of all
-   other candidates we pick it. *)
-let disambiguate_resolutions (candidates : hole_candidate list) =
-  let add_candidate (frontiers : hole_candidate list) (c : hole_candidate) =
-    let rec go (fs : hole_candidate list) = match fs with
+let disambiguate_resolutions (rel : 'candidate -> 'candidate -> bool) (candidates : 'candidate list) =
+  let add_candidate (frontiers : 'candidate list) (c : 'candidate) =
+    let rec go (fs : 'candidate list) = match fs with
       | [] -> [c]
       | f::fs' ->
-         if T.sub c.typ f.typ then
-           if T.eq c.typ f.typ then
+         if rel c f then
+           if rel f c then
              (* c = f, so we keep both *)
              f :: go fs'
            else
              (* c <: f, so f absorbs c *)
              fs
-         else if T.sub f.typ c.typ then
+         else if rel f c then
            (* f <: c, so c absorbs f *)
            go fs'
          else
@@ -1397,13 +1398,18 @@ let module_exp in_libs env module_name =
     matching module could be imported, and reports an ambiguity error
     when finding multiple resolutions.
  *)
+
+type hole_error =
+  | HoleSuggestions of (env -> string list * string list * (env -> unit))
+  | HoleAmbiguous of (env -> unit)
+
 let resolve_hole env at hole_sort typ =
   let is_matching_lab lab =
     match hole_sort with
     | Named lab1 -> lab = lab1
     | Anon _ -> true
   in
-  
+
   let is_matching_typ typ1 = T.sub typ1 typ
   in
   let has_matching_field_typ = function
@@ -1489,21 +1495,24 @@ let resolve_hole env at hole_sort typ =
              candidate.desc mid id mod_desc mid id call_region call_src)
       explicit_terms
   in
+  (* All candidates are subtypes of the required type. The "greatest" of these types is the "closest" to the required type.
+     If we can uniquely identify a single candidate that is the supertype of all other candidates we pick it. *)
+  let disambiguate_holes = disambiguate_resolutions (fun (c1 : hole_candidate) c2 -> T.sub c1.typ c2.typ) in
   match eligible_terms with
   | [term] -> Ok term
   | [] ->
     let (lib_terms, _) = candidates true env.libs is_lib_module in
-    (match if !Flags.implicit_lib_vals then disambiguate_resolutions lib_terms else None with
+    (match if Option.is_some !Flags.implicit_package then disambiguate_holes lib_terms else None with
     | Some term -> Ok term
     | None ->
-      Error (List.map suggestion_of_candidate lib_terms,
-              List.map (fun candidate -> candidate.desc) explicit_terms,
-              renaming_hints)
-    )
+      Error (HoleSuggestions (fun env ->
+        (List.map suggestion_of_candidate lib_terms,
+         List.map (fun candidate -> candidate.desc) explicit_terms,
+         renaming_hints))))
   | terms -> begin
-     match disambiguate_resolutions terms with
+     match disambiguate_holes terms with
      | Some term -> Ok term
-     | None ->
+     | None -> Error (HoleAmbiguous (fun env ->
        let terms = List.map (fun term -> term.desc) terms in
        error env at "M0231" "ambiguous implicit argument %s of type%a.\nThe ambiguous implicit candidates are: %s%s."
          (match hole_sort with Named n -> "named " ^ quote n | Anon i -> "at argument position " ^ Int.to_string i)
@@ -1512,12 +1521,13 @@ let resolve_hole env at hole_sort typ =
          (if explicit_terms = [] then ""
           else
             ".\nThe other explicit candidates are: "^
-              (String.concat ", " (List.map (fun oc -> oc.desc) explicit_terms)))
+              (String.concat ", " (List.map (fun oc -> oc.desc) explicit_terms)))))
      end
 
 type ctx_dot_candidate =
   { module_name : T.lab;
     path : exp;
+    arg_ty : T.typ;
     func_ty : T.typ;
     inst : T.typ list;
   }
@@ -1528,31 +1538,32 @@ type ctx_dot_candidate =
     matching module could be imported, and reports an ambiguity error
     when finding multiple resolutions.
  *)
-let contextual_dot env name receiver_ty =
-  (* Does an instantiation for [tbs] exist that makes [t1] <: [t2]? *)
-  let permissive_sub t1 (tbs, t2) =
-    try
-      let (inst, c) = Bi_match.bi_match_subs None tbs None [t1, t2] [] in
-      ignore (Bi_match.finalize inst c []);
-      Some inst
-    with _ ->
-      None in
-  let has_matching_self tf = match tf with
-    | T.{ lab = "Self"; typ = T.Typ con; _ } ->
-       (match Cons.kind con with
-       | T.Def(tbs, t') -> permissive_sub receiver_ty (tbs, t') <> None
-       | _ -> false)
-    | _ -> false in
-  let has_matching_self_type (_, (_, fs)) = List.exists has_matching_self fs in
-  let is_matching_func = function (* TODO: normalize first *)
-    | T.{ lab; typ = T.Func (_, _, tbs, first_arg::_, _) as typ; _ } when lab = name.it ->
+
+(* Does an instantiation for [tbs] exist that makes [t1] <: [t2]? *)
+let permissive_sub t1 (tbs, t2) =
+  try
+    let (inst, c) = Bi_match.bi_match_subs None tbs None [t1, t2] [] in
+    ignore (Bi_match.finalize inst c []);
+    Some inst
+  with _ ->
+    None
+
+type 'a context_dot_error =
+  | DotSuggestions of (env -> string list)
+  | DotAmbiguous of (env -> 'a)
+
+let contextual_dot env name receiver_ty : (ctx_dot_candidate, 'a context_dot_error) Result.t =
+  let is_matching_func field =
+    if not (String.equal field.T.lab name.it) then None
+    else match T.normalize field.T.typ with
+    | T.Func (_, _, tbs, T.Named("self", first_arg)::_, _) as typ ->
       (match permissive_sub receiver_ty (tbs, first_arg) with
-       | Some inst -> Some (typ, inst)
-       | _ -> None)
+        | Some inst -> Some (T.open_ inst first_arg, typ, inst)
+        | _ -> None)
     | _ -> None in
   let find_candidate in_libs (module_name, (module_ty, fs)) =
     List.find_map is_matching_func fs |>
-      Option.map (fun (func_ty, inst) ->
+      Option.map (fun (arg_ty, func_ty, inst) ->
         let path = {
           it = DotE({
               it = module_exp in_libs env module_name;
@@ -1562,24 +1573,67 @@ let contextual_dot env name receiver_ty =
           at = name.at;
           note = empty_typ_note }
         in
-        { module_name; path; func_ty; inst }) in
+        { module_name; path; func_ty; arg_ty; inst }) in
   let candidates in_libs xs f =
     T.Env.to_seq xs |>
       Seq.filter_map f |>
-      Seq.filter has_matching_self_type |>
       Seq.filter_map (find_candidate in_libs) |>
       List.of_seq in
+  (* All candidate functions accept supertypes of the required type as their first arguments.
+     The "smallest" of these types is the closest to the required type. *)
+  let disambiguate_candidates = disambiguate_resolutions (fun c1 c2 -> T.sub c2.arg_ty c1.arg_ty) in
   match candidates false env.vals is_val_module with
-  | [oc] -> Ok oc
+  | [c] -> Ok c
   | [] ->
     (match candidates true env.libs is_lib_module with
-    | [oc] when !Flags.implicit_lib_vals -> Ok oc
+    | [c] when Option.is_some !Flags.implicit_package -> Ok c
     | lib_candidates ->
-      Error (List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)
-    )
-  | ocs ->
-    let candidates = List.map (fun oc -> oc.module_name) ocs in
-    error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
+      match if Option.is_some !Flags.implicit_package then disambiguate_candidates lib_candidates else None with
+      | Some c -> Ok c
+      | None ->  Error (DotSuggestions (fun env -> List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)))
+  | cs -> match disambiguate_candidates cs with
+    | Some c -> Ok c
+    | None -> Error (DotAmbiguous (fun env ->
+       let modules =  (List.map (fun c -> c.module_name) cs) in
+       error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " modules)))
+
+let check_can_dot env ctx_dot (exp : Syntax.exp) tys es at =
+  if not env.pre then
+  if Flags.get_warning_level "M0236" <> Flags.Allow then
+  match ctx_dot with
+  | Some _ -> () (* already dotted *)
+  | None ->
+    match exp.it, tys, es with
+    | (DotE(obj_exp, id, _), receiver_ty :: tys, e::es) ->
+      begin
+        if (id.it = "equal" || Lib.String.chop_prefix "compare" id.it <> None) && List.length tys = 1 then ()
+        else
+          let quote e =
+            if e.at.left.line <> e.at.right.line then "..." else
+            match Source.read_region e.at with
+            | None -> "..."
+            | Some s ->
+               match e.it with
+               | VarE _ | CallE _ | DotE _ -> s
+               | e -> "("^s^")"
+          in
+          match contextual_dot env id receiver_ty with
+          | Error _ -> ()
+          | Ok {path;_} ->
+            (match path.it, exp.it with
+             | DotE ({ it = VarE {it = mod_id0; _};_ },
+                     { it = id0; _},
+                    _),
+               DotE ({ it = VarE {it = mod_id1; note = Const; _};_ },
+                     { it = id1; _},
+                     _)  when mod_id0 = mod_id1 && id0 = id1 ->
+                warn env at "M0236" "You can use the dot notation `%s.%s(...)` here"
+                  (quote e)
+                  id.it
+             | _ -> ())
+      end
+    | _, _, _ -> ()
+
 
 let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
@@ -1857,7 +1911,7 @@ and infer_exp'' env exp : T.typ =
       let env'' =
         { env' with
           labs = T.Env.empty;
-          rets = Some codom;
+          rets = Ret codom;
           (* async = None; *) }
       in
       let initial_usage = enter_scope env'' in
@@ -1947,7 +2001,7 @@ and infer_exp'' env exp : T.typ =
       check_ErrorCap env "try" exp.at;
       if cases <> [] then
         coverage_cases "try handler" env cases T.catch exp.at;
-      Option.iter (check_exp_strong { env with async = C.NullCap; rets = None; labs = T.Env.empty } T.unit) exp2_opt
+      Option.iter (check_exp_strong { env with async = C.NullCap; rets = NoRet; labs = T.Env.empty } T.unit) exp2_opt
     end;
     T.lub ~src_fields:env.srcs t1 t2
   | WhileE (exp1, exp2) ->
@@ -2009,11 +2063,13 @@ and infer_exp'' env exp : T.typ =
   | RetE exp1 ->
     if not env.pre then begin
       match env.rets with
-      | Some T.Pre ->
+      | Ret T.Pre ->
         local_error env exp.at "M0084" "cannot infer return type"
-      | Some t ->
+      | Ret t ->
         check_exp_strong env t exp1
-      | None ->
+      | BimatchRet k ->
+        k env exp1
+      | NoRet ->
         local_error env exp.at "M0085" "misplaced return"
     end;
     T.Non
@@ -2033,7 +2089,7 @@ and infer_exp'' env exp : T.typ =
     let env' =
       {(adjoin_typs env ce_scope cs) with
         labs = T.Env.empty;
-        rets = Some T.Pre;
+        rets = Ret T.Pre;
         async = next_cap c;
         scopes = T.ConEnv.add c exp.at env.scopes } in
     let t = infer_exp env' exp1 in
@@ -2284,7 +2340,12 @@ and check_exp' env0 t exp : T.typ =
       e := path;
       check_exp env t path;
       t
-    | Error (import_suggestions, explicit_suggestions, renaming_hints) ->
+    | Error (HoleAmbiguous mk_error) ->
+      mk_error env;
+      t
+    | Error (HoleSuggestions mk_suggestions) ->
+      let (import_suggestions, explicit_suggestions, renaming_hints) = mk_suggestions env in
+      (* TODO: move this logic into mk_suggestions *)
       if not env.pre then begin
         let import_sug =
           if import_suggestions = [] then
@@ -2414,7 +2475,7 @@ and check_exp' env0 t exp : T.typ =
     let env' =
       {(adjoin_typs env ce_scope cs) with
         labs = T.Env.empty;
-        rets = Some t';
+        rets = Ret t';
         async = next_cap c;
         scopes = T.ConEnv.add c exp.at env.scopes;
       } in
@@ -2441,7 +2502,7 @@ and check_exp' env0 t exp : T.typ =
     if cases <> []
     then coverage_cases "try handler" env cases T.catch exp.at;
     if not env.pre then
-      Option.iter (check_exp_strong { env with async = C.NullCap; rets = None; labs = T.Env.empty; } T.unit) exp2_opt;
+      Option.iter (check_exp_strong { env with async = C.NullCap; rets = NoRet; labs = T.Env.empty } T.unit) exp2_opt;
     t
   (* TODO: allow shared with one scope par *)
   | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
@@ -2527,7 +2588,7 @@ and check_func_step in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2
   let env' =
     { env with
       labs = T.Env.empty;
-      rets = Some exp_typ;
+      rets = Ret exp_typ;
       async = C.NullCap; }
   in
   (adjoin_vals env' ve2), exp_typ, codom
@@ -2581,18 +2642,25 @@ and infer_callee env exp =
   match exp.it with
   | DotE(exp1, id, note) -> begin
     match try_infer_dot_exp env exp.at exp1 id ("a function", is_func_typ) with
-    | Ok t -> infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
+    | Ok t ->
+      infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
     | Error (t1, mk_e) ->
       match contextual_dot env id t1 with
-      | Error [] ->
-         let e = mk_e () in
-         let sug = "\nHint: If you're trying to use a contextual call you need to import the corresponding module." in
-         Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
-      | Error suggestions ->
-         let e = mk_e () in
-         let sug = Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
-         Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
-      | Ok { module_name; path; func_ty; inst; } ->
+      | Error (DotSuggestions mk_suggestions) ->
+        (* TODO: move this logic into mk_suggestions *)
+        let suggestions = mk_suggestions env in
+        let e = mk_e () in
+        let e1 =
+          if suggestions = []
+          then e
+          else Diag.{e with text =
+            e.text ^
+            Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions)}
+        in
+        Diag.add_msg env.msgs e1; raise Recover
+      | Error (DotAmbiguous mk_error) ->
+        mk_error env
+      | Ok { module_name; path; func_ty; inst; _ } ->
         note := Some path;
         if not env.pre then
           check_exp env func_ty path;
@@ -2600,7 +2668,6 @@ and infer_callee env exp =
      end
   | _ ->
      infer_exp_promote env exp, None
-
 and as_implicit = function
   | T.Named ("implicit", T.Named (arg_name, t)) ->
     Some arg_name
@@ -2646,6 +2713,36 @@ and insert_holes at ts es =
   | [arg] -> arg.it
   | args -> TupE args
 
+and check_explicit_arguments env saturated_arity implicits_arity arg_typs syntax_args =
+    if Flags.get_warning_level "M0237" <> Flags.Allow then
+      if List.length syntax_args = saturated_arity && implicits_arity < saturated_arity then
+        let _, explicit_implicits = List.fold_right2
+          (fun typ arg (pos, acc) ->
+             pos + 1,
+             match as_implicit typ with
+             | None -> acc
+             | Some name ->
+                match resolve_hole env arg.at (match name with "_" -> Anon pos | id -> Named id) typ with
+                | Error _ -> acc
+                | Ok {path;_} ->
+                   match path.it, arg.it with
+                   | VarE {it = id0; _},
+                     VarE {it = id1; note = Const; _}
+                        when id0 = id1 ->
+                      (id1, arg) :: acc
+                   | DotE ({ it = VarE {it = mod_id0; _};_ },
+                           { it = id0; _},
+                           _),
+                     DotE ({ it = VarE {it = mod_id1; note = Const; _};_ },
+                           { it = id1; _},
+                           _) when mod_id0 = mod_id1 && id0 = id1 ->
+                      (mod_id1 ^ "." ^ id1, arg) :: acc
+                   | _ -> acc)
+          arg_typs syntax_args (0, [])
+        in
+        if (List.length explicit_implicits) = saturated_arity - implicits_arity then
+          List.iter (fun (name, exp) -> warn env exp.at "M0237" "The `%s` argument can be inferred and omitted here (the function parameter is `implicit`)." name)  explicit_implicits
+
 and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   let exp2 = !ref_exp2 in
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
@@ -2670,7 +2767,8 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     | _ -> [exp2]
   in
   let t_args, extra_subtype_problems = match ctx_dot with
-    | None -> t_args, []
+    | None ->
+      t_args, []
     | Some(e, t, _id, _inst) -> begin
       match t_args with
       | t'::ts -> ts, [(t, t')]
@@ -2728,12 +2826,15 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
           "shared function call result contains abstract type%a"
           display_typ_expand t_ret';
     end;
-    match T.(is_shared_sort sort || is_async t_ret'), inst.it, tbs with
+    begin match T.(is_shared_sort sort || is_async t_ret'), inst.it, tbs with
     | false, Some (true, _), ([] | T.{ sort = Type; _ } :: _) ->
        local_error env inst.at "M0196" "unexpected `system` capability (try deleting it)"
     | false, (None | Some (false, _)), T.{ sort = Scope; _ } :: _ ->
        warn env at "M0195" "this function call implicitly requires `system` capability and may perform undesired actions (please review the call and provide a type instantiation `<system%s>` to suppress this warning)" (if List.length tbs = 1 then "" else ", ...")
     | _ -> ()
+    end;
+    check_can_dot env ctx_dot exp1 (List.map (T.open_ ts) t_args) syntax_args at;
+    check_explicit_arguments env saturated_arity implicits_arity (List.map (T.open_ ts) t_args) syntax_args;
   end;
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
@@ -2836,6 +2937,10 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
 
     (* Prepare subtyping constraints for the 2nd round *)
     let subs = ref [] in
+    let infer_body body_typ env body =
+      let actual_t = infer_exp env body in
+      subs := (actual_t, body_typ) :: !subs
+    in
     deferred |> List.iter (fun (exp, typ) ->
       (* Substitute fixed type variables *)
       let typ = T.open_ ts typ in
@@ -2846,25 +2951,23 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
         (* Check the function input type and prepare for inferring the body *)
         let env', body_typ, codom = check_func_step false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
         (* [codom] comes from [ts2] which might contain unsolved type variables. *)
-        let closed = Bi_match.is_closed remaining codom in
-        if not env.pre && (closed || body_typ <> codom) then begin
-          (* Closed [codom] implies closed [body_typ].
-            * [body_typ] is closed when it comes from [typ_opt] (which is when it is different from [codom])
-            *)
+        let closed_codom = Bi_match.is_closed remaining codom in
+        (* Closed [codom] implies closed [body_typ]. [body_typ] is closed when it comes from [typ_opt] *)
+        let closed_body_typ = closed_codom || Option.is_some typ_opt in
+        let env' = if closed_body_typ then env' else { env' with rets = BimatchRet (infer_body body_typ) } in
+        if closed_body_typ && not env.pre then begin
           assert (Bi_match.is_closed remaining body_typ);
-          (* Since [body_typ] is closed, no need to infer *)
           check_exp env' body_typ body;
         end;
 
         (* When [codom] is open, we need to solve it *)
-        if not closed then
+        if not closed_codom then
           if body_typ <> codom then
             (* [body_typ] is closed, body is already checked above, we just need to solve the subtype problem *)
             subs := (body_typ, codom) :: !subs
           else begin
             (* We just have open [codom], we need to infer the body *)
-            let actual_t = infer_exp env' body in
-            subs := (actual_t, body_typ) :: !subs;
+            infer_body body_typ env' body;
         end
       | HoleE _, typ ->
          if not env.pre then begin
@@ -2893,7 +2996,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
         (String.concat ", " (List.map T.string_of_typ ts));
   *)
     ts, T.open_ ts t_arg, T.open_ ts t_ret
-  with Bi_match.Bimatch msg ->
+  with Bi_match.Bimatch { message; hint } ->
     let t1 = T.normalize t1 in
 (*    let t1 = match T.normalize t1 with
       | T.Func(s, c, tbs, ts1, ts2) ->
@@ -2943,19 +3046,21 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
          | None -> ""
          | Some t ->
            Format.asprintf "\nto produce result of expected type%a" display_typ t)
-        msg
+        message
     else
       error env at "M0098"
-        "cannot apply %s of type%a\nto argument of type%a%s\nbecause %s"
+        "cannot apply %s of type%a\nto argument of type%a%s\nbecause %s%s"
         desc
         display_typ t1''
         display_typ (err_subst t2')
         (match t_expect_opt with
          | None -> ""
          | Some t ->
-            Format.asprintf "\nto produce result of expected type%a" display_typ t)
-        msg
-
+           Format.asprintf "\nto produce result of expected type%a" display_typ t)
+        message
+        (match hint with
+         | None -> ""
+         | Some hint -> Format.asprintf "\nbecause %s" hint)
 and is_redundant_instantiation ts env infer_instantiation =
   assert env.pre;
   match Diag.with_message_store (recover_opt (fun msgs ->
@@ -3536,7 +3641,7 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
       { env with
         in_actor = true;
         labs = T.Env.empty;
-        rets = None;
+        rets = NoRet;
       }
   in
   let decs = List.map (fun (df : dec_field) -> df.it.dec) dec_fields in
@@ -3656,7 +3761,7 @@ and infer_migration env obj_sort exp_opt =
       if obj_sort.it <> T.Actor then
         local_error env exp.at "M0209"
           "misplaced actor migration expression on module or object";
-      infer_exp_promote { env with async = C.NullCap; rets = None; labs = T.Env.empty } exp)
+      infer_exp_promote { env with async = C.NullCap; rets = NoRet; labs = T.Env.empty } exp)
     exp_opt
 
 and check_migration env (stab_tfs : T.field list) exp_opt =
@@ -3907,6 +4012,14 @@ and infer_block_exps env decs : T.typ =
     if not env.pre then recover (check_dec env T.unit) dec;
     infer_block_exps env decs'
 
+and warn_unit_binding binder env (dec : dec) (exp : exp) =
+  let binder = match binder with
+    | `Let -> "let"
+    | `Var -> "var"
+  in
+  let at = Source.{dec.at with right = exp.at.left} in
+  warn env at "M0239" "Avoid binding a unit '()' result; remove '%s' and keep the expression" binder
+
 and infer_dec env dec : T.typ =
   let t =
   match dec.it with
@@ -3921,28 +4034,31 @@ and infer_dec env dec : T.typ =
     end;
     T.unit
   | ExpD exp -> infer_exp env exp
-  | LetD (pat, exp, None) ->
-    (* For developer convenience, ignore top-level actor and module identifiers in unused detection. *)
-    (if env.in_prog && CompUnit.(is_actor_def exp || is_module_def exp) then
-      match pat.it with
-      | VarP id -> use_identifier env id.it
-      | _ -> ());
+  | LetD (pat, exp, fail_opt) ->
+    (match fail_opt with
+    | None ->
+      (* For developer convenience, ignore top-level actor and module identifiers in unused detection. *)
+      (if env.in_prog && CompUnit.(is_actor_def exp || is_module_def exp) then
+        match pat.it with
+        | VarP id -> use_identifier env id.it
+        | _ -> ())
+    | Some fail ->
+      if not env.pre then
+        check_exp env T.Non fail
+    );
     let t = infer_exp env exp in
     if !Flags.typechecker_combine_srcs then
       combine_pat_srcs env t pat;
-    t
-  | LetD (pat, exp, Some fail) ->
-    if not env.pre then
-      check_exp env T.Non fail;
-    let t = infer_exp env exp in
-    if !Flags.typechecker_combine_srcs then
-      combine_pat_srcs env t pat;
+    if not env.pre && T.is_unit (T.normalize t) then
+      warn_unit_binding `Let env dec exp;
     t
   | VarD (id, exp) ->
     if not env.pre then begin
       let t = infer_exp env exp in
       if !Flags.typechecker_combine_srcs then
-        combine_id_srcs env t id
+        combine_id_srcs env t id;
+      if T.is_unit (T.normalize t) then
+        warn_unit_binding `Var env dec exp;
     end;
     T.unit
   | ClassD (exp_opt, shared_pat, obj_sort, id, typ_binds, pat, typ_opt, self_id, dec_fields) ->
@@ -3969,7 +4085,7 @@ and infer_dec env dec : T.typ =
       let env''' =
         { (add_val env'' self_id self_typ) with
           labs = T.Env.empty;
-          rets = None;
+          rets = NoRet;
           async = async_cap;
           in_actor;
         }
@@ -4287,7 +4403,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let env'' =
      { (add_val (adjoin_vals env' ve) self_id self_typ) with
           labs = T.Env.empty;
-          rets = None;
+          rets = NoRet;
           async = async_cap;
           in_actor}
     in

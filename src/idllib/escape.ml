@@ -50,6 +50,7 @@ let is_candid_keyword = function
   | "empty"
   | "oneway"
   | "query"
+  | "composite_query"
   -> true
   | _
   -> false

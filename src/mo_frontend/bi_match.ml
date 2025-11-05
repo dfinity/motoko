@@ -28,7 +28,13 @@ let display_typ = Lib.Format.display pp_typ
 
 (* Bi-Matching *)
 
-exception Bimatch of string
+exception Bimatch of {
+  message : string;
+  hint : string option;
+}
+
+let error ?(hint=None) message =
+  raise (Bimatch { message; hint })
 
 (* add a dummy name to recognize the return type *)
 let name_ret_typ typ = Named ("@ret", typ)
@@ -137,9 +143,9 @@ let mentions typ cons = not (ConSet.disjoint (Type.cons typ) cons)
 
 let fail_open_bound c bd =
   let c = Cons.name c in
-  raise (Bimatch (Format.asprintf
+  error (Format.asprintf
     "type parameter `%s` has a bound %a\ninvolving another type parameter. Please provide an explicit instantiation."
-    c (Lib.Format.display pp_typ) bd))
+    c (Lib.Format.display pp_typ) bd)
 
 module ErrorUnderconstrained : sig
   type t
@@ -150,6 +156,7 @@ end = struct
   type t = (typ * con * typ) list ref
   let empty () = ref []
   let add t lb c ub = t := (lb, c, ub) :: !t
+
   let to_string t =
     let parts = List.rev !t in
     if parts = [] then "" else
@@ -188,15 +195,15 @@ let fail_under_constrained lb c ub =
 
 let fail_over_constrained lb c ub =
   if debug then
-    raise (Bimatch (Format.asprintf
+    error (Format.asprintf
       "implicit instantiation of type parameter `%s` is over-constrained with%a\nwhere%a\nso that no valid instantiation exists"
       (Cons.name c)
       display_constraint (lb, c, ub)
-      display_rel (lb, "</:", ub)))
+      display_rel (lb, "</:", ub))
   else
-    raise (Bimatch (Format.asprintf
+    error (Format.asprintf
       "type parameter `%s` has no solution. Maybe try an explicit instantiation."
-      (Cons.name c)))
+      (Cons.name c))
 
 let choose_under_constrained ctx er lb c ub =
   match ConEnv.find c ctx.variances with
@@ -217,7 +224,6 @@ let choose_under_constrained ctx er lb c ub =
     | t, _ ->
       ErrorUnderconstrained.add er lb c ub;
       if t = Non then ub else lb
-
     (* | _ ->
      fail_under_constrained lb c ub *)
 
@@ -421,21 +427,20 @@ let is_closed ctx t = if is_ctx_empty ctx then true else
   let all_cons = cons_typs [t] in
   ConSet.disjoint ctx.var_set all_cons
 
-(** Raises when [er] is non-empty, optionally with a suggested return type annotation. *)
+(** Raises when [er] is non-empty, optionally with a suggested type instantiation. *)
 let maybe_raise_underconstrained ctx env er =
   let error_msg = ErrorUnderconstrained.to_string er in
   if error_msg = "" then () else
-  let error_msg =
-    match ctx.ret_typ with
-    | None -> error_msg
-    | Some ret_typ ->
-      let ret_typ = subst env ret_typ in
-      if is_closed ctx ret_typ then
-        Format.asprintf "%s\nAdd a return type annotation or an explicit type instantiation.\nSuggested return type annotation : %a" error_msg display_typ ret_typ
-      else
-        error_msg
+  let error_msg, hint =
+    let ts = List.map (fun c -> ConEnv.find c env) ctx.var_list in
+    if List.for_all (is_closed ctx) ts then
+      let inst = String.concat ", " (List.map string_of_typ ts) in
+      let hint = Format.asprintf "Hint: Add explicit type instantiation, e.g. <%s>" inst in
+      Format.asprintf "%s\n%s" error_msg hint, Some hint
+    else
+      error_msg, None
   in
-  raise (Bimatch error_msg)
+  error error_msg ~hint
 
 (** Solves the given constraints [ts1, ts2] in the given context [ctx].
     Unused type variables can be deferred to the next round.
@@ -507,9 +512,9 @@ let solve ctx (ts1, ts2) must_solve =
         |> List.map (fun (c, t) -> Printf.sprintf "%s := %s" (Cons.name c) (string_of_typ t))
         |> String.concat ", "
       in
-      raise (Bimatch (Printf.sprintf
+      error (Printf.sprintf
         "bug: inferred bad instantiation\n  <%s>\nplease report this error message and, for now, supply an explicit instantiation instead"
-        instantiation))
+        instantiation)
     end
   | Error (inst, (ts1, ts2)) ->
     let tts = List.combine ts1 ts2 in
@@ -522,18 +527,18 @@ let solve ctx (ts1, ts2) must_solve =
       | t2 ->
         Format.asprintf "%a" display_rel (t1, "<:", t2)
     in
-    raise (if debug
+    if debug
       then
-        Bimatch (Format.asprintf
-                    "no instantiation of %s makes%s"
+        error (Format.asprintf
+                    "no instantiation of `%s` makes%s"
                     (String.concat ", " (List.map string_of_con ctx.var_list))
                     (String.concat "\nand"
                        (List.map pretty_sub tts)))
       else
-        Bimatch (Format.asprintf
+        error (Format.asprintf
                     "there is no way to satisfy %s"
                     (String.concat "\nand"
-                       (List.map pretty_sub tts))))
+                       (List.map pretty_sub tts)))
 
 
 let bi_match_subs scope_opt tbs ret_typ =
@@ -567,7 +572,7 @@ let bi_match_subs scope_opt tbs ret_typ =
       ConEnv.add c0 c l,
       ConEnv.add c0 c u
     | None, {sort = Scope; _}::tbs ->
-      raise (Bimatch "scope instantiation required but no scope available")
+      error "scope instantiation required but no scope available"
     | _, _ ->
       l,
       u
@@ -616,4 +621,4 @@ let fail_when_types_are_not_closed remaining typs = if is_ctx_empty remaining th
   let open_con_set = ConSet.inter remaining.var_set all_cons in
   if not (ConSet.is_empty open_con_set) then
     let message = Printf.sprintf "`%s` cannot be inferred." (String.concat "`, `" (List.map Cons.name (ConSet.elements open_con_set))) in
-    raise (Bimatch message)
+    error message
