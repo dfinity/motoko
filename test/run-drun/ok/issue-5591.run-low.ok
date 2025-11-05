@@ -1,0 +1,3 @@
+issue-5591.mo:3.32-3.56: execution error, Unknown prim or wrong number of arguments (1 given):
+  (SerializePrim Blob)
+
