@@ -13592,7 +13592,7 @@ and compile_init_func mod_env ((cu, flavor) : Ir.prog) =
     Func.define_built_in mod_env "init" [] [] (fun env ->
       let ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in
       (* Register the Blob deserialization dedup function *)
-      (*      Internals.register_dedup env ae; *)
+      Internals.register_dedup env ae;
       codeW G.nop
     )
   | ActorU (as_opt, ds, fs, up, t) ->
