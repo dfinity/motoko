@@ -2417,11 +2417,11 @@ and check_exp' env0 t exp : T.typ =
       | T.Obj(T.Object, fts') -> fts'
       | _ -> []
     in
-    let missing_field_labs =
-      List.filter (fun ft -> not (List.exists (fun ft' -> ft.T.lab = ft'.T.lab) fts')) fts
+    let missing_val_field_labs = fts
+      |> List.filter T.(fun ft -> not (is_typ ft.T.typ) && Option.is_none (lookup_val_field_opt ft.lab fts'))
       |> List.map (fun ft -> Printf.sprintf "'%s'" ft.T.lab)
     in
-    begin match missing_field_labs with
+    begin match missing_val_field_labs with
     | [] -> check_inferred env0 env t t' exp
     | fts ->
       (* Future work: Replace this error with a general subtyping error once better explanations are available. *)
