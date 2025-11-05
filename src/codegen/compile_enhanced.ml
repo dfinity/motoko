@@ -802,13 +802,13 @@ module E = struct
       [ nr {mtype = MemoryType ({min = Int64.zero; max = None}, I64IndexType)} ]
     | _ -> []
 
-  let get_dedup (env : t) : int32 option =
+  let get_dedup (env : t) : int32 =
     match !(env.dedup) with
-    | Some mk_fi -> Some (mk_fi())
-    | None -> None
+    | Some mk_fi -> mk_fi()
+    | None -> assert false
 
-  let set_dedup (env : t) (mk_fi_opt : (unit -> int32) option) =
-    env.dedup := mk_fi_opt
+  let set_dedup (env : t) (mk_fi : unit -> int32)=
+    env.dedup := Some mk_fi
 
 end
 
@@ -6919,7 +6919,14 @@ module Internals = struct
   let add_cycles env ae = call_prelude_function env ae "@add_cycles"
   let reset_cycles env ae = call_prelude_function env ae "@reset_cycles"
   let reset_refund env ae = call_prelude_function env ae "@reset_refund"
-  let dedup env = G.i (Call (nr (E.get_dedup env |> Option.get)))
+
+  let register_dedup env ae =
+    match VarEnv.lookup_var ae "@dedup" with
+    | Some (VarEnv.Const Const.Fun (_, mk_fi, _)) ->
+      E.set_dedup env mk_fi
+    | _ -> assert false
+
+  let dedup env = G.i (Call (nr (E.get_dedup env)))
 
 end
 
@@ -8399,15 +8406,11 @@ module Serialization = struct
         Opt.null_lit env
       | Prim Blob ->
         with_blob_typ env (
-          match E.get_dedup env with
-          | Some _ ->
-            let (set_blob, get_blob) = new_local env "blob" in
-            read_blob () ^^ set_blob ^^  (* Read blob and save it *)
-            compile_unboxed_zero ^^      (* Put closure on stack *)
-            get_blob ^^                  (* Put blob on stack *)
-            Internals.dedup env          (* Call dedup *)
-          | None ->
-            read_blob ()          
+          let (set_blob, get_blob) = new_local env "blob" in
+          read_blob () ^^ set_blob ^^  (* Read blob and save it *)
+          compile_unboxed_zero ^^      (* Put closure on stack *)
+          get_blob ^^                  (* Put blob on stack *)
+          Internals.dedup env          (* Call dedup *)
         )
       | Prim Principal ->
         with_prim_typ t
@@ -13587,7 +13590,9 @@ and compile_init_func mod_env ((cu, flavor) : Ir.prog) =
   | LibU _ -> fatal "compile_start_func: Cannot compile library"
   | ProgU ds ->
     Func.define_built_in mod_env "init" [] [] (fun env ->
-      let _ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in
+      let ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in
+      (* Register the Blob deserialization dedup function *)
+      Internals.register_dedup env ae;
       codeW G.nop
     )
   | ActorU (as_opt, ds, fs, up, t) ->
@@ -13646,12 +13651,8 @@ and main_actor as_opt mod_env ds fs up =
     let ae2, decls_codeW = compile_decs_public env ae1 ds v2en
         Freevars.(captured_vars (system up))
     in
-    let _ = match VarEnv.lookup_var ae2 "@dedup" with
-    | Some (VarEnv.Const Const.Fun (_, mk_fi, _)) ->
-      E.set_dedup env (Some mk_fi)
-    | _ -> E.set_dedup env None
-    in
-
+    (* Register the Blob deserialization dedup function *)
+    Internals.register_dedup env ae2;
     (* Export the public functions *)
     List.iter (export_actor_field env ae2) fs;
 
