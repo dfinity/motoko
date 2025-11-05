@@ -1,0 +1,60 @@
+wrong-call-ret.mo:12.11-12.35: type error [M0096], expression of type
+  Bool
+cannot produce expected type
+  {a : Float; var b : Text}
+wrong-call-ret.mo:13.11-13.40: type error [M0096], expression of type
+  Bool
+cannot produce expected type
+  {a : Float; var b : Text}
+wrong-call-ret.mo:14.11-14.23: type error [M0096], expression of type
+  Bool
+cannot produce expected type
+  {a : Float; var b : Text}
+wrong-call-ret.mo:16.16-16.40: type error [M0096], expression of type
+  Bool
+cannot produce expected type
+  {a : Float; var b : Text}
+wrong-call-ret.mo:17.16-17.45: type error [M0096], expression of type
+  Bool
+cannot produce expected type
+  {a : Float; var b : Text}
+wrong-call-ret.mo:18.16-18.28: type error [M0096], expression of type
+  Bool
+cannot produce expected type
+  {a : Float; var b : Text}
+wrong-call-ret.mo:20.1-20.25: type error [M0096], expression of type
+  Bool
+cannot produce expected type
+  ()
+wrong-call-ret.mo:21.1-21.30: type error [M0096], expression of type
+  Bool
+cannot produce expected type
+  ()
+wrong-call-ret.mo:22.1-22.13: type error [M0096], expression of type
+  Bool
+cannot produce expected type
+  ()
+wrong-call-ret.mo:24.1-24.34: type error [M0096], expression of type
+  M = {a : Float; var b : Text}
+cannot produce expected type
+  ()
+wrong-call-ret.mo:25.1-25.39: type error [M0096], expression of type
+  M = {a : Float; var b : Text}
+cannot produce expected type
+  ()
+wrong-call-ret.mo:26.1-26.10: type error [M0096], expression of type
+  M = {a : Float; var b : Text}
+cannot produce expected type
+  ()
+wrong-call-ret.mo:28.18-28.42: type error [M0096], expression of type
+  Bool
+cannot produce expected type
+  {a : Float; var b : Text}
+wrong-call-ret.mo:29.18-29.47: type error [M0096], expression of type
+  Bool
+cannot produce expected type
+  {a : Float; var b : Text}
+wrong-call-ret.mo:30.18-30.30: type error [M0096], expression of type
+  Bool
+cannot produce expected type
+  {a : Float; var b : Text}

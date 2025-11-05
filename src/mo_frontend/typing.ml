@@ -2812,6 +2812,12 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
             warn env inst.at "M0223" "redundant type instantiation";
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
+      t_expect_opt |> Option.iter (fun t_expect ->
+        if T.is_closed t_ret && not (sub env exp1.at t_ret t_expect) then
+          error env exp1.at "M0096"
+            "expression of type%a\ncannot produce expected type%a"
+            display_typ_expand t_ret
+            display_typ_expand t_expect);
       infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
   inst.note <- ts;

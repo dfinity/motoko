@@ -289,6 +289,8 @@ val close_binds : con list -> bind list -> bind list
 val open_ : typ list -> typ -> typ
 val open_binds : bind list -> typ list
 
+val is_closed : typ -> bool
+
 
 (* Environments *)
 
