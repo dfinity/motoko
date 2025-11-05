@@ -21,6 +21,7 @@ let _WASMTIME_OPTIONS_ = "-C cache=n -W nan-canonicalization,memory64,multi-memo
 let test_dir = ref ""
 let pattern = ref ""
 let expect_fail_pats = ref []
+let diagnose = ref false
 
 let print_banner () =
   printf "%s\n" banner;
@@ -35,6 +36,7 @@ let argspec = Arg.align
 [
   "-i", Arg.Set_string test_dir, " candid test directory";
   "-p", Arg.Set_string pattern, " test selector (substring/regex)";
+  "--diag", Arg.Unit (fun () -> diagnose := true), " dump generated Motoko code for the tests to stderr";
   "--expect-fail", Arg.String (fun s -> expect_fail_pats := s :: !expect_fail_pats), " tests expected to fail";
   "--version", Arg.Unit print_banner, " show version";
 ]
@@ -76,7 +78,7 @@ let mo_of_test tenv test : (string * expected_behaviour, string) result =
 
   try
     let defs =
-      "import _Prim \"mo:⛔\";" ^
+      "import _Prim \"mo:⛔\";\n" ^
       String.concat "" (List.map (fun (n,candid_typ) ->
         let mo_typ = Idl_to_mo.check_typ tenv candid_typ in
         "type " ^ n ^ " = " ^ Pretty.string_of_typ mo_typ ^ ";\n"
@@ -249,12 +251,12 @@ let () =
           match mo_of_test tenv test with
           | Error why -> Ignored why
           | Ok (src, must_not_trap) ->
-            (* Printf.printf "\n%s" src *)
+            if !diagnose then Printf.eprintf "## %s\n\n``` Motoko\n%s```\n" testname src;
             Unix.putenv "MOC_UNLOCK_PRIM" "yesplease";
             write_file "tmp.mo" src;
             match run_cmd "moc -A M0215 -Werror -wasi-system-api tmp.mo -o tmp.wasm" with
-            | ((Fail | Timeout), stdout, stderr) -> CantCompile (stdout, stderr, src)
-            | (Ok, _, _) ->
+            | (Fail | Timeout), stdout, stderr -> CantCompile (stdout, stderr, src)
+            | Ok, _, _ ->
               match must_not_trap, run_cmd ("timeout 10s wasmtime "^ _WASMTIME_OPTIONS_ ^" tmp.wasm") with
               | ShouldPass, (Ok, _, _) -> WantedPass
               | ShouldTrap, (Fail, _, _) -> WantedTrap

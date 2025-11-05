@@ -190,4 +190,6 @@ To run it against a local copy of the test data, pass `-i ../candid/tests/`.
 To mark certain tests as known-to-be-failing, pass `--expect-fail` in the
 invocation to `candid-tests` in `default.nix`.
 
+To view the generated Motoko code for the tests, pass `--diag`.
+
 See `candid-tests --help` for instructions.
