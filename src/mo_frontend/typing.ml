@@ -729,10 +729,6 @@ let infer_class_cap env obj_sort (tbs : T.bind list) cs =
   | _ ->
     C.NullCap, tbs, cs
 
-let find_field (ef : exp_field) (fts : T.field list) = 
-  let id = ef.it.id.it in
-  List.find_opt T.(fun ft -> ft.lab = id && not (is_typ ft.typ)) fts
-
 (* Types *)
 
 let rec check_typ env (typ : typ) : T.typ =
@@ -2239,8 +2235,9 @@ and infer_check_bases_fields env (check_fields : T.field list) exp_at exp_bases 
   check_ids env "object" "field"
     (map (fun (ef : exp_field) -> ef.it.id) exp_fields);
 
-  let infer_or_check exp_field =
-    match find_field exp_field check_fields with
+  let infer_or_check (exp_field : exp_field) =
+    let id = exp_field.it.id.it in
+    match T.find_val_field_opt id check_fields with
     | Some ft ->
       check_exp_field env exp_field [ft];
       ft
