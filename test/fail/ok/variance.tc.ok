@@ -38,6 +38,6 @@ variance.mo:84.15-84.20: type error [M0098], cannot apply function of type
   <A>() -> Inv<A>
 to argument of type
   ()
-because there is no "best" choice for type parameter `A` has
+because there is no "best" choice for type parameter `A`.
 Hint: Add explicit type instantiation, e.g. <Any>
 Hint: Add explicit type instantiation, e.g. <Any>

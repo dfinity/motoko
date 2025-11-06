@@ -170,12 +170,11 @@ end = struct
           display_rels (List.map (fun (lb, _, ub) -> (lb,"=/=",ub)) parts)
         end
       else
-        let s, has_have = if List.length parts > 1 then ("s", "have") else ("", "has") in
+        let s = if List.length parts > 1 then "s" else "" in
         Format.asprintf
-          "there is no \"best\" choice for type parameter%s `%s` %s"
+          "there is no \"best\" choice for type parameter%s `%s`."
           s
           (String.concat "`, `" (List.map (fun (_, c, _) -> Cons.name c) parts))
-          has_have
 
 end
 
