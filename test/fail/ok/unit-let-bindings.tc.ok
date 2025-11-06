@@ -5,6 +5,8 @@ to argument of type
   ()
 to produce result of expected type
   Any
+because there is no way to satisfy subtyping
+  ()  <:  [var T]
 unit-let-bindings.mo:13.3-13.12: warning [M0239], Avoid binding a unit `()` result; remove `var` and keep the expression
 unit-let-bindings.mo:19.3-19.49: type error [M0098], cannot apply function of type
   [var T] -> ()
@@ -12,5 +14,5 @@ to argument of type
   ()
 to produce result of expected type
   ()
-because there is no way to satisfy 
+because there is no way to satisfy subtyping
   ()  <:  [var T]

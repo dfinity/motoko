@@ -536,7 +536,7 @@ let solve ctx (ts1, ts2) must_solve =
                        (List.map pretty_sub tts)))
       else
         error (Format.asprintf
-                    "there is no way to satisfy %s"
+                    "there is no way to satisfy subtyping%s"
                     (String.concat "\nand"
                        (List.map pretty_sub tts)))
 
