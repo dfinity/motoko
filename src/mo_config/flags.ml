@@ -52,6 +52,7 @@ let public_metadata_names : string list ref = ref []
 let omit_metadata_names : string list ref = ref []
 let compiled = ref false
 let error_detail = ref 2
+let error_recovery = ref false (* multiple syntax errors *)
 let sanity = ref false
 let gc_strategy = ref Default
 let force_gc = ref false
@@ -100,3 +101,4 @@ let get_warning_level code =
 
 let is_warning_disabled code = get_warning_level code = Allow
 let is_warning_enabled code = not (is_warning_disabled code)
+

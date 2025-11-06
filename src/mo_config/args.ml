@@ -26,7 +26,8 @@ let package_args = [
   ]
 
 let error_args = [
-  "--error-detail", Arg.Set_int Flags.error_detail, "<n>  set error message detail for syntax errors, n in [0..3] (default 2)"
+  "--error-detail", Arg.Set_int Flags.error_detail, "<n>  set error message detail for syntax errors, n in [0..3] (default 2)";
+  "--error-recovery", Arg.Set Flags.error_recovery, " report multiple syntax errors"
   (* TODO move --hide-warnings here? *)
   ]
 

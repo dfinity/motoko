@@ -4,6 +4,8 @@
 
   * Improved type inference of the record update syntax (#5625).
 
+  * New flag `--error-recovery` to enable reporting of multiple syntax errors (#5632).
+
   * Improved solving and error messages for invariant type parameters (#5464).
     Error messages now include suggested type instantiations when there is no principal solution.
 
