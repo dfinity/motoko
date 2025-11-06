@@ -4022,7 +4022,7 @@ and warn_unit_binding binder env (dec : dec) (exp : exp) =
     | `Var -> "var"
   in
   let at = Source.{dec.at with right = exp.at.left} in
-  warn env at "M0239" "Avoid binding a unit '()' result; remove '%s' and keep the expression" binder
+  warn env at "M0239" "Avoid binding a unit `()` result; remove `%s` and keep the expression" binder
 
 and infer_dec env dec : T.typ =
   let t =
