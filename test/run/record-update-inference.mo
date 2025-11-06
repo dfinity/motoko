@@ -1,4 +1,4 @@
-// Issue #418: type inference on record update should be as strong as on record creation
+// Type inference on record update should be as strong as on record creation
 
 // Stub for Map
 module Map {
