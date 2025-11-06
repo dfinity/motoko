@@ -1,4 +1,4 @@
-
+//MOC-FLAG --error-recovery
 func _m1() {
   let _r = { var x = 1 }; // record with var field
   let _b = do { var x = 1 }; // block with var definition, same syntax...
