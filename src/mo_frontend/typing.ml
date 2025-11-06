@@ -3766,9 +3766,16 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
   match exp_opt with
   | None -> ()
   | Some exp ->
+    (* Determine which migration type we're using *)
+    let is_multi_migration = match exp.it with
+      | ObjE(_, flds) ->
+        List.exists (fun ({it = {id; _}; _} : exp_field) -> id.it = T.multi_migration_lab) flds
+      | _ -> false
+    in
     let focus = match exp.it with
       | ObjE(_, flds) ->
-        (match List.find_opt (fun ({it = {id; _}; _} : exp_field) -> id.it = T.migration_lab) flds with
+        (match List.find_opt (fun ({it = {id; _}; _} : exp_field) -> 
+                id.it = T.migration_lab || id.it = T.multi_migration_lab) flds with
          | Some fld -> fld.at
          | None -> exp.at)
       | _ -> exp.at in
@@ -3791,12 +3798,122 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
    in
    let typ =
      try
-       let s, tfs = T.as_obj_sub [T.migration_lab] exp.note.note_typ in
+       let s, tfs = T.as_obj_sub [T.migration_lab; T.multi_migration_lab] exp.note.note_typ in
        if s = T.Actor then raise (Invalid_argument "");
-       T.lookup_val_field T.migration_lab tfs
+       (* Check which migration field is present *)
+       (match T.lookup_val_field_opt T.migration_lab tfs,
+              T.lookup_val_field_opt T.multi_migration_lab tfs with
+        | Some t, None -> t  (* only migration - single function *)
+        | None, Some multi_typ ->
+          (* only multi_migration - can be a single function or tuple of functions *)
+          (match T.normalize multi_typ with
+           | T.Func _ ->
+             (* Single function - treat as 1-tuple *)
+             multi_typ
+           | T.Tup elem_typs when List.length elem_typs > 0 ->
+             (* Tuple of functions - validate chaining *)
+             let migration_tuple_expr = 
+               match exp.it with
+               | ObjE(_, flds) ->
+                 (match List.find_opt (fun ({it = {id; exp; _}; _} : exp_field) -> 
+                         id.it = T.multi_migration_lab) flds with
+                  | Some fld -> fld.it.exp
+                  | None -> assert false)
+               | _ -> assert false
+             in
+             (* Ensure it's a literal tuple *)
+             (match migration_tuple_expr.it with
+              | TupE elements when List.length elements > 0 ->
+                (* Validate each migration and check chain compatibility *)
+                (* Also extract first input type and last output type *)
+                let first_elem = List.hd elements in
+                let last_elem = List.hd (List.rev elements) in
+                
+                (* Get first migration's function type *)
+                let first_func_typ = first_elem.note.note_typ in
+                let first_sort, first_tbs, first_t_args, first_t_rng = 
+                  try T.as_func_sub T.Local 0 first_func_typ
+                  with Invalid_argument _ ->
+                    local_error env first_elem.at "M0216"
+                      "migration tuple element at index 0 is not a function";
+                    raise (Invalid_argument "not a function")
+                in
+                
+                (* Get last migration's function type *)
+                let last_func_typ = last_elem.note.note_typ in
+                let last_sort, last_tbs, last_t_args, last_t_rng = 
+                  try T.as_func_sub T.Local 0 last_func_typ
+                  with Invalid_argument _ ->
+                    local_error env last_elem.at "M0216"
+                      "migration tuple element at index %d is not a function"
+                      (List.length elements - 1);
+                    raise (Invalid_argument "not a function")
+                in
+                
+                (* Now validate the chain compatibility for middle elements *)
+                let rec check_chain prev_output_opt idx = function
+                  | [] -> ()
+                  | elem :: rest ->
+                    (* Get this migration's function type *)
+                    let elem_typ = elem.note.note_typ in
+                    let sort, tbs, t_args, t_rng = 
+                      try T.as_func_sub T.Local 0 elem_typ
+                      with Invalid_argument _ ->
+                        local_error env elem.at "M0216"
+                          "migration tuple element at index %d is not a function"
+                          idx;
+                        raise (Invalid_argument "not a function")
+                    in
+                    let t_dom = T.seq t_args in
+                    
+                    (* Check compatibility with previous migration's output *)
+                    (match prev_output_opt with
+                     | None -> () (* First migration, skip check *)
+                     | Some prev_output ->
+                       (* Previous output must be compatible with this input *)
+                       if not (T.sub ~src_fields:env.srcs (T.promote prev_output) (T.normalize t_dom)) then
+                         local_error env elem.at "M0240"
+                           "migration chain broken at index %d:\noutput of previous migration has type%a\nbut this migration expects input type%a"
+                           idx
+                           display_typ_expand prev_output
+                           display_typ_expand t_dom
+                    );
+                    
+                    (* Continue with the next migration *)
+                    check_chain (Some t_rng) (idx + 1) rest
+                in
+                check_chain None 0 elements;
+                
+                (* Return a synthetic function type: first_input -> last_output *)
+                (* This represents the composition of all migrations *)
+                T.Func(T.Local, T.Returns, [], first_t_args, [last_t_rng])
+              | TupE [] ->
+                local_error env focus "M0241"
+                  "multi_migration tuple cannot be empty";
+                T.Non
+              | _ ->
+                local_error env focus "M0242"
+                  "multi_migration must be a literal tuple (e.g., (m1, m2, m3))";
+                T.Non)
+           | T.Tup [] ->
+             local_error env focus "M0241"
+               "multi_migration tuple cannot be empty";
+             T.Non
+           | _ ->
+             local_error env focus "M0213"
+               "expected `multi_migration` to be a function or tuple type, but got type%a"
+               display_typ_expand multi_typ;
+             T.Non)
+        | Some _, Some _ ->
+          (* Both present, this is an error! *)
+          error env focus "M0208"
+            "cannot have both `migration` and `multi_migration` fields; please use only one"
+        | None, None ->
+          (* Neither present - will be caught by outer try-catch *)
+          raise (Invalid_argument "no migration field"))
      with Invalid_argument _ ->
        error env focus "M0208"
-         "expected expression with field `migration`, but expression has type%a"
+         "expected expression with field `migration` or `multi_migration`, but expression has type%a"
          display_typ_expand exp.note.note_typ
    in
    let dom_tfs, rng_tfs =
@@ -3808,7 +3925,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
       check_fields "produces" (T.promote t_rng)
      with Invalid_argument _ ->
        local_error env focus "M0203"
-         "expected non-generic, local function type, but migration expression produces type%a"
+         "expected non-generic, local function type, but migration expression produces type%a\n(for multi_migration, each tuple element must be a function)"
          display_typ_expand typ;
        [], []
    in
@@ -3837,6 +3954,29 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
                Some tf)
            stab_tfs)
    in
+   (* For multi_migration, enforce explicit field handling - no implicit preservation *)
+   if is_multi_migration then begin
+     (* Check that ALL old stable fields are explicitly consumed *)
+     List.iter (fun tf ->
+       match T.lookup_val_field_opt tf.T.lab dom_tfs with
+       | Some _ -> () (* explicitly consumed - good *)
+       | None ->
+         local_error env focus "M0214"
+           "for `multi_migration`, all old stable fields must be explicitly consumed.\nMissing field `%s` of type%a in migration input.\nTo preserve this field, include it in both input and output of the migration function."
+           tf.T.lab
+           display_typ_expand tf.T.typ
+     ) (List.filter (fun tf -> not (T.is_typ tf.T.typ)) pre_tfs);
+     (* Check that ALL new stable fields are explicitly produced *)
+     List.iter (fun tf ->
+       match T.lookup_val_field_opt tf.T.lab rng_tfs with
+       | Some _ -> () (* explicitly produced - good *)
+       | None ->
+         local_error env focus "M0215"
+           "for `multi_migration`, all new stable fields must be explicitly produced.\nMissing field `%s` of type%a in migration output.\nThe migration function must produce this field."
+           tf.T.lab
+           display_typ_expand tf.T.typ
+     ) (List.filter (fun tf -> not (T.is_typ tf.T.typ)) stab_tfs)
+   end;
    (* Check for duplicates and hash collisions in pre-signature *)
    let pre_ids = List.map (fun tf -> T.{it = tf.lab; at = tf.src.region; note = ()}) pre_tfs in
    check_ids env "pre actor type" "stable variable" pre_ids;
@@ -3885,7 +4025,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
      dom_tfs;
    (* Warn the user about unrecognised attributes. *)
    let [@warning "-8"] T.Object, attrs_flds = T.as_obj exp.note.note_typ in
-   let unrecognised = List.(filter (fun {T.lab; _} -> lab <> T.migration_lab) attrs_flds |> map (fun {T.lab; _} -> lab)) in
+   let unrecognised = List.(filter (fun {T.lab; _} -> lab <> T.migration_lab && lab <> T.multi_migration_lab) attrs_flds |> map (fun {T.lab; _} -> lab)) in
    if unrecognised <> [] then warn env exp.at "M0212" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
 
 

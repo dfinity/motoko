@@ -632,10 +632,58 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
       I.{pre = mem_ty; post = mem_ty},
       primE (I.ICStableRead mem_ty) [] (* as before *)
     | Some exp0 ->
-      let typ = let _, tfs = T.as_obj_sub [T.migration_lab] exp0.note.Note.typ in
-                T.lookup_val_field T.migration_lab tfs
+      let _, tfs = T.as_obj_sub [T.migration_lab; T.multi_migration_lab] exp0.note.Note.typ in
+      (* Determine which migration field is present (exactly one should exist, validated by typing.ml) *)
+      let migration_field_name, typ, e_migration = 
+        match T.lookup_val_field_opt T.migration_lab tfs,
+              T.lookup_val_field_opt T.multi_migration_lab tfs with
+        | Some func_typ, None ->
+          (* has migration - single function *)
+          let e = dotE exp0 T.migration_lab func_typ in
+          T.migration_lab, func_typ, e
+        | None, Some multi_typ ->
+          (* has multi_migration - single function or tuple of functions *)
+          (match T.normalize multi_typ with
+           | T.Func _ ->
+             (* Single function - just use it directly *)
+             let e = dotE exp0 T.multi_migration_lab multi_typ in
+             T.multi_migration_lab, multi_typ, e
+           | T.Tup elem_typs ->
+             (* Tuple of functions - compose them *)
+             let e_tuple = dotE exp0 T.multi_migration_lab multi_typ in
+          
+          (* Build chained composition: m3(m2(m1(input))) *)
+          let n = List.length elem_typs in
+          let first_typ = List.hd elem_typs in
+          let last_typ = List.hd (List.rev elem_typs) in
+          
+          (* Extract first and last function signatures *)
+          let first_dom, _ = T.as_mono_func_sub first_typ in
+          let _, last_rng = T.as_mono_func_sub last_typ in
+          let composed_typ = T.Func(T.Local, T.Returns, [], [first_dom], [last_rng]) in
+          
+          (* Build the composition as a function *)
+          (* Bind the tuple to avoid aliasing *)
+          let tuple_var = fresh_var "migrations" multi_typ in
+          let input_var = fresh_var "migration_input" first_dom in
+          let input_arg = arg_of_var input_var in
+          let rec build_chain i arg_expr =
+            if i >= n then
+              arg_expr
+            else
+              let e_migration_i = projE (varE tuple_var) i in
+              let result = callE e_migration_i [] arg_expr in
+              build_chain (i + 1) result
+          in
+          let body = blockE [letD tuple_var e_tuple] (build_chain 0 (varE input_var)) in
+          let e_composed = funcE "migration_chain" T.Local T.Returns [] [input_arg] [last_rng] body in
+          
+          T.multi_migration_lab, composed_typ, e_composed
+           | _ -> assert false)  (* typing.ml validates this is Func or Tup *)
+        | Some _, Some _ -> assert false  (* impossible: typing.ml rejects both *)
+        | None, None -> assert false      (* impossible: typing.ml requires one *)
       in
-      let e = dotE exp0 T.migration_lab typ in
+      let e = e_migration in
       let dom, rng = T.as_mono_func_sub typ in
       let (_dom_sort, dom_fields) = T.as_obj (T.normalize dom) in
       let (_rng_sort, rng_fields) = T.as_obj (T.promote rng) in
