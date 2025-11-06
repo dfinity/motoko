@@ -1,4 +1,4 @@
-(* This programs run the candid test suite at
+(* This program runs the Candid test suite at
    https://github.com/dfinity/candid/tree/master/test
 
 *)
