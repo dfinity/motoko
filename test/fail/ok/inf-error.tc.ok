@@ -5,7 +5,7 @@ to argument of type
   ({map : [(Nat, [var Text])]}, (n : Nat, m : Nat) -> Order, Text)
 to produce result of expected type
   Any
-because type parameter `K` has no solution. Maybe try an explicit instantiation.
+because there is no consistent choice for type parameter `K`.
 inf-error.mo:47.13-47.39: type error [M0230], Cannot determine implicit argument `compare` of type
   (Any, Any) -> Order
 Hint: If you're trying to omit an implicit argument named `compare` you need to have a matching declaration named `compare` in scope.
@@ -15,7 +15,7 @@ to argument of type
   ((n : Nat, m : Nat) -> Order, Text)
 to produce result of expected type
   Any
-because type parameter `K` has no solution. Maybe try an explicit instantiation.
+because there is no consistent choice for type parameter `K`.
 inf-error.mo:52.13-52.34: type error [M0230], Cannot determine implicit argument `compare` of type
   (Any, Any) -> Order
 Hint: If you're trying to omit an implicit argument named `compare` you need to have a matching declaration named `compare` in scope.
@@ -27,7 +27,7 @@ to argument of type
   ({map : [(Nat, [var Text])]}, (n : Nat, m : Nat) -> Order, Text, Text)
 to produce result of expected type
   Any
-because type parameter `K` has no solution. Maybe try an explicit instantiation.
+because there is no consistent choice for type parameter `K`.
 inf-error.mo:60.13-60.43: type error [M0230], Cannot determine implicit argument `compare` of type
   (Any, Any) -> Order
 Hint: If you're trying to omit an implicit argument named `compare` you need to have a matching declaration named `compare` in scope.
@@ -37,14 +37,14 @@ to argument of type
   ((n : Nat, m : Nat) -> Order, Text, Text)
 to produce result of expected type
   Any
-because type parameter `K` has no solution. Maybe try an explicit instantiation.
+because there is no consistent choice for type parameter `K`.
 inf-error.mo:64.13-64.51: type error [M0098], cannot apply function `.set` of type
   <K, V>(compare : (implicit : (K, K) -> Order), n : K, v : V) -> Map<K, V>
 to argument of type
   ((n : Nat, m : Nat) -> Order, Text, Text)
 to produce result of expected type
   Any
-because type parameter `K` has no solution. Maybe try an explicit instantiation.
+because there is no consistent choice for type parameter `K`.
 inf-error.mo:65.13-65.38: type error [M0230], Cannot determine implicit argument `compare` of type
   (Any, Any) -> Order
 Hint: If you're trying to omit an implicit argument named `compare` you need to have a matching declaration named `compare` in scope.
