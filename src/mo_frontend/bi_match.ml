@@ -172,7 +172,7 @@ end = struct
       else
         let s, has_have = if List.length parts > 1 then ("s", "have") else ("", "has") in
         Format.asprintf
-          "type parameter%s `%s` %s no \"best\" solution."
+          "there is no \"best\" choice for type parameter%s `%s` %s"
           s
           (String.concat "`, `" (List.map (fun (_, c, _) -> Cons.name c) parts))
           has_have
@@ -202,7 +202,7 @@ let fail_over_constrained lb c ub =
       display_rel (lb, "</:", ub))
   else
     error (Format.asprintf
-      "type parameter `%s` has no solution. Maybe try an explicit instantiation."
+      "there is no consistent choice for type parameter `%s`."
       (Cons.name c))
 
 let choose_under_constrained ctx er lb c ub =
