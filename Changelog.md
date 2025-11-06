@@ -74,6 +74,9 @@
 
   * bugfix: escape `composite_query` fields on the Candid side, as it is a keyword (#5617).
 
+  * bugfix: implement Candid spec improvements (#5504, #5543, #5505).
+    May now cause cause rejection of certain type-incorrect Candid messages that were accepted before.
+
 ## 0.16.3 (2025-09-29)
 
 * motoko (`moc`)
