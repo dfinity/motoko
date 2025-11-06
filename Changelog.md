@@ -2,6 +2,8 @@
 
 * motoko (`moc`)
 
+  * Improved type inference of the record update syntax (#5625).
+
   * New flag `--error-recovery` to enable reporting of multiple syntax errors (#5632).
 
   * Improved solving and error messages for invariant type parameters (#5464).
