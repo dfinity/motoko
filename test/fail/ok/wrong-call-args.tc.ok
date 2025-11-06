@@ -43,6 +43,7 @@ to argument of type
    (self : Text, t2 : Text) -> Order, Text)
 to produce result of expected type
   ()
+wrong-call-args.mo:82.3-82.11: warning [M0239], Avoid binding a unit `()` result; remove `let` and keep the expression
 wrong-call-args.mo:107.8-107.9: type error [M0050], literal of type
   Nat
 does not have expected type

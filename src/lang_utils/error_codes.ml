@@ -245,6 +245,7 @@ let warning_codes = [
   "M0235", None, "Deprecate for caffeine";
   "M0236", None, "Suggest contextual dot notation";
   "M0237", None, "Suggest redundant explicit arguments";
+  "M0239", None, "Avoid binding a unit `()` result";
   ]
 
 let try_find_explanation code =
