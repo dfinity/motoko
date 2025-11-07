@@ -16,7 +16,7 @@ because there is no way to satisfy subtyping
   (Nat, (self : Text, t2 : Text) -> Order)  <:  Nat
 wrong-call-args.mo:35.12-35.14: type error [M0233], wrong number of arguments: expected 1 but got 0
 Expected 1 argument of type:
-  (key : K)
+  (key : Text)
 But got no arguments
 wrong-call-args.mo:39.5-39.31: type error [M0098], cannot apply function `.add` of type
   (key : Text, value : Text) -> ()

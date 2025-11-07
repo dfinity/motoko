@@ -51,25 +51,28 @@ type ctx = {
   var_set : ConSet.t;
   (* Type variables info *)
   var_env : var_info ConEnv.t;
-  (* List that preserves the order of input type parameters *)
-  var_list : con list;
   (* Lower and upper bounds for type variables *)
   bounds : typ ConEnv.t * typ ConEnv.t;
   (* Variances for type variables *)
   variances : Variance.t ConEnv.t;
   (* Optional return type *)
   ret_typ : typ option;
+  (* Initial list of all input type parameters to solve *)
+  all_vars : con list;
+  (* Current combined solution of all previous rounds *)
+  current_env : typ ConEnv.t;
   (* Optional subtyping constraints to verify the solution in the last round *)
   to_verify : typ list * typ list;
 }
 
-let empty_ctx = {
+let empty_ctx env = {
   var_set = ConSet.empty;
   var_env = ConEnv.empty;
-  var_list = [];
   bounds = (ConEnv.empty, ConEnv.empty);
   variances = ConEnv.empty;
   ret_typ = None;
+  all_vars = [];
+  current_env = env;
   to_verify = ([], []);
 }
 
@@ -80,7 +83,7 @@ let verify_ctx ctx =
   assert (ConSet.equal ctx.var_set (ConEnv.dom ctx.variances));
   assert (ConSet.equal ctx.var_set (ConEnv.dom (fst ctx.bounds)));
   assert (ConSet.equal ctx.var_set (ConEnv.dom (snd ctx.bounds)));
-  assert (ConSet.equal ctx.var_set (ConSet.of_list ctx.var_list))
+  assert (ConSet.subset ctx.var_set (ConSet.of_list ctx.all_vars))
 
 let string_of_bounds (l, u) =
   String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s <: %s <: %s" (string_of_typ t) (Cons.name c) (string_of_typ (ConEnv.find c u))) (ConEnv.bindings l))
@@ -89,7 +92,7 @@ let string_of_bounds (l, u) =
 module Debug = struct
   let print_solve ctx (ts1, ts2) must_solve =
     print_endline "solve ctx";
-    print_endline (Printf.sprintf "var_list: %s" (String.concat ", " (List.map Cons.name ctx.var_list)));
+    print_endline (Printf.sprintf "var_set: %s" (String.concat ", " (List.map Cons.name (ConSet.elements ctx.var_set))));
     print_endline (Printf.sprintf "bounds: %s" (string_of_bounds ctx.bounds));
     print_endline (Printf.sprintf "variances: %s" (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s: %s" (Cons.name c) (Variance.string_of t)) (ConEnv.bindings ctx.variances))));
     print_endline (Printf.sprintf "subs: %s" (String.concat ", " (List.map (fun (t1, t2) -> Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2)) (List.combine ts1 ts2))));
@@ -427,12 +430,13 @@ let is_closed ctx t = if is_ctx_empty ctx then true else
   ConSet.disjoint ctx.var_set all_cons
 
 (** Raises when [er] is non-empty, optionally with a suggested type instantiation. *)
-let maybe_raise_underconstrained ctx env er =
+let maybe_raise_underconstrained ctx current_env unsolved er =
   let error_msg = ErrorUnderconstrained.to_string er in
   if error_msg = "" then () else
   let error_msg, hint =
-    let ts = List.map (fun c -> ConEnv.find c env) ctx.var_list in
-    if List.for_all (is_closed ctx) ts then
+    if ConSet.is_empty unsolved then
+      (* Future work: fill the unsolved and solved from previous rounds with holes, e.g. <_, Nat, _> *)
+      let ts = List.map (fun c -> ConEnv.find c current_env) ctx.all_vars in
       let inst = String.concat ", " (List.map string_of_typ ts) in
       let hint = Format.asprintf "Hint: Add explicit type instantiation, e.g. <%s>" inst in
       error_msg, Some hint
@@ -485,19 +489,21 @@ let solve ctx (ts1, ts2) must_solve =
       else
         fail_over_constrained lb c ub)
     in
-    maybe_raise_underconstrained ctx env er;
     if debug then Debug.print_partial_solution env unsolved;
     let var_set = !unsolved in
-    let remaining = if ConSet.is_empty var_set then empty_ctx else {
+    let current_env = ConEnv.union (fun c _ t -> Some t) ctx.current_env env in
+    maybe_raise_underconstrained ctx current_env var_set er;
+    let remaining = if ConSet.is_empty var_set then empty_ctx env else {
       var_set;
       var_env = ConEnv.restrict var_set ctx.var_env;
-      var_list = List.filter (fun c -> ConSet.mem c var_set) ctx.var_list;
       bounds = (
         (* Note that these bounds are not the same as [ctx.bounds], deferred variables might have tigher bounds after solving *)
         ConEnv.restrict var_set l,
         ConEnv.restrict var_set u);
       variances = ConEnv.restrict var_set ctx.variances;
       ret_typ = ctx.ret_typ;
+      all_vars = ctx.all_vars;
+      current_env;
       to_verify = if defer_verify then (List.map (subst env) ts1, List.map (subst env) ts2) else ([], [])
     } in
     let verify_now = if defer_verify then ctx.to_verify else
@@ -525,17 +531,9 @@ let solve ctx (ts1, ts2) must_solve =
       | t2 ->
         Format.asprintf "%a" display_rel (t1, "<:", t2)
     in
-    if debug
-      then
-        error (Format.asprintf
-                    "no instantiation of `%s` makes%s"
-                    (String.concat ", " (List.map string_of_con ctx.var_list))
-                    (pretty_sub (t1, t2)))
-      else
-        error (Format.asprintf
-                    "there is no way to satisfy subtyping%s"
-                    (pretty_sub (t1, t2)))
-
+    error (Format.asprintf
+             "there is no way to satisfy subtyping%s"
+             (pretty_sub (t1, t2)))
 
 let bi_match_subs scope_opt tbs ret_typ =
   (* Create a fresh constructor for each type parameter.
@@ -581,9 +579,10 @@ let bi_match_subs scope_opt tbs ret_typ =
   let variances = Variance.variances var_set
     (Option.value ~default:Any ret_typ)
   in
-  let ctx = { var_set; var_env; var_list = cs; bounds = (l, u); variances; ret_typ; to_verify = ([], [])} in
+  let ctx = { var_set; var_env; bounds = (l, u); variances; ret_typ; all_vars = cs; current_env = ConEnv.empty; to_verify = ([], [])} in
 
-  fun subs must_solve ->
+
+  fun subs ~must_solve ->
     let must_solve = List.map (open_ ts) must_solve in
     let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
     let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in

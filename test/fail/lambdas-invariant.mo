@@ -7,6 +7,7 @@ module VarArray {
   public func map<T, U>(_ : [var T], _ : (T) -> U) : [var U] = [var];
   public func map2<T, U1, U2>(_ : [var T], _ : (T) -> (U1, U2)) : [var (U1, U2)] = [var];
   public func mapC<T, U>(_ : [var T], _ : (T) -> C<U>) : [var U] = [var];
+  public func invariantFirstRound<T, U>(_ : T -> (), _ : T -> U) : [var T] = [var];
 };
 
 let va = [var 1, 2, 3];
@@ -100,6 +101,13 @@ module ComplexTypes {
   func failing2() {
     let _ = VarArray.map(va, func x = users);
   };
+};
+
+func invariantFirstRound() {
+  func onNat(x : Nat) : () = ();
+  func onInt(x : Int) : () = ();
+  let _ = VarArray.invariantFirstRound(onNat, func x = x); // works
+  let _ = VarArray.invariantFirstRound(onInt, func x = x); // fails when solving `T`, before solving `U`
 }
 
 //SKIP comp
