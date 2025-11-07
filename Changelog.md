@@ -2,6 +2,96 @@
 
 * motoko (`moc`)
 
+  * Improved type inference of the record update syntax (#5625).
+
+  * New flag `--error-recovery` to enable reporting of multiple syntax errors (#5632).
+
+  * Improved solving and error messages for invariant type parameters (#5464).
+    Error messages now include suggested type instantiations when there is no principal solution.
+
+    Invariant type parameters with bounds like `Int  <:  U  <:  Any` (when the upper bound is `Any`) can now be solved by choosing the lower bound (`Int` here) when it has no proper supertypes other than `Any`.
+    This means that when choosing between **exactly two** solutions: the lower bound and `Any` as the upper bound, the lower bound is chosen as the solution for the invariant type parameter (`U` here).
+    Symmetrically, with bounds like `Non  <:  U  <:  Nat` (when the lower bound is `Non`), the upper bound (`Nat` here) is chosen when it has no proper subtypes other than `Non`.
+
+    For example, the following code now compiles without explicit type arguments:
+
+    ```motoko
+    import VarArray "mo:core/VarArray";
+    let varAr = [var 1, 2, 3];
+    let result = VarArray.map(varAr, func x = x : Int);
+    ```
+
+    This compiles because the body of `func x = x : Int` has type `Int`, which implies that `Int  <:  U  <:  Any`.
+    Since `Int` has no proper supertypes other than `Any`, it can be chosen as the solution for the invariant type parameter `U`, resulting in the output type `[var Int]`.
+
+    However, note that if the function body was of type `Nat`, it would not compile, because `Nat` is a proper subtype of `Int` (`Nat <: Int`).
+    In this case, there would be no principal solution with `Nat  <:  U  <:  Any`, and the error message would suggest:
+
+    ```
+    Hint: Add explicit type instantiation, e.g. <Nat, Nat>
+    ```
+
+    The suggested type instantiation can be used to fix the code:
+
+    ```motoko
+    let result = VarArray.map<Nat, Nat>(varAr, func x = x);
+    ```
+
+    Note that the error message suggests only one possible solution, but there may be alternatives. In the example above, `<Nat, Int>` would also be a valid instantiation.
+
+  * Fixes type inference of deferred funcs that use `return` in their body (#5615).
+    Avoids confusing errors like `Bool does not have expected type T` on `return` expressions. Should type check successfully now.
+
+  * Add warning `M0239` that warns when binding a unit `()` value by `let` or `var` (#5599).
+
+  * Use `self` parameter, not `Self` type, to enable contextual dot notation (#5574).
+
+  * Enable parser recovery to gather more syntax errors at once (previously only enabled for `moc.js`) (#5589).
+
+  * Custom syntax error message when a record is provided where a block is expected (#5589).
+
+  * Add (caffeine) warning `M0237` (#5588).
+    Warns if explicit argument could have been inferred and omitted,
+    e.g. `a.sort(Nat.compare)` vs `a.sort()`.
+    (allowed by default, warn with `-W 0237`).
+
+  * Add (caffeine) warning `M0236` (#5584).
+    Warns if contextual dot notation could have been used,
+    e.g. `Map.filter(map, ...)` vs `map.filter(...)`.
+    Does not warn for binary `M.equals(e1, e2)` or `M.compareXXX(e1, e2)`.
+    (allowed by default, warn with `-W 0236`).
+
+  * Add (caffeine) deprecation code `M0235` (#5583).
+    Deprecates any public types and values with special doc comment
+    `/// @deprecated M0235`.
+    (allowed by default, warn with `-W 0235`).
+
+  * Experimental support for `implicit` argument declarations (#5517).
+
+  * Experimental support for Mixins (#5459).
+
+  * bugfix: importing of `blob:file:` URLs in subdirectories should work now (#5507, #5569).
+
+  * bugfix: escape `composite_query` fields on the Candid side, as it is a keyword (#5617).
+
+  * bugfix: implement Candid spec improvements (#5504, #5543, #5505).
+    May now cause rejection of certain type-incorrect Candid messages that were accepted before.
+
+## 0.16.3 (2025-09-29)
+
+* motoko (`moc`)
+
+  * Added `Prim.getSelfPrincipal<system>() : Principal` to get the principal of the current actor (#5518).
+
+  * Contextual dot notation (#5458):
+
+    Writing `e0.f(<Ts>)(e1,...,en)` is short-hand for `M.f(<Ts>)(e0, e1, ..., en)`, provided:
+
+    * `f` is not already a field or special member of `e0`.
+    * There is a unique module `M` with member `f` in the context that declares:
+      * a public type `Self<T1,..., Tn>` that can be instantiated to the type of `e0`;
+      * a public field `f` that accepts `(e0, e2, ..., en)` as arguments.
+
   * Added an optional warning for **redundant type instantiations** in generic function calls (#5468).
     Note that this warning is off by default.
     It can be enabled with the `-W M0223` flag.
@@ -16,6 +106,8 @@
   * Added `-E` flag to treat specified warnings as errors given their message codes (#5502).
 
   * Added `--warn-help` flag to show available warning codes, current lint level (**A**llowed, **W**arn or **E**rror), and descriptions (#5502).
+
+  * `moc.js` : Added `setExtraFlags` method for passing some of the `moc` flags (#5506).
 
 ## 0.16.2 (2025-09-12)
 

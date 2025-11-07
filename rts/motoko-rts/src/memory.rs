@@ -113,3 +113,26 @@ pub unsafe fn weak_ref_is_live<M: Memory>(_mem: &mut M, weak_ref: Value) -> bool
     let weak_ref_obj = weak_ref.get_ptr() as *mut WeakRef;
     return (*weak_ref_obj).is_live();
 }
+
+/// Get the dedup table.
+#[enhanced_orthogonal_persistence]
+#[ic_mem_fn]
+#[cfg(feature = "ic")]
+pub unsafe fn get_dedup_table<M: Memory>(_mem: &mut M) -> Value {
+    use crate::persistence::get_dedup_table_ptr;
+    *get_dedup_table_ptr()
+}
+
+/// Set the dedup table.
+#[enhanced_orthogonal_persistence]
+#[ic_mem_fn]
+#[cfg(feature = "ic")]
+pub unsafe fn set_dedup_table<M: Memory>(mem: &mut M, dedup_table: Value) {
+    use crate::persistence::set_dedup_table_ptr;
+    if !dedup_table.is_array() {
+        crate::rts_trap_with(
+            "set_dedup_table: Invalid dedup table pointer. This is a bug, report to the Motoko team.",
+        );
+    }
+    set_dedup_table_ptr(mem, dedup_table);
+}

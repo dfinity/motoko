@@ -1,0 +1,1 @@
+used-exception.mo:3.9-3.17: warning [M0239], Avoid binding a unit `()` result; remove `var` and keep the expression

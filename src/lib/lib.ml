@@ -344,17 +344,21 @@ struct
          grouping ((hd::l1)::acc) l2
     in grouping [] l
 
-  let rec take n xs =
+  let rec take n xs = (* present in OCaml 5.3 *)
     match n, xs with
     | _ when n <= 0 -> []
     | n, x::xs' when n > 0 -> x :: take (n - 1) xs'
     | _ -> failwith "take"
 
-  let rec drop n xs =
+  let rec drop n xs = (* present in OCaml 5.3 *)
     match n, xs with
     | 0, _ -> xs
     | n, _::xs' when n > 0 -> drop (n - 1) xs'
     | _ -> failwith "drop"
+
+  let rec replicate e = function
+    | 0 -> []
+    | n -> e :: replicate e (n - 1)
 
   let split_at n xs =
     if n <= List.length xs
@@ -431,8 +435,11 @@ struct
        | hd' :: tl' -> equal hd hd' && is_prefix equal tl tl')
   
   (* tail-recursive map *)
-  (* TODO: can be replaced by [@tail_mod_cons] map (OCaml 0.4.14)/List.map once we upgrade OCaml *)
-  let safe_map f l = List.rev (List.rev_map f l)
+  let[@tail_mod_cons] rec safe_map f l = match l with
+    | [] -> []
+    | x :: xs ->
+      f x :: (safe_map[@tailcall]) f xs
+    [@@coverage off]
 end
 
 module List32 =

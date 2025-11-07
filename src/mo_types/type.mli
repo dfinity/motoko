@@ -5,7 +5,7 @@ type var = string
 type name = string
 
 type control = Returns | Promises | Replies
-type obj_sort = Object | Actor | Module | Memory
+type obj_sort = Object | Actor | Mixin | Module | Memory
 type async_sort = Fut | Cmp
 type await_sort = AwaitFut of bool | AwaitCmp
 type shared_sort = Query | Write | Composite
@@ -168,7 +168,7 @@ val as_opt_sub : typ -> typ
 val as_tup_sub : int -> typ -> typ list
 val as_unit_sub : typ -> unit
 val as_pair_sub : typ -> typ * typ
-val as_func_sub : func_sort -> int -> typ -> func_sort * bind list * typ * typ
+val as_func_sub : func_sort -> int -> typ -> func_sort * bind list * typ list * typ
 val as_mono_func_sub : typ -> typ * typ
 val as_async_sub : async_sort -> typ -> typ -> typ * typ
 val as_weak_sub : typ -> typ
@@ -184,6 +184,7 @@ val arity : typ -> int
 
 (* Fields *)
 
+val find_val_field_opt : string -> field list -> field option
 val lookup_val_field : string -> field list -> typ
 val lookup_typ_field : string -> field list -> con
 val lookup_val_field_opt : string -> field list -> typ option
@@ -226,8 +227,10 @@ val stable : typ -> bool
 val inhabited : typ -> bool
 val singleton : typ -> bool
 
-(** A type is isolated if it has no proper supertypes nor proper subtypes (ignoring top [Any] and bottom [Non]). *)
-val isolated : typ -> bool
+(** Determines if a type has no proper supertypes (except for [Any]). *)
+val has_no_supertypes : typ -> bool
+(** Determines if a type has no proper subtypes (except for [Non]). *)
+val has_no_subtypes : typ -> bool
 val span : typ -> int option
 
 

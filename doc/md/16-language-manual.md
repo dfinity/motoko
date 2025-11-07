@@ -2171,6 +2171,31 @@ the `chars`, `vals`, `keys` and `vals` members produce stateful iterator objects
 
 :::
 
+
+### Contextual dot resolution
+
+When applying an object projection `x.f(a)` where `x` is not an object type with a field `f` the context is searched for a module with a function with a matching name and first argument type called "self" as follows:
+
+The expression `<exp1>.<id> <exp2>` has type `t_res` provided the following holds:
+
+```
+x : t </: { f : _ }
+M : module { <id> : <T>(self : targ_1...targ_n) -> t_res }
+
+exists. T such that t <: instantiate(T, targ_1)
+
+and M is the only match in the context
+```
+
+It then evaluates as `M.<id>(extend_args(<exp1>, <exp2>, arity(M.<id>)))` where `extend_args` is:
+
+```
+extend_args(x, args, arity) : (exp, exp, int) -> exp
+extend_args(x, y, 2) = (x, y);
+extend_args(x, (), _) = x;
+extend_args(x, (y1, y2, y3, ... yn), _) = (x, y1, y2, y3, ..., yn);
+```
+
 ### Assignment
 
 The assignment `<exp1> := <exp2>` has type `()` provided:
@@ -2871,6 +2896,3 @@ In general, this means that an expression of a more specific type may appear whe
 ## References
 
 -   **IEEE Standard for Floating-Point Arithmetic**, in IEEE Std 754-2019 (Revision of IEEE 754-2008), vol., no., pp.1-84, 22 July 2019, doi: 10.1109/IEEESTD.2019.8766229.
-
-
-
