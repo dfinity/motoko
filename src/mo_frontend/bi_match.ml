@@ -163,49 +163,19 @@ end = struct
   let to_string t =
     let parts = List.rev !t in
     if parts = [] then "" else
-      if debug then begin
-        let s = if List.length parts > 1 then "s" else "" in
-        Format.asprintf
-          "cannot solve invariant type parameter%s `%s`, no principal solution with%a\nwhere%a"
-          s
-          (String.concat "`, `" (List.map (fun (_, c, _) -> Cons.name c) parts))
-          display_constraints parts
-          display_rels (List.map (fun (lb, _, ub) -> (lb,"=/=",ub)) parts)
-        end
-      else
-        let s = if List.length parts > 1 then "s" else "" in
-        Format.asprintf
-          "there is no \"best\" choice for type parameter%s `%s`."
-          s
-          (String.concat "`, `" (List.map (fun (_, c, _) -> Cons.name c) parts))
+    let s = if List.length parts > 1 then "s" else "" in
+    Format.asprintf
+      "there is no \"best\" choice for type parameter%s `%s`."
+      s
+      (String.concat "`, `" (List.map (fun (_, c, _) -> Cons.name c) parts))
 
 end
 
-(*
-let fail_under_constrained lb c ub =
-  if debug then
-    raise (Bimatch (Format.asprintf
-      "implicit instantiation of type parameter `%s` is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
-      (Cons.name c)
-      display_constraint (lb, c, ub)
-      display_rel (lb,"=/=",ub)))
-  else
-    raise (Bimatch (Format.asprintf
-      "type parameter `%s` has no best solution, please provide an explicit instantiation."
-      (Cons.name c)))
-*)
 
 let fail_over_constrained lb c ub =
-  if debug then
-    error (Format.asprintf
-      "implicit instantiation of type parameter `%s` is over-constrained with%a\nwhere%a\nso that no valid instantiation exists"
-      (Cons.name c)
-      display_constraint (lb, c, ub)
-      display_rel (lb, "</:", ub))
-  else
-    error (Format.asprintf
-      "there is no consistent choice for type parameter `%s`."
-      (Cons.name c))
+  error (Format.asprintf
+           "there is no consistent choice for type parameter `%s`."
+           (Cons.name c))
 
 let choose_under_constrained ctx er lb c ub =
   match ConEnv.find c ctx.variances with
