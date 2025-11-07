@@ -586,7 +586,7 @@ let bi_match_subs scope_opt tbs ret_typ =
   in
   let ctx = { var_set; var_env; var_list = cs; bounds = (l, u); variances; ret_typ; to_verify = ([], [])} in
 
-  fun subs must_solve ->
+  fun subs ~must_solve ->
     let must_solve = List.map (open_ ts) must_solve in
     let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
     let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
