@@ -75,7 +75,8 @@ module Make (Cfg : Config) = struct
     | Object -> "Object"
     | Actor -> "Actor"
     | Module -> "Module"
-    | Memory -> "Memory")
+    | Memory -> "Memory"
+    | Mixin -> "Mixin")
     |> js_string
 
   let func_sort_js s =
@@ -297,6 +298,7 @@ module Make (Cfg : Config) = struct
     let open Syntax in
     let open Source in
     match e.it with
+    | HoleE (_, e) -> exp_js !e
     | VarE x -> to_js_object "VarE" [| id x |]
     | LitE l -> to_js_object "LitE" [| lit_js !l |]
     | ActorUrlE e -> to_js_object "ActorUrlE" [| exp_js e |]
@@ -345,7 +347,7 @@ module Make (Cfg : Config) = struct
         to_js_object "ObjE"
           (exps bases @ [ js_string "with" ] @ List.map exp_field_js efs
           |> Array.of_list)
-    | DotE (e, x) -> to_js_object "DotE" [| exp_js e; id x |]
+    | DotE (e, x, _) -> to_js_object "DotE" [| exp_js e; id x |]
     | AssignE (e1, e2) -> to_js_object "AssignE" [| exp_js e1; exp_js e2 |]
     | ArrayE (m, es) ->
         to_js_object "ArrayE" ([ mut_js m ] @ exps es |> Array.of_list)
@@ -367,9 +369,9 @@ module Make (Cfg : Config) = struct
                exp_js e';
              ]
           |> Array.of_list)
-    | CallE (par_opt, e1, ts, e2) ->
+    | CallE (par_opt, e1, ts, (_, e2)) ->
         to_js_object "CallE"
-          (parenthetical par_opt ([ exp_js e1 ] @ inst ts @ [ exp_js e2 ]))
+          (parenthetical par_opt ([ exp_js e1 ] @ inst ts @ [ exp_js !e2 ]))
     | BlockE ds -> to_js_object "BlockE" (List.map dec_js ds |> Array.of_list)
     | NotE e -> to_js_object "NotE" [| exp_js e |]
     | AndE (e1, e2) -> to_js_object "AndE" [| exp_js e1; exp_js e2 |]
@@ -419,6 +421,7 @@ module Make (Cfg : Config) = struct
     | TagE (i, e) -> to_js_object "TagE" [| id i; exp_js e |]
     | PrimE p -> to_js_object "PrimE" [| js_string p |]
     | ImportE (f, _fp) -> to_js_object "ImportE" [| js_string f |]
+    | ImplicitLibE f -> to_js_object "ImplicitLibE" [| js_string f |]
     | ThrowE e -> to_js_object "ThrowE" [| exp_js e |]
     | TryE (e, cs, None) ->
         to_js_object "TryE"
@@ -560,6 +563,10 @@ module Make (Cfg : Config) = struct
                  id i;
                ]
              @ List.map dec_field_js dfs))
+    | MixinD (p, dfs) ->
+       to_js_object "MixinD" ((pat_js p :: List.map dec_field_js dfs) |> Array.of_list)
+    | IncludeD (i, e, _) ->
+       to_js_object "IncludeD" [| id i; exp_js e |]
 
   and pat_js p =
     let open Source in
