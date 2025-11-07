@@ -65,7 +65,9 @@ type ctx
   - [tbs] is the list of type parameters to instantiate
   - [ret_opt] is the optional return type mentioning tbs determining polarities
   - [subs] is the list of sub-type problems mentioning tbs either on left or right, but never both sides
-  - [deferred] is the list of types deferred until the next round; types containing tbs that are part of the subtype problems in the 2nd round
+  - [must_solve] is the list of types that must be solved in the 1st round.
+    If empty, all type variables in [tbs] will be solved in the 1st round.
+    Otherwise, only the type variables that appear free in [must_solve] will be solved in the 1st round.
 
   Returns: the solution and the remaining context for variables to be solved in the 2nd round.
 
@@ -76,7 +78,7 @@ val bi_match_subs :
   bind list ->
   typ option ->
   (typ * typ) list ->
-  typ list ->
+  must_solve: typ list ->
   typ list * ctx
 
 (** [finalize ts ctx subs] returns the final solution and the substitution of the remaining type variables from the 1st round.

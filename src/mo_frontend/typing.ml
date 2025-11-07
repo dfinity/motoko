@@ -1542,7 +1542,9 @@ type ctx_dot_candidate =
 (* Does an instantiation for [tbs] exist that makes [t1] <: [t2]? *)
 let permissive_sub t1 (tbs, t2) =
   try
-    let (inst, c) = Bi_match.bi_match_subs None tbs None [t1, t2] [] in
+    (* Solve only tvars from the receiver, let the unused tvars be unsolved *)
+    let (inst, c) = Bi_match.bi_match_subs None tbs None [t1, t2] ~must_solve:[t2] in
+    (* Call finalize to verify the instantiation (sanity checks), optional step. *)
     ignore (Bi_match.finalize inst c []);
     Some inst
   with _ ->
@@ -2799,7 +2801,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   let require_exact_arity = needs_holes || Option.is_some ctx_dot in
   let t_arg =
     if require_exact_arity && not is_correct_arity
-    then wrong_call_args env tbs exp2.at t_args implicits_arity syntax_args
+    then wrong_call_args env tbs ctx_dot exp2.at t_args implicits_arity syntax_args
     else T.seq t_args
   in
   if not env.pre then ref_exp2 := exp2; (* TODO: is this good enough *)
@@ -2847,9 +2849,13 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
 
-and wrong_call_args env tbs at t_args implicits_arity syntax_args =
-  let tvars = T.open_binds tbs in
-  let subst t = if tvars = [] then t else T.open_ tvars t in
+and wrong_call_args env tbs ctx_dot at t_args implicits_arity syntax_args =
+  let inst = 
+    match ctx_dot with
+    | Some (_, _, _, inst) -> inst
+    | None -> T.open_binds tbs
+  in
+  let subst t = if inst = [] then t else T.open_ inst t in
   let given_types = List.map (infer_exp env) syntax_args in
   let expected_types =
     t_args
@@ -2937,7 +2943,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
     (* i.e. exists minimal ts .
             t2 <: open_ ts t_arg /\
             t_expect_opt == Some t -> open ts_ t_ret <: t *)
-    let (ts, remaining) = Bi_match.bi_match_subs (scope_of_env env) tbs ret_typ_opt subs must_solve in
+    let (ts, remaining) = Bi_match.bi_match_subs (scope_of_env env) tbs ret_typ_opt subs ~must_solve in
 
     (* A partial solution for a better error message in case of an error *)
     err_ts := Some ts;

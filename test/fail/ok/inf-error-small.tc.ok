@@ -18,7 +18,7 @@ to produce result of expected type
   Text
 inf-error-small.mo:47.26-47.58: type error [M0233], wrong number of arguments: expected 1 but got 3
 Expected 1 argument of type:
-  (n : K)
+  (n : Nat)
 But got 3 arguments of type:
   {map : [(Nat, [var Text])]}
   (n : Nat, m : Nat) -> Order

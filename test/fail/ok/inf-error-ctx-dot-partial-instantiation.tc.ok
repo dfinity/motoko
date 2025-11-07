@@ -1,0 +1,13 @@
+inf-error-ctx-dot-partial-instantiation.mo:14.23-14.44: type error [M0098], cannot apply function `.map` of type
+  (project : (Nat, Text) -> V2) -> Map<Nat, V2>
+to argument of type
+  Text
+inf-error-ctx-dot-partial-instantiation.mo:15.23-15.47: type error [M0098], cannot apply function `.map` of type
+  (project : (Nat, Text) -> V2) -> Map<Nat, V2>
+to argument of type
+  {map : [(Nat, [var Text])]}
+inf-error-ctx-dot-partial-instantiation.mo:16.23-16.56: type error [M0098], cannot apply function `.map` of type
+  (project : (Nat, Text) -> V2) -> Map<Nat, V2>
+to argument of type
+  (project : (Nat, Text) -> V2)
+Hint: Add explicit type instantiation, e.g. <Nat, Text, Nat>
