@@ -234,9 +234,9 @@ let bi_match_typs ctx =
     | x1::xs1', x2::xs2' ->
       (match p rel eq inst any x1 x2 with
       | Some inst -> bi_match_list_result p rel eq inst any xs1' xs2'
-      | None -> Result.Error (inst, ([x1], [x2])))
+      | None -> Result.Error (inst, (x1, x2)))
     | [], [] -> Ok inst
-    | _, _ -> Result.Error (inst, (xs1, xs2))
+    | _, _ -> assert false
   in
 
   let rec bi_match_list p rel eq inst any xs1 xs2 =
@@ -515,9 +515,8 @@ let solve ctx (ts1, ts2) must_solve =
         "bug: inferred bad instantiation\n  <%s>\nplease report this error message and, for now, supply an explicit instantiation instead"
         instantiation)
     end
-  | Error (inst, (ts1, ts2)) ->
-    let tts = List.combine ts1 ts2 in
-    let pretty_sub (t1,t2) =
+  | Error (inst, (t1, t2)) ->
+    let pretty_sub (t1, t2) =
       match t2 with
       | Named ("@ret", t2) ->
         Format.asprintf "%a  (for the return type) " display_rel (t1, "<:", t2)
@@ -531,13 +530,11 @@ let solve ctx (ts1, ts2) must_solve =
         error (Format.asprintf
                     "no instantiation of `%s` makes%s"
                     (String.concat ", " (List.map string_of_con ctx.var_list))
-                    (String.concat "\nand"
-                       (List.map pretty_sub tts)))
+                    (pretty_sub (t1, t2)))
       else
         error (Format.asprintf
                     "there is no way to satisfy subtyping%s"
-                    (String.concat "\nand"
-                       (List.map pretty_sub tts)))
+                    (pretty_sub (t1, t2)))
 
 
 let bi_match_subs scope_opt tbs ret_typ =
