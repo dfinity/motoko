@@ -5,7 +5,7 @@ to argument of type
 to produce result of expected type
   Text
 because there is no way to satisfy subtyping
-  ?V  <:  Text  (for the return type) 
+  ?Text  <:  Text  (for the return type) 
 inf-error-small.mo:44.13-44.47: type error [M0098], cannot apply function `.get` of type
   <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
 to argument of type
@@ -13,7 +13,7 @@ to argument of type
 to produce result of expected type
   Text
 because there is no way to satisfy subtyping
-  ?V  <:  Text  (for the return type) 
+  ?Text  <:  Text  (for the return type) 
 inf-error-small.mo:46.13-46.45: type error [M0098], cannot apply function `.get` of type
   <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
 to argument of type
@@ -21,10 +21,10 @@ to argument of type
 to produce result of expected type
   Text
 because there is no way to satisfy subtyping
-  ?V  <:  Text  (for the return type) 
+  ?Text  <:  Text  (for the return type) 
 inf-error-small.mo:47.26-47.58: type error [M0233], wrong number of arguments: expected 1 but got 3
 Expected 1 argument of type:
-  (n : K)
+  (n : Nat)
 But got 3 arguments of type:
   {map : [(Nat, [var Text])]}
   (n : Nat, m : Nat) -> Order
@@ -36,7 +36,7 @@ to argument of type
 to produce result of expected type
   Text
 because there is no way to satisfy subtyping
-  ?V  <:  Text  (for the return type) 
+  ?Text  <:  Text  (for the return type) 
 inf-error-small.mo:50.13-50.29: type error [M0098], cannot apply function `.get` of type
   <K, V>(n : K) -> ?V
 to argument of type
@@ -44,4 +44,30 @@ to argument of type
 to produce result of expected type
   Bool
 because there is no way to satisfy subtyping
-  ?V  <:  Bool  (for the return type) 
+  ?Text  <:  Bool  (for the return type) 
+inf-error-small.mo:53.38-53.40: type error [M0233], wrong number of arguments: expected 1 but got 0
+Expected 1 argument of type:
+  (n : Nat)
+But got no arguments
+inf-error-small.mo:54.25-54.46: type error [M0230], Cannot determine implicit argument `compare` of type
+  (Any, Any) -> Order
+Hint: If you're trying to omit an implicit argument named `compare` you need to have a matching declaration named `compare` in scope.
+inf-error-small.mo:55.25-55.59: type error [M0098], cannot apply function `.get` of type
+  <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
+to argument of type
+  ((n : Nat, m : Nat) -> Order, Text)
+because there is no way to satisfy subtyping
+  Text  <:  Nat  (for argument `n`) 
+inf-error-small.mo:56.25-56.57: type error [M0098], cannot apply function `.get` of type
+  <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
+to argument of type
+  ({map : [(Nat, [var Text])]}, Text)
+because there is no way to satisfy subtyping
+  {map : [(Nat, [var Text])]}  <:  (implicit : (Nat, Nat) -> Order)  (for argument `compare`) 
+inf-error-small.mo:57.38-57.70: type error [M0233], wrong number of arguments: expected 1 but got 3
+Expected 1 argument of type:
+  (n : Nat)
+But got 3 arguments of type:
+  {map : [(Nat, [var Text])]}
+  (n : Nat, m : Nat) -> Order
+  Text

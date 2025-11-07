@@ -47,6 +47,7 @@ open Type
 exception Bimatch of {
   message : string;
   hint : string option;
+  (* inst : typ list option; *)
 }
 
 val name_ret_typ : typ -> typ

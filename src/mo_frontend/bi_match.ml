@@ -31,10 +31,14 @@ let display_typ = Lib.Format.display pp_typ
 exception Bimatch of {
   message : string;
   hint : string option;
+  (* inst : typ list option; *)
 }
 
+let bimatch ?(hint=None) message =
+  Bimatch { message; hint }
+
 let error ?(hint=None) message =
-  raise (Bimatch { message; hint })
+  raise (bimatch ~hint message)
 
 (* add a dummy name to recognize the return type *)
 let name_ret_typ typ = Named ("@ret", typ)
@@ -106,8 +110,15 @@ module Debug = struct
 
   let print_partial_solution env unsolved =
     print_endline (Printf.sprintf "env : %s" (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s := %s" (Cons.name c) (string_of_typ t)) (ConEnv.bindings env))));
-    print_endline (Printf.sprintf "unsolved : %s" (String.concat ", " (List.map Cons.name (ConSet.elements !unsolved))));
+    print_endline (Printf.sprintf "unsolved : %s" (String.concat ", " (List.map Cons.name (ConSet.elements unsolved))));
     print_endline ""
+
+  let print_update_bound c current t updated =
+    print_endline (Printf.sprintf "update_bound %s: current %s with %s to %s"
+      (Cons.name c)
+      (string_of_typ current)
+      (string_of_typ t)
+      (string_of_typ updated))
 end
 
 module SS = Set.Make (OrdPair)
@@ -192,15 +203,16 @@ let fail_under_constrained lb c ub =
       (Cons.name c)))
 *)
 
-let fail_over_constrained lb c ub =
+(* TODO: is this dead code now? considering what the `check` is doing? *)
+let over_constrained_exn lb c ub =
   if debug then
-    error (Format.asprintf
+    bimatch (Format.asprintf
       "implicit instantiation of type parameter `%s` is over-constrained with%a\nwhere%a\nso that no valid instantiation exists"
       (Cons.name c)
       display_constraint (lb, c, ub)
       display_rel (lb, "</:", ub))
   else
-    error (Format.asprintf
+    bimatch (Format.asprintf
       "there is no consistent choice for type parameter `%s`."
       (Cons.name c))
 
@@ -226,17 +238,37 @@ let choose_under_constrained ctx er lb c ub =
     (* | _ ->
      fail_under_constrained lb c ub *)
 
+let check c (l, u) =
+  let lb = ConEnv.find c l in
+  let ub = ConEnv.find c u in
+  if not (sub lb ub) then
+    (* Catch the over-constrained error early *)
+    None
+  else
+    Some (l, u)
+
+let update binop c t ce =
+  let current = ConEnv.find c ce in
+  let updated = binop ?src_fields:None t current in
+  if debug then
+    Debug.print_update_bound c current t updated;
+  (* Future work: consider an error when joining two unrelated types, e.g. [lub Nat Text = Any], would be a breaking change *)
+  ConEnv.add c updated ce
+
 let bi_match_typs ctx =
   let flexible c = ConSet.mem c ctx.var_set in
 
+  let used = ref ConSet.empty in
   let rec bi_match_list_result p rel eq inst any xs1 xs2 =
     match (xs1, xs2) with
     | x1::xs1', x2::xs2' ->
       (match p rel eq inst any x1 x2 with
-      | Some inst -> bi_match_list_result p rel eq inst any xs1' xs2'
-      | None -> Result.Error (inst, ([x1], [x2])))
+      | Some inst -> 
+        used := ConSet.union (cons_typs [x1; x2]) !used;
+        bi_match_list_result p rel eq inst any xs1' xs2'
+      | None -> Result.Error (inst, !used, ([x1], [x2])))
     | [], [] -> Ok inst
-    | _, _ -> Result.Error (inst, (xs1, xs2))
+    | _, _ -> Result.Error (inst, !used, ([], []))
   in
 
   let rec bi_match_list p rel eq inst any xs1 xs2 =
@@ -247,10 +279,6 @@ let bi_match_typs ctx =
       | None -> None)
     | [], [] -> Some inst
     | _, _ -> None
-  in
-
-  let update binop c t ce =
-    ConEnv.add c (binop ?src_fields:None t (ConEnv.find c ce)) ce
   in
 
   let rec bi_match_typ rel eq ((l, u) as inst) any t1 t2 =
@@ -277,14 +305,14 @@ let bi_match_typs ctx =
       assert (ts2 = []);
       if mentions t1 any || not (denotable t1) then
         None
-      else Some
+      else check con2
        (update lub con2 t1 l,
         if rel != eq then u else update glb con2 t1 u)
     | Con (con1, ts1), _ when flexible con1 ->
       assert (ts1 = []);
       if mentions t2 any || not (denotable t2) then
         None
-      else Some
+      else check con1
         ((if rel != eq then l else update lub con1 t2 l),
          update glb con1 t2 u)
     | Con (con1, _), Con (con2, _) when flexible con1 && flexible con2 ->
@@ -429,7 +457,7 @@ let is_closed ctx t = if is_ctx_empty ctx then true else
 (** Raises when [er] is non-empty, optionally with a suggested type instantiation. *)
 let maybe_raise_underconstrained ctx env er =
   let error_msg = ErrorUnderconstrained.to_string er in
-  if error_msg = "" then () else
+  if error_msg = "" then None else
   let error_msg, hint =
     let ts = List.map (fun c -> ConEnv.find c env) ctx.var_list in
     if List.for_all (is_closed ctx) ts then
@@ -439,7 +467,28 @@ let maybe_raise_underconstrained ctx env er =
     else
       error_msg, None
   in
-  error error_msg ~hint
+  Some (bimatch error_msg ~hint)
+
+let solve_bounds on_error ctx to_defer l u =
+  let unsolved = ref ConSet.empty in
+  let er = ErrorUnderconstrained.empty () in
+  let env = l |> ConEnv.mapi (fun c lb ->
+    let ub = ConEnv.find c u in
+    if eq lb ub then
+      Some ub
+    else if sub lb ub then
+      if ConSet.mem c to_defer then begin
+        (* Defer solving the type parameter to the next round *)
+        unsolved := ConSet.add c !unsolved;
+        Some (ConEnv.find c ctx.var_env).t
+      end else
+        Some (choose_under_constrained ctx er lb c ub)
+    else (
+      on_error (over_constrained_exn lb c ub);
+      None)
+  ) |> ConEnv.filter_map (fun c o -> o) in
+  Option.iter on_error (maybe_raise_underconstrained ctx env er);
+  env, !unsolved
 
 (** Solves the given constraints [ts1, ts2] in the given context [ctx].
     Unused type variables can be deferred to the next round.
@@ -469,25 +518,8 @@ let solve ctx (ts1, ts2) must_solve =
   with
   | Ok (l, u) ->
     if debug then Debug.print_solved_bounds l u;
-    let unsolved = ref ConSet.empty in
-    let er = ErrorUnderconstrained.empty () in
-    let env = l |> ConEnv.mapi (fun c lb ->
-      let ub = ConEnv.find c u in
-      if eq lb ub then
-        ub
-      else if sub lb ub then
-        if ConSet.mem c to_defer then begin
-          (* Defer solving the type parameter to the next round *)
-          unsolved := ConSet.add c !unsolved;
-          (ConEnv.find c ctx.var_env).t
-        end else
-          choose_under_constrained ctx er lb c ub
-      else
-        fail_over_constrained lb c ub)
-    in
-    maybe_raise_underconstrained ctx env er;
-    if debug then Debug.print_partial_solution env unsolved;
-    let var_set = !unsolved in
+    let env, var_set = solve_bounds raise ctx to_defer l u in
+    if debug then Debug.print_partial_solution env var_set;
     let remaining = if ConSet.is_empty var_set then empty_ctx else {
       var_set;
       var_env = ConEnv.restrict var_set ctx.var_env;
@@ -515,9 +547,14 @@ let solve ctx (ts1, ts2) must_solve =
         "bug: inferred bad instantiation\n  <%s>\nplease report this error message and, for now, supply an explicit instantiation instead"
         instantiation)
     end
-  | Error (inst, (ts1, ts2)) ->
+  | Error ((l, u), used, (ts1, ts2)) ->
+    let unused = ConSet.diff ctx.var_set used in
+    let to_defer = unused in
+    let env, _ = solve_bounds ignore ctx to_defer l u in
     let tts = List.combine ts1 ts2 in
     let pretty_sub (t1,t2) =
+      let t1 = subst env t1 in
+      let t2 = subst env t2 in
       match t2 with
       | Named ("@ret", t2) ->
         Format.asprintf "%a  (for the return type) " display_rel (t1, "<:", t2)
