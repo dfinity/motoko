@@ -10,4 +10,4 @@ inf-error-ctx-dot-partial-instantiation.mo:16.23-16.56: type error [M0098], cann
   (project : (Nat, Text) -> V2) -> Map<Nat, V2>
 to argument of type
   (project : (Nat, Text) -> V2)
-Hint: Add explicit type instantiation, e.g. <Nat>
+Hint: Add explicit type instantiation, e.g. <Nat, Text, Nat>
