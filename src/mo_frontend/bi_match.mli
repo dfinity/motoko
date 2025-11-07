@@ -67,7 +67,7 @@ type ctx
   - [subs] is the list of sub-type problems mentioning tbs either on left or right, but never both sides
   - [must_solve] is the list of types that must be solved in the 1st round.
     If empty, all type variables in [tbs] will be solved in the 1st round.
-    Otherwise, only the type variables in [must_solve] will be solved in the 1st round.
+    Otherwise, only the type variables that appear free in [must_solve] will be solved in the 1st round.
 
   Returns: the solution and the remaining context for variables to be solved in the 2nd round.
 
