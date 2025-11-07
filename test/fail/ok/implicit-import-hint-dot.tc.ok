@@ -1,6 +1,6 @@
 implicit-import-hint-dot.mo:13.10-13.12: type error [M0233], wrong number of arguments: expected 1 but got 0
 Expected 1 argument of type:
-  (key : K)
+  (key : Text)
 But got no arguments
 implicit-import-hint-dot.mo:17.12-17.26: type error [M0230], Cannot determine implicit argument `compare` of type
   (Text, Text) -> Order
