@@ -3046,18 +3046,15 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
     in
     let t2' = remove_holes t2 in
     error env at "M0098"
-      "cannot apply %s of type%a\nto argument of type%a%s\nbecause %s%s"
+      "cannot apply %s of type%a\nto argument of type%a\nbecause %s%s"
       desc
       display_typ t1''
       display_typ (err_subst t2')
-        (match t_expect_opt with
-         | None -> ""
-         | Some t ->
-           Format.asprintf "\nto produce result of expected type%a" display_typ t)
-        message
-        (match hint with
-         | None -> ""
-         | Some hint -> Format.asprintf "\n%s" hint)
+      message
+      (match hint with
+       | None -> ""
+       | Some hint -> Format.asprintf "\n%s" hint)
+
 and is_redundant_instantiation ts env infer_instantiation =
   assert env.pre;
   match Diag.with_message_store (recover_opt (fun msgs ->

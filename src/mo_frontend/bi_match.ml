@@ -525,7 +525,7 @@ let solve ctx (ts1, ts2) must_solve =
     let pretty_sub (t1, t2) =
       match t2 with
       | Named ("@ret", t2) ->
-        Format.asprintf "%a  (for the return type) " display_rel (t1, "<:", t2)
+        Format.asprintf "%a  (for the expected return type) " display_rel (t1, "<:", t2)
       | Named (n, t2) ->
         Format.asprintf "%a  (for argument `%s`) " display_rel (t1, "<:", t2) n
       | t2 ->

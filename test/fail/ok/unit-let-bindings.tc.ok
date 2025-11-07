@@ -3,16 +3,12 @@ unit-let-bindings.mo:9.10-9.35: type error [M0098], cannot apply function of typ
   <T>[var T] -> ()
 to argument of type
   ()
-to produce result of expected type
-  Any
 because there is no way to satisfy subtyping
   ()  <:  [var T]
 unit-let-bindings.mo:13.3-13.12: warning [M0239], Avoid binding a unit `()` result; remove `var` and keep the expression
 unit-let-bindings.mo:19.3-19.49: type error [M0098], cannot apply function of type
   <T>[var T] -> ()
 to argument of type
-  ()
-to produce result of expected type
   ()
 because there is no way to satisfy subtyping
   ()  <:  [var T]

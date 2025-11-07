@@ -3,8 +3,6 @@ inf-error.mo:46.13-46.52: type error [M0098], cannot apply function of type
     ?V
 to argument of type
   ({map : [(Nat, [var Text])]}, (n : Nat, m : Nat) -> Order, Text)
-to produce result of expected type
-  Any
 because there is no consistent choice for type parameter `K`.
 inf-error.mo:47.13-47.39: type error [M0230], Cannot determine implicit argument `compare` of type
   (Any, Any) -> Order
@@ -13,8 +11,6 @@ inf-error.mo:51.13-51.47: type error [M0098], cannot apply function `.get` of ty
   <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
 to argument of type
   ((n : Nat, m : Nat) -> Order, Text)
-to produce result of expected type
-  Any
 because there is no consistent choice for type parameter `K`.
 inf-error.mo:52.13-52.34: type error [M0230], Cannot determine implicit argument `compare` of type
   (Any, Any) -> Order
@@ -25,8 +21,6 @@ inf-error.mo:59.13-59.56: type error [M0098], cannot apply function of type
     Map<K, V>
 to argument of type
   ({map : [(Nat, [var Text])]}, (n : Nat, m : Nat) -> Order, Text, Text)
-to produce result of expected type
-  Any
 because there is no consistent choice for type parameter `K`.
 inf-error.mo:60.13-60.43: type error [M0230], Cannot determine implicit argument `compare` of type
   (Any, Any) -> Order
@@ -35,15 +29,11 @@ inf-error.mo:62.13-62.51: type error [M0098], cannot apply function `.set` of ty
   <K, V>(compare : (implicit : (K, K) -> Order), n : K, v : V) -> Map<K, V>
 to argument of type
   ((n : Nat, m : Nat) -> Order, Text, Text)
-to produce result of expected type
-  Any
 because there is no consistent choice for type parameter `K`.
 inf-error.mo:64.13-64.51: type error [M0098], cannot apply function `.set` of type
   <K, V>(compare : (implicit : (K, K) -> Order), n : K, v : V) -> Map<K, V>
 to argument of type
   ((n : Nat, m : Nat) -> Order, Text, Text)
-to produce result of expected type
-  Any
 because there is no consistent choice for type parameter `K`.
 inf-error.mo:65.13-65.38: type error [M0230], Cannot determine implicit argument `compare` of type
   (Any, Any) -> Order
