@@ -7,7 +7,7 @@ accept:
 	../run.sh $(RUNFLAGS) -a *.mo
 
 accept-par:
-	find . -maxdepth 1 -name '*.mo' -print0 | xargs -0 -P$(shell nproc) -I{} ../run.sh $(RUNFLAGS) -a {}
+	find . -maxdepth 1 -name '*.mo' -print0 | xargs -0 -P4 -I{} ../run.sh $(RUNFLAGS) -a {}
 
 clean:
 	rm -rf _out
