@@ -435,7 +435,7 @@ let maybe_raise_underconstrained ctx env er =
     if List.for_all (is_closed ctx) ts then
       let inst = String.concat ", " (List.map string_of_typ ts) in
       let hint = Format.asprintf "Hint: Add explicit type instantiation, e.g. <%s>" inst in
-      Format.asprintf "%s\n%s" error_msg hint, Some hint
+      error_msg, Some hint
     else
       error_msg, None
   in
