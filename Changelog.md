@@ -2,6 +2,10 @@
 
 * motoko (`moc`)
 
+  * Improved error messages for context dot: only the receiver type variables are solved, remaining type variables stay unsolved, not solved to `Any` or `Non` (#5634).
+
+  * Fixed the type instantiation hint to have the correct arity (#5634).
+
   * Improved type inference of the record update syntax (#5625).
 
   * New flag `--error-recovery` to enable reporting of multiple syntax errors (#5632).
