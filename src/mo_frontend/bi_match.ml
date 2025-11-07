@@ -196,8 +196,6 @@ let choose_under_constrained ctx er lb c ub =
     | t, _ ->
       ErrorUnderconstrained.add er lb c ub;
       if t = Non then ub else lb
-    (* | _ ->
-     fail_under_constrained lb c ub *)
 
 let bi_match_typs ctx =
   let flexible c = ConSet.mem c ctx.var_set in
