@@ -6,6 +6,8 @@
 
   * Fixed the type instantiation hint to have the correct arity (#5634).
 
+  * Fix for #5618 (compiling dotted `await`s) (#5622).
+
   * Improved type inference of the record update syntax (#5625).
 
   * New flag `--error-recovery` to enable reporting of multiple syntax errors (#5632).
