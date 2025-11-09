@@ -71,11 +71,11 @@
     "ic-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1761929779,
-        "narHash": "sha256-5jqAkVDelrPBepsaODDGUCKNe2L1DGm9wSEagL4t1BU=",
+        "lastModified": 1762544430,
+        "narHash": "sha256-4b5lrhhE3/kHeVhT0djtZMkPFBSSMXFo9GAM5N11i04=",
         "owner": "dfinity",
         "repo": "ic",
-        "rev": "7a8c16764cdcfb901759ff62e64ac983633fcc17",
+        "rev": "6c16b6b54e2457c47f52a6a50fc88cb32f89d9b1",
         "type": "github"
       },
       "original": {
@@ -283,11 +283,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1761964689,
-        "narHash": "sha256-Zo3LQQDz+64EQ9zor/WmeNTFLoZkjmhp0UY3G0D3seE=",
+        "lastModified": 1762569282,
+        "narHash": "sha256-vINZAJpXQTZd5cfh06Rcw7hesH7sGSvi+Tn+HUieJn8=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "63d22578600f70d293aede6bc737efef60ebd97f",
+        "rev": "a35a6144b976f70827c2fe2f5c89d16d8f9179d8",
         "type": "github"
       },
       "original": {
