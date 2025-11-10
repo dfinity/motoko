@@ -146,8 +146,8 @@ let is_unsolved_var ctx t =
 
 (** Check partial instantiation [env] satisfies bounds and all the pairwise sub-typing relations in [ts1, ts2];
     used to sanity check inferred instantiations *)
-let verify_inst ~ctx ~remaining env (ts1, ts2) =
-  ConSet.subset (ConEnv.dom ctx.var_env) (ConEnv.dom env) &&
+let verify_inst ~ctx ~remaining (ts1, ts2) =
+  let env = remaining.env in
   ConEnv.for_all (fun c { t; bind } ->
     (* NB: bounds are closed, no need to substitute *)
     is_unsolved_var remaining t || sub (ConEnv.find c env) bind.bound) ctx.var_env &&
@@ -459,7 +459,7 @@ let solve_bounds on_error ctx to_defer l u =
       if ConSet.mem c to_defer then begin
         (* Defer solving the type parameter to the next round *)
         unsolved := ConSet.add c !unsolved;
-        Some (ConEnv.find c ctx.var_env).t
+        None
       end else
         Some (choose_under_constrained ctx er lb c ub)
     else (
@@ -467,7 +467,7 @@ let solve_bounds on_error ctx to_defer l u =
       None)
   ) |> ConEnv.filter_map (fun c o -> o) in
   (* Join the previous solution with the new one *)
-  let env = ConEnv.union (fun c _ t -> Some t) ctx.env env in
+  let env = ConEnv.disjoint_union ctx.env env in
   Option.iter on_error (maybe_raise_underconstrained ctx env !unsolved er);
   env, !unsolved
 
@@ -518,7 +518,7 @@ let solve ctx (ts1, ts2) must_solve =
       let dts1, dts2 = ctx.to_verify in
       (dts1 @ ts1, dts2 @ ts2)
     in
-    if verify_inst ~ctx ~remaining env verify_now then
+    if verify_inst ~ctx ~remaining verify_now then
       env, remaining
     else begin
       let instantiation = ConEnv.bindings env
