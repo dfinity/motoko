@@ -60,6 +60,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_NOT -> NOT
       | T_NEQOP -> NEQOP
       | T_NAT -> NAT "<nat>"
+      | T_NUM_DOT_ID -> NUM_DOT_ID ("<num>","<id>")
       | T_MULOP -> MULOP
       | T_MULASSIGN -> MULASSIGN
       | T_MODULE -> MODULE

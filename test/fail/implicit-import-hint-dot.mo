@@ -1,5 +1,5 @@
 //MOC-FLAG --ai-errors
-//MOC-FLAG --package core core-stub/src
+//MOC-FLAG --package core ../core-stub/src
 
 import Map "mo:core/Map";
 

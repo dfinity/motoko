@@ -282,6 +282,7 @@ and exp' at note = function
   | S.AssertE (_, e) -> (unitE ()).it
   | S.AnnotE (e, _) -> assert false
   | S.ImportE (f, ir) -> raise (Invalid_argument (Printf.sprintf "Import expression found in unit body: %s" f))
+  | S.ImplicitLibE lib -> (varE (var (id_of_full_path lib) note.Note.typ)).it
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
   | S.IgnoreE e ->
     I.BlockE ([
@@ -1214,9 +1215,13 @@ and transform_import (i : S.import) : Ir.dec list =
     | S.IDLPath (fp, canister_id) ->
       primE (I.ActorOfIdBlob t) [blobE canister_id]
     | S.ImportedValuePath path ->
-       let contents = Lib.FilePath.contents path in
-       assert T.(t = Prim Blob);
-       blobE contents
+       if !Mo_config.Flags.blob_import_placeholders then
+         raise (Invalid_argument ("blob import placeholder"))
+       else begin
+         let contents = Lib.FilePath.contents path in
+         assert T.(t = Prim Blob);
+         blobE contents
+       end
   in [ letP (pat p) rhs ]
 
 type import_declaration = Ir.dec list

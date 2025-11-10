@@ -113,6 +113,8 @@ let char = '\'' (character | byte+) '\''
 let text = '"' character* '"'
 let id = ((letter  | '_') ((letter | digit | '_')*))
 let privileged_id = "@" id
+let num_dot_ident =
+    num '.' id
 
 let reserved = ([^'\"''('')'';'] # space)+  (* hack for table size *)
 
@@ -181,6 +183,11 @@ rule token mode = parse
 
   | '.' (num as s) { DOT_NUM s }
   | nat as s { NAT s }
+  | num_dot_ident as s {
+      match Lib.String.split s '.' with
+      | [n; id] -> NUM_DOT_ID (n, id)
+      | _ -> assert false
+    }
   | float as s { FLOAT s }
   | char as s { CHAR (char lexbuf s) }
   | text as s { TEXT (text lexbuf s) }

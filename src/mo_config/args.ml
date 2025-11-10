@@ -26,7 +26,8 @@ let package_args = [
   ]
 
 let error_args = [
-  "--error-detail", Arg.Set_int Flags.error_detail, "<n>  set error message detail for syntax errors, n in [0..3] (default 2)"
+  "--error-detail", Arg.Set_int Flags.error_detail, "<n>  set error message detail for syntax errors, n in [0..3] (default 2)";
+  "--error-recovery", Arg.Set Flags.error_recovery, " report multiple syntax errors"
   (* TODO move --hide-warnings here? *)
   ]
 
@@ -40,8 +41,9 @@ let inclusion_args = [
     \      <file>"
   ]
 
-let ai_errors_args = [
+let ai_args = [
   "--ai-errors", Arg.Set Flags.ai_errors, " emit AI tailored errors";
+  "--implicit-package", Arg.String (fun s -> Flags.implicit_package := Some s), _UNDOCUMENTED_ " allow contextual dot and implicits resolution from all modules in the given package"
 ]
 
 let persistent_actors_args = [

@@ -1,17 +1,11 @@
-implicit-import-hint-dot.mo:13.3-13.12: type error [M0098], cannot implicitly instantiate function of type
-  <K, V>(map : Map<K, V>, compare : implicit (K, K) -> Order, key : K) -> ?V
-to argument of type
-  (compare : implicit (K, K) -> Order, key : K)
-to produce result of type
-  ()
-because no instantiation of K, V makes
-  ?V  <:  ()
-and
-  {var root : Node<Text, Text>; var size_ : Nat}  <:  (map : Map<K, V>)
-implicit-import-hint-dot.mo:17.20-17.25: type error [M0230], Cannot determine implicit argument 'compare' of type
+implicit-import-hint-dot.mo:13.10-13.12: type error [M0233], wrong number of arguments: expected 1 but got 0
+Expected 1 argument of type:
+  (key : Text)
+But got no arguments
+implicit-import-hint-dot.mo:17.12-17.26: type error [M0230], Cannot determine implicit argument `compare` of type
   (Text, Text) -> Order
 Hint: Did you mean to import mo:core/Text?
 implicit-import-hint-dot.mo:18.5-18.12: type error [M0072], field compare does not exist in type:
-  {chars : () -> {next : () -> ?Char}; size : () -> Nat}
+  Text
 The field compare is not available. Try something else?
 Hint: Did you mean to import mo:core/Text?
