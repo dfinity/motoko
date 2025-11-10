@@ -219,14 +219,14 @@ let choose_under_constrained ctx er lb c ub =
       ErrorUnderconstrained.add er lb c ub;
       if t = Non then ub else lb
 
-let check used c (l, u) =
+let check c (l, u) =
   let lb = ConEnv.find c l in
   let ub = ConEnv.find c u in
   if not (sub lb ub) then
     (* Catch the over-constrained error early *)
     None
   else
-    Some ((l, u), ConSet.add c used)
+    Some (l, u)
 
 let update binop c t ce =
   let current = ConEnv.find c ce in
@@ -259,7 +259,7 @@ let bi_match_typs ctx =
     | _, _ -> None
   in
 
-  let rec bi_match_typ rel eq (((l, u), used) as inst) any t1 t2 =
+  let rec bi_match_typ rel eq ((l, u) as inst) any t1 t2 =
     if t1 == t2 || SS.mem (t1, t2) !rel
     then Some inst
     else begin
@@ -283,14 +283,14 @@ let bi_match_typs ctx =
       assert (ts2 = []);
       if mentions t1 any || not (denotable t1) then
         None
-      else check used con2
+      else check con2
        (update lub con2 t1 l,
         if rel != eq then u else update glb con2 t1 u)
     | Con (con1, ts1), _ when flexible con1 ->
       assert (ts1 = []);
       if mentions t2 any || not (denotable t2) then
         None
-      else check used con1
+      else check con1
         ((if rel != eq then l else update lub con1 t2 l),
          update glb con1 t2 u)
     | Con (con1, _), Con (con2, _) when flexible con1 && flexible con2 ->
@@ -497,9 +497,9 @@ let solve ctx (ts1, ts2) must_solve =
     to_defer, not (ConSet.disjoint used to_defer)
   in
   match
-    bi_match_typs ctx (ref SS.empty) (ref SS.empty) (ctx.bounds, ConSet.empty) ConSet.empty ts1 ts2
+    bi_match_typs ctx (ref SS.empty) (ref SS.empty) ctx.bounds ConSet.empty ts1 ts2
   with
-  | Ok ((l, u), _used) ->
+  | Ok (l, u) ->
     let env, var_set = solve_bounds raise ctx to_defer l u in
     let remaining = if ConSet.is_empty var_set then empty_ctx env else {
       var_set;
@@ -529,9 +529,15 @@ let solve ctx (ts1, ts2) must_solve =
         "bug: inferred bad instantiation\n  <%s>\nplease report this error message and, for now, supply an explicit instantiation instead"
         instantiation)
     end
-  | Error (((l, u), used), (t1, t2)) ->
-    let to_defer = ConSet.diff ctx.var_set used in
-    let env, _unsolved = solve_bounds ignore ctx to_defer l u in
+  | Error ((l, u), (t1, t2)) ->
+    let env, _unsolved = solve_bounds ignore ctx ConSet.empty l u in
+    (* Preprocess the substitution for better error messages. Drop variables solved to Any/Non.
+      1. Unconstrained variables are solved to Any/Non, don't substitute them, the error was not there.
+      2. Matching unrelated types, e.g. Nat and Text, is permitted (resulting in Any/Non bound),
+        However, it usually indicates an error. Don't solve these variables.
+        These potential extra errors are attached when 
+    *)
+    let env = env |> ConEnv.filter (fun c t -> not (eq Any t || eq Non t)) in
     let pretty_sub (t1,t2) =
       let t1 = subst env t1 in
       let t2 = subst env t2 in
@@ -543,9 +549,8 @@ let solve ctx (ts1, ts2) must_solve =
       | t2 ->
         Format.asprintf "%a" display_rel (t1, "<:", t2)
     in
-    error (Format.asprintf
-             "there is no way to satisfy subtyping%s"
-             (pretty_sub (t1, t2)))
+    error (Format.asprintf "there is no way to satisfy subtyping%s"
+      (pretty_sub (t1, t2)))
 
 let bi_match_subs scope_opt tbs ret_typ =
   (* Create a fresh constructor for each type parameter.
