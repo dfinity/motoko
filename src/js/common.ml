@@ -171,7 +171,7 @@ let js_parse_motoko enable_recovery s =
   let parse_result = parse_fn main_file (Js.to_string s) in
   js_result parse_result (fun (prog, _) ->
     let open Mo_def in
-    let module Arrange = Arrange.Make (struct
+    let module Arrange = Astjs.Make (struct
       let include_sources = true
       let include_type_rep = Arrange.Without_type_rep
       let include_types = false
@@ -179,7 +179,7 @@ let js_parse_motoko enable_recovery s =
       let include_parenthetical = false
       let main_file = Some main_file
     end)
-    in Js.some (js_of_sexpr (Arrange.prog prog)))
+    in Js.some (Arrange.prog_js prog))
 
 let js_parse_motoko_with_deps enable_recovery path s =
   let main_file = Js.to_string path in
@@ -198,7 +198,7 @@ let js_parse_motoko_with_deps enable_recovery path s =
   in
   js_result prog_and_deps_result (fun (prog, deps) ->
     let open Mo_def in
-    let module Arrange = Arrange.Make (struct
+    let module Arrange = Astjs.Make (struct
       let include_sources = true
       let include_type_rep = Arrange.Without_type_rep
       let include_types = false
@@ -208,7 +208,7 @@ let js_parse_motoko_with_deps enable_recovery path s =
     end) in
     Js.some (
       object%js
-        val ast = js_of_sexpr (Arrange.prog prog)
+        val ast = Arrange.prog_js prog
         val immediateImports =
           deps
           |> List.map (fun dep -> Js.string (Pipeline.resolved_import_name dep))
@@ -281,7 +281,7 @@ let js_parse_motoko_typed_with_scope_cache_impl enable_recovery paths scope_cach
     let progs =
       progs |> List.map (fun (prog, immediate_imports, sscope) ->
         let open Mo_def in
-        let module Arrange = Arrange.Make (struct
+        let module Arrange = Astjs.Make (struct
           let include_sources = true
           let include_type_rep = Arrange.With_type_rep (Some sscope.Mo_frontend.Scope.fld_src_env)
           let include_types = true
@@ -290,7 +290,7 @@ let js_parse_motoko_typed_with_scope_cache_impl enable_recovery paths scope_cach
           let main_file = Some prog.at.left.file
         end)
         in
-        ( js_of_sexpr (Arrange.prog prog)
+        ( Arrange.prog_js prog
         (* , js_of_sexpr (Arrange_sources_types.typ typ) *)
         , immediate_imports |> List.map Js.string |> Array.of_list |> Js.array )
       ) |> Array.of_list

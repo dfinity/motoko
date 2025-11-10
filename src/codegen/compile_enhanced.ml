@@ -8573,22 +8573,15 @@ module Serialization = struct
                 ]
             end
             begin
-              (* this check corresponds to `not (null <: <t>)` in the spec *)
-              match normalize t with
-              | Prim Null | Opt _ | Any ->
-                (* Ignore and return null *)
-                skip get_idltyp ^^
-                Opt.null_lit env
-              | _ ->
-                (* Try constituent type *)
-                let (set_val, get_val) = new_local env "val" in
-                get_idltyp ^^ go_can_recover env t ^^ set_val ^^
-                get_val ^^ compile_eq_const (coercion_error_value env) ^^
-                E.if1 I64Type
-                  (* decoding failed, but this is opt, so: return null *)
-                  (Opt.null_lit env)
-                  (* decoding succeeded, return opt value *)
-                  (Opt.inject env get_val)
+              (* Try constituent type *)
+              let (set_val, get_val) = new_local env "val" in
+              get_idltyp ^^ go_can_recover env t ^^ set_val ^^
+              get_val ^^ compile_eq_const (coercion_error_value env) ^^
+              E.if1 I64Type
+                (* decoding failed, but this is opt, so: return null *)
+                (Opt.null_lit env)
+                (* decoding succeeded, return opt value *)
+                (Opt.inject env get_val)
             end
           end
         end
@@ -8827,21 +8820,25 @@ module Serialization = struct
         ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
 
         G.concat_map (fun t ->
-          let can_recover, default_or_trap = Type.(
+          let can_recover, argument_default_or_trap, coercion_default_or_trap = Type.(
+            let null_result _ = Opt.null_lit env in
             match normalize t with
-            | Prim Null | Opt _ | Any ->
-              (Bool.lit true, fun msg -> Opt.null_lit env)
+            | Prim Null ->
+              (get_can_recover, null_result, fun _ -> compile_unboxed_const (coercion_error_value env))
+            | Opt _ | Any ->
+              (Bool.lit true, null_result, null_result)
             | _ ->
-              (get_can_recover, fun msg ->
+              let default_or_trap msg =
                 get_can_recover ^^
                 E.if1 I64Type
                    (compile_unboxed_const (coercion_error_value env))
-                   (E.trap_with env msg)))
+                   (E.trap_with env msg) in
+              (get_can_recover, default_or_trap, default_or_trap))
           in
           get_arg_count ^^
           compile_eq_const 0L ^^
           E.if1 I64Type
-           (default_or_trap ("IDL error: too few arguments " ^ ts_name))
+           (argument_default_or_trap ("IDL error: too few arguments " ^ ts_name))
            (begin
               (* set up variable frame arguments *)
               Stack.with_frame env "frame_ptr" 3L (fun () ->
@@ -8860,7 +8857,7 @@ module Serialization = struct
              get_arg_count ^^ compile_sub_const 1L ^^ set_arg_count ^^
              get_val ^^ compile_eq_const (coercion_error_value env) ^^
              (E.if1 I64Type
-               (default_or_trap "IDL error: coercion failure encountered")
+               (coercion_default_or_trap "IDL error: coercion failure encountered")
                get_val)
             end)
         ) ts ^^
