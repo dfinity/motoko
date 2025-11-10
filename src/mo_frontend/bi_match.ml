@@ -216,14 +216,14 @@ let choose_under_constrained ctx er lb c ub =
       ErrorUnderconstrained.add er lb c ub;
       if t = Non then ub else lb
 
-let check c (l, u) =
+let check used c (l, u) =
   let lb = ConEnv.find c l in
   let ub = ConEnv.find c u in
   if not (sub lb ub) then
     (* Catch the over-constrained error early *)
     None
   else
-    Some (l, u)
+    Some ((l, u), ConSet.add c used)
 
 let update binop c t ce =
   let current = ConEnv.find c ce in
@@ -236,15 +236,12 @@ let update binop c t ce =
 let bi_match_typs ctx =
   let flexible c = ConSet.mem c ctx.var_set in
 
-  let used = ref ConSet.empty in
   let rec bi_match_list_result p rel eq inst any xs1 xs2 =
     match (xs1, xs2) with
     | x1::xs1', x2::xs2' ->
       (match p rel eq inst any x1 x2 with
-      | Some inst -> 
-        used := ConSet.union (cons_typs [x1; x2]) !used;
-        bi_match_list_result p rel eq inst any xs1' xs2'
-      | None -> Result.Error (inst, !used, (x1, x2)))
+      | Some inst -> bi_match_list_result p rel eq inst any xs1' xs2'
+      | None -> Result.Error (inst, (x1, x2)))
     | [], [] -> Ok inst
     | _, _ -> assert false
   in
@@ -259,7 +256,7 @@ let bi_match_typs ctx =
     | _, _ -> None
   in
 
-  let rec bi_match_typ rel eq ((l, u) as inst) any t1 t2 =
+  let rec bi_match_typ rel eq (((l, u), used) as inst) any t1 t2 =
     if t1 == t2 || SS.mem (t1, t2) !rel
     then Some inst
     else begin
@@ -283,14 +280,14 @@ let bi_match_typs ctx =
       assert (ts2 = []);
       if mentions t1 any || not (denotable t1) then
         None
-      else check con2
+      else check used con2
        (update lub con2 t1 l,
         if rel != eq then u else update glb con2 t1 u)
     | Con (con1, ts1), _ when flexible con1 ->
       assert (ts1 = []);
       if mentions t2 any || not (denotable t2) then
         None
-      else check con1
+      else check used con1
         ((if rel != eq then l else update lub con1 t2 l),
          update glb con1 t2 u)
     | Con (con1, _), Con (con2, _) when flexible con1 && flexible con2 ->
@@ -449,6 +446,7 @@ let maybe_raise_underconstrained ctx env unsolved er =
   Some (bimatch error_msg ~hint)
 
 let solve_bounds on_error ctx to_defer l u =
+  if debug then Debug.print_solved_bounds l u;
   let unsolved = ref ConSet.empty in
   let er = ErrorUnderconstrained.empty () in
   let env = l |> ConEnv.mapi (fun c lb ->
@@ -469,6 +467,7 @@ let solve_bounds on_error ctx to_defer l u =
   (* Join the previous solution with the new one *)
   let env = ConEnv.disjoint_union ctx.env env in
   Option.iter on_error (maybe_raise_underconstrained ctx env !unsolved er);
+  if debug then Debug.print_partial_solution env !unsolved;
   env, !unsolved
 
 (** Solves the given constraints [ts1, ts2] in the given context [ctx].
@@ -495,12 +494,10 @@ let solve ctx (ts1, ts2) must_solve =
     to_defer, not (ConSet.disjoint used to_defer)
   in
   match
-    bi_match_typs ctx (ref SS.empty) (ref SS.empty) ctx.bounds ConSet.empty ts1 ts2
+    bi_match_typs ctx (ref SS.empty) (ref SS.empty) (ctx.bounds, ConSet.empty) ConSet.empty ts1 ts2
   with
-  | Ok (l, u) ->
-    if debug then Debug.print_solved_bounds l u;
+  | Ok ((l, u), _used) ->
     let env, var_set = solve_bounds raise ctx to_defer l u in
-    if debug then Debug.print_partial_solution env var_set;
     let remaining = if ConSet.is_empty var_set then empty_ctx env else {
       var_set;
       var_env = ConEnv.restrict var_set ctx.var_env;
@@ -529,9 +526,8 @@ let solve ctx (ts1, ts2) must_solve =
         "bug: inferred bad instantiation\n  <%s>\nplease report this error message and, for now, supply an explicit instantiation instead"
         instantiation)
     end
-  | Error ((l, u), used, (t1, t2)) ->
-    let unused = ConSet.diff ctx.var_set used in
-    let to_defer = unused in
+  | Error (((l, u), used), (t1, t2)) ->
+    let to_defer = ConSet.diff ctx.var_set used in
     let env, _unsolved = solve_bounds ignore ctx to_defer l u in
     let pretty_sub (t1,t2) =
       let t1 = subst env t1 in
