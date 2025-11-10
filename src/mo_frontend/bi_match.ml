@@ -43,6 +43,9 @@ let error ?(hint=None) message =
 (* add a dummy name to recognize the return type *)
 let name_ret_typ typ = Named ("@ret", typ)
 
+(* add a dummy name to recognize the return type *)
+let name_ret_typ typ = Named ("@ret", typ)
+
 type var_info = {
   (* Type.Con for this type variable *)
   t : typ;
