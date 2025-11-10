@@ -49,6 +49,8 @@ exception Bimatch of {
   hint : string option;
 }
 
+val name_ret_typ : typ -> typ
+
 (** Opaque context type for bi-matching *)
 type ctx
 

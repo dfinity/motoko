@@ -2870,6 +2870,7 @@ and wrong_call_args env tbs ctx_dot at t_args implicits_arity syntax_args =
     display_given_arg_types given_types
 
 and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems =
+
   (*
   Partial Argument Inference:
   We need to infer the type of the argument and find the best instantiation for the call expression.
@@ -2936,7 +2937,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
   let ret_typ_opt, subs =
     match t_expect_opt with
     | None -> Some t_ret, subs
-    | Some expected_ret -> None, (t_ret, expected_ret) :: subs
+    | Some expected_ret -> None, (t_ret, Bi_match.name_ret_typ expected_ret) :: subs
   in
 
   try
@@ -3010,11 +3011,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
   *)
     ts, T.open_ ts t_arg, T.open_ ts t_ret
   with Bi_match.Bimatch { message; hint } ->
-    let t1 = match T.normalize t1 with
-      | T.Func(s, c, tbs, ts1, ts2) ->
-        T.Func(s, c, [], List.map err_subst ts1, List.map err_subst ts2)
-      | t1 -> t1
-    in
+    let t1 = T.normalize t1 in
     let remove_holes_nary ts =
       match exp2.it, ts with
         HoleE _, [_] ->
@@ -3041,37 +3038,22 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
     in
     let t1'' = match T.normalize t1' with
       | T.Func(s, c, tbs, ts1, ts2) ->
-        T.Func(s, c, [], remove_holes_nary ts1, List.map err_subst ts2)
+        T.Func(s, c, tbs, remove_holes_nary ts1, ts2)
       | t1 -> t1
     in
     let remove_holes typ =
       T.seq (remove_holes_nary (match typ with T.Tup ts -> ts | t -> [t]))
     in
     let t2' = remove_holes t2 in
-    if Bi_match.debug then
-      error env at "M0098"
-        "cannot implicitly instantiate %s of type%a\nto argument of type%a%s\nbecause %s"
-        desc
-        display_typ t1
-        display_typ (err_subst t2')
-        (match t_expect_opt with
-         | None -> ""
-         | Some t ->
-           Format.asprintf "\nto produce result of expected type%a" display_typ t)
-        message
-    else
-      error env at "M0098"
-        "cannot apply %s of type%a\nto argument of type%a%s%s"
-        desc
-        display_typ t1''
-        display_typ (err_subst t2')
-        (match t_expect_opt with
-         | None -> ""
-         | Some t ->
-           Format.asprintf "\nto produce result of expected type%a" display_typ t)
-        (match hint with
-         | None -> ""
-         | Some hint -> Format.asprintf "\n%s" hint)
+    error env at "M0098"
+      "cannot apply %s of type%a\nto argument of type%a\nbecause %s%s"
+      desc
+      display_typ t1''
+      display_typ (err_subst t2')
+      message
+      (match hint with
+       | None -> ""
+       | Some hint -> Format.asprintf "\n%s" hint)
 
 and is_redundant_instantiation ts env infer_instantiation =
   assert env.pre;
