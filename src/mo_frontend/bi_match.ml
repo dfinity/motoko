@@ -466,8 +466,10 @@ let solve_bounds on_error ctx to_defer l u =
       on_error (over_constrained_exn lb c ub);
       None)
   ) |> ConEnv.filter_map (fun c o -> o) in
-  Option.iter on_error (maybe_raise_underconstrained ctx env !unsolved er);
-  env, !unsolved
+  let current_env = ConEnv.union (fun c _ t -> Some t) ctx.current_env env in
+  Option.iter on_error (maybe_raise_underconstrained ctx current_env !unsolved er);
+  (* TODO: maybe we can just have the joined env *)
+  env, current_env, !unsolved
 
 (** Solves the given constraints [ts1, ts2] in the given context [ctx].
     Unused type variables can be deferred to the next round.
@@ -497,7 +499,7 @@ let solve ctx (ts1, ts2) must_solve =
   with
   | Ok (l, u) ->
     if debug then Debug.print_solved_bounds l u;
-    let env, var_set = solve_bounds raise ctx to_defer l u in
+    let env, current_env, var_set = solve_bounds raise ctx to_defer l u in
     if debug then Debug.print_partial_solution env var_set;
     let remaining = if ConSet.is_empty var_set then empty_ctx env else {
       var_set;
@@ -509,7 +511,7 @@ let solve ctx (ts1, ts2) must_solve =
       variances = ConEnv.restrict var_set ctx.variances;
       ret_typ = ctx.ret_typ;
       all_vars = ctx.all_vars;
-      current_env = env;
+      current_env;
       to_verify = if defer_verify then (List.map (subst env) ts1, List.map (subst env) ts2) else ([], [])
     } in
     let verify_now = if defer_verify then ctx.to_verify else
@@ -530,7 +532,7 @@ let solve ctx (ts1, ts2) must_solve =
   | Error ((l, u), used, (t1, t2)) ->
     let unused = ConSet.diff ctx.var_set used in
     let to_defer = unused in
-    let env, _ = solve_bounds ignore ctx to_defer l u in
+    let _, env, _ = solve_bounds ignore ctx to_defer l u in
     let pretty_sub (t1,t2) =
       let t1 = subst env t1 in
       let t2 = subst env t2 in
