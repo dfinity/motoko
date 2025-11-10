@@ -64,7 +64,7 @@ type ctx = {
   (* Initial list of all input type parameters to solve *)
   all_vars : con list;
   (* Current combined solution of all previous rounds *)
-  current_env : typ ConEnv.t;
+  env : typ ConEnv.t;
   (* Optional subtyping constraints to verify the solution in the last round *)
   to_verify : typ list * typ list;
 }
@@ -76,7 +76,7 @@ let empty_ctx env = {
   variances = ConEnv.empty;
   ret_typ = None;
   all_vars = [];
-  current_env = env;
+  env;
   to_verify = ([], []);
 }
 
@@ -147,7 +147,7 @@ let is_unsolved_var ctx t =
 (** Check partial instantiation [env] satisfies bounds and all the pairwise sub-typing relations in [ts1, ts2];
     used to sanity check inferred instantiations *)
 let verify_inst ~ctx ~remaining env (ts1, ts2) =
-  List.length (ConEnv.keys ctx.var_env) = List.length (ConEnv.keys env) &&
+  ConSet.subset (ConEnv.dom ctx.var_env) (ConEnv.dom env) &&
   ConEnv.for_all (fun c { t; bind } ->
     (* NB: bounds are closed, no need to substitute *)
     is_unsolved_var remaining t || sub (ConEnv.find c env) bind.bound) ctx.var_env &&
@@ -433,13 +433,13 @@ let is_closed ctx t = if is_ctx_empty ctx then true else
   ConSet.disjoint ctx.var_set all_cons
 
 (** Raises when [er] is non-empty, optionally with a suggested type instantiation. *)
-let maybe_raise_underconstrained ctx current_env unsolved er =
+let maybe_raise_underconstrained ctx env unsolved er =
   let error_msg = ErrorUnderconstrained.to_string er in
   if error_msg = "" then None else
   let error_msg, hint =
     if ConSet.is_empty unsolved then
       (* Future work: fill the unsolved and solved from previous rounds with holes, e.g. <_, Nat, _> *)
-      let ts = List.map (fun c -> ConEnv.find c current_env) ctx.all_vars in
+      let ts = List.map (fun c -> ConEnv.find c env) ctx.all_vars in
       let inst = String.concat ", " (List.map string_of_typ ts) in
       let hint = Format.asprintf "Hint: Add explicit type instantiation, e.g. <%s>" inst in
       error_msg, Some hint
@@ -466,10 +466,10 @@ let solve_bounds on_error ctx to_defer l u =
       on_error (over_constrained_exn lb c ub);
       None)
   ) |> ConEnv.filter_map (fun c o -> o) in
-  let current_env = ConEnv.union (fun c _ t -> Some t) ctx.current_env env in
-  Option.iter on_error (maybe_raise_underconstrained ctx current_env !unsolved er);
-  (* TODO: maybe we can just have the joined env *)
-  env, current_env, !unsolved
+  (* Join the previous solution with the new one *)
+  let env = ConEnv.union (fun c _ t -> Some t) ctx.env env in
+  Option.iter on_error (maybe_raise_underconstrained ctx env !unsolved er);
+  env, !unsolved
 
 (** Solves the given constraints [ts1, ts2] in the given context [ctx].
     Unused type variables can be deferred to the next round.
@@ -499,7 +499,7 @@ let solve ctx (ts1, ts2) must_solve =
   with
   | Ok (l, u) ->
     if debug then Debug.print_solved_bounds l u;
-    let env, current_env, var_set = solve_bounds raise ctx to_defer l u in
+    let env, var_set = solve_bounds raise ctx to_defer l u in
     if debug then Debug.print_partial_solution env var_set;
     let remaining = if ConSet.is_empty var_set then empty_ctx env else {
       var_set;
@@ -511,7 +511,7 @@ let solve ctx (ts1, ts2) must_solve =
       variances = ConEnv.restrict var_set ctx.variances;
       ret_typ = ctx.ret_typ;
       all_vars = ctx.all_vars;
-      current_env;
+      env;
       to_verify = if defer_verify then (List.map (subst env) ts1, List.map (subst env) ts2) else ([], [])
     } in
     let verify_now = if defer_verify then ctx.to_verify else
@@ -532,7 +532,7 @@ let solve ctx (ts1, ts2) must_solve =
   | Error ((l, u), used, (t1, t2)) ->
     let unused = ConSet.diff ctx.var_set used in
     let to_defer = unused in
-    let _, env, _ = solve_bounds ignore ctx to_defer l u in
+    let env, _ = solve_bounds ignore ctx to_defer l u in
     let pretty_sub (t1,t2) =
       let t1 = subst env t1 in
       let t2 = subst env t2 in
@@ -592,7 +592,7 @@ let bi_match_subs scope_opt tbs ret_typ =
   let variances = Variance.variances var_set
     (Option.value ~default:Any ret_typ)
   in
-  let ctx = { var_set; var_env; bounds = (l, u); variances; ret_typ; all_vars = cs; current_env = ConEnv.empty; to_verify = ([], [])} in
+  let ctx = { var_set; var_env; bounds = (l, u); variances; ret_typ; all_vars = cs; env = ConEnv.empty; to_verify = ([], [])} in
   fun subs ~must_solve ->
     let must_solve = List.map (open_ ts) must_solve in
     let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
@@ -611,15 +611,8 @@ let finalize ts1 ctx subs =
     (* The 2nd round should not leave any remaining type variables *)
     assert (is_ctx_empty remaining);
 
-    (* create a final combined `ts` solution *)
-    let ts = List.map (fun t ->
-      match t with
-      | Con (c, []) -> ConEnv.find_opt c env |> Option.value ~default:t
-      | _ -> t
-    ) ts1 in
-
-    (* Return the final solution together with the substitution of open type variables *)
-    ts, env
+    (* create the final solution *)
+    List.map (fun c -> ConEnv.find c env) ctx.all_vars, env
   end
 
 let fail_when_types_are_not_closed remaining typs = if is_ctx_empty remaining then () else
