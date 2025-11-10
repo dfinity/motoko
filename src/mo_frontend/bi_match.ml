@@ -532,7 +532,7 @@ let solve ctx (ts1, ts2) must_solve =
   | Error ((l, u), used, (t1, t2)) ->
     let unused = ConSet.diff ctx.var_set used in
     let to_defer = unused in
-    let env, _ = solve_bounds ignore ctx to_defer l u in
+    let env, _unsolved = solve_bounds ignore ctx to_defer l u in
     let pretty_sub (t1,t2) =
       let t1 = subst env t1 in
       let t2 = subst env t2 in
