@@ -31,7 +31,6 @@ let display_typ = Lib.Format.display pp_typ
 exception Bimatch of {
   message : string;
   hint : string option;
-  (* inst : typ list option; *)
 }
 
 let bimatch ?(hint=None) message =
