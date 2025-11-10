@@ -7,15 +7,14 @@
     X
     X SEP <list(X, SEP)>
 
-
-<implicit> ::= 
-    'implicit'
-
 <list_er(X, E, SEP)> ::= 
     <empty>
     X
     E
     X SEP <list_er(X, E, SEP)>
+
+<implicit> ::= 
+    'implicit'
 
 <id_wild> ::= 
     '_'
