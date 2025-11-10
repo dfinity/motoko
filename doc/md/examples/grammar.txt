@@ -79,6 +79,7 @@
     <typ> 'or' <typ>
 
 <typ_item> ::= 
+    <implicit> ':' <typ>
     <id> ':' <typ>
     <id_wild> ':' <typ>
     <typ>

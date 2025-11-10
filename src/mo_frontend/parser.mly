@@ -495,6 +495,7 @@ typ :
     { OrT(t1, t2) @! at $sloc }
 
 typ_item :
+  | i=implicit COLON t = typ { Some i, t }
   | i=id COLON t=typ { Some i, t }
   | i=id_wild COLON t=typ { Some i, t }
   | t=typ { None, t }
