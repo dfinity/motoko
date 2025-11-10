@@ -111,6 +111,13 @@ module Debug = struct
     print_endline (Printf.sprintf "env : %s" (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s := %s" (Cons.name c) (string_of_typ t)) (ConEnv.bindings env))));
     print_endline (Printf.sprintf "unsolved : %s" (String.concat ", " (List.map Cons.name (ConSet.elements !unsolved))));
     print_endline ""
+
+  let print_update_bound c current t updated =
+    print_endline (Printf.sprintf "update_bound %s: current %s with %s to %s"
+      (Cons.name c)
+      (string_of_typ current)
+      (string_of_typ t)
+      (string_of_typ updated))
 end
 
 module SS = Set.Make (OrdPair)
@@ -197,6 +204,23 @@ let choose_under_constrained ctx er lb c ub =
       ErrorUnderconstrained.add er lb c ub;
       if t = Non then ub else lb
 
+let check c (l, u) =
+  let lb = ConEnv.find c l in
+  let ub = ConEnv.find c u in
+  if not (sub lb ub) then
+    (* Catch the over-constrained error early *)
+    None
+  else
+    Some (l, u)
+
+let update binop c t ce =
+  let current = ConEnv.find c ce in
+  let updated = binop ?src_fields:None t current in
+  if debug then
+    Debug.print_update_bound c current t updated;
+  (* Future work: consider an error when joining two unrelated types, e.g. [lub Nat Text = Any], would be a breaking change *)
+  ConEnv.add c updated ce
+
 let bi_match_typs ctx =
   let flexible c = ConSet.mem c ctx.var_set in
 
@@ -248,14 +272,14 @@ let bi_match_typs ctx =
       assert (ts2 = []);
       if mentions t1 any || not (denotable t1) then
         None
-      else Some
+      else check con2
        (update lub con2 t1 l,
         if rel != eq then u else update glb con2 t1 u)
     | Con (con1, ts1), _ when flexible con1 ->
       assert (ts1 = []);
       if mentions t2 any || not (denotable t2) then
         None
-      else Some
+      else check con1
         ((if rel != eq then l else update lub con1 t2 l),
          update glb con1 t2 u)
     | Con (con1, _), Con (con2, _) when flexible con1 && flexible con2 ->
