@@ -725,10 +725,14 @@ let is_immutable_obj obj_type =
   let _, fields = as_obj_sub [] obj_type in
   List.for_all (fun f -> not (is_mut f.typ)) fields
 
-
-let lookup_val_field_opt l tfs =
+let find_val_field_opt l tfs =
   let is_lab = function {typ = Typ _; _} -> false | {lab; _} -> lab = l in
   match List.find_opt is_lab tfs with
+  | Some tf -> Some tf
+  | None -> None
+
+let lookup_val_field_opt l tfs =
+  match find_val_field_opt l tfs with
   | Some tf -> Some tf.typ
   | None -> None
 

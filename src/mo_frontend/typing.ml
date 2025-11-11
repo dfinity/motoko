@@ -1542,7 +1542,9 @@ type ctx_dot_candidate =
 (* Does an instantiation for [tbs] exist that makes [t1] <: [t2]? *)
 let permissive_sub t1 (tbs, t2) =
   try
-    let (inst, c) = Bi_match.bi_match_subs None tbs None [t1, t2] [] in
+    (* Solve only tvars from the receiver, let the unused tvars be unsolved *)
+    let (inst, c) = Bi_match.bi_match_subs None tbs None [t1, t2] ~must_solve:[t2] in
+    (* Call finalize to verify the instantiation (sanity checks), optional step. *)
     ignore (Bi_match.finalize inst c []);
     Some inst
   with _ ->
@@ -2235,14 +2237,14 @@ and infer_check_bases_fields env (check_fields : T.field list) exp_at exp_bases 
   check_ids env "object" "field"
     (map (fun (ef : exp_field) -> ef.it.id) exp_fields);
 
-  let infer_or_check rf =
-    let { mut; id; exp } = rf.it in
-    match List.find_opt (fun ft -> ft.T.lab = id.it) check_fields with
-    | Some exp_field ->
-      check_exp_field env rf [exp_field];
-      exp_field
-    | _ -> infer_exp_field env rf in
-
+  let infer_or_check (exp_field : exp_field) =
+    let id = exp_field.it.id.it in
+    match T.find_val_field_opt id check_fields with
+    | Some ft ->
+      check_exp_field env exp_field [ft];
+      ft
+    | _ -> infer_exp_field env exp_field
+  in
   let fts = map infer_or_check exp_fields in
   let bases = map (fun b -> infer_exp_promote env b, b) exp_bases in
   let homonymous_fields ft1 ft2 = T.compare_field ft1 ft2 = 0 in
@@ -2411,22 +2413,24 @@ and check_exp' env0 t exp : T.typ =
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;
     t
-  | ObjE ([], exp_fields) as e, T.Obj(T.Object, fts) -> (* TODO: infer bases? Default does a decent job. *)
-    check_ids env "object" "field"
-      (List.map (fun (ef : exp_field) -> ef.it.id) exp_fields);
-    List.iter (fun ef -> check_exp_field env ef fts) exp_fields;
-    if List.for_all (fun ft ->
-      if not (List.exists (fun (ef : exp_field) -> ft.T.lab = ef.it.id.it) exp_fields)
-      then begin
-      local_error env exp.at "M0151"
-        "object literal is missing field %s from expected type%a"
-        ft.T.lab
-        display_typ_expand t;
-        false
-      end else true
-    ) fts
-    then detect_lost_fields env t e;
-    t
+  | ObjE (exp_bases, exp_fields), T.Obj(T.Object, fts) ->
+    let t' = infer_check_bases_fields env fts exp.at exp_bases exp_fields in
+    let fts' = match T.promote t' with
+      | T.Obj(T.Object, fts') -> fts'
+      | _ -> []
+    in
+    let missing_val_field_labs = fts
+      |> List.filter T.(fun ft -> not (is_typ ft.T.typ) && Option.is_none (lookup_val_field_opt ft.lab fts'))
+      |> List.map (fun ft -> Printf.sprintf "'%s'" ft.T.lab)
+    in
+    begin match missing_val_field_labs with
+    | [] -> check_inferred env0 env t t' exp
+    | fts ->
+      (* Future work: Replace this error with a general subtyping error once better explanations are available. *)
+      let s = if List.length fts = 1 then "" else "s" in
+      local_error env exp.at "M0151" "missing field%s %s from expected type%a" s (String.concat ", " fts) display_typ_expand t;
+      t'
+    end
   | OptE exp1, _ when T.is_opt t ->
     check_exp env (T.as_opt t) exp1;
     t
@@ -2529,18 +2533,21 @@ and check_exp' env0 t exp : T.typ =
     t
   | (ImportE _ | ImplicitLibE _), t ->
     t
-  | e, _ ->
+  | _, _ ->
     let t' = infer_exp env0 exp in
-    if not (sub env exp.at t' t) then
-    begin
-      local_error env0 exp.at "M0096"
-        "expression of type%a\ncannot produce expected type%a%s"
-        display_typ_expand t'
-        display_typ_expand t
-        (Suggest.suggest_conversion env.libs env.vals t' t)
-    end
-    else detect_lost_fields env t e;
-    t'
+    check_inferred env0 env t t' exp
+
+and check_inferred env0 env t t' exp = 
+  if not (sub env exp.at t' t) then
+  begin
+    local_error env0 exp.at "M0096"
+      "expression of type%a\ncannot produce expected type%a%s"
+      display_typ_expand t'
+      display_typ_expand t
+      (Suggest.suggest_conversion env.libs env.vals t' t)
+  end
+  else detect_lost_fields env t exp.it;
+  t'
 
 and check_exp_field env (ef : exp_field) fts =
   let { mut; id; exp } = ef.it in
@@ -2662,8 +2669,11 @@ and infer_callee env exp =
         mk_error env
       | Ok { module_name; path; func_ty; inst; _ } ->
         note := Some path;
-        if not env.pre then
+        if not env.pre then begin
           check_exp env func_ty path;
+          let note_eff = A.infer_effect_exp exp in
+          exp.note <- {note_typ = exp.note.note_typ; note_eff}
+        end;
         func_ty, Some (exp1, t1, id.it, inst)
      end
   | _ ->
@@ -2791,7 +2801,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   let require_exact_arity = needs_holes || Option.is_some ctx_dot in
   let t_arg =
     if require_exact_arity && not is_correct_arity
-    then wrong_call_args env tbs exp2.at t_args implicits_arity syntax_args
+    then wrong_call_args env tbs ctx_dot exp2.at t_args implicits_arity syntax_args
     else T.seq t_args
   in
   if not env.pre then ref_exp2 := exp2; (* TODO: is this good enough *)
@@ -2845,9 +2855,13 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
 
-and wrong_call_args env tbs at t_args implicits_arity syntax_args =
-  let tvars = T.open_binds tbs in
-  let subst t = if tvars = [] then t else T.open_ tvars t in
+and wrong_call_args env tbs ctx_dot at t_args implicits_arity syntax_args =
+  let inst = 
+    match ctx_dot with
+    | Some (_, _, _, inst) -> inst
+    | None -> T.open_binds tbs
+  in
+  let subst t = if inst = [] then t else T.open_ inst t in
   let given_types = List.map (infer_exp env) syntax_args in
   let expected_types =
     t_args
@@ -2862,6 +2876,7 @@ and wrong_call_args env tbs at t_args implicits_arity syntax_args =
     display_given_arg_types given_types
 
 and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems =
+
   (*
   Partial Argument Inference:
   We need to infer the type of the argument and find the best instantiation for the call expression.
@@ -2928,14 +2943,14 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
   let ret_typ_opt, subs =
     match t_expect_opt with
     | None -> Some t_ret, subs
-    | Some expected_ret -> None, (t_ret, expected_ret) :: subs
+    | Some expected_ret -> None, (t_ret, Bi_match.name_ret_typ expected_ret) :: subs
   in
 
   try
     (* i.e. exists minimal ts .
             t2 <: open_ ts t_arg /\
             t_expect_opt == Some t -> open ts_ t_ret <: t *)
-    let (ts, remaining) = Bi_match.bi_match_subs (scope_of_env env) tbs ret_typ_opt subs must_solve in
+    let (ts, remaining) = Bi_match.bi_match_subs (scope_of_env env) tbs ret_typ_opt subs ~must_solve in
 
     (* A partial solution for a better error message in case of an error *)
     err_ts := Some ts;
@@ -3002,11 +3017,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
   *)
     ts, T.open_ ts t_arg, T.open_ ts t_ret
   with Bi_match.Bimatch { message; hint } ->
-    let t1 = match T.normalize t1 with
-      | T.Func(s, c, tbs, ts1, ts2) ->
-        T.Func(s, c, [], List.map err_subst ts1, List.map err_subst ts2)
-      | t1 -> t1
-    in
+    let t1 = T.normalize t1 in
     let remove_holes_nary ts =
       match exp2.it, ts with
         HoleE _, [_] ->
@@ -3033,37 +3044,22 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
     in
     let t1'' = match T.normalize t1' with
       | T.Func(s, c, tbs, ts1, ts2) ->
-        T.Func(s, c, [], remove_holes_nary ts1, List.map err_subst ts2)
+        T.Func(s, c, tbs, remove_holes_nary ts1, ts2)
       | t1 -> t1
     in
     let remove_holes typ =
       T.seq (remove_holes_nary (match typ with T.Tup ts -> ts | t -> [t]))
     in
     let t2' = remove_holes t2 in
-    if Bi_match.debug then
-      error env at "M0098"
-        "cannot implicitly instantiate %s of type%a\nto argument of type%a%s\nbecause %s"
-        desc
-        display_typ t1
-        display_typ (err_subst t2')
-        (match t_expect_opt with
-         | None -> ""
-         | Some t ->
-           Format.asprintf "\nto produce result of expected type%a" display_typ t)
-        message
-    else
-      error env at "M0098"
-        "cannot apply %s of type%a\nto argument of type%a%s%s"
-        desc
-        display_typ t1''
-        display_typ (err_subst t2')
-        (match t_expect_opt with
-         | None -> ""
-         | Some t ->
-           Format.asprintf "\nto produce result of expected type%a" display_typ t)
-        (match hint with
-         | None -> ""
-         | Some hint -> Format.asprintf "\n%s" hint)
+    error env at "M0098"
+      "cannot apply %s of type%a\nto argument of type%a\nbecause %s%s"
+      desc
+      display_typ t1''
+      display_typ (err_subst t2')
+      message
+      (match hint with
+       | None -> ""
+       | Some hint -> Format.asprintf "\n%s" hint)
 
 and is_redundant_instantiation ts env infer_instantiation =
   assert env.pre;

@@ -184,6 +184,7 @@ val arity : typ -> int
 
 (* Fields *)
 
+val find_val_field_opt : string -> field list -> field option
 val lookup_val_field : string -> field list -> typ
 val lookup_typ_field : string -> field list -> con
 val lookup_val_field_opt : string -> field list -> typ option
