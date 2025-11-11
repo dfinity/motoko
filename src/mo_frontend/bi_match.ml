@@ -68,14 +68,14 @@ type ctx = {
   to_verify : typ list * typ list;
 }
 
-let empty_ctx current_env = {
+let empty_ctx env = {
   var_set = ConSet.empty;
   var_env = ConEnv.empty;
   bounds = (ConEnv.empty, ConEnv.empty);
   variances = ConEnv.empty;
   ret_typ = None;
   all_vars = [];
-  current_env;
+  current_env = env;
   to_verify = ([], []);
 }
 
@@ -507,7 +507,7 @@ let solve ctx (ts1, ts2) must_solve =
       variances = ConEnv.restrict var_set ctx.variances;
       ret_typ = ctx.ret_typ;
       all_vars = ctx.all_vars;
-      current_env =env;
+      current_env = env;
       to_verify = if defer_verify then (List.map (subst env) ts1, List.map (subst env) ts2) else ([], [])
     } in
     let verify_now = if defer_verify then ctx.to_verify else
