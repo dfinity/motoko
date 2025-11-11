@@ -63,19 +63,19 @@ type ctx = {
   (* Initial list of all input type parameters to solve *)
   all_vars : con list;
   (* Current combined solution of all previous rounds *)
-  env : typ ConEnv.t;
+  current_env : typ ConEnv.t;
   (* Optional subtyping constraints to verify the solution in the last round *)
   to_verify : typ list * typ list;
 }
 
-let empty_ctx env = {
+let empty_ctx current_env = {
   var_set = ConSet.empty;
   var_env = ConEnv.empty;
   bounds = (ConEnv.empty, ConEnv.empty);
   variances = ConEnv.empty;
   ret_typ = None;
   all_vars = [];
-  env;
+  current_env;
   to_verify = ([], []);
 }
 
@@ -146,7 +146,7 @@ let is_unsolved_var ctx t =
 (** Check partial instantiation [env] satisfies bounds and all the pairwise sub-typing relations in [ts1, ts2];
     used to sanity check inferred instantiations *)
 let verify_inst ~ctx ~remaining (ts1, ts2) =
-  let env = remaining.env in
+  let env = remaining.current_env in
   ConEnv.for_all (fun c { t; bind } ->
     (* NB: bounds are closed, no need to substitute *)
     is_unsolved_var remaining t || sub (ConEnv.find c env) bind.bound) ctx.var_env &&
@@ -464,7 +464,7 @@ let solve_bounds on_error ctx to_defer l u =
       None)
   ) |> ConEnv.filter_map (fun c o -> o) in
   (* Join the previous solution with the new one *)
-  let env = ConEnv.disjoint_union ctx.env env in
+  let env = ConEnv.disjoint_union ctx.current_env env in
   Option.iter on_error (maybe_raise_underconstrained ctx env !unsolved er);
   if debug then Debug.print_partial_solution env !unsolved;
   env, !unsolved
@@ -507,7 +507,7 @@ let solve ctx (ts1, ts2) must_solve =
       variances = ConEnv.restrict var_set ctx.variances;
       ret_typ = ctx.ret_typ;
       all_vars = ctx.all_vars;
-      env;
+      current_env =env;
       to_verify = if defer_verify then (List.map (subst env) ts1, List.map (subst env) ts2) else ([], [])
     } in
     let verify_now = if defer_verify then ctx.to_verify else
@@ -592,7 +592,7 @@ let bi_match_subs scope_opt tbs ret_typ =
   let variances = Variance.variances var_set
     (Option.value ~default:Any ret_typ)
   in
-  let ctx = { var_set; var_env; bounds = (l, u); variances; ret_typ; all_vars = cs; env = ConEnv.empty; to_verify = ([], [])} in
+  let ctx = { var_set; var_env; bounds = (l, u); variances; ret_typ; all_vars = cs; current_env = ConEnv.empty; to_verify = ([], [])} in
   fun subs ~must_solve ->
     let must_solve = List.map (open_ ts) must_solve in
     let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
