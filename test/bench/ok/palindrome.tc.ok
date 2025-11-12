@@ -1,24 +1,24 @@
-palindrome.mo:15.43-15.53: warning [M0145], this pattern of type
+palindrome.mo:19.28-19.38: warning [M0145], this pattern of type
   List<Char> = ?(Char, List<Char>)
 does not cover value
   null
-palindrome.mo:11.13-17.15: warning [M0145], this switch of type
+palindrome.mo:15.84-21.6: warning [M0145], this switch of type
   (?(Char, List<Char>), ?(Char, List<Char>))
 does not cover value
   (null, ?(_))
-palindrome.mo:18.28-18.32: warning [M0145], this pattern of type
+palindrome.mo:22.23-22.27: warning [M0145], this pattern of type
   List<Char> = ?(Char, List<Char>)
 does not cover value
   ?(_)
-palindrome.mo:28.26-28.34: warning [M0145], this pattern of type
+palindrome.mo:31.15-31.23: warning [M0145], this pattern of type
   List<Char> = ?(Char, List<Char>)
 does not cover value
   null
-palindrome.mo:24.13-33.14: warning [M0145], this switch of type
+palindrome.mo:27.7-36.8: warning [M0145], this switch of type
   (?(Char, List<Char>), ?(Char, List<Char>))
 does not cover value
   (null, ?(_))
-palindrome.mo:36.17-36.21: warning [M0145], this pattern of type
+palindrome.mo:39.11-39.15: warning [M0145], this pattern of type
   List<Char> = ?(Char, List<Char>)
 does not cover value
   ?(_)

@@ -3,7 +3,7 @@ Utility functions on 16-bit signed integers.
 
 Note that most operations are available as built-in operators (e.g. `1 + 1`).
 
-Import from the core library to use this module.
+Import from the core package to use this module.
 ```motoko name=import
 import Int16 "mo:core/Int16";
 ```
@@ -730,6 +730,18 @@ Returns the count of trailing zero bits in `x`.
 Example:
 ```motoko include=import
 assert Int16.bitcountTrailingZero(0x0100) == +8;
+```
+
+## Function `explode`
+``` motoko no-repl
+func explode(x : Int16) : (msb : Nat8, lsb : Nat8)
+```
+
+Returns the upper (i.e. most significant) and lower (least significant) byte of `x`.
+
+Example:
+```motoko include=import
+assert Int16.explode 0x77ee == (119, 238);
 ```
 
 ## Function `addWrap`

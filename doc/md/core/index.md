@@ -17,7 +17,7 @@
 * [Int8](Int8.md) Utility functions on 8-bit signed integers.
 * [InternetComputer](InternetComputer.md) Low-level interface to the Internet Computer.
 * [Iter](Iter.md) Utilities for `Iter` (iterator) values.
-* [List](List.md) A mutable list data structure with efficient random access and dynamic resizing.
+* [List](List.md) A mutable growable array data structure with efficient random access and dynamic resizing.
 * [Map](Map.md) An imperative key-value map based on order/comparison of the keys.
 * [Nat](Nat.md) Natural numbers with infinite precision.
 * [Nat16](Nat16.md) Utility functions on 16-bit unsigned integers.
@@ -38,11 +38,12 @@
 * [Time](Time.md) System time utilities and timers.
 * [Timer](Timer.md) Timers for one-off or periodic tasks. Applicable as part of the default mechanism.
 * [Tuples](Tuples.md) Contains modules for working with tuples of different sizes.
-* [Types](Types.md) 
+* [Types](Types.md) Common types used throughout the core package.
 * [VarArray](VarArray.md) Provides extended utility functions on mutable Arrays (`[var]`).
+* [WeakReference](WeakReference.md) Module that implements a weak reference to an object.
 * [internal/BTreeHelper](internal/BTreeHelper.md) 
 * [internal/PRNG](internal/PRNG.md) Collection of pseudo-random number generators
-* [pure/List](pure/List.md) Purely-functional, singly-linked lists.
+* [pure/List](pure/List.md) Purely-functional, singly-linked list data structure.
 * [pure/Map](pure/Map.md) Immutable, ordered key-value maps.
 * [pure/Queue](pure/Queue.md) Double-ended queue of a generic element type `T`.
 * [pure/RealTimeQueue](pure/RealTimeQueue.md) Double-ended immutable queue with guaranteed `O(1)` push/pop operations (caveat: high constant factor).

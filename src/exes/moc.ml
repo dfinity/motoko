@@ -36,11 +36,9 @@ let valid_metadata_names =
      "motoko:stable-types";
      "motoko:compiler"]
 
-(* suppress documentation *)
-let _UNDOCUMENTED_ doc = "" (* TODO: enable with developer env var? *)
-
-let argspec = [
-  "--ai-errors", Arg.Set Flags.ai_errors, " emit AI tailored errors";
+let argspec = 
+  Args.ai_args
+  @ [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
   "-g", Arg.Set Flags.debug_info, " generate source-level debug information";
   "-r", Arg.Unit (set_mode Run), " interpret programs";
@@ -65,10 +63,23 @@ let argspec = [
 
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-p", Arg.Set_int Flags.print_depth, "<n>  set print depth";
-  "--hide-warnings", Arg.Clear Flags.print_warnings, " hide warnings";
-  "-Werror", Arg.Set Flags.warnings_are_errors, " treat warnings as errors";
+  "--warn-help",
+    Arg.Unit (fun () ->
+      let string_of_level = function
+        | Flags.Allow -> "A"
+        | Flags.Warn -> "W"
+        | Flags.Error -> "E"
+      in
+      List.iter (fun (code, _, desc) ->
+        let lvl = Flags.get_warning_level code in
+        printf "%s (%s) %s\n" code (string_of_level lvl) desc
+      ) Error_codes.warning_codes;
+      printf "\nLegend: A - allowed (warning disabled); W - warn (warning enabled); E - error (treated as error)\n";
+      exit 0),
+    " show available warning codes, current lint level, and descriptions";
   ]
-
+ 
+  @ Mo_args.warning_args
   @ Args.error_args
 
   @ [
@@ -208,24 +219,12 @@ let argspec = [
 
   "-unguarded-enhanced-orthogonal-persistence",
   Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true; Flags.explicit_enhanced_orthogonal_persistence := false),
-  _UNDOCUMENTED_ "  (internal testing only)";
+  Args._UNDOCUMENTED_ "  (internal testing only)";
+  ]
 
-  (* default stability *)
-  "--default-persistent-actors",
-  Arg.Unit (fun () -> Flags.actors := Flags.DefaultPersistentActors),
-  _UNDOCUMENTED_
-   " declare every actor (class) as implicitly `persistent`, defaulting actor fields to `stable` (default is --require-persistent-actors). The `persistent` keyword is now optional and redundant.";
+  @ Args.persistent_actors_args
 
-  "--require-persistent-actors",
-  Arg.Unit (fun () -> Flags.actors := Flags.RequirePersistentActors),
-  _UNDOCUMENTED_
-    " requires all actors to be declared persistent, defaulting actor fields to `transient` (default). Emit diagnostics to help migrate from non-persistent to `persistent` actors.";
-
-  "--legacy-actors",
-  Arg.Unit (fun () -> Flags.actors := Flags.LegacyActors),
-  _UNDOCUMENTED_
-    " in non-`persistent` actors, silently default actor fields to `transient` (legacy behaviour)";
-
+  @ [
   "--stabilization-instruction-limit",
   Arg.Int (fun limit -> Flags.(stabilization_instruction_limit := {
     upgrade = Int64.of_int limit;
@@ -340,7 +339,7 @@ let process_files files : unit =
          exit 1)
     end
   | Explain ->
-     match List.find_opt (fun (c, _) -> String.equal c !explain_code) Error_codes.error_codes with
+     match Error_codes.try_find_explanation !explain_code with
      | Some (_, Some(explanation)) ->
         printf "%s" explanation
      | Some (_, None) ->

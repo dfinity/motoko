@@ -4,7 +4,7 @@ Natural numbers with infinite precision.
 Most operations on natural numbers (e.g. addition) are available as built-in operators (e.g. `1 + 1`).
 This module provides equivalent functions and `Text` conversion.
 
-Import from the core library to use this module.
+Import from the core package to use this module.
 ```motoko name=import
 import Nat "mo:core/Nat";
 ```
@@ -18,7 +18,7 @@ Infinite precision natural numbers.
 
 ## Function `toText`
 ``` motoko no-repl
-func toText(n : Nat) : Text
+func toText(_ : Nat) : Text
 ```
 
 Converts a natural number to its textual representation. Textual
@@ -510,7 +510,7 @@ assert iter2.next() == ?1;
 assert iter2.next() == null;
 ```
 
-If `from == to`, return an iterator which only
+If `from == to`, return an iterator which only returns that value.
 
 Otherwise, if `step` is 0 or if the iteration would not progress towards the bound, returns an empty iterator.
 

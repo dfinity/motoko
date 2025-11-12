@@ -1,81 +1,77 @@
-lambdas-invariant.mo:27.11-27.39: type error [M0098], cannot implicitly instantiate function of type
+lambdas-invariant.mo:35.11-35.48: type error [M0098], cannot apply function of type
+  <T, U>([var T], T -> C<U>) -> [var U]
+to argument of type
+  ([var Nat], Nat -> C<U>)
+because there is no "best" choice for type parameter `U`.
+Hint: Add explicit type instantiation, e.g. <Nat, Int>
+lambdas-invariant.mo:51.11-51.39: type error [M0098], cannot apply function of type
   <T, U>([var T], T -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
-  Nat  <:  U  <:  Any
-where
-  Nat  =/=  Any
-so that explicit type instantiation is required
-lambdas-invariant.mo:30.11-30.45: type error [M0098], cannot implicitly instantiate function of type
+because there is no "best" choice for type parameter `U`.
+Hint: Add explicit type instantiation, e.g. <Nat, Nat>
+lambdas-invariant.mo:54.11-54.42: type error [M0098], cannot apply function of type
   <T, U>([var T], T -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
-  Int  <:  U  <:  Any
-where
-  Int  =/=  Any
-so that explicit type instantiation is required
-lambdas-invariant.mo:33.11-33.42: type error [M0098], cannot implicitly instantiate function of type
+because there is no "best" choice for type parameter `U`.
+Hint: Add explicit type instantiation, e.g. <Nat, Null>
+lambdas-invariant.mo:57.11-57.40: type error [M0098], cannot apply function of type
   <T, U>([var T], T -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
-  Null  <:  U  <:  Any
-where
-  Null  =/=  Any
-so that explicit type instantiation is required
-lambdas-invariant.mo:36.11-36.56: type error [M0098], cannot implicitly instantiate function of type
+because there is no "best" choice for type parameter `U`.
+Hint: Add explicit type instantiation, e.g. <Nat, ?Nat>
+lambdas-invariant.mo:60.11-60.41: type error [M0098], cannot apply function of type
   <T, U>([var T], T -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
-  ?Nat8  <:  U  <:  Any
-where
-  ?Nat8  =/=  Any
-so that explicit type instantiation is required
-lambdas-invariant.mo:39.11-39.41: type error [M0098], cannot implicitly instantiate function of type
+because there is no "best" choice for type parameter `U`.
+Hint: Add explicit type instantiation, e.g. <Nat, [Nat]>
+lambdas-invariant.mo:63.11-63.43: type error [M0098], cannot apply function of type
   <T, U>([var T], T -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
-  [Nat]  <:  U  <:  Any
-where
-  [Nat]  =/=  Any
-so that explicit type instantiation is required
-lambdas-invariant.mo:42.11-42.43: type error [M0098], cannot implicitly instantiate function of type
+because there is no "best" choice for type parameter `U`.
+Hint: Add explicit type instantiation, e.g. <Nat, {x : Nat}>
+lambdas-invariant.mo:66.11-66.43: type error [M0098], cannot apply function of type
   <T, U>([var T], T -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
-  {x : Nat}  <:  U  <:  Any
-where
-  {x : Nat}  =/=  Any
-so that explicit type instantiation is required
-lambdas-invariant.mo:45.11-45.43: type error [M0098], cannot implicitly instantiate function of type
+because there is no "best" choice for type parameter `U`.
+Hint: Add explicit type instantiation, e.g. <Nat, {#c : Nat}>
+lambdas-invariant.mo:79.11-79.39: type error [M0098], cannot apply function of type
   <T, U>([var T], T -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
-  {#c : Nat}  <:  U  <:  Any
-where
-  {#c : Nat}  =/=  Any
-so that explicit type instantiation is required
-lambdas-invariant.mo:58.11-58.39: type error [M0098], cannot implicitly instantiate function of type
+because there is no "best" choice for type parameter `U`.
+Hint: Add explicit type instantiation, e.g. <Nat, Er>
+lambdas-invariant.mo:83.11-83.39: type error [M0098], cannot apply function of type
   <T, U>([var T], T -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
-  Er  <:  U  <:  Any
-where
-  Er  =/=  Any
-so that explicit type instantiation is required
-lambdas-invariant.mo:62.11-62.39: type error [M0098], cannot implicitly instantiate function of type
+because there is no "best" choice for type parameter `U`.
+Hint: Add explicit type instantiation, e.g. <Nat, Er>
+lambdas-invariant.mo:87.11-87.48: type error [M0098], cannot apply function of type
+  <T, U1, U2>([var T], T -> (U1, U2)) -> [var (U1, U2)]
+to argument of type
+  ([var Nat], Nat -> (U1, U2))
+because there is no "best" choice for type parameters `U2`, `U1`.
+Hint: Add explicit type instantiation, e.g. <Nat, Nat, Null>
+lambdas-invariant.mo:99.13-99.44: type error [M0098], cannot apply function of type
   <T, U>([var T], T -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
-  Er  <:  U  <:  Any
-where
-  Er  =/=  Any
-so that explicit type instantiation is required
+because there is no "best" choice for type parameter `U`.
+Hint: Add explicit type instantiation, e.g. <Nat, {var age : Nat; var name : Text}>
+lambdas-invariant.mo:102.13-102.45: type error [M0098], cannot apply function of type
+  <T, U>([var T], T -> U) -> [var U]
+to argument of type
+  ([var Nat], Nat -> U)
+because there is no "best" choice for type parameter `U`.
+Hint: Add explicit type instantiation, e.g. <Nat, [User]>
+lambdas-invariant.mo:110.11-110.58: type error [M0098], cannot apply function of type
+  <T, U>(T -> (), T -> U) -> [var T]
+to argument of type
+  ((x : Int) -> (), T -> U)
+because there is no "best" choice for type parameter `T`.

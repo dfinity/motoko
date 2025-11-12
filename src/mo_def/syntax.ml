@@ -17,6 +17,7 @@ type resolved_import =
   | Unresolved
   | LibPath of lib_path
   | IDLPath of (string * string) (* filepath * bytes *)
+  | ImportedValuePath of string
   | PrimPath (* the built-in prim module *)
 
 (* Identifiers *)
@@ -163,7 +164,9 @@ type sugar = bool (* Is the source of a function body a block `<block>`,
                      public functions as oneway, shared functions *)
 
 type exp = (exp', typ_note) Source.annotated_phrase
+and hole_sort = Named of string | Anon of int
 and exp' =
+  | HoleE of hole_sort * exp ref
   | PrimE of string                            (* primitive *)
   | VarE of id_ref                             (* variable *)
   | LitE of lit ref                            (* literal *)
@@ -182,12 +185,12 @@ and exp' =
   | ObjBlockE of exp option * obj_sort * (id option * typ option) * dec_field list  (* object block *)
   | ObjE of exp list * exp_field list          (* record literal/extension *)
   | TagE of id * exp                           (* variant *)
-  | DotE of exp * id                           (* object projection *)
+  | DotE of exp * id * contextual_dot_note     (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
   | FuncE of string * sort_pat * typ_bind list * pat * typ option * sugar * exp  (* function *)
-  | CallE of exp option * exp * inst * exp     (* function call *)
+  | CallE of exp option * exp * inst * arg_exp     (* function call *)
   | BlockE of dec list                         (* block (with type after avoidance) *)
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)
@@ -208,12 +211,14 @@ and exp' =
   | AssertE of assert_kind * exp               (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
   | ImportE of (string * resolved_import ref)  (* import statement *)
+  | ImplicitLibE of string                     (* implicitly imported library *)
   | ThrowE of exp                              (* throw exception *)
   | TryE of exp * case list * exp option       (* catch exception / finally *)
   | IgnoreE of exp                             (* ignore *)
 (*
   | AtomE of string                            (* atom *)
-*)
+ *)
+and arg_exp = (bool * (exp ref))
 
 and assert_kind =
   | Runtime | Static | Invariant | Precondition | Postcondition | Concurrency of string | Loop_entry | Loop_continue | Loop_exit | Loop_invariant
@@ -227,6 +232,9 @@ and exp_field' = {mut : mut; id : id; exp : exp}
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}
 
+(* When `Some`, this holds the expression that produces the function to apply to the receiver.
+   eg. when `f.x(args...)` desugars to `M.f(x, args...)` the note will hold `M.f` *)
+and contextual_dot_note = exp option ref
 
 (* Declarations *)
 
@@ -238,7 +246,13 @@ and dec' =
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
       exp option * sort_pat * obj_sort * typ_id * typ_bind list * pat * typ option * id * dec_field list
+  | MixinD of pat * dec_field list             (* mixin *)
+  | IncludeD of id * exp * include_note (* mixin include *)
+and include_note' = { imports : import list; pat : pat; decs : dec_field list }
+and include_note = include_note' option ref
 
+and import = (import', Type.typ) Source.annotated_phrase
+and import' = pat * string * resolved_import ref
 
 (* Program (pre unit detection) *)
 
@@ -258,9 +272,6 @@ and req = bool Source.phrase
 
 (* Compilation units *)
 
-type import = (import', Type.typ) Source.annotated_phrase
-and import' = pat * string * resolved_import ref
-
 type comp_unit_body = (comp_unit_body', typ_note) Source.annotated_phrase
 and comp_unit_body' =
  | ProgU of dec list                         (* main programs *)
@@ -268,6 +279,7 @@ and comp_unit_body' =
  | ModuleU of id option * dec_field list     (* module library *)
  | ActorClassU of                            (* IC actor class, main or library *)
      persistence * exp option * sort_pat * typ_id * typ_bind list * pat * typ option * id * dec_field list
+ | MixinU of pat * dec_field list            (* Mixins *)
 
 type comp_unit = (comp_unit', prog_note) Source.annotated_phrase
 and comp_unit' = {
@@ -307,7 +319,13 @@ let string_of_lit = function
   | FloatLit f    -> Numerics.Float.to_pretty_string f
   | PreLit _      -> assert false
 
-
+(** Used for debugging *)
+let string_of_resolved_import = function
+  | LibPath {path; package } -> Printf.sprintf "LibPath {path = %s, package = %s}" path (match package with | Some p -> p | None -> "None")
+  | IDLPath (path, _) -> Printf.sprintf "IDLPath (%s, _)" path
+  | ImportedValuePath path -> Printf.sprintf "ImportedValuePath %s" path
+  | PrimPath -> "PrimPath"
+  | Unresolved -> "Unresolved"
 
 (* Miscellaneous *)
 (* TODO: none of what follows should probably be in this file *)
@@ -367,3 +385,22 @@ let is_ignore_asyncE e =
         {it = AsyncT (Type.Fut, _, {it = TupT []; _}); _}); _} ->
     true
   | _ -> false
+
+let contextual_dot_args e1 e2 dot_note =
+  let module T = Mo_types.Type in
+  let arity = match dot_note.note.note_typ with
+    | T.Func(_, _, _, args, _) -> List.length args
+    | _ -> raise (Invalid_argument "non-function type in contextual dot note") in
+  let effect eff =
+    match (e1.note.note_eff, eff) with
+    | T.Triv, T.Triv -> T.Triv
+    | _, _ -> T.Await
+  in
+  let args = match e2 with
+    | { it = TupE []; at; note = { note_eff;_ } } ->
+       { it = e1.it; at; note = { note_eff = effect note_eff; note_typ = e1.note.note_typ } }
+    | { it = TupE exps; at; note = { note_eff; note_typ = T.Tup ts } } when arity <> 2 ->
+       { it = TupE (e1::exps); at; note = { note_eff = effect note_eff; note_typ = T.Tup (e1.note.note_typ::ts) } }
+    | { at; note = { note_eff; _ }; _ } ->
+       { it = TupE ([e1; e2]); at; note = { note_eff = effect note_eff; note_typ = T.Tup ([e1.note.note_typ; e2.note.note_typ]) } }
+  in args

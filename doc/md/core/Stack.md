@@ -238,7 +238,7 @@ Space: O(1)
 
 ## Function `contains`
 ``` motoko no-repl
-func contains<T>(stack : Stack<T>, element : T, equal : (T, T) -> Bool) : Bool
+func contains<T>(stack : Stack<T>, equal : (T, T) -> Bool, element : T) : Bool
 ```
 
 Returns true if the stack contains the specified element.
@@ -251,7 +251,7 @@ import Nat "mo:core/Nat";
 
 persistent actor {
   let stack = Stack.fromIter<Nat>([3, 2, 1].values());
-  assert Stack.contains(stack, 2, Nat.equal);
+  assert Stack.contains(stack, Nat.equal, 2);
 }
 ```
 

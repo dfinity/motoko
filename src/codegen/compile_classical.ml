@@ -5101,6 +5101,12 @@ module IC = struct
     E.add_func_import env "ic0" "stable64_read" (i64s 3) [];
     E.add_func_import env "ic0" "stable64_size" [] [I64Type];
     E.add_func_import env "ic0" "stable64_grow" [I64Type] [I64Type];
+    E.add_func_import env "ic0" "env_var_count" [] [i];
+    E.add_func_import env "ic0" "env_var_name_size" [i] [i];
+    E.add_func_import env "ic0" "env_var_name_copy" (is 4) [];
+    E.add_func_import env "ic0" "env_var_name_exists" [i; i] [I32Type];
+    E.add_func_import env "ic0" "env_var_value_size" [i; i] [i];
+    E.add_func_import env "ic0" "env_var_value_copy" (is 5) [];
     E.add_func_import env "ic0" "time" [] [I64Type];
     if !Flags.global_timer then
       E.add_func_import env "ic0" "global_timer_set" [I64Type] [I64Type]
@@ -5388,6 +5394,75 @@ module IC = struct
       system_call env "time"
     | _ ->
       E.trap_with env "cannot get system time when running locally"
+
+let env_var_names env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      Func.share_code0 Func.Never env "env_var_names" [i] (fun env ->
+        let (set_len, get_len) = new_local env "len" in
+        let (set_array, get_array) = new_local env "array" in
+        system_call env "env_var_count" ^^ set_len ^^
+        Arr.alloc env Tagged.I get_len ^^ set_array ^^
+        get_len ^^ from_0_to_n env (fun get_i ->
+          let (set_name_len, get_name_len) = new_local env "name_len" in
+          let (set_name, get_name) = new_local env "name" in
+
+          get_i ^^
+          system_call env "env_var_name_size" ^^ set_name_len ^^
+
+          Blob.alloc env Tagged.T get_name_len ^^ set_name ^^
+
+          get_array ^^ get_i ^^ Arr.unsafe_idx env ^^
+          get_name ^^
+          store_ptr ^^
+
+          get_i ^^
+          get_name ^^ Blob.payload_ptr_unskewed env ^^
+          compile_unboxed_zero ^^
+          get_name_len ^^
+          system_call env "env_var_name_copy" ^^
+
+          get_name
+        ) ^^
+        get_array ^^
+        Tagged.allocation_barrier env
+      )
+    | _ ->
+      E.trap_with env "cannot get environment variable names when running locally"
+
+  let env_var env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      Func.share_code1 Func.Never env "env_var" ("name", i) [i] (fun env get_name ->
+        let (set_name_len, get_name_len) = new_local env "name_len" in
+
+        get_name ^^ Blob.len env ^^ set_name_len ^^
+
+        get_name ^^ Blob.payload_ptr_unskewed env ^^
+        get_name_len ^^
+        system_call env "env_var_name_exists" ^^
+        G.if1 I32Type (
+          let (set_value_len, get_value_len) = new_local env "value_len" in
+          let (set_value, get_value) = new_local env "value" in
+
+          get_name ^^ Blob.payload_ptr_unskewed env ^^
+          get_name_len ^^
+          system_call env "env_var_value_size" ^^ set_value_len ^^
+
+          Blob.alloc env Tagged.T get_value_len ^^ set_value ^^
+
+          get_name ^^ Blob.payload_ptr_unskewed env ^^
+          get_name_len ^^
+          get_value ^^ Blob.payload_ptr_unskewed env ^^
+          compile_unboxed_zero ^^
+          get_value_len ^^
+          system_call env "env_var_value_copy" ^^
+
+          Opt.inject_simple env get_value)
+        (Opt.null_lit env)
+      )
+    | _ ->
+      E.trap_with env "cannot get environment variable when running locally"
 
   let caller env =
     match E.mode env with
@@ -8023,22 +8098,15 @@ module MakeSerialization (Strm : Stream) = struct
                 ]
             end
             begin
-              (* this check corresponds to `not (null <: <t>)` in the spec *)
-              match normalize t with
-              | Prim Null | Opt _ | Any ->
-                (* Ignore and return null *)
-                skip get_idltyp ^^
-                Opt.null_lit env
-              | _ ->
-                (* Try constituent type *)
-                let (set_val, get_val) = new_local env "val" in
-                get_idltyp ^^ go_can_recover env t ^^ set_val ^^
-                get_val ^^ compile_eq_const (coercion_error_value env) ^^
-                G.if1 I32Type
-                  (* decoding failed, but this is opt, so: return null *)
-                  (Opt.null_lit env)
-                  (* decoding succeeded, return opt value *)
-                  (Opt.inject env get_val)
+              (* Try constituent type *)
+              let (set_val, get_val) = new_local env "val" in
+              get_idltyp ^^ go_can_recover env t ^^ set_val ^^
+              get_val ^^ compile_eq_const (coercion_error_value env) ^^
+              G.if1 I32Type
+                (* decoding failed, but this is opt, so: return null *)
+                (Opt.null_lit env)
+                (* decoding succeeded, return opt value *)
+                (Opt.inject env get_val)
             end
           end
         end
@@ -8254,21 +8322,25 @@ module MakeSerialization (Strm : Stream) = struct
         ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
 
         G.concat_map (fun t ->
-          let can_recover, default_or_trap = Type.(
+          let can_recover, argument_default_or_trap, coercion_default_or_trap = Type.(
+            let null_result _ = Opt.null_lit env in
             match normalize t with
-            | Prim Null | Opt _ | Any ->
-              (Bool.lit true, fun msg -> Opt.null_lit env)
+            | Prim Null ->
+              (get_can_recover, null_result, fun _ -> compile_unboxed_const (coercion_error_value env))
+            | Opt _ | Any ->
+              (Bool.lit true, null_result, null_result)
             | _ ->
-              (get_can_recover, fun msg ->
+              let default_or_trap msg =
                 get_can_recover ^^
                 G.if1 I32Type
                    (compile_unboxed_const (coercion_error_value env))
-                   (E.trap_with env msg)))
+                   (E.trap_with env msg) in
+              (get_can_recover, default_or_trap, default_or_trap))
           in
           get_arg_count ^^
           compile_eq_const 0l ^^
           G.if1 I32Type
-           (default_or_trap ("IDL error: too few arguments " ^ ts_name))
+           (argument_default_or_trap ("IDL error: too few arguments " ^ ts_name))
            (begin
               (* set up variable frame arguments *)
               Stack.with_frame env "frame_ptr" 3l (fun () ->
@@ -8287,7 +8359,7 @@ module MakeSerialization (Strm : Stream) = struct
              get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count ^^
              get_val ^^ compile_eq_const (coercion_error_value env) ^^
              (G.if1 I32Type
-               (default_or_trap "IDL error: coercion failure encountered")
+               (coercion_default_or_trap "IDL error: coercion failure encountered")
                get_val)
             end)
         ) ts ^^
@@ -11828,6 +11900,15 @@ and compile_prim_invocation (env : E.t) ae p es at =
     Diag.print_messages [msg];
     exit 0
 
+  | OtherPrim "env_var_names", [] ->
+    SR.Vanilla,
+    IC.env_var_names env
+
+  | OtherPrim "env_var", [name] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae name ^^
+    IC.env_var env
+
   (* Regions *)
 
   | OtherPrim "regionNew", [] ->
@@ -12236,6 +12317,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "root_key", [] ->
     SR.Vanilla, IC.get_root_key env
+
+  | OtherPrim "canister_self", [] ->
+    SR.Vanilla, IC.get_self_reference env
 
   (* Other prims, binary *)
   | OtherPrim "Array.init", [_;_] ->

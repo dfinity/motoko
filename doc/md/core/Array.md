@@ -9,7 +9,7 @@ WARNING: If you are looking for a list that can grow and shrink in size,
 it is recommended you use `List` for those purposes.
 Arrays must be created with a fixed size.
 
-Import from the core library to use this module.
+Import from the core package to use this module.
 ```motoko name=import
 import Array "mo:core/Array";
 ```
@@ -308,7 +308,7 @@ Space: O(size)
 
 ## Function `mapResult`
 ``` motoko no-repl
-func mapResult<T, R, E>(array : [T], f : T -> Result.Result<R, E>) : Result.Result<[R], E>
+func mapResult<T, R, E>(array : [T], f : T -> Types.Result<R, E>) : Types.Result<[R], E>
 ```
 
 Creates a new array by applying `f` to each element in `array`.
@@ -611,7 +611,7 @@ Space: O(1)
 
 ## Function `indexOf`
 ``` motoko no-repl
-func indexOf<T>(element : T, array : [T], equal : (T, T) -> Bool) : ?Nat
+func indexOf<T>(array : [T], equal : (T, T) -> Bool, element : T) : ?Nat
 ```
 
 Returns the index of the first `element` in the `array`.
@@ -619,9 +619,9 @@ Returns the index of the first `element` in the `array`.
 ```motoko include=import
 import Char "mo:core/Char";
 let array = ['c', 'o', 'f', 'f', 'e', 'e'];
-assert Array.indexOf<Char>('c', array, Char.equal) == ?0;
-assert Array.indexOf<Char>('f', array, Char.equal) == ?2;
-assert Array.indexOf<Char>('g', array, Char.equal) == null;
+assert Array.indexOf<Char>(array, Char.equal, 'c') == ?0;
+assert Array.indexOf<Char>(array, Char.equal, 'f') == ?2;
+assert Array.indexOf<Char>(array, Char.equal, 'g') == null;
 ```
 
 Runtime: O(array.size())
@@ -630,7 +630,7 @@ Space: O(1)
 
 ## Function `nextIndexOf`
 ``` motoko no-repl
-func nextIndexOf<T>(element : T, array : [T], fromInclusive : Nat, equal : (T, T) -> Bool) : ?Nat
+func nextIndexOf<T>(array : [T], equal : (T, T) -> Bool, element : T, fromInclusive : Nat) : ?Nat
 ```
 
 Returns the index of the next occurence of `element` in the `array` starting from the `from` index (inclusive).
@@ -638,11 +638,11 @@ Returns the index of the next occurence of `element` in the `array` starting fro
 ```motoko include=import
 import Char "mo:core/Char";
 let array = ['c', 'o', 'f', 'f', 'e', 'e'];
-assert Array.nextIndexOf<Char>('c', array, 0, Char.equal) == ?0;
-assert Array.nextIndexOf<Char>('f', array, 0, Char.equal) == ?2;
-assert Array.nextIndexOf<Char>('f', array, 2, Char.equal) == ?2;
-assert Array.nextIndexOf<Char>('f', array, 3, Char.equal) == ?3;
-assert Array.nextIndexOf<Char>('f', array, 4, Char.equal) == null;
+assert Array.nextIndexOf<Char>(array, Char.equal, 'c', 0) == ?0;
+assert Array.nextIndexOf<Char>(array, Char.equal, 'f', 0) == ?2;
+assert Array.nextIndexOf<Char>(array, Char.equal, 'f', 2) == ?2;
+assert Array.nextIndexOf<Char>(array, Char.equal, 'f', 3) == ?3;
+assert Array.nextIndexOf<Char>(array, Char.equal, 'f', 4) == null;
 ```
 
 Runtime: O(array.size())
@@ -651,7 +651,7 @@ Space: O(1)
 
 ## Function `lastIndexOf`
 ``` motoko no-repl
-func lastIndexOf<T>(element : T, array : [T], equal : (T, T) -> Bool) : ?Nat
+func lastIndexOf<T>(array : [T], equal : (T, T) -> Bool, element : T) : ?Nat
 ```
 
 Returns the index of the last `element` in the `array`.
@@ -659,10 +659,10 @@ Returns the index of the last `element` in the `array`.
 ```motoko include=import
 import Char "mo:core/Char";
 let array = ['c', 'o', 'f', 'f', 'e', 'e'];
-assert Array.lastIndexOf<Char>('c', array, Char.equal) == ?0;
-assert Array.lastIndexOf<Char>('f', array, Char.equal) == ?3;
-assert Array.lastIndexOf<Char>('e', array, Char.equal) == ?5;
-assert Array.lastIndexOf<Char>('g', array, Char.equal) == null;
+assert Array.lastIndexOf<Char>(array, Char.equal, 'c') == ?0;
+assert Array.lastIndexOf<Char>(array, Char.equal, 'f') == ?3;
+assert Array.lastIndexOf<Char>(array, Char.equal, 'e') == ?5;
+assert Array.lastIndexOf<Char>(array, Char.equal, 'g') == null;
 ```
 
 Runtime: O(array.size())
@@ -671,7 +671,7 @@ Space: O(1)
 
 ## Function `prevIndexOf`
 ``` motoko no-repl
-func prevIndexOf<T>(element : T, array : [T], fromExclusive : Nat, equal : (T, T) -> Bool) : ?Nat
+func prevIndexOf<T>(array : [T], equal : (T, T) -> Bool, element : T, fromExclusive : Nat) : ?Nat
 ```
 
 Returns the index of the previous occurence of `element` in the `array` starting from the `from` index (exclusive).
@@ -684,10 +684,10 @@ If the first index is greater than the second, the function returns an empty ite
 ```motoko include=import
 import Char "mo:core/Char";
 let array = ['c', 'o', 'f', 'f', 'e', 'e'];
-assert Array.prevIndexOf<Char>('c', array, array.size(), Char.equal) == ?0;
-assert Array.prevIndexOf<Char>('e', array, array.size(), Char.equal) == ?5;
-assert Array.prevIndexOf<Char>('e', array, 5, Char.equal) == ?4;
-assert Array.prevIndexOf<Char>('e', array, 4, Char.equal) == null;
+assert Array.prevIndexOf<Char>(array, Char.equal, 'c', array.size()) == ?0;
+assert Array.prevIndexOf<Char>(array, Char.equal, 'e', array.size()) == ?5;
+assert Array.prevIndexOf<Char>(array, Char.equal, 'e', 5) == ?4;
+assert Array.prevIndexOf<Char>(array, Char.equal, 'e', 4) == null;
 ```
 
 Runtime: O(array.size());
@@ -746,6 +746,31 @@ Runtime: O(toExclusive - fromInclusive)
 
 Space: O(toExclusive - fromInclusive)
 
+## Function `sliceToVarArray`
+``` motoko no-repl
+func sliceToVarArray<T>(array : [T], fromInclusive : Int, toExclusive : Int) : [var T]
+```
+
+Returns a new mutable array containing elements from `array` starting at index `fromInclusive` up to (but not including) index `toExclusive`.
+If the indices are out of bounds, they are clamped to the array bounds.
+
+```motoko include=import
+import VarArray "mo:core/VarArray";
+import Nat "mo:core/Nat";
+
+let array = [1, 2, 3, 4, 5];
+
+let slice1 = Array.sliceToVarArray<Nat>(array, 1, 4);
+assert VarArray.equal(slice1, [var 2, 3, 4], Nat.equal);
+
+let slice2 = Array.sliceToVarArray<Nat>(array, 1, -1);
+assert VarArray.equal(slice2, [var 2, 3, 4], Nat.equal);
+```
+
+Runtime: O(toExclusive - fromInclusive)
+
+Space: O(toExclusive - fromInclusive)
+
 ## Function `toText`
 ``` motoko no-repl
 func toText<T>(array : [T], f : T -> Text) : Text
@@ -796,6 +821,33 @@ assert Array.compare<Nat>(array3, array4, Nat.compare) == #less;
 ```
 
 Runtime: O(min(size1, size2))
+
+Space: O(1)
+
+*Runtime and space assumes that `compare` runs in O(1) time and space.
+
+## Function `binarySearch`
+``` motoko no-repl
+func binarySearch<T>(array : [T], compare : (T, T) -> Order.Order, element : T) : {#found : Nat; #insertionIndex : Nat}
+```
+
+Performs binary search on a sorted array to find the index of the `element`.
+
+Returns `#found(index)` if the element is found, or `#insertionIndex(index)` with the index
+where the element would be inserted according to the ordering if not found.
+
+If there are multiple equal elements, no guarantee is made about which index is returned.
+The array must be sorted in ascending order according to the `compare` function.
+
+```motoko include=import
+import Nat "mo:core/Nat";
+
+let sorted = [1, 3, 5, 7, 9, 11];
+assert Array.binarySearch<Nat>(sorted, Nat.compare, 5) == #found(2);
+assert Array.binarySearch<Nat>(sorted, Nat.compare, 6) == #insertionIndex(3);
+```
+
+Runtime: O(log(size))
 
 Space: O(1)
 

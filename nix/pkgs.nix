@@ -40,6 +40,8 @@
     # Rust Nightly & Stable
     rust-overlay.overlays.default
     (self: super: {
+      # When you change the rust-nightly version,
+      # make sure to change the rustStdDepsHash in ./rts.nix accordingly.
       rust-nightly = self.rust-bin.nightly."2024-07-28".default.override {
         extensions = [ "rust-src" ];
         targets = [ "wasm32-wasip1" ];
@@ -56,8 +58,8 @@
     # wasm-profiler
     (self: super: import ./wasm-profiler.nix self)
 
-    # drun
-    (self: super: { drun = import ./drun.nix self; })
+    # pocket-ic
+    (self: super: { pocket-ic = import ./pocket-ic.nix self; })
 
     # ic-wasm
     (self: super: { ic-wasm = import ./ic-wasm.nix self; })

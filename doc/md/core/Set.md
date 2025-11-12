@@ -344,7 +344,7 @@ func remove<T>(set : Set<T>, compare : (T, T) -> Order.Order, element : T) : ()
 ```
 
 Deletes an element from a set.
-Returns `true` if the element was contained in the set, `false` if not.
+No effect if the element is not contained in the set.
 
 ```motoko
 import Set "mo:core/Set";
@@ -376,8 +376,6 @@ Note: Creates `O(log(n))` objects that will be collected as garbage.
 func delete<T>(set : Set<T>, compare : (T, T) -> Order.Order, element : T) : Bool
 ```
 
-Deletes an element from a set.
-Returns true if the element was contained in the set, false if not.
 Deletes an element from a set.
 Returns true if the element was contained in the set, false if not.
 
