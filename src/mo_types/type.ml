@@ -2334,15 +2334,15 @@ let string_of_context context =
     | Bounds::rest when not nested ->
       Printf.sprintf "type parameters (used by %s)" (emit_context true rest)
     | Bounds::rest ->
-      Printf.sprintf "type parameters in %s" (emit_context true rest)
+      Printf.sprintf "type parameters of %s" (emit_context true rest)
     | Domain::rest when not nested ->
       Printf.sprintf "arguments (used by %s)" (emit_context true rest)
     | Domain::rest ->
-      Printf.sprintf "arguments in %s" (emit_context true rest)
+      Printf.sprintf "arguments of %s" (emit_context true rest)
     | CoDomain::rest when not nested ->
       Printf.sprintf "results (used by %s)" (emit_context true rest)
     | CoDomain::rest ->
-      Printf.sprintf "results in %s" (emit_context true rest)
+      Printf.sprintf "results of %s" (emit_context true rest)
 
     | (StableVariable name)::_ -> name
   in
