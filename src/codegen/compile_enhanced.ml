@@ -496,7 +496,7 @@ module E = struct
 
     (* Counter for deriving a unique id per constant function. *)
     constant_functions : int32 ref;
-    dedup2 : (unit -> int32) option ref;
+    dedup : (unit -> int32) option ref;
   }
 
 
@@ -531,7 +531,7 @@ module E = struct
     requires_stable_memory = ref false;
     global_type_descriptor = ref None;
     constant_functions = ref 0l;
-    dedup2 = ref None;
+    dedup = ref None;
   }
 
   (* This wraps Mo_types.Hash.hash to also record which labels we have seen,
@@ -802,13 +802,13 @@ module E = struct
       [ nr {mtype = MemoryType ({min = Int64.zero; max = None}, I64IndexType)} ]
     | _ -> []
 
-  let get_dedup (env : t) =
-    match !(env.dedup2) with
+  let get_dedup (env : t) : int32 =
+    match !(env.dedup) with
     | Some mk_fi -> mk_fi()
-    | _ -> assert false
+    | None -> assert false
 
-  let set_dedup (env : t) mk_fi =
-    env.dedup2 := Some mk_fi
+  let set_dedup (env : t) (mk_fi : unit -> int32)=
+    env.dedup := Some mk_fi
 
 end
 
@@ -6921,7 +6921,15 @@ module Internals = struct
   let add_cycles env ae = call_prelude_function env ae "@add_cycles"
   let reset_cycles env ae = call_prelude_function env ae "@reset_cycles"
   let reset_refund env ae = call_prelude_function env ae "@reset_refund"
-  let dedup2 env = G.i (Call (nr (E.get_dedup env))) 
+
+  let register_dedup env ae =
+    match VarEnv.lookup_var ae "@dedup" with
+    | Some (VarEnv.Const Const.Fun (_, mk_fi, _)) ->
+      E.set_dedup env mk_fi
+    | _ -> assert false
+
+  let dedup env = G.i (Call (nr (E.get_dedup env)))
+
 end
 
 module Serialization = struct
@@ -8401,11 +8409,11 @@ module Serialization = struct
       | Prim Blob ->
         with_blob_typ env (
           let (set_blob, get_blob) = new_local env "blob" in
-          read_blob () ^^ set_blob ^^           (* Read blob and save it *)
-          compile_unboxed_zero ^^               (* Put closure on stack first *)
-          get_blob ^^                           (* Put blob on stack second *)
-          Internals.dedup2 env            
-          )
+          read_blob () ^^ set_blob ^^  (* Read blob and save it *)
+          compile_unboxed_zero ^^      (* Put closure on stack *)
+          get_blob ^^                  (* Put blob on stack *)
+          Internals.dedup env          (* Call dedup *)
+        )
       | Prim Principal ->
         with_prim_typ t
         begin
@@ -8567,22 +8575,15 @@ module Serialization = struct
                 ]
             end
             begin
-              (* this check corresponds to `not (null <: <t>)` in the spec *)
-              match normalize t with
-              | Prim Null | Opt _ | Any ->
-                (* Ignore and return null *)
-                skip get_idltyp ^^
-                Opt.null_lit env
-              | _ ->
-                (* Try constituent type *)
-                let (set_val, get_val) = new_local env "val" in
-                get_idltyp ^^ go_can_recover env t ^^ set_val ^^
-                get_val ^^ compile_eq_const (coercion_error_value env) ^^
-                E.if1 I64Type
-                  (* decoding failed, but this is opt, so: return null *)
-                  (Opt.null_lit env)
-                  (* decoding succeeded, return opt value *)
-                  (Opt.inject env get_val)
+              (* Try constituent type *)
+              let (set_val, get_val) = new_local env "val" in
+              get_idltyp ^^ go_can_recover env t ^^ set_val ^^
+              get_val ^^ compile_eq_const (coercion_error_value env) ^^
+              E.if1 I64Type
+                (* decoding failed, but this is opt, so: return null *)
+                (Opt.null_lit env)
+                (* decoding succeeded, return opt value *)
+                (Opt.inject env get_val)
             end
           end
         end
@@ -8821,21 +8822,25 @@ module Serialization = struct
         ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
 
         G.concat_map (fun t ->
-          let can_recover, default_or_trap = Type.(
+          let can_recover, argument_default_or_trap, coercion_default_or_trap = Type.(
+            let null_result _ = Opt.null_lit env in
             match normalize t with
-            | Prim Null | Opt _ | Any ->
-              (Bool.lit true, fun msg -> Opt.null_lit env)
+            | Prim Null ->
+              (get_can_recover, null_result, fun _ -> compile_unboxed_const (coercion_error_value env))
+            | Opt _ | Any ->
+              (Bool.lit true, null_result, null_result)
             | _ ->
-              (get_can_recover, fun msg ->
+              let default_or_trap msg =
                 get_can_recover ^^
                 E.if1 I64Type
                    (compile_unboxed_const (coercion_error_value env))
-                   (E.trap_with env msg)))
+                   (E.trap_with env msg) in
+              (get_can_recover, default_or_trap, default_or_trap))
           in
           get_arg_count ^^
           compile_eq_const 0L ^^
           E.if1 I64Type
-           (default_or_trap ("IDL error: too few arguments " ^ ts_name))
+           (argument_default_or_trap ("IDL error: too few arguments " ^ ts_name))
            (begin
               (* set up variable frame arguments *)
               Stack.with_frame env "frame_ptr" 3L (fun () ->
@@ -8854,7 +8859,7 @@ module Serialization = struct
              get_arg_count ^^ compile_sub_const 1L ^^ set_arg_count ^^
              get_val ^^ compile_eq_const (coercion_error_value env) ^^
              (E.if1 I64Type
-               (default_or_trap "IDL error: coercion failure encountered")
+               (coercion_default_or_trap "IDL error: coercion failure encountered")
                get_val)
             end)
         ) ts ^^
@@ -13595,7 +13600,9 @@ and compile_init_func mod_env ((cu, flavor) : Ir.prog) =
   | LibU _ -> fatal "compile_start_func: Cannot compile library"
   | ProgU ds ->
     Func.define_built_in mod_env "init" [] [] (fun env ->
-      let _ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in
+      let ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in
+      (* Register the Blob deserialization dedup function *)
+      Internals.register_dedup env ae;
       codeW G.nop
     )
   | ActorU (as_opt, ds, fs, up, t) ->
@@ -13654,13 +13661,8 @@ and main_actor as_opt mod_env ds fs up =
     let ae2, decls_codeW = compile_decs_public env ae1 ds v2en
         Freevars.(captured_vars (system up))
     in
-    let _ = match VarEnv.lookup_var ae2 "@dedup2" with
-    | Some (VarEnv.Const Const.Fun (_, mk_fi, _)) ->
-      E.set_dedup env mk_fi
-    | _ -> assert false
-    in
-    let _fi = E.get_dedup env in
-
+    (* Register the Blob deserialization dedup function *)
+    Internals.register_dedup env ae2;
     (* Export the public functions *)
     List.iter (export_actor_field env ae2) fs;
 

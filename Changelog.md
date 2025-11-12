@@ -2,6 +2,16 @@
 
 * motoko (`moc`)
 
+  * Improved error messages for context dot: only the receiver type variables are solved, remaining type variables stay unsolved, not solved to `Any` or `Non` (#5634).
+
+  * Fixed the type instantiation hint to have the correct arity (#5634).
+
+  * Fix for #5618 (compiling dotted `await`s) (#5622).
+
+  * Improved type inference of the record update syntax (#5625).
+
+  * New flag `--error-recovery` to enable reporting of multiple syntax errors (#5632).
+
   * Improved solving and error messages for invariant type parameters (#5464).
     Error messages now include suggested type instantiations when there is no principal solution.
 
@@ -69,6 +79,9 @@
   * bugfix: importing of `blob:file:` URLs in subdirectories should work now (#5507, #5569).
 
   * bugfix: escape `composite_query` fields on the Candid side, as it is a keyword (#5617).
+
+  * bugfix: implement Candid spec improvements (#5504, #5543, #5505).
+    May now cause rejection of certain type-incorrect Candid messages that were accepted before.
 
 ## 0.16.3 (2025-09-29)
 

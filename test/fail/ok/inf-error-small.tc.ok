@@ -1,37 +1,37 @@
 inf-error-small.mo:43.13-43.34: type error [M0098], cannot apply function `.get` of type
-  (n : Nat) -> ?Text
+  <K, V>(n : K) -> ?V
 to argument of type
   Text
-to produce result of expected type
-  Text
+because there is no way to satisfy subtyping
+  ?V  <:  Text  (for the expected return type) 
 inf-error-small.mo:44.13-44.47: type error [M0098], cannot apply function `.get` of type
-  (compare : (implicit : (Nat, Nat) -> Order), n : Nat) -> ?Text
+  <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
 to argument of type
   ((n : Nat, m : Nat) -> Order, Text)
-to produce result of expected type
-  Text
+because there is no way to satisfy subtyping
+  ?V  <:  Text  (for the expected return type) 
 inf-error-small.mo:46.13-46.45: type error [M0098], cannot apply function `.get` of type
-  (compare : (implicit : (Nat, Nat) -> Order), n : Nat) -> ?Text
+  <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
 to argument of type
   ({map : [(Nat, [var Text])]}, Text)
-to produce result of expected type
-  Text
+because there is no way to satisfy subtyping
+  ?V  <:  Text  (for the expected return type) 
 inf-error-small.mo:47.26-47.58: type error [M0233], wrong number of arguments: expected 1 but got 3
 Expected 1 argument of type:
-  (n : K)
+  (n : Nat)
 But got 3 arguments of type:
   {map : [(Nat, [var Text])]}
   (n : Nat, m : Nat) -> Order
   Text
 inf-error-small.mo:48.13-48.45: type error [M0098], cannot apply function `.get` of type
-  (compare : (implicit : (Nat, Nat) -> Order), n : Nat) -> ?Text
+  <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
 to argument of type
   ({map : [(Nat, [var Text])]}, Text)
-to produce result of expected type
-  Text
+because there is no way to satisfy subtyping
+  ?V  <:  Text  (for the expected return type) 
 inf-error-small.mo:50.13-50.29: type error [M0098], cannot apply function `.get` of type
-  (n : Nat) -> ?Text
+  <K, V>(n : K) -> ?V
 to argument of type
   Nat
-to produce result of expected type
-  Bool
+because there is no way to satisfy subtyping
+  ?V  <:  Bool  (for the expected return type) 
