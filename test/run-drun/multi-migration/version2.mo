@@ -1,23 +1,17 @@
 import Prim "mo:prim";
-import Migration1 "Migration1";
-import Migration2 "Migration2";
-import Migration3 "Migration3";
-import Migration4 "Migration4";
-import Migration5 "Migration5";
-import Migration6 "Migration4";
+
+import Migration "Migration6";
+import Migration2 "Migration5";
 
 (
   with multi_migration = (
-    Migration1.run,
+    Migration.run,
     Migration2.run,
-    Migration3.run,
-    Migration4.run,
-    Migration5.run,
   )
 )
 actor {
 
-  Prim.debugPrint("Version 1");
+  Prim.debugPrint("The wrong version 2");
 
   stable var zero : Nat = 0;
   assert zero == 0;

@@ -3808,7 +3808,33 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
           (* only multi_migration - can be a single function or tuple of functions *)
           (match T.normalize multi_typ with
            | T.Func _ ->
-             (* Single function - treat as 1-tuple *)
+             (* Single function - compute ID for it *)
+             (* Extract the single migration expression *)
+             let migration_expr = 
+               match exp.it with
+               | ObjE(_, flds) ->
+                 (match List.find_opt (fun ({it = {id; exp; _}; _} : exp_field) -> 
+                         id.it = T.multi_migration_lab) flds with
+                  | Some fld -> fld.it.exp
+                  | None -> assert false)
+               | _ -> assert false
+             in
+             let migration_id = 
+               match migration_expr.it with
+               | DotE({it = VarE _; _} as obj_expr, field_name, _) ->
+                 (* Get field definition location *)
+                 (match T.normalize obj_expr.note.note_typ with
+                  | T.Obj(_, fields) ->
+                    (match List.find_opt (fun f -> f.T.lab = field_name.it) fields with
+                     | Some field -> Source.string_of_region field.T.src.T.region
+                     | None -> Source.string_of_region migration_expr.at)
+                  | _ -> Source.string_of_region migration_expr.at)
+               | _ -> Source.string_of_region migration_expr.at
+             in
+             
+             (* Store as single-element list in map *)
+             Hashtbl.add Migration_info.migration_ids_map exp.at [migration_id];
+             
              multi_typ
            | T.Tup elem_typs when List.length elem_typs > 0 ->
              (* Tuple of functions - validate chaining *)
@@ -3826,6 +3852,36 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
               | TupE elements when List.length elements > 0 ->
                 (* Validate each migration and check chain compatibility *)
                 (* Also extract first input type and last output type *)
+                (* Compute stable IDs for each migration based on field definition location *)
+                (* Printf.eprintf "TYPING: Computing migration IDs for %d elements\n" (List.length elements); *)
+                let migration_ids = List.map (fun elem ->
+                  match elem.it with
+                  | DotE({it = VarE _; _} as obj_expr, field_name, _) ->
+                    (* Get field definition location *)
+                    (match T.normalize obj_expr.note.note_typ with
+                     | T.Obj(_, fields) ->
+                       (match List.find_opt (fun f -> f.T.lab = field_name.it) fields with
+                        | Some field -> Source.string_of_region field.T.src.T.region
+                        | None -> Source.string_of_region elem.at) (* fallback *)
+                     | _ -> Source.string_of_region elem.at) (* fallback *)
+                  | _ -> Source.string_of_region elem.at (* fallback for inline functions, etc *)
+                ) elements in
+                
+                (* Check for duplicate migration IDs *)
+                let seen_ids = Hashtbl.create (List.length migration_ids) in
+                List.iteri (fun i id ->
+                  if Hashtbl.mem seen_ids id then
+                    let first_idx = Hashtbl.find seen_ids id in
+                    local_error env (List.nth elements i).at "M0243"
+                      "duplicate migration at index %d (same implementation as migration at index %d)"
+                      i first_idx
+                  else
+                    Hashtbl.add seen_ids id i
+                ) migration_ids;
+                
+                (* Store migration IDs in global map for desugaring to access *)
+                Hashtbl.add Migration_info.migration_ids_map exp.at migration_ids;
+                
                 let first_elem = List.hd elements in
                 let last_elem = List.hd (List.rev elements) in
                 
