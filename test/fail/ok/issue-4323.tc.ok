@@ -4,4 +4,4 @@ does not match expected type
   Main = actor {beep : shared () -> async ()}
 because: Unsupported additional field `beep` in type 
   actor {beep : shared () -> async ()}
- of Main (used by expected type)
+ of Main (used by type)

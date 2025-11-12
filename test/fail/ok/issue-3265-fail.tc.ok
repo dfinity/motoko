@@ -16,7 +16,7 @@ because: The type
   Nat
  is not compatible with type 
   None
- of None (used by expected type)
+ of None (used by type)
 issue-3265-fail.mo:11.40-11.64: type error [M0150], expected immutable field myList of type
   List<Nat>
 but found mutable 'var' field (delete 'var'?)

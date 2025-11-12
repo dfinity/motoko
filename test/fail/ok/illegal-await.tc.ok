@@ -39,4 +39,4 @@ because: Incompatible async scopes:
   $
  does not match 
   $Rec
- in expected type
+ in type

@@ -30,7 +30,7 @@ because: Type variable
   Any
  is not compatible with type 
   C
- of expected type
+ of type
 f-bounds-fail.mo:10.52-10.53: type error [M0096], expression of type
   A
 cannot produce expected type
@@ -47,7 +47,7 @@ because: Type variable
   Any
  is not compatible with type 
   C
- of expected type
+ of type
 f-bounds-fail.mo:11.52-11.53: type error [M0096], expression of type
   A
 cannot produce expected type
@@ -64,7 +64,7 @@ because: Type variable
   Any
  is not compatible with type 
   C
- of expected type
+ of type
 f-bounds-fail.mo:45.23-45.25: type error [M0096], expression of type
   ()
 cannot produce expected type
@@ -177,7 +177,7 @@ because: Type variable
   Any
  is not compatible with type 
   C
- of expected type
+ of type
 f-bounds-fail.mo:71.27-71.28: type error [M0096], expression of type
   B
 cannot produce expected type
@@ -190,7 +190,7 @@ because: Type variable
   Any
  is not compatible with type 
   C
- of expected type
+ of type
 f-bounds-fail.mo:74.27-74.28: type error [M0096], expression of type
   A
 cannot produce expected type
@@ -207,7 +207,7 @@ because: Type variable
   Any
  is not compatible with type 
   C
- of expected type
+ of type
 f-bounds-fail.mo:75.27-75.28: type error [M0096], expression of type
   B
 cannot produce expected type
@@ -220,7 +220,7 @@ because: Type variable
   Any
  is not compatible with type 
   C
- of expected type
+ of type
 f-bounds-fail.mo:77.27-77.28: type error [M0096], expression of type
   B
 cannot produce expected type
@@ -233,7 +233,7 @@ because: Type variable
   Any
  is not compatible with type 
   C
- of expected type
+ of type
 f-bounds-fail.mo:80.23-80.24: type error [M0096], expression of type
   A
 cannot produce expected type
@@ -250,7 +250,7 @@ because: Type variable
   Any
  is not compatible with type 
   C
- of expected type
+ of type
 f-bounds-fail.mo:80.25-80.26: type error [M0096], expression of type
   A
 cannot produce expected type
@@ -267,7 +267,7 @@ because: Type variable
   Any
  is not compatible with type 
   C
- of expected type
+ of type
 f-bounds-fail.mo:80.27-80.28: type error [M0096], expression of type
   A
 cannot produce expected type
@@ -284,7 +284,7 @@ because: Type variable
   Any
  is not compatible with type 
   C
- of expected type
+ of type
 f-bounds-fail.mo:81.23-81.24: type error [M0096], expression of type
   A
 cannot produce expected type
@@ -301,7 +301,7 @@ because: Type variable
   Any
  is not compatible with type 
   C
- of expected type
+ of type
 f-bounds-fail.mo:81.25-81.26: type error [M0096], expression of type
   A
 cannot produce expected type
@@ -318,7 +318,7 @@ because: Type variable
   Any
  is not compatible with type 
   C
- of expected type
+ of type
 f-bounds-fail.mo:81.27-81.28: type error [M0096], expression of type
   B
 cannot produce expected type
@@ -331,7 +331,7 @@ because: Type variable
   Any
  is not compatible with type 
   C
- of expected type
+ of type
 f-bounds-fail.mo:82.24-82.25: type error [M0096], expression of type
   A
 cannot produce expected type
@@ -348,7 +348,7 @@ because: Type variable
   Any
  is not compatible with type 
   C
- of expected type
+ of type
 f-bounds-fail.mo:82.26-82.27: type error [M0096], expression of type
   B
 cannot produce expected type
@@ -361,4 +361,4 @@ because: Type variable
   Any
  is not compatible with type 
   C
- of expected type
+ of type
