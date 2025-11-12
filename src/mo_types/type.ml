@@ -2318,7 +2318,7 @@ let string_of_typ_expand typ : string =
 let string_of_context context =
   let rec emit_context nested context =
     match context with
-    | [] -> "top level"
+    | [] -> "expected type"
     | (Field label)::rest -> Printf.sprintf "%s in %s" label (emit_context true rest)
     | (ConsType c)::rest when not nested ->
        Printf.sprintf "%s (used by %s)" (remove_hash_suffix (Cons.name c)) (emit_context true rest)
