@@ -1258,7 +1258,7 @@ pub(crate) unsafe fn sub(
 
 #[no_mangle]
 unsafe extern "C" fn idl_sub_buf_words(typtbl_size1: usize, typtbl_size2: usize) -> usize {
-    return BitRel::words(typtbl_size1, typtbl_size2);
+    BitRel::words(typtbl_size1, typtbl_size2)
 }
 
 #[no_mangle]
@@ -1306,11 +1306,11 @@ unsafe extern "C" fn idl_sub(
     t1: i32,
     t2: i32,
 ) -> bool {
-    debug_assert!(rel_buf != (0 as *mut usize));
-    debug_assert!(typtbl1 != (0 as *mut *mut u8));
-    debug_assert!(typtbl2 != (0 as *mut *mut u8));
-    debug_assert!(typtbl_end1 != (0 as *mut u8));
-    debug_assert!(typtbl_end2 != (0 as *mut u8));
+    debug_assert!(rel_buf != 0 as *mut usize);
+    debug_assert!(typtbl1 != 0 as *mut *mut u8);
+    debug_assert!(typtbl2 != 0 as *mut *mut u8);
+    debug_assert!(typtbl_end1 != 0 as *mut u8);
+    debug_assert!(typtbl_end2 != 0 as *mut u8);
 
     let rel = BitRel {
         ptr: rel_buf,
@@ -1318,7 +1318,7 @@ unsafe extern "C" fn idl_sub(
         size1: typtbl_size1,
         size2: typtbl_size2,
     };
-    debug_assert!(t1 < (typtbl_size1 as i32) && t2 < (typtbl_size2 as i32));
+    debug_assert!(t1 < typtbl_size1 as i32 && t2 < typtbl_size2 as i32);
     return sub(
         &rel,
         true,
