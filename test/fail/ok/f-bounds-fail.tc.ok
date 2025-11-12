@@ -20,11 +20,11 @@ cannot produce expected type
   C
 because: Type variable 
   A
- was upcast to its bound 
+ was promoted to its bound 
   B
  and: Type variable 
   B
- was upcast to its bound 
+ was promoted to its bound 
   Any
  and: The type 
   Any
@@ -37,11 +37,11 @@ cannot produce expected type
   C
 because: Type variable 
   A
- was upcast to its bound 
+ was promoted to its bound 
   B
  and: Type variable 
   B
- was upcast to its bound 
+ was promoted to its bound 
   Any
  and: The type 
   Any
@@ -54,11 +54,11 @@ cannot produce expected type
   C
 because: Type variable 
   A
- was upcast to its bound 
+ was promoted to its bound 
   B
  and: Type variable 
   B
- was upcast to its bound 
+ was promoted to its bound 
   Any
  and: The type 
   Any
@@ -167,11 +167,11 @@ cannot produce expected type
   C
 because: Type variable 
   A
- was upcast to its bound 
+ was promoted to its bound 
   B
  and: Type variable 
   B
- was upcast to its bound 
+ was promoted to its bound 
   Any
  and: The type 
   Any
@@ -184,7 +184,7 @@ cannot produce expected type
   C
 because: Type variable 
   B
- was upcast to its bound 
+ was promoted to its bound 
   Any
  and: The type 
   Any
@@ -197,11 +197,11 @@ cannot produce expected type
   C
 because: Type variable 
   A
- was upcast to its bound 
+ was promoted to its bound 
   B
  and: Type variable 
   B
- was upcast to its bound 
+ was promoted to its bound 
   Any
  and: The type 
   Any
@@ -214,7 +214,7 @@ cannot produce expected type
   C
 because: Type variable 
   B
- was upcast to its bound 
+ was promoted to its bound 
   Any
  and: The type 
   Any
@@ -227,7 +227,7 @@ cannot produce expected type
   C
 because: Type variable 
   B
- was upcast to its bound 
+ was promoted to its bound 
   Any
  and: The type 
   Any
@@ -240,11 +240,11 @@ cannot produce expected type
   C
 because: Type variable 
   A
- was upcast to its bound 
+ was promoted to its bound 
   B
  and: Type variable 
   B
- was upcast to its bound 
+ was promoted to its bound 
   Any
  and: The type 
   Any
@@ -257,11 +257,11 @@ cannot produce expected type
   C
 because: Type variable 
   A
- was upcast to its bound 
+ was promoted to its bound 
   B
  and: Type variable 
   B
- was upcast to its bound 
+ was promoted to its bound 
   Any
  and: The type 
   Any
@@ -274,11 +274,11 @@ cannot produce expected type
   C
 because: Type variable 
   A
- was upcast to its bound 
+ was promoted to its bound 
   B
  and: Type variable 
   B
- was upcast to its bound 
+ was promoted to its bound 
   Any
  and: The type 
   Any
@@ -291,11 +291,11 @@ cannot produce expected type
   C
 because: Type variable 
   A
- was upcast to its bound 
+ was promoted to its bound 
   B
  and: Type variable 
   B
- was upcast to its bound 
+ was promoted to its bound 
   Any
  and: The type 
   Any
@@ -308,11 +308,11 @@ cannot produce expected type
   C
 because: Type variable 
   A
- was upcast to its bound 
+ was promoted to its bound 
   B
  and: Type variable 
   B
- was upcast to its bound 
+ was promoted to its bound 
   Any
  and: The type 
   Any
@@ -325,7 +325,7 @@ cannot produce expected type
   C
 because: Type variable 
   B
- was upcast to its bound 
+ was promoted to its bound 
   Any
  and: The type 
   Any
@@ -338,11 +338,11 @@ cannot produce expected type
   C
 because: Type variable 
   A
- was upcast to its bound 
+ was promoted to its bound 
   B
  and: Type variable 
   B
- was upcast to its bound 
+ was promoted to its bound 
   Any
  and: The type 
   Any
@@ -355,7 +355,7 @@ cannot produce expected type
   C
 because: Type variable 
   B
- was upcast to its bound 
+ was promoted to its bound 
   Any
  and: The type 
   Any

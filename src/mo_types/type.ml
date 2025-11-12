@@ -1032,7 +1032,7 @@ type compatibility = Compatible | Incompatible of explanation
 
 and explanation =
   | IncompatibleTypes of context * typ * typ
-  | FailedUpcast of typ * typ * explanation
+  | FailedPromote of typ * typ * explanation
   | MissingTag of context * lab * typ
   | UnexpectedTag of context * lab * typ
   | MissingField of context * lab * typ
@@ -1093,13 +1093,13 @@ end
 let incompatible_types d t1 t2 =
   RelArg.false_with d (IncompatibleTypes (RelArg.context d, t1, t2))
 
-let failed_upcast d t1 bound t2 =
+let failed_promote d t1 bound t2 =
   let inner_explanation =
     match RelArg.explanation d with
     | Some e -> e
     | None -> IncompatibleTypes (RelArg.context d, t1, t2)
   in
-  RelArg.false_with d (FailedUpcast (t1, bound, inner_explanation))
+  RelArg.false_with d (FailedPromote (t1, bound, inner_explanation))
 
 let missing_tag d lab t =
   RelArg.false_with d (MissingTag (RelArg.context d, lab, t))
@@ -1192,7 +1192,7 @@ let rec rel_typ d rel eq t1 t2 =
       rel_list "type arguments" d eq_typ rel eq ts1 ts2
     | Abs (tbs, t), _ when rel != eq ->
       let bound = open_ ts1 t in
-      rel_typ d rel eq bound t2 || failed_upcast d t1 bound t2
+      rel_typ d rel eq bound t2 || failed_promote d t1 bound t2
     | _ ->
       incompatible_types d t1 t2
     )
@@ -1202,7 +1202,7 @@ let rec rel_typ d rel eq t1 t2 =
       rel_typ d rel eq (open_ ts1 t) t2
     | Abs (tbs, t), _ when rel != eq ->
       let bound = open_ ts1 t in
-      rel_typ d rel eq bound t2 || failed_upcast d t1 bound t2
+      rel_typ d rel eq bound t2 || failed_promote d t1 bound t2
     | _ -> incompatible_types d t1 t2
     )
   | t1, Con (con2, ts2) ->
@@ -2337,16 +2337,18 @@ let rec string_of_explanation explanation =
   match explanation with
   | IncompatibleTypes (context, t1, t2) ->
     Format.asprintf "The type %a\n is not compatible with type %a\n of %s" display_typ t1 display_typ t2 (string_of_context context)
-  | FailedUpcast (t1, bound, inner_explanation) ->
-    Format.asprintf "Type variable %a\n was upcast to its bound %a\n and: %s" display_typ t1 display_typ bound (string_of_explanation inner_explanation)
+  | FailedPromote (t1, bound, inner_explanation) ->
+    Format.asprintf "Type variable %a\n was promoted to its bound %a\n and: %s" display_typ t1 display_typ bound (string_of_explanation inner_explanation)
   | MissingTag (context, lab, t) ->
     Format.asprintf "Case `#%s` missing from type %a\n of %s" lab display_typ t (string_of_context context)
   | UnexpectedTag (context, lab, t) ->
     Format.asprintf "Unsupported additional tag `#%s` in type %a\n of %s" lab display_typ t (string_of_context context)
   | MissingField (context, lab, t) ->
-    Format.asprintf "Missing field `%s` in type %a\n of %s" lab display_typ t (string_of_context context)
+    let sort = if is_typ t then "type" else "field" in
+    Format.asprintf "Missing %s `%s` in type %a\n of %s" sort lab display_typ t (string_of_context context)
   | UnexpectedField (context, lab, t) ->
-    Format.asprintf "Unsupported additional field `%s` in type %a\n of %s" lab display_typ t (string_of_context context)
+    let sort = if is_typ t then "type" else "field" in
+    Format.asprintf "Unsupported additional %s `%s` in type %a\n of %s" sort lab display_typ t (string_of_context context)
   | FewerItems (context, desc) ->
     Format.asprintf "Fewer %s in %s than expected" desc (string_of_context context)
   | MoreItems (context, desc) ->

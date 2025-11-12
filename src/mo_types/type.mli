@@ -246,7 +246,7 @@ val cons_typs : typ list -> ConSet.t
 type compatibility = Compatible | Incompatible of explanation
 and explanation =
   | IncompatibleTypes of context * typ * typ
-  | FailedUpcast of typ * typ * explanation
+  | FailedPromote of typ * typ * explanation
   | MissingTag of context * lab * typ
   | UnexpectedTag of context * lab * typ
   | MissingField of context * lab * typ
