@@ -383,15 +383,20 @@ let sub_explained env at t1 t2 =
       display_typ_expand t1
       display_typ_expand t2
 
-let check_sub_explained env at t1 t2 on_incompatible =
+let incompatible_sub env at t1 t2 =
   match sub_explained env at t1 t2 with
   | T.Incompatible reason ->
     let explanation =
       if T.is_redundant_explanation t1 t2 reason then ""
       else Printf.sprintf "\nbecause: %s" (T.string_of_explanation reason)
     in
-    on_incompatible explanation
-  | T.Compatible -> ()
+    Some explanation
+  | T.Compatible -> None
+
+let check_sub_explained env at t1 t2 on_incompatible =
+  match incompatible_sub env at t1 t2 with
+  | Some explanation -> on_incompatible explanation
+  | None -> ()
 
 let eq env at t1 t2 =
   try T.eq ~src_fields:env.srcs t1 t2 with T.Undecided ->
@@ -1845,13 +1850,14 @@ and infer_exp'' env exp : T.typ =
     begin match env.pre, typ_opt with
       | false, (_, Some typ) ->
         let t' = check_typ env' typ in
-        check_sub_explained env exp.at t t' (fun explanation ->
+        (match incompatible_sub env exp.at t t' with
+        | Some explanation ->
           local_error env exp.at "M0192"
             "body of type%a\ndoes not match expected type%a%s"
             display_typ_expand t
             display_typ_expand t'
-            explanation);
-        detect_lost_fields env t' e
+            explanation
+        | None -> detect_lost_fields env t' e)
       | _ -> ()
     end;
     t
@@ -2557,25 +2563,17 @@ and check_exp' env0 t exp : T.typ =
     check_inferred env0 env t t' exp
 
 and check_inferred env0 env t t' exp =
-  check_sub_explained env exp.at t' t (fun explanation ->
+  (match incompatible_sub env exp.at t' t with
+  | Some explanation ->
     local_error env0 exp.at "M0096"
       "expression of type%a\ncannot produce expected type%a%s%s"
       display_typ_expand t'
       display_typ_expand t
       explanation
-      (Suggest.suggest_conversion env.libs env.vals t' t));
-  detect_lost_fields env t exp.it;
-  t'
-  (* if not (sub env exp.at t' t) then
-  begin
-    local_error env0 exp.at "M0096"
-      "expression of type%a\ncannot produce expected type%a%s"
-      display_typ_expand t'
-      display_typ_expand t
       (Suggest.suggest_conversion env.libs env.vals t' t)
-  end
-  else detect_lost_fields env t exp.it;
-  t' *)
+  | None ->
+    detect_lost_fields env t exp.it);
+  t'
 
 and check_exp_field env (ef : exp_field) fts =
   let { mut; id; exp } = ef.it in
