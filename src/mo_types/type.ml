@@ -2360,6 +2360,7 @@ let rec string_of_explanation explanation =
     let string_of_obj_sort = function
       | Object -> "object"
       | Actor -> "actor"
+      | Mixin -> "mixin"
       | Module -> "module"
       | Memory -> "memory"
     in
