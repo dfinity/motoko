@@ -8299,7 +8299,9 @@ module MakeSerialization (Strm : Stream) = struct
       ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
 
       (* Go! *)
-      Bool.lit extended ^^ get_data_buf ^^ compile_unboxed_const 26l(*FIXME*) ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
+      let (tydesc, _, _) = type_desc env ts in
+      let tydesc_len = Int32.of_int (String.length tydesc) in (* FIXME: + 5 * 2 *)
+      Bool.lit extended ^^ get_data_buf ^^ compile_unboxed_const tydesc_len ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
       E.call_import env "rts" "parse_idl_header" ^^
 
       (* Allocate memo table, if necessary *)
