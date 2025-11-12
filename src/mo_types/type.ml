@@ -1052,6 +1052,9 @@ and context_item =
   | NamedType of name
   | StableVariable of lab
   | Field of lab
+  | Bounds
+  | Domain
+  | CoDomain
 and context = context_item list
 let empty_context : context = []
 
@@ -1235,10 +1238,10 @@ let rec rel_typ d rel eq t1 t2 =
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
     (s1 = s2 || incompatible_func_sorts d s1 s2) &&
     (c1 = c2 || incompatible_func_controls d c1 c2) &&
-    (match rel_binds d eq eq tbs1 tbs2 with
+    (match rel_binds (RelArg.push Bounds d) eq eq tbs1 tbs2 with
      | Some ts ->
-        rel_list "function parameters" d rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
-        rel_list "return types" d rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
+        rel_list "function parameters" (RelArg.push Domain d) rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
+        rel_list "return types" (RelArg.push CoDomain d) rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
      | None -> incompatible_funcs d t1 t2
     )
   | Async (s1, t11, t12), Async (s2, t21, t22) ->
@@ -2328,6 +2331,19 @@ let string_of_context context =
        Printf.sprintf "%s (used by %s)" name (emit_context true rest)
     | (NamedType name)::rest ->
        Printf.sprintf "%s in %s" name (emit_context true rest)
+    | Bounds::rest when not nested ->
+      Printf.sprintf "type parameters (used by %s)" (emit_context true rest)
+    | Bounds::rest ->
+      Printf.sprintf "type parameters in %s" (emit_context true rest)
+    | Domain::rest when not nested ->
+      Printf.sprintf "arguments (used by %s)" (emit_context true rest)
+    | Domain::rest ->
+      Printf.sprintf "arguments in %s" (emit_context true rest)
+    | CoDomain::rest when not nested ->
+      Printf.sprintf "results (used by %s)" (emit_context true rest)
+    | CoDomain::rest ->
+      Printf.sprintf "results in %s" (emit_context true rest)
+
     | (StableVariable name)::_ -> name
   in
     emit_context false context
