@@ -14,8 +14,3 @@ check-record.mo:16.18-16.23: warning [M0215], field `b` is provided but not expe
 check-record.mo:21.30-21.31: type error [M0057], unbound variable c
 check-record.mo:24.9-24.27: type error [M0151], missing field 'b' from expected type
   {b : Nat}
-because: Unsupported additional field `b` in type 
-  {b : Nat}
- of top level
-check-record.mo:24.19-24.24: warning [M0215], field `a` is provided but not expected in record extension of type
-  {b : Nat}
