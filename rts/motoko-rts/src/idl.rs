@@ -176,6 +176,7 @@ unsafe fn parse_idl_header<M: Memory>(
     mem: &mut M,
     extended: bool,
     buf: *mut Buf,
+    typtbl_max: usize,
     typtbl_out: *mut *mut *mut u8,
     typtbl_size_out: *mut usize,
     main_types_out: *mut *mut u8,
@@ -210,6 +211,9 @@ unsafe fn parse_idl_header<M: Memory>(
 
     // Allocate the type table to be passed out
     let typtbl: *mut *mut u8 = alloc(mem, Words(n_types as usize)) as *mut _;
+
+    // Set up a limited buffer to detect absurd type tables
+    let full_end = buf.limit_size(typtbl_max);
 
     // Go through the table
     for i in 0..n_types {
@@ -293,6 +297,9 @@ unsafe fn parse_idl_header<M: Memory>(
             buf.advance(n as usize);
         }
     }
+
+    // Restore limit
+    (*buf).end = full_end;
 
     // Now that we have the indices, we can go through it again
     // and validate that all service method types are really function types
