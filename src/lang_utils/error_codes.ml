@@ -202,13 +202,14 @@ let error_codes : (string * string option) list =
     "M0228", None; (* Only top-level mixins *)
     "M0229", None; (* Non-var pattern for mixin import *)
     "M0230", None; (* Cannot determine implicit argument *)
-    "M0240", None; (* Migration chain broken - type mismatch *)
-    "M0241", None; (* Multi-migration tuple cannot be empty *)
-    "M0242", None; (* Multi-migration must be tuple *)
     "M0231", None; (* Ambiguous implicit argument *)
     "M0232", None; (* Cannot infer type of implicit argument *)
     "M0233", None; (* Wrong number of arguments *)
     "M0234", None; (* Field exists but is not a function *)
+    "M0240", None; (* Migration chain broken - type mismatch *)
+    "M0241", None; (* Multi-migration tuple cannot be empty *)
+    "M0242", None; (* Multi-migration must be tuple *)
+    "M0243", None; (* Duplicate migration *)
   ]
 
 (** Message codes that can be both used as warnings and errors *)

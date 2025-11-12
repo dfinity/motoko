@@ -45,6 +45,7 @@ known_untested_codes = {
     "M0240", # Migration chain broken - type mismatch 
     "M0241", # Multi-migration tuple cannot be empty 
     "M0242", # Multi-migration must be tuple 
+    "M0243", # Duplicate migration
     }
 
 def populate_error_codes():
