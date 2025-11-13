@@ -17,6 +17,6 @@
     #security;
     #storage
   }
- of OldTeam (used by team in OldProduct in Tree in root in Map in products).
+ of `OldTeam` (used by `team` in `OldProduct` in `Tree` in `root` in `Map` in `products`).
  Write an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
 FALSE

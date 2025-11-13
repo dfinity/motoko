@@ -266,6 +266,9 @@ and context_item =
   | NamedType of name
   | StableVariable of lab
   | Field of lab
+  | Bounds
+  | Domain
+  | CoDomain
 and context = context_item list
 
 exception Undecided (* raised if termination depth exceeded  *)

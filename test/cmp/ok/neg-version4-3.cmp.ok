@@ -7,6 +7,6 @@
   Text
  is not compatible with type 
   Nat
- of Nat (used by four).
+ in `four`.
  Write an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
 FALSE

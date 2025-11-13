@@ -1052,6 +1052,9 @@ and context_item =
   | NamedType of name
   | StableVariable of lab
   | Field of lab
+  | Bounds
+  | Domain
+  | CoDomain
 and context = context_item list
 let empty_context : context = []
 
@@ -1235,10 +1238,10 @@ let rec rel_typ d rel eq t1 t2 =
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
     (s1 = s2 || incompatible_func_sorts d s1 s2) &&
     (c1 = c2 || incompatible_func_controls d c1 c2) &&
-    (match rel_binds d eq eq tbs1 tbs2 with
+    (match rel_binds (RelArg.push Bounds d) eq eq tbs1 tbs2 with
      | Some ts ->
-        rel_list "function parameters" d rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
-        rel_list "return types" d rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
+        rel_list "function parameters" (RelArg.push Domain d) rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
+        rel_list "return types" (RelArg.push CoDomain d) rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
      | None -> incompatible_funcs d t1 t2
     )
   | Async (s1, t11, t12), Async (s2, t21, t22) ->
@@ -2315,49 +2318,69 @@ let string_of_typ_expand typ : string =
   Lib.Format.with_str_formatter (fun ppf ->
       pp_typ_expand ppf) typ
 
-let string_of_context context =
+let string_of_context preposition context =
+  let is_non_trivial_item item = match item with
+    | ConsType c ->
+       (match Cons.kind c with
+        | Def ([], Prim p) when string_of_con c = string_of_prim p -> false
+        | Def ([], Any) when string_of_con c = "Any" -> false
+        | Def ([], Non) when string_of_con c = "None" -> false
+        |  _ -> true)
+    | _ -> true
+  in
+  let context = List.filter is_non_trivial_item context in
+  if context = [] then "" else
+  let emit_item item nested =
+    match item with
+    | (Field label) -> Printf.sprintf "`%s`" label, "in"
+    | (ConsType c) ->  Printf.sprintf "`%s`" (remove_hash_suffix (Cons.name c)), "in"
+    | (NamedType name)-> Printf.sprintf "`(%s : _)`" name, "in"
+    | Bounds -> "type parameters", "of"
+    | Domain -> "arguments", "of"
+    | CoDomain -> "results", "of"
+    | StableVariable name -> Printf.sprintf "`%s`" name, "of"
+  in
   let rec emit_context nested context =
     match context with
-    | [] -> "top level"
-    | (Field label)::rest -> Printf.sprintf "%s in %s" label (emit_context true rest)
-    | (ConsType c)::rest when not nested ->
-       Printf.sprintf "%s (used by %s)" (remove_hash_suffix (Cons.name c)) (emit_context true rest)
-    | (ConsType c)::rest ->
-       Printf.sprintf "%s in %s" (remove_hash_suffix (Cons.name c)) (emit_context true rest)
-    | (NamedType name)::rest when not nested ->
-       Printf.sprintf "%s (used by %s)" name (emit_context true rest)
-    | (NamedType name)::rest ->
-       Printf.sprintf "%s in %s" name (emit_context true rest)
-    | (StableVariable name)::_ -> name
+    | [] -> "type"
+    | [item] ->
+       let desc, _ = emit_item item nested in
+       desc
+    | item::rest when not nested ->
+       let desc, _ = emit_item item nested in
+       Printf.sprintf "%s (used by %s)" desc (emit_context true rest)
+    | item::rest ->
+       let desc, prep = emit_item item nested in
+       Printf.sprintf "%s %s %s" desc prep (emit_context true rest)
   in
-    emit_context false context
+   "\n " ^ preposition ^ " " ^ emit_context false context
 
 let rec string_of_explanation explanation =
   let display_typ = Lib.Format.display pp_typ in
   match explanation with
   | IncompatibleTypes (context, t1, t2) ->
-    Format.asprintf "The type %a\n is not compatible with type %a\n of %s" display_typ t1 display_typ t2 (string_of_context context)
+    Format.asprintf "The type %a\n is not compatible with type %a%s" display_typ t1 display_typ t2 (string_of_context "in" context)
   | FailedPromote (t1, bound, inner_explanation) ->
     Format.asprintf "Type variable %a\n was promoted to its bound %a\n and: %s" display_typ t1 display_typ bound (string_of_explanation inner_explanation)
   | MissingTag (context, lab, t) ->
-    Format.asprintf "Case `#%s` missing from type %a\n of %s" lab display_typ t (string_of_context context)
+    Format.asprintf "Case `#%s` missing from type %a%s" lab display_typ t (string_of_context "of" context)
   | UnexpectedTag (context, lab, t) ->
-    Format.asprintf "Unsupported additional tag `#%s` in type %a\n of %s" lab display_typ t (string_of_context context)
+    Format.asprintf "Unsupported additional tag `#%s` in type %a%s" lab display_typ t (string_of_context "of" context)
   | MissingField (context, lab, t) ->
     let sort = if is_typ t then "type" else "field" in
-    Format.asprintf "Missing %s `%s` in type %a\n of %s" sort lab display_typ t (string_of_context context)
+    Format.asprintf "Missing %s `%s` in type %a%s" sort lab display_typ t (string_of_context "of" context)
   | UnexpectedField (context, lab, t) ->
     let sort = if is_typ t then "type" else "field" in
-    Format.asprintf "Unsupported additional %s `%s` in type %a\n of %s" sort lab display_typ t (string_of_context context)
+    Format.asprintf "Unsupported additional %s `%s` in type %a%s" sort lab display_typ t (string_of_context "of" context)
   | FewerItems (context, desc) ->
-    Format.asprintf "Fewer %s in %s than expected" desc (string_of_context context)
+    Format.asprintf "Fewer %s than expected%s" desc (string_of_context "in" context)
   | MoreItems (context, desc) ->
-    Format.asprintf "More %s in %s than expected" desc (string_of_context context)
+    Format.asprintf "More %s than expected%s" desc (string_of_context "in" context)
   | PromotionToAny (context, t) ->
-    Format.asprintf "Converting %a\n to `Any` is disallowed as it leads to data loss: %s" display_typ t (string_of_context context)
+    Format.asprintf "Converting %a\n to `Any` is disallowed as it leads to data loss%s" display_typ t (string_of_context "in" context)
   | IncompatiblePrims (context, t1, t2) ->
     let context = match context with h::tl -> tl | _ -> context in
-    Format.asprintf "The type %a\n is not compatible with type %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
+    Format.asprintf "The type %a\n is not compatible with type %a%s" display_typ t1 display_typ t2 (string_of_context "in" context)
   | IncompatibleObjSorts (context, s1, s2) ->
     let string_of_obj_sort = function
       | Object -> "object"
@@ -2366,27 +2389,27 @@ let rec string_of_explanation explanation =
       | Module -> "module"
       | Memory -> "memory"
     in
-    Format.asprintf "Incompatible object sorts:\n %s does not match %s in %s" (string_of_obj_sort s1) (string_of_obj_sort s2) (string_of_context context)
+    Format.asprintf "Incompatible object sorts:\n %s does not match %s%s" (string_of_obj_sort s1) (string_of_obj_sort s2) (string_of_context "in" context)
   | IncompatibleFuncSorts (context, s1, s2) ->
-    Format.asprintf "Incompatible function modifiers: %s\n does not match %s\n in %s" (string_of_func_sort s1) (string_of_func_sort s2) (string_of_context context)
+    Format.asprintf "Incompatible function modifiers: %s\n does not match %s%s" (string_of_func_sort s1) (string_of_func_sort s2) (string_of_context "in" context)
   | IncompatibleFuncControls (context, c1, c2) ->
     let string_of_control = function
       | Returns -> "regular function or one-shot shared function"
       | Promises -> "shared function that returns a future"
       | Replies -> "compiler-internal reply function"
     in
-    Format.asprintf "Incompatible function controls: %s\n does not match %s\n in %s" (string_of_control c1) (string_of_control c2) (string_of_context context)
+    Format.asprintf "Incompatible function controls: %s\n does not match %s%s" (string_of_control c1) (string_of_control c2) (string_of_context "in" context)
   | IncompatibleFuncs (context, t1, t2) ->
-    Format.asprintf "Incompatible function types: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
+    Format.asprintf "Incompatible function types: %a\n does not match %a%s" display_typ t1 display_typ t2 (string_of_context "in" context)
   | IncompatibleAsyncSorts (context, s1, s2) ->
     (* TODO: refactor with other string_of_async_sort function, look at other uses of this function *)
     let string_of_async_sort = function
       | Fut -> "async"
       | Cmp -> "async*"
     in
-    Format.asprintf "Incompatible async sorts: %s\n does not match %s\n in %s" (string_of_async_sort s1) (string_of_async_sort s2) (string_of_context context)
+    Format.asprintf "Incompatible async sorts: %s\n does not match %s%s" (string_of_async_sort s1) (string_of_async_sort s2) (string_of_context "in" context)
   | IncompatibleAsyncScopes (context, t1, t2) ->
-    Format.asprintf "Incompatible async scopes: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
+    Format.asprintf "Incompatible async scopes: %a\n does not match %a%s" display_typ t1 display_typ t2 (string_of_context "in" context)
 
 let is_redundant_explanation t1 t2 = function
   | IncompatibleTypes (_, t1', t2')
