@@ -6,4 +6,4 @@ because: The type
   Text
  is not compatible with type 
   Nat
- in arguments (used by type)
+ in arguments

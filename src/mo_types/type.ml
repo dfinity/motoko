@@ -2319,41 +2319,39 @@ let string_of_typ_expand typ : string =
       pp_typ_expand ppf) typ
 
 let string_of_context preposition context =
+  let is_non_trivial_item item = match item with
+    | ConsType c ->
+       (match Cons.kind c with
+        | Def ([], Prim p) when string_of_con c = string_of_prim p -> false
+        | Def ([], Any) when string_of_con c = "Any" -> false
+        | Def ([], Non) when string_of_con c = "None" -> false
+        |  _ -> true)
+    | _ -> true
+  in
+  let context = List.filter is_non_trivial_item context in
   if context = [] then "" else
-  let is_trivial_con c =
-     match Cons.kind c with
-     | Def ([], Prim p) when string_of_con c = string_of_prim p -> true
-     | Def ([], Any) when string_of_con c = "Any" -> true
-     | Def ([], Non) when string_of_con c = "None" -> true
-     | _ -> false
+  let emit_item item nested =
+    match item with
+    | (Field label) -> Printf.sprintf "`%s`" label, "in"
+    | (ConsType c) ->  Printf.sprintf "`%s`" (remove_hash_suffix (Cons.name c)), "in"
+    | (NamedType name)-> Printf.sprintf "`%s`" name, "in"
+    | Bounds -> "type parameters", "of"
+    | Domain -> "arguments", "of"
+    | CoDomain -> "results", "of"
+    | StableVariable name -> "name", "of"
   in
   let rec emit_context nested context =
     match context with
     | [] -> "type"
-    | (Field label)::rest -> Printf.sprintf "`%s` in %s" label (emit_context true rest)
-    | (ConsType c)::rest when is_trivial_con c -> emit_context nested rest
-    | (ConsType c)::rest when not nested ->
-       Printf.sprintf "`%s` (used by %s)" (remove_hash_suffix (Cons.name c)) (emit_context true rest)
-    | (ConsType c)::rest ->
-       Printf.sprintf "`%s` in %s" (remove_hash_suffix (Cons.name c)) (emit_context true rest)
-    | (NamedType name)::rest when not nested ->
-       Printf.sprintf "`%s` (used by %s)" name (emit_context true rest)
-    | (NamedType name)::rest ->
-       Printf.sprintf "`%s` in %s" name (emit_context true rest)
-    | Bounds::rest when not nested ->
-      Printf.sprintf "type parameters (used by %s)" (emit_context true rest)
-    | Bounds::rest ->
-      Printf.sprintf "type parameters of %s" (emit_context true rest)
-    | Domain::rest when not nested ->
-      Printf.sprintf "arguments (used by %s)" (emit_context true rest)
-    | Domain::rest ->
-      Printf.sprintf "arguments of %s" (emit_context true rest)
-    | CoDomain::rest when not nested ->
-      Printf.sprintf "results (used by %s)" (emit_context true rest)
-    | CoDomain::rest ->
-      Printf.sprintf "results of %s" (emit_context true rest)
-
-    | (StableVariable name)::_ -> name
+    | [item] ->
+       let desc, _ = emit_item item nested in
+       desc
+    | item::rest when not nested ->
+       let desc, _ = emit_item item nested in
+       Printf.sprintf "%s (used by %s)" desc (emit_context true rest)
+    | item::rest ->
+       let desc, prep = emit_item item nested in
+       Printf.sprintf "%s %s %s" desc prep (emit_context true rest)
   in
    "\n " ^ preposition ^ " " ^ emit_context false context
 
@@ -2361,7 +2359,7 @@ let rec string_of_explanation explanation =
   let display_typ = Lib.Format.display pp_typ in
   match explanation with
   | IncompatibleTypes (context, t1, t2) ->
-    Format.asprintf "The type %a\n is not compatible with type %a%s" display_typ t1 display_typ t2 (string_of_context "of" context)
+    Format.asprintf "The type %a\n is not compatible with type %a%s" display_typ t1 display_typ t2 (string_of_context "in" context)
   | FailedPromote (t1, bound, inner_explanation) ->
     Format.asprintf "Type variable %a\n was promoted to its bound %a\n and: %s" display_typ t1 display_typ bound (string_of_explanation inner_explanation)
   | MissingTag (context, lab, t) ->
