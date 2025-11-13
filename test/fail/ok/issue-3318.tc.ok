@@ -24,7 +24,7 @@ because: The type
   (Nat, Nat)
  is not compatible with type 
   Nat
- of Nat (used by arguments in type)
+ of Nat (used by arguments of type)
 issue-3318.mo:21.43-21.44: type error [M0096], expression of type
   (Nat, Nat) -> (Nat, Nat)
 cannot produce expected type
@@ -33,7 +33,7 @@ because: The type
   (Nat, Nat)
  is not compatible with type 
   Nat
- of Nat (used by arguments in type)
+ of Nat (used by arguments of type)
 issue-3318.mo:24.39-24.40: type error [M0096], expression of type
   (Nat, Nat) -> ((Nat, Nat))
 cannot produce expected type
@@ -42,7 +42,7 @@ because: The type
   (Nat, Nat)
  is not compatible with type 
   Nat
- of Nat (used by results in type)
+ of Nat (used by results of type)
 issue-3318.mo:33.43-33.44: type error [M0096], expression of type
   (Nat, Nat) -> ((Nat, Nat))
 cannot produce expected type
@@ -51,4 +51,4 @@ because: The type
   (Nat, Nat)
  is not compatible with type 
   Nat
- of Nat (used by arguments in type)
+ of Nat (used by arguments of type)
