@@ -8300,7 +8300,7 @@ module MakeSerialization (Strm : Stream) = struct
 
       (* Go! *)
       let tydesc, _, _ = type_desc env ts in
-      let tydesc_len = Int32.of_int (String.length tydesc * 2 + 100) in
+      let tydesc_len = Int32.of_int (String.length tydesc * 2 + 300) in
       Bool.lit extended ^^ get_data_buf ^^ compile_unboxed_const tydesc_len ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
       E.call_import env "rts" "parse_idl_header" ^^
 
