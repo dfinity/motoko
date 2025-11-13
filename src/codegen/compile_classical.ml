@@ -769,9 +769,8 @@ let compile_shl_const = compile_op_const I32Op.Shl
 let compile_mul_const = function
   | 0l -> G.i Drop ^^ compile_unboxed_zero
   | 1l -> G.nop
-  | 2l -> compile_shl_const 1l;
-  | 4l -> compile_shl_const 2l;
-  | 8l -> compile_shl_const 3l;
+  | n when Int32.compare n 0l > 0 && Numerics.Nat32.(popcnt (of_int32 n) |> to_int32) = 1l
+    -> compile_shl_const Numerics.Nat32.(of_int32 n |> ctz |> to_int32)
   | n -> compile_op_const I32Op.Mul n
 let compile_rotl_const = compile_op_const I32Op.Rotl
 let compile_rotr_const = compile_op_const I32Op.Rotr
@@ -790,7 +789,6 @@ let compile_op64_const op i =
     G.i (Binary (Wasm.Values.I64 op))
 let compile_add64_const = compile_op64_const I64Op.Add
 let compile_sub64_const = compile_op64_const I64Op.Sub
-let compile_mul64_const = compile_op64_const I64Op.Mul
 let _compile_divU64_const = compile_op64_const I64Op.DivU
 let compile_shrU64_const = function
   | 0L -> G.nop | n -> compile_op64_const I64Op.ShrU n
@@ -798,6 +796,12 @@ let compile_shrS64_const = function
   | 0L -> G.nop | n -> compile_op64_const I64Op.ShrS n
 let compile_shl64_const = function
   | 0L -> G.nop | n -> compile_op64_const I64Op.Shl n
+let compile_mul64_const = function
+  | 0L -> G.i Drop ^^ compile_const_64 0L
+  | 1L -> G.nop
+  | n when Int64.compare n 0L > 0 && Numerics.Nat64.(popcnt (of_int64 n) |> to_int64) = 1L
+    -> compile_shl64_const Numerics.Nat64.(of_int64 n |> ctz |> to_int64)
+  | n -> compile_op64_const I64Op.Mul n
 let compile_bitand64_const = compile_op64_const I64Op.And
 let _compile_bitor64_const = function
   | 0L -> G.nop | n -> compile_op64_const I64Op.Or n
