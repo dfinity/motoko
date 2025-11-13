@@ -2334,11 +2334,11 @@ let string_of_context preposition context =
     match item with
     | (Field label) -> Printf.sprintf "`%s`" label, "in"
     | (ConsType c) ->  Printf.sprintf "`%s`" (remove_hash_suffix (Cons.name c)), "in"
-    | (NamedType name)-> Printf.sprintf "`%s`" name, "in"
+    | (NamedType name)-> Printf.sprintf "`(%s : _)`" name, "in"
     | Bounds -> "type parameters", "of"
     | Domain -> "arguments", "of"
     | CoDomain -> "results", "of"
-    | StableVariable name -> "name", "of"
+    | StableVariable name -> Printf.sprintf "`%s`" name, "of"
   in
   let rec emit_context nested context =
     match context with

@@ -5,6 +5,6 @@
   var {#v1 : [[Cell]]}
  because: Case `#v2` missing from type 
   {#v1 : [[Cell]]}
- of state.
+ of `state`.
  Write an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
 FALSE

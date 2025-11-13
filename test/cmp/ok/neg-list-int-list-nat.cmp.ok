@@ -7,7 +7,7 @@
   Int
  is not compatible with type 
   Nat
- in List (used by ln).
+ in `List` (used by `ln`).
  Write an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
 (unknown location): Compatibility error [M0170], the new type of stable variable `lnn` is not compatible with the previous version.
  The previous type
@@ -18,6 +18,6 @@
   Int
  is not compatible with type 
   Nat
- in List (used by lnn).
+ in `List` (used by `lnn`).
  Write an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
 FALSE

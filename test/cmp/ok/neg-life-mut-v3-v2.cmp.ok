@@ -10,6 +10,6 @@
   var {#v1 : [[var Cell]]; #v2 : {bits : [var Nat64]; size : Nat}}
  because: Case `#v3` missing from type 
   {#v1 : [[var Cell]]; #v2 : {bits : [var Nat64]; size : Nat}}
- of state.
+ of `state`.
  Write an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
 FALSE
