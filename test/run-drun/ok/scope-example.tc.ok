@@ -6,4 +6,3 @@ because: Incompatible async scopes:
   $@anon-async-10.12
  does not match 
   $@anon-async-6.60
- in top level

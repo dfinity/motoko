@@ -6,4 +6,3 @@ because: Incompatible async scopes:
   $@anon-async-8.12
  does not match 
   $f
- in top level
