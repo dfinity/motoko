@@ -766,6 +766,13 @@ let compile_divU_const = compile_op_const I32Op.DivU
 let compile_shrU_const = compile_op_const I32Op.ShrU
 let compile_shrS_const = compile_op_const I32Op.ShrS
 let compile_shl_const = compile_op_const I32Op.Shl
+let compile_mul_const = function
+  | 0l -> G.i Drop ^^ compile_unboxed_zero
+  | 1l -> G.nop
+  | 2l -> compile_shl_const 1l;
+  | 4l -> compile_shl_const 2l;
+  | 8l -> compile_shl_const 3l;
+  | n -> compile_op_const I32Op.Mul n
 let compile_rotl_const = compile_op_const I32Op.Rotl
 let compile_rotr_const = compile_op_const I32Op.Rotr
 let compile_bitand_const = compile_op_const I32Op.And
