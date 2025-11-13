@@ -6,4 +6,4 @@ because: The type
   var Nat
  is not compatible with type 
   Nat
- of x in type
+ of `x` in type

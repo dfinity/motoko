@@ -4,14 +4,12 @@ cannot produce expected type
   {#A}
 because: Case `#B` missing from type 
   {#A}
- of type
 pipe-ill-typed.mo:11.37-11.38: type error [M0096], expression of type
   {#A}
 cannot produce expected type
   {#B}
 because: Case `#A` missing from type 
   {#B}
- of type
 pipe-ill-typed.mo:16.33-16.34: type error [M0096], expression of type
   {#A}
 cannot produce expected type
