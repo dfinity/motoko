@@ -2329,16 +2329,16 @@ let string_of_context context =
   let rec emit_context nested context =
     match context with
     | [] -> "type"
-    | (Field label)::rest -> Printf.sprintf "%s in %s" label (emit_context true rest)
+    | (Field label)::rest -> Printf.sprintf "`%s` in %s" label (emit_context true rest)
     | (ConsType c)::rest when is_trivial_con c -> emit_context nested rest
     | (ConsType c)::rest when not nested ->
-       Printf.sprintf "%s (used by %s)" (remove_hash_suffix (Cons.name c)) (emit_context true rest)
+       Printf.sprintf "`%s` (used by %s)" (remove_hash_suffix (Cons.name c)) (emit_context true rest)
     | (ConsType c)::rest ->
-       Printf.sprintf "%s in %s" (remove_hash_suffix (Cons.name c)) (emit_context true rest)
+       Printf.sprintf "`%s` in %s" (remove_hash_suffix (Cons.name c)) (emit_context true rest)
     | (NamedType name)::rest when not nested ->
-       Printf.sprintf "%s (used by %s)" name (emit_context true rest)
+       Printf.sprintf "`%s` (used by %s)" name (emit_context true rest)
     | (NamedType name)::rest ->
-       Printf.sprintf "%s in %s" name (emit_context true rest)
+       Printf.sprintf "`%s` in %s" name (emit_context true rest)
     | Bounds::rest when not nested ->
       Printf.sprintf "type parameters (used by %s)" (emit_context true rest)
     | Bounds::rest ->
