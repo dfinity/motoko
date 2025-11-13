@@ -2319,10 +2319,18 @@ let string_of_typ_expand typ : string =
       pp_typ_expand ppf) typ
 
 let string_of_context context =
+  let is_trivial_con c =
+     match Cons.kind c with
+     | Def ([], Prim p) when string_of_con c = string_of_prim p -> true
+     | Def ([], Any) when string_of_con c = "Any" -> true
+     | Def ([], Non) when string_of_con c = "None" -> true
+     | _ -> false
+  in
   let rec emit_context nested context =
     match context with
     | [] -> "type"
-   | (Field label)::rest -> Printf.sprintf "%s in %s" label (emit_context true rest)
+    | (Field label)::rest -> Printf.sprintf "%s in %s" label (emit_context true rest)
+    | (ConsType c)::rest when is_trivial_con c -> emit_context nested rest
     | (ConsType c)::rest when not nested ->
        Printf.sprintf "%s (used by %s)" (remove_hash_suffix (Cons.name c)) (emit_context true rest)
     | (ConsType c)::rest ->
