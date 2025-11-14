@@ -572,6 +572,26 @@ let open_binds tbs =
   List.iter2 set_kind cs ks;
   ts
 
+let rec is_closed = function
+  | Var _ -> false
+  | Any
+  | Non
+  | Pre
+  | Typ _
+  | Prim _ -> true
+  | Array t
+  | Opt t
+  | Mut t
+  | Named (_, t)
+  | Weak t -> is_closed t
+  | Con (_, ts)
+  | Tup ts -> List.for_all is_closed ts
+  | Func (s, c, tbs, ts1, ts2) -> List.for_all is_closed ts1 && List.for_all is_closed ts2
+  | Async (s, t1, t2) -> is_closed t1 && is_closed t2
+  | Obj (_, fs)
+  | Variant fs -> List.for_all is_closed_field fs
+
+and is_closed_field tf = is_closed tf.typ
 
 (* Normalization and Classification *)
 
