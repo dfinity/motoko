@@ -60,9 +60,18 @@ let unsafe_set_kind c k = c.kind := k
 
 let name c = c.name
 
-let to_string show_stamps sep c =
+let scope_prefix show_con_scopes c =
+  if show_con_scopes then
+    match c.stamp with
+    |  (_, None) -> ""
+    |  (0, Some "prelude") -> ""
+    |  (_, Some scope) -> scope ^ "."
+  else ""
+
+let to_string show_stamps show_con_scopes sep c =
   if not show_stamps || c.stamp = (0, Some "prelude")
-  then c.name else Printf.sprintf "%s%s%i" c.name sep c.hash
+  then Printf.sprintf "%s%s" (scope_prefix show_con_scopes c) c.name
+  else Printf.sprintf "%s%s%s%i" (scope_prefix show_con_scopes c) c.name sep c.hash
 
 let compare c1 c2 =
   match Int.compare c1.hash c2.hash with
