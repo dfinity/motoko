@@ -489,17 +489,18 @@ let check_import env at f ri =
 
 (* Paths *)
 
-let rec check_obj_path env path : T.obj_sort * (T.field list) =
-  match T.promote (check_obj_path' env path) with
+let rec check_obj_path env path : T.obj_sort * (T.field list) * (id list) =
+  let typ, ids = check_obj_path' env path in
+  match T.promote typ with
   | T.Obj (s, fs) as t ->
     path.note <- t;
-    (s, fs)
+    (s, fs, ids)
   | t ->
     error env path.at "M0023"
       "expected module, object, or actor type, but path expression produces type%a"
       display_typ_expand t
 
-and check_obj_path' env path : T.typ =
+and check_obj_path' env path : T.typ * (id list) =
   match path.it with
   | IdH id ->
     use_identifier env id.it;
@@ -513,10 +514,11 @@ and check_obj_path' env path : T.typ =
        error env id.at "M0026" "unbound variable %s%a%s" id.it
          display_vals env.vals
          (Suggest.suggest_id "variable" id.it (T.Env.keys env.vals))
-    )
+    ),
+    [id]
   | DotH (path', id) ->
-    let s, fs = check_obj_path env path' in
-    match T.lookup_val_field id.it fs with
+    let s, fs, ids = check_obj_path env path' in
+    (match T.lookup_val_field id.it fs with
     | T.Pre ->
       error env id.at "M0027" "cannot infer type of forward field reference %s" id.it
     | t -> t
@@ -528,30 +530,38 @@ and check_obj_path' env path : T.typ =
           (List.filter_map
             (function
               {T.typ=T.Typ _;_} -> None
-            | {T.lab;_} -> Some lab) fs))
+             | {T.lab;_} -> Some lab) fs))),
+    id::ids
 
 let rec check_typ_path env path : T.con =
   let c = check_typ_path' env path in
   path.note <- T.Typ c;
   c
 
+and name_con ids c =
+  match Cons.kind c with
+  | T.Abs _ -> c
+  | T.Def _ ->
+    let name = String.concat "." (List.rev_map (fun id -> id.it) ids) in
+    Cons.fresh name (Cons.kind c)
+
 and check_typ_path' env path : T.con =
   match path.it with
   | IdH id ->
     use_identifier env id.it;
     (match T.Env.find_opt id.it env.typs with
-    | Some c -> c
+    | Some c -> name_con [id] c
     | None ->
       error env id.at "M0029" "unbound type %s%a%s" id.it
         display_typs env.typs
         (Suggest.suggest_id "type" id.it (T.Env.keys env.typs))
     )
   | DotH (path', id) ->
-    let s, fs = check_obj_path env path' in
+    let s, fs, ids = check_obj_path env path' in
     match T.lookup_typ_field id.it fs with
       | c ->
         check_deprecation env path.at "type field" id.it (T.lookup_typ_deprecation id.it fs);
-        c
+        name_con (id::ids) c
       | exception Invalid_argument _ ->
         error env id.at "M0030" "type field %s does not exist in %a%s"
           id.it
