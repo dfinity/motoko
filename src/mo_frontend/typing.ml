@@ -541,9 +541,9 @@ let rec check_typ_path env path : T.con =
 and name_con ids c =
   match Cons.kind c with
   | T.Abs _ -> c
-  | T.Def _ ->
+  | T.Def (tbs, typ) ->
     let name = String.concat "." (List.rev_map (fun id -> id.it) ids) in
-    Cons.fresh name (Cons.kind c)
+    Cons.fresh name (T.Def (tbs, T.Con(c, List.mapi (fun i tb -> T.Var (tb.T.var, i)) tbs)))
 
 and check_typ_path' env path : T.con =
   match path.it with
