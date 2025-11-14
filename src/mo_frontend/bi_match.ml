@@ -182,18 +182,12 @@ end = struct
 end
 
 
-(* TODO: is this dead code now? considering what the `check` is doing? *)
-let over_constrained_exn lb c ub =
-  if debug then
-    bimatch (Format.asprintf
-      "implicit instantiation of type parameter `%s` is over-constrained with%a\nwhere%a\nso that no valid instantiation exists"
-      (Cons.name c)
-      display_constraint (lb, c, ub)
-      display_rel (lb, "</:", ub))
-  else
-    bimatch (Format.asprintf
-      "there is no consistent choice for type parameter `%s`."
-      (Cons.name c))
+let impossible_over_constrained lb c ub =
+  error (Format.asprintf
+    "bug: impossible over-constrained type parameter `%s` with%a\nwhere%a\nPlease report this bug and supply an explicit instantiation instead."
+    (Cons.name c)
+    display_constraint (lb, c, ub)
+    display_rel (lb, "</:", ub))
 
 let choose_under_constrained ctx er lb c ub =
   match ConEnv.find c ctx.variances with
@@ -459,9 +453,8 @@ let solve_bounds on_error ctx to_defer l u =
         None
       end else
         Some (choose_under_constrained ctx er lb c ub)
-    else (
-      on_error (over_constrained_exn lb c ub);
-      None)
+    else
+      impossible_over_constrained lb c ub
   ) |> ConEnv.filter_map (fun c o -> o) in
   (* Join the previous solution with the new one *)
   let env = ConEnv.disjoint_union ctx.current_env env in
@@ -531,7 +524,6 @@ let solve ctx (ts1, ts2) must_solve =
       1. Unconstrained variables are solved to Any/Non, don't substitute them, the error was not there.
       2. Matching unrelated types, e.g. Nat and Text, is permitted (resulting in Any/Non bound),
         However, it usually indicates an error. Don't solve these variables.
-        These potential extra errors are attached when 
     *)
     let env = env |> ConEnv.filter (fun c t -> not (eq Any t || eq Non t)) in
     let pretty_sub (t1,t2) =
