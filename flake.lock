@@ -137,11 +137,11 @@
     "motoko-core-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1762964552,
-        "narHash": "sha256-jo1h+yzgGtL23jO8ICmJJDoxI83ozJfN+jRFJ29iKzE=",
+        "lastModified": 1763057072,
+        "narHash": "sha256-ka1Bkjoy1PAWNmrnkv0uMDGXYIgHyHg/t1yeJlweZSw=",
         "owner": "dfinity",
         "repo": "motoko-core",
-        "rev": "3047c4b91c68e169dbd94a572cf47c6d83a06673",
+        "rev": "d2e7b51eba78e54be784a1ee8a5d5e47fe6848f2",
         "type": "github"
       },
       "original": {
