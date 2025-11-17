@@ -1696,9 +1696,9 @@ and infer_exp'' env exp : T.typ =
         if Option.is_some(!Flags.implicit_package) then
           T.Env.to_seq env.libs |>
             Seq.filter (fun (name, typ) ->
-                name <> "@prim" &&
-                let lib_id = Filename.basename name |> Filename.chop_extension in
-                lib_id = id.it) |> List.of_seq
+              name <> "@prim" &&
+              let lib_id = Filename.basename name |> Filename.chop_extension in
+              lib_id = id.it) |> List.of_seq
         else []
       in
       match candidate_libs with

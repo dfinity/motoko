@@ -6,9 +6,3 @@
 ignore Nat; //auto-import Nat
 
 ignore Map.empty<Text, Nat>(); // suggest core/Map or core/pure/Map
-
-
-
-
-
-
