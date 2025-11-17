@@ -52,6 +52,7 @@ let public_metadata_names : string list ref = ref []
 let omit_metadata_names : string list ref = ref []
 let compiled = ref false
 let error_detail = ref 2
+let error_recovery = ref false (* multiple syntax errors *)
 let sanity = ref false
 let gc_strategy = ref Default
 let force_gc = ref false
@@ -80,6 +81,7 @@ let stable_memory_access_limit = ref stable_memory_access_limit_default
 let experimental_stable_memory_default = 0 (* _ < 0: error; _ = 0: warn, _ > 0: allow *)
 let experimental_stable_memory = ref experimental_stable_memory_default
 let typechecker_combine_srcs = ref false (* useful for the language server *)
+let blob_import_placeholders = ref false (* when enabled, blob:file imports resolve as empty blobs *)
 
 let default_warning_levels = M.empty
   |> M.add "M0223" Allow (* don't report redundant instantions *)
@@ -99,3 +101,4 @@ let get_warning_level code =
 
 let is_warning_disabled code = get_warning_level code = Allow
 let is_warning_enabled code = not (is_warning_disabled code)
+

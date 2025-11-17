@@ -16,11 +16,10 @@ module Text {
 
 module Map {
   public type Map<K,V> = {map : [(K, [var V])]};
-  public type Self<K, V> = Map<K, V>;
   public func empty<K, V>() : Map<K,V> = { map= []};
 
   public func get<K, V>(
-    map : Map<K, V>,
+    self : Map<K, V>,
     compare: (implicit : (K, K) -> Order),
     n : K)
   : ?V {
@@ -28,12 +27,12 @@ module Map {
   };
 
   public func set<K, V>(
-    map : Map<K, V>,
+    self : Map<K, V>,
     compare: (implicit : (K, K) -> Order),
     n : K,
     v : V)
   : Map<K, V> {
-    map
+    self
   };
 };
 
@@ -49,5 +48,16 @@ persistent actor {
      ignore peopleMap.get(peopleMap, "text") : Text; // bad
 
      ignore peopleMap.get(1) : Bool; // bad
+  };
+  func test2() {
+    func c1() { let _ : Text = peopleMap.get("text") }; // wrong ret should be reported before wrong arg
+    func c2() { let _ = peopleMap.get(Text.compare, 1) }; // wrong 1nd arg
+    func c3() { let _ = peopleMap.get(Nat.compare, "text") }; // wrong 2st arg
+    func c4() { let _ = peopleMap.get(Text.compare, "text") }; // wrong both args, should point to the first one
+
+    func x1() { let _ = peopleMap.get() };
+    func x2() { let _ = peopleMap.get(Nat.compare, "text") };
+    func x3() { let _ = peopleMap.get(peopleMap, "text") };
+    func x4() { let _ = peopleMap.get(peopleMap, Nat.compare, "text") };
   };
 }
