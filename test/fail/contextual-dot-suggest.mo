@@ -10,31 +10,39 @@ module Any {
 };
 
 module Nat {
-  public type Self = Nat;
-  public func compare(_n : Nat, _m : Nat) : Order { #equal };
-  public func compareBy(_n : Nat, _m : Nat) : Order { #equal };
-  public func equal(_n : Nat, _m : Nat) : Bool { true };
+  public func compare(_self : Nat, _m : Nat) : Order { #equal };
+  public func compareBy(_self : Nat, _m : Nat) : Order { #equal };
+  public func equal(_self : Nat, _m : Nat) : Bool { true };
 };
 
 module Text {
-  public func compare(_n : Text, _m : Text) : Order { #equal };
-  public func equal(_n : Text, _m : Text) : Bool { true };
+  public func compare(_self : Text, _m : Text) : Order { #equal };
+  public func equal(_self : Text, _m : Text) : Bool { true };
 };
 
 module Odd {
   public type Self = {#odd};
-  public func compare(_n : Self, _m : Self, _o :  Self) : Order { #equal };
-  public func equal(_n : Self) : Bool { true };
+  public func compare(self : Self, _m : Self, _o : Self) : Order { #equal };
+  public func equal(self : Self) : Bool { true };
+};
+
+module Amb1 {
+  public type Self = {#amb};
+  public func method(_self : Self) {};
+};
+
+module Amb2 {
+  public type Self = {#amb};
+  public func method(_self : Self) {}; // ambiguous with Amb1.method();
 };
 
 
 module Map {
   public type Map<K,V> = {map : [(K, [var V])]};
-  public type Self<K, V> = Map<K, V>;
   public func empty<K, V>() : Map<K,V> = { map= []};
 
   public func get<K, V>(
-    _map : Map<K, V>,
+    self : Map<K, V>,
     _compare: (implicit : (compare : (K, K) -> Order)),
     _n : K)
   : ?V {
@@ -42,17 +50,21 @@ module Map {
   };
 
   public func set<K, V>(
-    map : Map<K, V>,
+    self : Map<K, V>,
     _compare: (implicit : (compare : (K, K) -> Order)),
     _n : K,
     _v : V)
   : Map<K, V> {
-    map
+    self
   };
 
-  public func clone<K, V>(map : Map<K, V>) : Map<K,V> { map };
+  public func clone<K, V>(self : Map<K, V>) : Map<K,V> { self };
 
-  public func size<K, V>(_map : Map<K, V>) : Nat { 0 };
+  public func size<K, V>(self : Map<K, V>) : Nat { 0 };
+
+  public func singleton<K, V>(k : K, v : V) : Map<K, V> {
+    { map = [(k, [var v])] }
+  };
 
 };
 
@@ -79,5 +91,8 @@ persistent actor {
   ignore peopleMap.get(Nat.compare, 1); // ok
   ignore peopleMap.get(1); // ok
 
+  ignore Map.singleton(1,"hello"); // ok - don't warn (no appropriate receiver)
+
+  Amb1.method(#amb); // don't suggest, ambiguous
 
 }

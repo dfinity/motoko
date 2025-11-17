@@ -14,6 +14,7 @@ s/<id>/ID/g
 /^<typ_dec> ::=/,+2d
 /^<parse_stab_sig> ::=/,+5d
 /.*PRIM.*/d
+/.*NUM_DOT_ID.*/d
 /^<bl> ::=/,+2d
 /^<ob> ::=/,+2d
 s/<start> //g

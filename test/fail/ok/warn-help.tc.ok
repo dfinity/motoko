@@ -33,5 +33,6 @@ M0223 (A) Redundant type instantiation
 M0235 (A) Deprecate for caffeine
 M0236 (A) Suggest contextual dot notation
 M0237 (A) Suggest redundant explicit arguments
+M0239 (W) Avoid binding a unit `()` result
 
 Legend: A - allowed (warning disabled); W - warn (warning enabled); E - error (treated as error)

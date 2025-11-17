@@ -13,11 +13,10 @@ module Text {
 
 module Map {
   public type Map<K,V> = {map : [(K, [var V])]};
-  public type Self<K, V> = Map<K, V>;
   public func empty<K, V>() : Map<K,V> = { map= []};
 
   public func get<K, V>(
-    _map : Map<K, V>,
+    self : Map<K, V>,
     _compare: (implicit : (compare : (K, K) -> Order)),
     _n : K)
   : ?V {
@@ -25,12 +24,12 @@ module Map {
   };
 
   public func set<K, V>(
-    map : Map<K, V>,
+    self : Map<K, V>,
     _compare: (implicit : (compare : (K, K) -> Order)),
     _n : K,
     _v : V)
   : Map<K, V> {
-    map
+    self
   };
 };
 
@@ -57,5 +56,22 @@ persistent actor {
      ignore peopleMap.get(compare, 1); // warn
      ignore Map.get(peopleMap, Nat.compare, 1); // ok
      ignore peopleMap.get(1); // ok
+   };
+
+  func _test3() {
+    module Amb1 {
+      public type T = {#amb};
+      public func compare(_ : T, _ : T) : Order { #equal };
+    };
+
+    module _Amb2 {
+      public type T = {#amb};
+      public func compare(_ : T, _ : T) : Order { #equal };
+    };
+
+    let ambMap = Map.empty<Amb1.T, Text>();
+    ignore Map.get(ambMap, Amb1.compare, #amb); // don't warn (suggestion would be ambiguous)
+    ignore Map.get(ambMap, #amb); // reject // ambiguous
    }
+
 }
