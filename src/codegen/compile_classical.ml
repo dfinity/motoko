@@ -8267,10 +8267,11 @@ module MakeSerialization (Strm : Stream) = struct
     let name =
       (* TODO(#3185): this specialization on `extended` seems redundant,
          removing it might simplify things *and* share more code in binaries.
-         The only tricky bit might be the conditional Stack.dynamic_with_words bit... *)
-      if extended
-      then "@deserialize_extended<" ^ ts_name ^ ">"
-      else "@deserialize<" ^ ts_name ^ ">" in
+         The only tricky bit might be the conditional Stack.dynamic_with_words bit...
+         Also consider #5642! OTOH, I expect the `ts` of stable data to be well apart
+         from messages', so sharing would be very rare, if at all.
+      *)
+      "@deserialize" ^ (if extended then "_extended<" else "<") ^ ts_name ^ ">" in
     Func.share_code2 Func.Always env name (("blob", I32Type), ("can_recover", I32Type)) (List.map (fun _ -> I32Type) ts) (fun env get_blob get_can_recover ->
       let (set_data_size, get_data_size) = new_local env "data_size" in
       let (set_refs_size, get_refs_size) = new_local env "refs_size" in
