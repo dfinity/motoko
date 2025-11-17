@@ -768,7 +768,7 @@ let compile_shl_const = compile_op_const I32Op.Shl
 let compile_mul_const = function
   | 0l -> G.i Drop ^^ compile_unboxed_zero
   | 1l -> G.nop
-  | n when Int32.compare n 0l > 0 && Numerics.Nat32.(of_int32 n |> popcnt |> to_int32) = 1l
+  | n when n > 0l && Numerics.Nat32.(of_int32 n |> popcnt |> to_int32) = 1l
     -> compile_shl_const Numerics.Nat32.(of_int32 n |> ctz |> to_int32)
   | n -> compile_op_const I32Op.Mul n
 let compile_rotl_const = compile_op_const I32Op.Rotl
@@ -798,7 +798,7 @@ let compile_shl64_const = function
 let compile_mul64_const = function
   | 0L -> G.i Drop ^^ compile_const_64 0L
   | 1L -> G.nop
-  | n when Int64.compare n 0L > 0 && Numerics.Nat64.(of_int64 n |> popcnt |> to_int64) = 1L
+  | n when n > 0L && Numerics.Nat64.(of_int64 n |> popcnt |> to_int64) = 1L
     -> compile_shl64_const Numerics.Nat64.(of_int64 n |> ctz |> to_int64)
   | n -> compile_op64_const I64Op.Mul n
 let compile_bitand64_const = compile_op64_const I64Op.And

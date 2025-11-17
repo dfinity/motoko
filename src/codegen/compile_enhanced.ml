@@ -851,7 +851,7 @@ let compile_shl_const = compile_op_const I64Op.Shl
 let compile_mul_const = function
   | 0L -> G.i Drop ^^ compile_unboxed_zero
   | 1L -> G.nop
-  | n when Int64.compare n 0L > 0 && Numerics.Nat64.(of_int64 n |> popcnt |> to_int64) = 1L
+  | n when n > 0L && Numerics.Nat64.(of_int64 n |> popcnt |> to_int64) = 1L
     -> compile_shl_const Numerics.Nat64.(of_int64 n |> ctz |> to_int64)
   | n -> compile_op_const I64Op.Mul n
 let compile_rotl_const = compile_op_const I64Op.Rotl
