@@ -1692,20 +1692,26 @@ and infer_exp'' env exp : T.typ =
       else t
     | Some (t, _, _, Available) -> id.note <- (if T.is_mut t then (Var, None) else (Const, None)); t
     | None ->
-      let candidate_lib =
+      let candidate_libs =
         if Option.is_some(!Flags.implicit_package) then
           T.Env.to_seq env.libs |>
-            Seq.find (fun (name, typ) ->
+            Seq.filter (fun (name, typ) ->
+                name <> "@prim" &&
                 let lib_id = Filename.basename name |> Filename.chop_extension in
-                lib_id = id.it)
-        else None
+                lib_id = id.it) |> List.of_seq
+        else []
       in
-      match candidate_lib with
-      | Some (name, typ) ->
+      match candidate_libs with
+      | [(name, typ)] ->
         id.note <-
           (Const, Some { it = ImplicitLibE name; at = exp.at; note = {note_typ = typ; note_eff = T.Triv} });
         typ
-      | None ->
+      | c1::c2::cs ->
+        let import_suggestions = List.map (fun (name, ty) -> Suggest.module_name_as_url name) candidate_libs in
+        error env id.at "M0057" "unbound variable %s%a%s" id.it
+          display_vals env.vals
+          (Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " import_suggestions))
+      | [] ->
         error env id.at "M0057" "unbound variable %s%a%s" id.it
           display_vals env.vals
           (Suggest.suggest_id "variable" id.it (T.Env.keys env.vals))

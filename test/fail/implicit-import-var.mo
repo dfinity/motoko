@@ -3,7 +3,11 @@
 //MOC-FLAG --implicit-package core
 // Make sure that the `base` package does not interfere with the implicit resolution from `core`
 
-ignore Nat; //auto-import (unambiguous) Nat
+ignore Nat; //auto-import Nat
+
+ignore Map.empty<Text, Nat>(); // suggest core/Map or core/pure/Map
+
+
 
 
 
