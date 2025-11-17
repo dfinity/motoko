@@ -799,7 +799,7 @@ let compile_shl64_const = function
 let compile_mul64_const = function
   | 0L -> G.i Drop ^^ compile_const_64 0L
   | 1L -> G.nop
-  | n when Int64.compare n 0L > 0 && Numerics.Nat64.(popcnt (of_int64 n) |> to_int64) = 1L
+  | n when Int64.compare n 0L > 0 && Numerics.Nat64.(of_int64 n |> popcnt |> to_int64) = 1L
     -> compile_shl64_const Numerics.Nat64.(of_int64 n |> ctz |> to_int64)
   | n -> compile_op64_const I64Op.Mul n
 let compile_bitand64_const = compile_op64_const I64Op.And
