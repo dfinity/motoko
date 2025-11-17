@@ -3014,6 +3014,12 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
   *)
     ts, T.open_ ts t_arg, T.open_ ts t_ret
   with Bi_match.Bimatch { message; hint; reason } ->
+    reason |> Option.iter (fun Bi_match.{ actual; expected; at } ->
+      error env at "M0096"
+        "expression of type%a\ncannot produce expected type%a"
+        display_typ_expand actual
+        display_typ_expand expected);
+
     let t1 = T.normalize t1 in
     let remove_holes_nary ts =
       match exp2.it, ts with
@@ -3048,25 +3054,15 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
       T.seq (remove_holes_nary (match typ with T.Tup ts -> ts | t -> [t]))
     in
     let t2' = remove_holes t2 in
-    let hint = match hint with
-      | None -> ""
-      | Some hint -> Format.asprintf "\n%s" hint
-    in
-    match reason with
-    | Some (Bi_match.{ actual; expected; at }) ->
-      error env at "M0096"
-        "expression of type%a\ncannot produce expected type%a%s"
-        display_typ actual
-        display_typ expected
-        hint
-    | _ ->
     error env at "M0098"
       "cannot apply %s of type%a\nto argument of type%a\nbecause %s%s"
       desc
       display_typ t1''
       display_typ (err_subst t2')
       message
-      hint
+      (match hint with
+       | None -> ""
+       | Some hint -> Format.asprintf "\n%s" hint)
 
 and is_redundant_instantiation ts env infer_instantiation =
   assert env.pre;
