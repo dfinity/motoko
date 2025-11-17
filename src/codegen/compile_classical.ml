@@ -769,7 +769,7 @@ let compile_shl_const = compile_op_const I32Op.Shl
 let compile_mul_const = function
   | 0l -> G.i Drop ^^ compile_unboxed_zero
   | 1l -> G.nop
-  | n when Int32.compare n 0l > 0 && Numerics.Nat32.(popcnt (of_int32 n) |> to_int32) = 1l
+  | n when Int32.compare n 0l > 0 && Numerics.Nat32.(of_int32 n |> popcnt |> to_int32) = 1l
     -> compile_shl_const Numerics.Nat32.(of_int32 n |> ctz |> to_int32)
   | n -> compile_op_const I32Op.Mul n
 let compile_rotl_const = compile_op_const I32Op.Rotl
