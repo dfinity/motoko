@@ -1,68 +1,65 @@
-OOPS! You've triggered a compiler bug.
-Please report this at https://github.com/dfinity/motoko/issues/new with the following details:
-
-Motoko (source XXX)
-
-Fatal error: exception File "mo_frontend/typing.ml", line 2365, characters 17-23: Assertion failed
-Raised at Mo_frontend__Typing.check_exp' in file "mo_frontend/typing.ml", line 2365, characters 17-29
-Called from Mo_frontend__Typing.check_exp in file "mo_frontend/typing.ml", line 2328, characters 11-45
-Called from Stdlib__List.iter in file "list.ml", line 110, characters 12-15
-Called from Mo_frontend__Typing.infer_call_instantiation in file "mo_frontend/typing.ml", line 2962, characters 4-1023
-Called from Mo_frontend__Typing.infer_call in file "mo_frontend/typing.ml", line 2826, characters 6-105
-Called from Mo_frontend__Typing.infer_exp'' in file "mo_frontend/typing.ml", line 1952, characters 12-53
-Called from Mo_frontend__Typing.infer_exp_wrapper in file "mo_frontend/typing.ml", line 1661, characters 10-21
-Called from Mo_frontend__Typing.infer_exp in file "mo_frontend/typing.ml" (inlined), line 1641, characters 2-31
-Called from Mo_frontend__Typing.infer_dec in file "mo_frontend/typing.ml", line 4057, characters 12-29
-Called from Mo_frontend__Typing.check_dec in file "mo_frontend/typing.ml", line 4164, characters 13-30
-Called from Mo_frontend__Typing.check_block in file "mo_frontend/typing.ml", line 4142, characters 2-47
-Called from Mo_frontend__Typing.check_exp' in file "mo_frontend/typing.ml", line 2491, characters 11-42
-Called from Mo_frontend__Typing.check_exp in file "mo_frontend/typing.ml", line 2328, characters 11-45
-Called from Mo_frontend__Typing.infer_exp'' in file "mo_frontend/typing.ml", line 1920, characters 6-57
-Called from Mo_frontend__Typing.infer_exp_wrapper in file "mo_frontend/typing.ml", line 1661, characters 10-21
-Called from Mo_frontend__Typing.infer_exp in file "mo_frontend/typing.ml" (inlined), line 1641, characters 2-31
-Called from Mo_frontend__Typing.infer_dec in file "mo_frontend/typing.ml", line 4057, characters 12-29
-Called from Mo_frontend__Typing.check_dec in file "mo_frontend/typing.ml", line 4164, characters 13-30
-Called from Mo_frontend__Typing.recover_with in file "mo_frontend/typing.ml", line 135, characters 56-59
-Called from Mo_frontend__Typing.recover in file "mo_frontend/typing.ml" (inlined), line 137, characters 18-37
-Called from Mo_frontend__Typing.check_block_exps in file "mo_frontend/typing.ml", line 4155, characters 4-38
-Called from Mo_frontend__Typing.check_block in file "mo_frontend/typing.ml", line 4142, characters 2-47
-Called from Mo_frontend__Typing.check_exp' in file "mo_frontend/typing.ml", line 2491, characters 11-42
-Called from Mo_frontend__Typing.check_exp in file "mo_frontend/typing.ml", line 2328, characters 11-45
-Called from Mo_frontend__Typing.infer_exp'' in file "mo_frontend/typing.ml", line 1920, characters 6-57
-Called from Mo_frontend__Typing.infer_exp_wrapper in file "mo_frontend/typing.ml", line 1661, characters 10-21
-Called from Mo_frontend__Typing.infer_exp in file "mo_frontend/typing.ml" (inlined), line 1641, characters 2-31
-Called from Mo_frontend__Typing.infer_dec in file "mo_frontend/typing.ml", line 4057, characters 12-29
-Called from Mo_frontend__Typing.infer_block in file "mo_frontend/typing.ml", line 3998, characters 10-55
-Called from Mo_frontend__Typing.infer_obj in file "mo_frontend/typing.ml", line 3657, characters 17-46
-Called from Mo_frontend__Typing.infer_exp'' in file "mo_frontend/typing.ml", line 1828, characters 12-61
-Called from Mo_frontend__Typing.infer_exp_wrapper in file "mo_frontend/typing.ml", line 1661, characters 10-21
-Called from Mo_frontend__Typing.infer_exp in file "mo_frontend/typing.ml" (inlined), line 1641, characters 2-31
-Called from Mo_frontend__Typing.infer_exp'' in file "mo_frontend/typing.ml", line 2097, characters 12-31
-Called from Mo_frontend__Typing.infer_exp_wrapper in file "mo_frontend/typing.ml", line 1661, characters 10-21
-Called from Mo_frontend__Typing.infer_exp in file "mo_frontend/typing.ml" (inlined), line 1641, characters 2-31
-Called from Mo_frontend__Typing.infer_exp_and_promote in file "mo_frontend/typing.ml", line 1650, characters 10-27
-Called from Mo_frontend__Typing.infer_exp_promote in file "mo_frontend/typing.ml" (inlined), line 1647, characters 6-37
-Called from Mo_frontend__Typing.infer_exp'' in file "mo_frontend/typing.ml", line 2105, characters 13-39
-Called from Mo_frontend__Typing.infer_exp_wrapper in file "mo_frontend/typing.ml", line 1661, characters 10-21
-Called from Mo_frontend__Typing.infer_exp in file "mo_frontend/typing.ml" (inlined), line 1641, characters 2-31
-Called from Mo_frontend__Typing.infer_dec in file "mo_frontend/typing.ml", line 4044, characters 16-33
-Called from Mo_frontend__Typing.infer_block in file "mo_frontend/typing.ml", line 3998, characters 10-55
-Called from Mo_frontend__Typing.infer_prog.(fun) in file "mo_frontend/typing.ml", line 4531, characters 26-62
-Called from Mo_frontend__Typing.recover_opt.(fun) in file "mo_frontend/typing.ml", line 136, characters 55-60
-Called from Mo_frontend__Typing.recover_with in file "mo_frontend/typing.ml", line 135, characters 56-59
-Called from Diag.with_message_store in file "lang_utils/diag.ml", line 103, characters 10-13
-Called from Pipeline.infer_prog.(fun) in file "pipeline/pipeline.ml", line 192, characters 12-69
-Called from Stdlib__Fun.protect in file "fun.ml", line 33, characters 8-15
-Re-raised at Stdlib__Fun.protect in file "fun.ml", line 38, characters 6-52
-Called from Stdlib__Fun.protect in file "fun.ml", line 33, characters 8-15
-Re-raised at Stdlib__Fun.protect in file "fun.ml", line 38, characters 6-52
-Called from Pipeline.check_progs.go in file "pipeline/pipeline.ml", line 215, characters 8-106
-Called from Pipeline.load_progs_cached in file "pipeline/pipeline.ml", line 509, characters 23-57
-Called from Diag.bind in file "lang_utils/diag.ml", line 32, characters 27-30
-Called from Diag.bind in file "lang_utils/diag.ml", line 32, characters 27-30
-Called from Diag.bind in file "lang_utils/diag.ml", line 32, characters 27-30
-Called from Diag.bind in file "lang_utils/diag.ml", line 32, characters 27-30
-Called from Pipeline.load_progs in file "pipeline/pipeline.ml", line 524, characters 4-78
-Called from Pipeline.check_files' in file "pipeline/pipeline.ml", line 601, characters 18-61
-Called from Dune__exe__Moc.process_files in file "exes/moc.ml", line 282, characters 13-41
-Called from Dune__exe__Moc in file "exes/moc.ml", line 394, characters 10-29
+inf-error-small.mo:43.13-43.34: type error [M0096], expression of type
+  ?Text
+cannot produce expected type
+  Text
+inf-error-small.mo:44.13-44.47: type error [M0096], expression of type
+  ?Text
+cannot produce expected type
+  Text
+inf-error-small.mo:46.13-46.45: type error [M0096], expression of type
+  ?Text
+cannot produce expected type
+  Text
+inf-error-small.mo:47.26-47.58: type error [M0233], wrong number of arguments: expected 1 but got 3
+Expected 1 argument of type:
+  (n : Nat)
+But got 3 arguments of type:
+  {map : [(Nat, [var Text])]}
+  (n : Nat, m : Nat) -> Order
+  Text
+inf-error-small.mo:48.13-48.45: type error [M0096], expression of type
+  ?Text
+cannot produce expected type
+  Text
+inf-error-small.mo:50.13-50.29: type error [M0096], expression of type
+  ?Text
+cannot produce expected type
+  Bool
+inf-error-small.mo:53.25-53.46: type error [M0230], Cannot determine implicit argument `compare` of type
+  (Any, Any) -> Order
+Hint: If you're trying to omit an implicit argument named `compare` you need to have a matching declaration named `compare` in scope.
+inf-error-small.mo:54.32-54.53: type error [M0096], expression of type
+  ?Text
+cannot produce expected type
+  Text
+inf-error-small.mo:55.39-55.51: type error [M0096], expression of type
+  (n : Text, m : Text) -> Order
+cannot produce expected type
+  (implicit : (Nat, Nat) -> Order)
+inf-error-small.mo:56.52-56.58: type error [M0096], expression of type
+  Text
+cannot produce expected type
+  Nat
+inf-error-small.mo:57.39-57.51: type error [M0096], expression of type
+  (n : Text, m : Text) -> Order
+cannot produce expected type
+  (implicit : (Nat, Nat) -> Order)
+inf-error-small.mo:59.38-59.40: type error [M0233], wrong number of arguments: expected 1 but got 0
+Expected 1 argument of type:
+  (n : Nat)
+But got no arguments
+inf-error-small.mo:60.52-60.58: type error [M0096], expression of type
+  Text
+cannot produce expected type
+  Nat
+inf-error-small.mo:61.39-61.48: type error [M0096], expression of type
+  {map : [(Nat, [var Text])]}
+cannot produce expected type
+  (implicit : (Nat, Nat) -> Order)
+inf-error-small.mo:62.38-62.70: type error [M0233], wrong number of arguments: expected 1 but got 3
+Expected 1 argument of type:
+  (n : Nat)
+But got 3 arguments of type:
+  {map : [(Nat, [var Text])]}
+  (n : Nat, m : Nat) -> Order
+  Text
