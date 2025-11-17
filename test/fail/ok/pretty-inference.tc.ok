@@ -90,27 +90,59 @@ because there is no way to satisfy subtyping
    ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))  <: 
     T  (for argument `x`) 
-pretty-inference.mo:42.1-42.7: type error [M0096], expression of type
-  Nat
-cannot produce expected type
-  ()
-pretty-inference.mo:44.1-44.9: type error [M0096], expression of type
-  Nat
-cannot produce expected type
-  ()
-pretty-inference.mo:46.1-46.9: type error [M0096], expression of type
-  Nat
-cannot produce expected type
-  ()
-pretty-inference.mo:48.1-48.9: type error [M0096], expression of type
-  Nat
-cannot produce expected type
-  ()
-pretty-inference.mo:50.1-50.9: type error [M0096], expression of type
-  Nat
-cannot produce expected type
-  ()
-pretty-inference.mo:52.1-52.9: type error [M0096], expression of type
-  Nat
-cannot produce expected type
-  ()
+pretty-inference.mo:42.1-42.11: type error [M0098], cannot apply function of type
+  <T, U>(x : T, u : U, U -> ()) -> ()
+to argument of type
+  (Nat, Nat, Text)
+because there is no way to satisfy subtyping
+  Text  <:  Nat -> ()
+pretty-inference.mo:44.1-44.13: type error [M0098], cannot apply function of type
+  <T, U>(x : T, u : U, U -> ()) -> ()
+to argument of type
+  ((Nat, Bool), (Nat, Bool), Text)
+because there is no way to satisfy subtyping
+  Text  <:  ((Nat, Bool)) -> ()
+pretty-inference.mo:46.1-46.13: type error [M0098], cannot apply function of type
+  <T, U>(x : T, u : U, U -> ()) -> ()
+to argument of type
+  (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)), Text)
+because there is no way to satisfy subtyping
+  Text  <:  (((Nat, Bool), (Nat, Bool))) -> ()
+pretty-inference.mo:48.1-48.13: type error [M0098], cannot apply function of type
+  <T, U>(x : T, u : U, U -> ()) -> ()
+to argument of type
+  ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))), Text)
+because there is no way to satisfy subtyping
+  Text  <:  ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))) -> ()
+pretty-inference.mo:50.1-50.13: type error [M0098], cannot apply function of type
+  <T, U>(x : T, u : U, U -> ()) -> ()
+to argument of type
+  (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
+   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
+   Text)
+because there is no way to satisfy subtyping
+  Text  <: 
+    (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+      (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))) -> ()
+pretty-inference.mo:52.1-52.13: type error [M0098], cannot apply function of type
+  <T, U>(x : T, u : U, U -> ()) -> ()
+to argument of type
+  ((((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
+    ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))),
+   (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
+    ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))),
+   Text)
+because there is no way to satisfy subtyping
+  Text  <: 
+    ((((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+       (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
+      ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
+       (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))) ->
+      ()
