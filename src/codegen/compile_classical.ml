@@ -761,7 +761,6 @@ let compile_op_const op i =
     G.i (Binary (Wasm.Values.I32 op))
 let compile_add_const = compile_op_const I32Op.Add
 let compile_sub_const = compile_op_const I32Op.Sub
-let compile_mul_const = compile_op_const I32Op.Mul
 let compile_divU_const = compile_op_const I32Op.DivU
 let compile_shrU_const = compile_op_const I32Op.ShrU
 let compile_shrS_const = compile_op_const I32Op.ShrS
