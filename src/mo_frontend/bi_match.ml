@@ -533,8 +533,10 @@ let solve ctx (ts1, ts2, ats) must_solve =
     let t1 = subst env t1 in
     let t2 = subst env t2 in
     let reason = match t2 with
-    | Named ("@ret", t2)
-    | Named (_, t2) when is_closed ctx t2 -> Some { actual = t1; expected = t2; at }
+    | Named ("@ret", t2) ->
+      if is_closed ctx t1 then Some { actual = t1; expected = t2; at } else None
+    | Named (_, t2) ->
+      if is_closed ctx t2 then Some { actual = t1; expected = t2; at } else None
     | t2 -> None
     in
     let rel = match t2 with
