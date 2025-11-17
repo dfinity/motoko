@@ -46,8 +46,7 @@ pub(crate) unsafe fn read_word(buf: *mut Buf) -> u32 {
     // IDL buffer is still 32-bit-based.
     const WORD_SIZE: usize = core::mem::size_of::<u32>();
 
-    if (*buf).ptr.add(WORD_SIZE - 1) >= (*buf).end {
-        // TODO: use add(WORD_SIZE) and >
+    if (*buf).ptr.add(WORD_SIZE) > (*buf).end {
         idl_trap_with("word read out of buffer");
     }
 
