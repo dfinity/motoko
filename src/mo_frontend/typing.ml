@@ -2551,22 +2551,38 @@ and check_inferred env0 env t t' exp =
 
 and check_exp_field env (ef : exp_field) fts =
   let { mut; id; exp } = ef.it in
+  let update_srcs src =
+    if !Mo_config.Flags.typechecker_combine_srcs then
+      let r1 = src.T.track_region in
+      let r2 = id.at in
+      let srcs =
+        Region_set.union
+          (Field_sources.get_srcs env.srcs r1)
+          (Field_sources.get_srcs env.srcs r2)
+      in
+      Field_sources.Srcs_tbl.replace env.srcs r1 srcs;
+      Field_sources.Srcs_tbl.replace env.srcs r2 srcs
+  in
   let ft_opt = List.find_opt (fun ft -> ft.T.lab = id.it) fts in
   match ft_opt with
-  | Some { T.typ = T.Mut t; _ } ->
+  | Some { T.lab = _; typ = T.Mut t; src } ->
     if mut.it <> Syntax.Var then
       error env ef.at "M0149" "expected mutable 'var' field %s of type%a\nbut found immutable field (insert 'var'?)"
         id.it
         display_typ t;
+    update_srcs src;
     check_exp env t exp
-  | Some { T.typ = t; _ } ->
+  | Some { T.lab = _; typ = t; src } ->
     if mut.it = Syntax.Var then
       error env ef.at "M0150" "expected immutable field %s of type%a\nbut found mutable 'var' field (delete 'var'?)"
         id.it
         display_typ t;
+    update_srcs src;
     check_exp env t exp
   | None ->
-    ignore (infer_exp env exp)
+    if !Mo_config.Flags.typechecker_combine_srcs then
+      Field_sources.add_src env.srcs id.at;
+    ignore (infer_exp env exp);
 
 (** Performs the first step of checking that the given [FuncE (_, shared_pat, [], pat, typ_opt, _, exp)] expression has type [T.Func (s, c, [], ts1, ts2)].
   Used to prepare the new env for checking the [exp] (body of the function).
