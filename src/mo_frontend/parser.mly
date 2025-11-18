@@ -498,6 +498,8 @@ typ_item :
   | i=implicit COLON t = typ { Some i, t }
   | i=id COLON t=typ { Some i, t }
   | i=id_wild COLON t=typ { Some i, t }
+  | implicit i=id COLON t=typ { Some i, (NamedT (i, t) @! at $sloc) }
+  | implicit i=id_wild COLON t=typ { Some i, (NamedT (i, t) @! at $sloc) }
   | t=typ { None, t }
 
 typ_args :
@@ -944,6 +946,8 @@ pat_bin :
     { AltP(p1, p2) @! at $sloc }
   | p=pat_bin COLON t=typ
     { AnnotP(p, t) @! at $sloc }
+  | i=implicit x=id COLON t=typ
+    { AnnotP(VarP x @! x.at, (NamedT(i, t) @! at $sloc)) @! at $sloc }
 
 pat :
   | p=pat_bin

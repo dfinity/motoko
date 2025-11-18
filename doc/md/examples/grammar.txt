@@ -82,6 +82,8 @@
     <implicit> ':' <typ>
     <id> ':' <typ>
     <id_wild> ':' <typ>
+    <implicit> <id> ':' <typ>
+    <implicit> <id_wild> ':' <typ>
     <typ>
 
 <typ_args> ::= 
@@ -331,6 +333,7 @@
     <pat_un>
     <pat_bin> 'or' <pat_bin>
     <pat_bin> ':' <typ>
+    <implicit> <id> ':' <typ>
 
 <pat> ::= 
     <pat_bin>
