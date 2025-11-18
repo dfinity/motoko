@@ -498,8 +498,8 @@ typ_item :
   | i=implicit COLON t = typ { Some i, t }
   | i=id COLON t=typ { Some i, t }
   | i=id_wild COLON t=typ { Some i, t }
-  | implicit i=id COLON t=typ { Some i, (NamedT (i, t) @! at $sloc) }
-  | implicit i=id_wild COLON t=typ { Some i, (NamedT (i, t) @! at $sloc) }
+  | imp=implicit i=id COLON t=typ { Some i, (NamedT (imp, t) @! at $sloc) }
+  | imp=implicit i=id_wild COLON t=typ { Some i, (NamedT (imp, t) @! at $sloc) }
   | t=typ { None, t }
 
 typ_args :
