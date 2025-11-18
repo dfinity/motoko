@@ -8315,8 +8315,12 @@ module MakeSerialization (Strm : Stream) = struct
 
       (* Go! *)
       let tydesc, _, _ = type_desc env ts in
-      let tydesc_len = Int32.of_int (String.length tydesc * 2 + 300) in
-      Bool.lit extended ^^ get_data_buf ^^ compile_unboxed_const tydesc_len ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
+      let tydesc_len = Int32.of_int (String.length tydesc) in
+      let tydesc_tolerance =
+        compile_unboxed_const tydesc_len ^^
+        Registers.get_type_scaler env ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
+        Registers.get_type_bias env ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) in
+      Bool.lit extended ^^ get_data_buf ^^ tydesc_tolerance ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
       E.call_import env "rts" "parse_idl_header" ^^
 
       (* Allocate memo table, if necessary *)
