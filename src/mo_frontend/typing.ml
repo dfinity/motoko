@@ -2551,22 +2551,38 @@ and check_inferred env0 env t t' exp =
 
 and check_exp_field env (ef : exp_field) fts =
   let { mut; id; exp } = ef.it in
+  let update_srcs src =
+    if !Mo_config.Flags.typechecker_combine_srcs then
+      let r1 = src.T.track_region in
+      let r2 = id.at in
+      let srcs =
+        Region_set.union
+          (Field_sources.get_srcs env.srcs r1)
+          (Field_sources.get_srcs env.srcs r2)
+      in
+      Field_sources.Srcs_tbl.replace env.srcs r1 srcs;
+      Field_sources.Srcs_tbl.replace env.srcs r2 srcs
+  in
   let ft_opt = List.find_opt (fun ft -> ft.T.lab = id.it) fts in
   match ft_opt with
-  | Some { T.typ = T.Mut t; _ } ->
+  | Some { T.lab = _; typ = T.Mut t; src } ->
     if mut.it <> Syntax.Var then
       error env ef.at "M0149" "expected mutable 'var' field %s of type%a\nbut found immutable field (insert 'var'?)"
         id.it
         display_typ t;
+    update_srcs src;
     check_exp env t exp
-  | Some { T.typ = t; _ } ->
+  | Some { T.lab = _; typ = t; src } ->
     if mut.it = Syntax.Var then
       error env ef.at "M0150" "expected immutable field %s of type%a\nbut found mutable 'var' field (delete 'var'?)"
         id.it
         display_typ t;
+    update_srcs src;
     check_exp env t exp
   | None ->
-    ignore (infer_exp env exp)
+    if !Mo_config.Flags.typechecker_combine_srcs then
+      Field_sources.add_src env.srcs id.at;
+    ignore (infer_exp env exp);
 
 (** Performs the first step of checking that the given [FuncE (_, shared_pat, [], pat, typ_opt, _, exp)] expression has type [T.Func (s, c, [], ts1, ts2)].
   Used to prepare the new env for checking the [exp] (body of the function).
@@ -2881,7 +2897,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
   - Substitute and proceed with the remaining sub-expressions to get the full instantiation.
   *)
   let infer_subargs_for_bimatch_or_defer env exp target_type =
-    let subs, deferred, to_fix, must_solve = ref extra_subtype_problems, ref [], ref [], ref [] in
+    let subs, deferred, to_fix, must_solve = ref [], ref [], ref [], ref [] in
     let rec decompose exp target_type =
       match exp.it, T.normalize target_type with
       | TupE exps, T.Tup ts when List.length exps = List.length ts ->
@@ -2935,10 +2951,13 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
 
   (* Incorporate the return type into the subtyping constraints *)
   let ret_typ_opt, subs =
+    let subs = List.rev subs in
     match t_expect_opt with
     | None -> Some t_ret, subs
     | Some expected_ret -> None, (t_ret, Bi_match.name_ret_typ expected_ret) :: subs
   in
+  (* Make sure the order of constraints is: receiver, expected return type and arguments starting from the first one *)
+  let subs = extra_subtype_problems @ subs in
 
   try
     (* i.e. exists minimal ts .

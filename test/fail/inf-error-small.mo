@@ -49,4 +49,15 @@ persistent actor {
 
      ignore peopleMap.get(1) : Bool; // bad
   };
+  func test2() {
+    func c1() { let _ : Text = peopleMap.get("text") }; // wrong ret should be reported before wrong arg
+    func c2() { let _ = peopleMap.get(Text.compare, 1) }; // wrong 1nd arg
+    func c3() { let _ = peopleMap.get(Nat.compare, "text") }; // wrong 2st arg
+    func c4() { let _ = peopleMap.get(Text.compare, "text") }; // wrong both args, should point to the first one
+
+    func x1() { let _ = peopleMap.get() };
+    func x2() { let _ = peopleMap.get(Nat.compare, "text") };
+    func x3() { let _ = peopleMap.get(peopleMap, "text") };
+    func x4() { let _ = peopleMap.get(peopleMap, Nat.compare, "text") };
+  };
 }
