@@ -46,6 +46,8 @@ known_untested_codes = {
     "M0241", # Multi-migration tuple cannot be empty 
     "M0242", # Multi-migration must be tuple 
     "M0243", # Duplicate migration
+    "M0244", # Multi-migration with constructor side-effects
+    "M0245", # Multi-migration field not explicitly produced/consumed
     }
 
 def populate_error_codes():
