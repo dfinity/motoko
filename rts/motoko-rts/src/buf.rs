@@ -15,6 +15,17 @@ impl Buf {
     pub(crate) unsafe fn advance(self: *mut Self, n: usize) {
         advance(self, n)
     }
+
+    /// Restrict the read area
+    #[cfg(feature = "ic")]
+    pub(crate) unsafe fn limit_size(self: *mut Self, lim: usize) -> *mut u8 {
+        let limit_ptr = (*self).ptr.add(lim);
+        let prev = (*self).end;
+        if limit_ptr < prev {
+            (*self).end = limit_ptr;
+        }
+        prev
+    }
 }
 
 /// Read a single byte
@@ -35,7 +46,7 @@ pub(crate) unsafe fn read_word(buf: *mut Buf) -> u32 {
     // IDL buffer is still 32-bit-based.
     const WORD_SIZE: usize = core::mem::size_of::<u32>();
 
-    if (*buf).ptr.add(WORD_SIZE - 1) >= (*buf).end {
+    if (*buf).ptr.add(WORD_SIZE) > (*buf).end {
         idl_trap_with("word read out of buffer");
     }
 
