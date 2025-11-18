@@ -2194,7 +2194,6 @@ and infer_bin_exp env exp1 exp2 =
    `Error` with the type of the receiver as well as the error message
    to report. This is used to delay the reporting for contextual dot resulution *)
 and try_infer_dot_exp env at exp id (desc, pred) =
-  (* CRUSSO *)
   let t0, t1 = infer_exp_and_promote env exp in
   let fields =
     try Ok(T.as_obj_sub [id.it] t1) with Invalid_argument _ ->
