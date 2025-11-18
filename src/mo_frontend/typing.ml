@@ -3913,7 +3913,6 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
                 (* Validate each migration and check chain compatibility *)
                 (* Also extract first input type and last output type *)
                 (* Compute stable IDs for each migration based on field definition location *)
-                (* Printf.eprintf "TYPING: Computing migration IDs for %d elements\n" (List.length elements); *)
                 let migration_ids = List.map (fun elem ->
                   match elem.it with
                   | DotE({it = VarE _; _} as obj_expr, field_name, _) ->
@@ -3924,7 +3923,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
                         | Some field -> Source.string_of_region field.T.src.T.region
                         | None -> Source.string_of_region elem.at) (* fallback *)
                      | _ -> Source.string_of_region elem.at) (* fallback *)
-                  | _ -> Source.string_of_region elem.at (* fallback for inline functions, etc *)
+                  | _ -> Source.string_of_region elem.at
                 ) elements in
                 
                 (* Check for duplicate migration IDs *)
@@ -3975,7 +3974,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
                     let sort, tbs, t_args, t_rng = 
                       try T.as_func_sub T.Local 0 elem_typ
                       with Invalid_argument _ ->
-                        local_error env elem.at "M0216"
+                        local_error env elem.at "M0240"
                           "migration tuple element at index %d is not a function"
                           idx;
                         raise (Invalid_argument "not a function")

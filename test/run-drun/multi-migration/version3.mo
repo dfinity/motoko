@@ -22,7 +22,7 @@ actor {
 
   stable var six : Text = "";
 
-  six #= "hello";
+  //six #= "hello";
 
   public func check() : async () {
     Prim.debugPrint(debug_show { zero; three; four; five; six });

@@ -657,15 +657,15 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
              (* Compute hashes for migration IDs *)
              let migration_hashes = List.map (fun id -> Digest.to_hex (Digest.string id)) migration_ids in
              
-             (* If we have a hash, wrap with RTS calls *)
+             (* Check in the RTS if the migration was already performed *)
              let e_with_tracking = match migration_hashes with
                | [migration_hash] ->
-                 (* Check and register around the migration call *)
+                 (* Check and register the migration call *)
                  let func_dom, func_rng = T.as_mono_func_sub multi_typ in
                  let input_var = fresh_var "migration_input" func_dom in
                  let input_arg = arg_of_var input_var in
                  
-                 let migration_id = List.hd migration_ids in (* Safe because we matched on single element *)
+                 let migration_id = List.hd migration_ids in 
                  let was_performed = primE (I.OtherPrim "was_migration_performed") [textE migration_hash] in
                  let error_msg = textE ("Migration already performed: " ^ migration_id) in
                  let check_and_trap = ifE was_performed 
@@ -701,7 +701,6 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
           let composed_typ = T.Func(T.Local, T.Returns, [], [first_dom], [last_rng]) in
           
           (* Build the composition as a function *)
-          (* Bind the tuple to avoid aliasing *)
           let tuple_var = fresh_var "migrations" multi_typ in
           let input_var = fresh_var "migration_input" first_dom in
           let input_arg = arg_of_var input_var in
