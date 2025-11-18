@@ -210,6 +210,8 @@ let error_codes : (string * string option) list =
     "M0241", None; (* Multi-migration tuple cannot be empty *)
     "M0242", None; (* Multi-migration must be tuple *)
     "M0243", None; (* Duplicate migration *)
+    "M0244", None; (* Multi-migration with constructor side-effects *)
+    "M0245", None; (* Multi-migration field not explicitly produced/consumed. *)
   ]
 
 (** Message codes that can be both used as warnings and errors *)
