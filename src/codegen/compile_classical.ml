@@ -6766,6 +6766,8 @@ module MakeSerialization (Strm : Stream) = struct
     let idl_value_numerator = 1l
     let idl_value_denominator = 1l
     let idl_value_bias = 1024l
+    let idl_type_scaler = 3l
+    let idl_type_bias = 1024l
 
     let register_globals env =
       E.add_global32 env "@@rel_buf_opt" Mutable 0l;
@@ -6777,7 +6779,9 @@ module MakeSerialization (Strm : Stream) = struct
       E.add_global32 env "@@value_denominator" Mutable idl_value_denominator;
       E.add_global32 env "@@value_numerator" Mutable idl_value_numerator;
       E.add_global32 env "@@value_bias" Mutable idl_value_bias;
-      E.add_global64 env "@@value_quota" Mutable 0L
+      E.add_global64 env "@@value_quota" Mutable 0L;
+      E.add_global32 env "@@type_scaler" Mutable idl_type_scaler;
+      E.add_global32 env "@@type_bias" Mutable idl_type_bias
 
     let get_rel_buf_opt env =
       G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
@@ -6828,6 +6832,16 @@ module MakeSerialization (Strm : Stream) = struct
       G.i (GlobalGet (nr (E.get_global env "@@value_bias")))
     let set_value_bias env =
       G.i (GlobalSet (nr (E.get_global env "@@value_bias")))
+
+    let get_type_scaler env =
+      G.i (GlobalGet (nr (E.get_global env "@@type_scaler")))
+    let set_type_scaler env =
+      G.i (GlobalSet (nr (E.get_global env "@@type_scaler")))
+
+    let get_type_bias env =
+      G.i (GlobalGet (nr (E.get_global env "@@type_bias")))
+    let set_type_bias env =
+      G.i (GlobalSet (nr (E.get_global env "@@type_bias")))
 
     let reset_value_limit env get_blob get_rel_buf_opt =
       get_rel_buf_opt ^^
@@ -12367,6 +12381,20 @@ and compile_prim_invocation (env : E.t) ae p es at =
     Serialization.Registers.get_value_denominator env ^^
     BoxedSmallWord.box env Type.Nat32 ^^
     Serialization.Registers.get_value_bias env ^^
+    BoxedSmallWord.box env Type.Nat32
+
+  | OtherPrim "setCandidTypeLimits", [e1; e2] ->
+    SR.unit,
+    compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e1 ^^
+    Serialization.Registers.set_type_scaler env ^^
+    compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e2 ^^
+    Serialization.Registers.set_type_bias env
+
+  | OtherPrim "getCandidTypeLimits", [] ->
+    SR.UnboxedTuple 2,
+    Serialization.Registers.get_type_scaler env ^^
+    BoxedSmallWord.box env Type.Nat32 ^^
+    Serialization.Registers.get_type_bias env ^^
     BoxedSmallWord.box env Type.Nat32
 
   (* Coercions for abstract types *)

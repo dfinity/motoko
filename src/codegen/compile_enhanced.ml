@@ -8782,7 +8782,7 @@ module Serialization = struct
 
       (* Go! *)
       let tydesc, _, _ = type_desc env Candid ts in
-      let tydesc_len = Int64.of_int (String.length tydesc * 2 + 300) in
+      let tydesc_len = Int64.of_int (String.length tydesc * 2 + 3000000) in
       Bool.(lit extended ^^ to_rts_int32) ^^ get_data_buf ^^ compile_unboxed_const tydesc_len ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
       E.call_import env "rts" "parse_idl_header" ^^
 
