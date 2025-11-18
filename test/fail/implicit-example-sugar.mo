@@ -47,6 +47,17 @@ func test () {
   debugPrint(let _ = Pair.toText((1,2))); // implicit arguments
   debugPrint(let _ = Pair.toText((1,2))); // implicit arguments
 
+  // higher-order test
+  type F =
+    <T, U>(implicit toText : T -> Text,
+           implicit toText : U -> Text,
+           p : (T, U))
+    -> Text;
+
+  func _apply(f : F, p : (Nat, Int)) : Text {
+     f(p);
+  };
+
 };
 
 test();
