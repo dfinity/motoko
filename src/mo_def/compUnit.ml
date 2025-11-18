@@ -2,7 +2,7 @@ open Mo_types
 
 open Syntax
 
-let (@~) it at = Source.annotate Const it at
+let (@~) it at = Source.annotate (Const, None) it at
 
 (* Compilation unit detection *)
 
