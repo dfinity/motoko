@@ -333,7 +333,6 @@
     <pat_un>
     <pat_bin> 'or' <pat_bin>
     <pat_bin> ':' <typ>
-    <implicit> <id> ':' <typ>
 
 <pat> ::= 
     <pat_bin>
@@ -343,8 +342,18 @@
     <id> (':' <typ>)? '=' <pat>
     'type' <id>
 
+<pat_arg> ::= 
+    <implicit> <id> ':' <typ>
+    <pat_bin>
+
+<pat_args> ::= 
+    '_'
+    <id>
+    <lit>
+    '(' <list(<pat_arg>, ',')> ')'
+
 <func_pat> ::= 
-    <id>? <typ_params_opt> <pat_plain>
+    <id>? <typ_params_opt> <pat_args>
 
 <dec_var> ::= 
     'var' <id> (':' <typ>)? '=' <exp>

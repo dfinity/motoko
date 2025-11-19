@@ -54,7 +54,6 @@ let funcT (sort, tbs, t1, t2) =
   | Type.Shared _, _ -> FuncT (sort, ensure_scope_bind "" tbs, t1, t2)
   | _ -> FuncT(sort, tbs, t1, t2)
 
-
 let dup_var x = VarE (x.it @~ x.at) @? x.at
 
 let name_exp e =
@@ -215,6 +214,23 @@ and objblock eo s id ty dec_fields =
       syntax_error df.it.dec.at "M0158" "a public class cannot be anonymous, please provide a name"
     | _ -> ()) dec_fields;
   ObjBlockE(eo, s, (id, ty), dec_fields)
+
+let reject_implicit typ = match typ.it with
+  | NamedT({it = "implicit"; at; _}, _)
+  | NamedT(_, {it =  NamedT({it = "implicit"; at; _}, _); _}) ->
+    syntax_error typ.at "M0XXX" "misplaced `implicit`"
+  | _ -> ()
+
+let reject_implicit_typ_item typ_item = match typ_item with
+  | Some {it = "implicit"; at; _ }, _
+  | _, {it = NamedT({it = "implicit"; at;_ }, _); _} ->
+    syntax_error at "M0XXX" "misplaced `implicit`"
+  | _, _ -> ()
+
+let reject_implicits typ = match typ.it with
+  | TupT typ_items ->
+    List.iter reject_implicit_typ_item typ_items
+  | _ -> reject_implicit typ
 
 %}
 
@@ -480,7 +496,8 @@ typ_pre :
 
 typ_nobin :
   | t=typ_pre
-    { t }
+    { reject_implicits t;
+      t }
   | s=func_sort_opt tps=typ_params_opt t1=typ_un ARROW t2=typ_nobin
     { funcT(s, tps, t1, t2) @! at $sloc }
 
@@ -946,8 +963,6 @@ pat_bin :
     { AltP(p1, p2) @! at $sloc }
   | p=pat_bin COLON t=typ
     { AnnotP(p, t) @! at $sloc }
-  | i=implicit x=id COLON t=typ
-    { AnnotP(VarP x @! x.at, (NamedT(i, t) @! at $sloc)) @! at $sloc }
 
 pat :
   | p=pat_bin
@@ -967,8 +982,23 @@ pat_opt :
   | (* empty *)
     { fun sloc -> WildP @! sloc }
 
+pat_arg :
+  | i=implicit x=id COLON t=typ
+    { AnnotP(VarP x @! x.at, (NamedT(i, t) @! at $sloc)) @! at $sloc }
+  | p = pat_bin { p }
+
+pat_args :
+  | UNDERSCORE
+    { WildP @! at $sloc }
+  | x=id
+    { VarP(x) @! at $sloc }
+  | l=lit
+    { LitP(ref l) @! at $sloc }
+  | LPAR ps=seplist(pat_arg, COMMA) RPAR
+    { (match ps with [p] -> ParP(p) | _ -> TupP(ps)) @! at $sloc }
+
 func_pat :
-  | xf=id_opt ts=typ_params_opt p=pat_plain { (xf, ts, p) }
+  | xf=id_opt ts=typ_params_opt p=pat_args { (xf, ts, p) }
 
 (* Declarations *)
 
