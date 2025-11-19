@@ -57,7 +57,7 @@ module WithoutDot {
 };
 
 module FuncWithSingleArgTuple {
-  func foo<K>(_ : (n : Nat, compare : implicit (K, K) -> Types.Order)) {};
+  func foo<K>(_ : (n : Nat, compare : (K, K) -> Types.Order)) {};
   func main() {
     let arg = (1, Text.compare);
     foo(arg);

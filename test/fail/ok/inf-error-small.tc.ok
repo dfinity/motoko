@@ -5,13 +5,13 @@ to argument of type
 because there is no way to satisfy subtyping
   ?Text  <:  Text  (for the expected return type) 
 inf-error-small.mo:44.13-44.47: type error [M0098], cannot apply function `.get` of type
-  <K, V>(compare : implicit (K, K) -> Order, n : K) -> ?V
+  <K, V>(implicit compare : (K, K) -> Order, n : K) -> ?V
 to argument of type
   ((n : Nat, m : Nat) -> Order, Text)
 because there is no way to satisfy subtyping
   ?Text  <:  Text  (for the expected return type) 
 inf-error-small.mo:46.13-46.45: type error [M0098], cannot apply function `.get` of type
-  <K, V>(compare : implicit (K, K) -> Order, n : K) -> ?V
+  <K, V>(implicit compare : (K, K) -> Order, n : K) -> ?V
 to argument of type
   ({map : [(Nat, [var Text])]}, Text)
 because there is no way to satisfy subtyping
@@ -24,7 +24,7 @@ But got 3 arguments of type:
   (n : Nat, m : Nat) -> Order
   Text
 inf-error-small.mo:48.13-48.45: type error [M0098], cannot apply function `.get` of type
-  <K, V>(compare : implicit (K, K) -> Order, n : K) -> ?V
+  <K, V>(implicit compare : (K, K) -> Order, n : K) -> ?V
 to argument of type
   ({map : [(Nat, [var Text])]}, Text)
 because there is no way to satisfy subtyping
@@ -42,19 +42,19 @@ to argument of type
 because there is no way to satisfy subtyping
   ?Text  <:  Text  (for the expected return type) 
 inf-error-small.mo:54.25-54.55: type error [M0098], cannot apply function `.get` of type
-  <K, V>(compare : implicit (K, K) -> Order, n : K) -> ?V
+  <K, V>(implicit compare : (K, K) -> Order, n : K) -> ?V
 to argument of type
   ((n : Text, m : Text) -> Order, Nat)
 because there is no way to satisfy subtyping
   (n : Text, m : Text) -> Order  <:  implicit (Nat, Nat) -> Order  (for argument `compare`) 
 inf-error-small.mo:55.25-55.59: type error [M0098], cannot apply function `.get` of type
-  <K, V>(compare : implicit (K, K) -> Order, n : K) -> ?V
+  <K, V>(implicit compare : (K, K) -> Order, n : K) -> ?V
 to argument of type
   ((n : Nat, m : Nat) -> Order, Text)
 because there is no way to satisfy subtyping
   Text  <:  Nat  (for argument `n`) 
 inf-error-small.mo:56.25-56.60: type error [M0098], cannot apply function `.get` of type
-  <K, V>(compare : implicit (K, K) -> Order, n : K) -> ?V
+  <K, V>(implicit compare : (K, K) -> Order, n : K) -> ?V
 to argument of type
   ((n : Text, m : Text) -> Order, Text)
 because there is no way to satisfy subtyping
@@ -64,13 +64,13 @@ Expected 1 argument of type:
   (n : Nat)
 But got no arguments
 inf-error-small.mo:59.25-59.59: type error [M0098], cannot apply function `.get` of type
-  <K, V>(compare : implicit (K, K) -> Order, n : K) -> ?V
+  <K, V>(implicit compare : (K, K) -> Order, n : K) -> ?V
 to argument of type
   ((n : Nat, m : Nat) -> Order, Text)
 because there is no way to satisfy subtyping
   Text  <:  Nat  (for argument `n`) 
 inf-error-small.mo:60.25-60.57: type error [M0098], cannot apply function `.get` of type
-  <K, V>(compare : implicit (K, K) -> Order, n : K) -> ?V
+  <K, V>(implicit compare : (K, K) -> Order, n : K) -> ?V
 to argument of type
   ({map : [(Nat, [var Text])]}, Text)
 because there is no way to satisfy subtyping

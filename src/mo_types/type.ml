@@ -2021,12 +2021,16 @@ and pp_typ_variant vs ppf fs =
 
 and pp_typ_item vs ppf t =
   match t with
+  | Named (n, Named ("implicit" as imp, t)) ->
+    fprintf ppf "@[<1>%s %s : %a@]" imp n  (pp_typ' vs) t
   | Named (n, t) ->
     fprintf ppf "@[<1>%s : %a@]" n (pp_typ' vs) t
   | typ -> pp_typ' vs ppf t
 
 and pp_typ_nullary vs ppf t =
   match t with
+  | Named (n, Named ("implicit" as imp, t)) ->
+    fprintf ppf "@[<1>(%s %s : %a)@]" imp n  (pp_typ' vs) t
   | Named (n, t) ->
     fprintf ppf "@[<1>(%s : %a)@]" n (pp_typ' vs) t
   | Tup ts ->
