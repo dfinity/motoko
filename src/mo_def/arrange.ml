@@ -244,7 +244,8 @@ module Make (Cfg : Config) = struct
       | Stable -> Atom "Stable")
 
   and typ_field (tf : typ_field) = source tf.at (match tf.it with
-    | ValF (lab, t, m) -> "ValF" $$ [id lab; typ t; mut m]
+    (* TODO *)
+    | ValF (lab, implicit_lab, t, m) -> "ValF" $$ [id lab; typ t; mut m]
     | TypF (lab, tbs, t) -> "TypF" $$ id lab :: List.map typ_bind tbs @ [typ t])
 
   and typ_item ((id, ty) : typ_item) =
