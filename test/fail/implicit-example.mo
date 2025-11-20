@@ -1,4 +1,4 @@
-// test legacy syntax (using for back compat in core) works too
+// test legacy syntax (used for back compat of core) works too
 import {debugPrint} "mo:prim";
 
 module Nat {
