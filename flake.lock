@@ -87,11 +87,11 @@
     "ic-wasm-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1761153084,
-        "narHash": "sha256-9vwXW4NTJzdwQUPk5+vHp0uWFJr6o3/Pj/wZ26gTyfM=",
+        "lastModified": 1763575621,
+        "narHash": "sha256-gxfjS/X9EkVEEqDGCWWJQtNXuJk8Kc94o+hVfC5sw5Y=",
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "10f1b5965c8c4b7fd1532734b60dcb2a2fcb2673",
+        "rev": "65a9462fd63503182c7c5dd44f92839a21047e71",
         "type": "github"
       },
       "original": {
@@ -137,11 +137,11 @@
     "motoko-core-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1763057072,
-        "narHash": "sha256-ka1Bkjoy1PAWNmrnkv0uMDGXYIgHyHg/t1yeJlweZSw=",
+        "lastModified": 1763395090,
+        "narHash": "sha256-ePEOG9yxZ/xfJCMavfwC10gDAuaFzfCycps50ibx0dU=",
         "owner": "dfinity",
         "repo": "motoko-core",
-        "rev": "d2e7b51eba78e54be784a1ee8a5d5e47fe6848f2",
+        "rev": "a47436dd8188dfcdfa788f0424ed4cb02d70bcfe",
         "type": "github"
       },
       "original": {
