@@ -28,7 +28,7 @@ func f2<T>(n : T, m : T, implicit c : (T, T) -> Order) {
   ignore c(n, m);
 };
 
-func f3(n : Nat, m : Nat, implicit _ : Nat -> Order) {
+func f3(n : Nat, m : Nat, _ : (implicit : Nat -> Order)) {
 };
 
 
