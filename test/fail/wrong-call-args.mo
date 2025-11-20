@@ -18,7 +18,7 @@ module Ok {
 };
 
 module BreakingChange {
-  func foo<K>(_ : Nat, compare : implicit (K, K) -> Types.Order) {
+  func foo<K>(_ : Nat, implicit compare : (K, K) -> Types.Order) {
     ignore compare;
   };
   let arg = (1, Text.compare);
@@ -65,7 +65,7 @@ module FuncWithSingleArgTuple {
 };
 
 module ImplicitTuple {
-  func foo(tup : implicit (Nat, ())) {};
+  func foo(implicit tup : (Nat, ())) {};
   let tup = (1, ());
   func main() {
     foo(tup);

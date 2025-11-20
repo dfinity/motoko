@@ -215,6 +215,7 @@ and objblock eo s id ty dec_fields =
     | _ -> ()) dec_fields;
   ObjBlockE(eo, s, (id, ty), dec_fields)
 
+(*
 let reject_implicit typ = match typ.it with
   | NamedT({it = "implicit"; at; _}, _)
   | NamedT(_, {it =  NamedT({it = "implicit"; at; _}, _); _}) ->
@@ -231,7 +232,7 @@ let reject_implicits typ = match typ.it with
   | TupT typ_items ->
     List.iter reject_implicit_typ_item typ_items
   | _ -> reject_implicit typ
-
+*)
 %}
 
 %token EOF DISALLOWED
@@ -496,7 +497,7 @@ typ_pre :
 
 typ_nobin :
   | t=typ_pre
-    { reject_implicits t;
+    { (* reject_implicits t; *)
       t }
   | s=func_sort_opt tps=typ_params_opt t1=typ_un ARROW t2=typ_nobin
     { funcT(s, tps, t1, t2) @! at $sloc }
@@ -504,8 +505,8 @@ typ_nobin :
 typ :
   | t=typ_nobin
     { t }
-  | i=implicit t = typ_nobin
-    { NamedT(i, t) @! at $sloc }
+(*  | i=implicit t = typ_nobin
+    { NamedT(i, t) @! at $sloc } *)
   | t1=typ AND t2=typ
     { AndT(t1, t2) @! at $sloc }
   | t1=typ OR t2=typ

@@ -736,10 +736,20 @@ let rec check_typ env (typ : typ) : T.typ =
   typ.note <- t;
   t
 
-and check_typ_item env typ_item =
+and check_implicit env allow_implicit id =
+    if id.it = "implicit" && not allow_implicit then
+      local_error env id.at "MOXXX" "misplaced `implicit`"
+
+and check_typ_item allow_implicit env typ_item =
   match typ_item with
-  | (None, typ) -> check_typ env typ
-  | (Some id, typ) -> T.Named (id.it, check_typ env typ)
+  | (None, {it = NamedT (id, typ); _}) ->
+     check_implicit env allow_implicit id;
+     T.Named (id.it, check_typ env typ)
+  | (None, typ) ->
+     check_typ env typ
+  | (Some id, typ) ->
+     check_implicit env allow_implicit id;
+     T.Named (id.it, check_typ env typ)
 
 and check_typ' env typ : T.typ =
   match typ.it with
@@ -760,14 +770,14 @@ and check_typ' env typ : T.typ =
     let t = check_typ env typ in
     T.Array (infer_mut mut t)
   | TupT typ_items ->
-    T.Tup (List.map (check_typ_item env) typ_items)
+    T.Tup (List.map (check_typ_item false env) typ_items)
   | FuncT (sort, binds, typ1, typ2) ->
     let cs, tbs, te, ce = check_typ_binds env binds in
     let env' = infer_async_cap (adjoin_typs env te ce) sort.it cs tbs None typ.at in
     let typs1 = as_domT typ1 in
     let c, typs2 = as_codomT sort.it typ2 in
-    let ts1 = List.map (check_typ_item env') typs1 in
-    let ts2 = List.map (check_typ_item env') typs2 in
+    let ts1 = List.map (check_typ_item true env') typs1 in
+    let ts2 = List.map (check_typ_item false env') typs2 in
     check_shared_return env typ2.at sort.it c ts2;
     if not env.pre && Type.is_shared_sort sort.it then begin
       check_shared_binds env typ.at tbs;
@@ -847,6 +857,7 @@ and check_typ' env typ : T.typ =
   | ParT typ ->
     check_typ env typ
   | NamedT (name, typ) ->
+    (*    check_implicit env false name; *)
     T.Named (name.it, check_typ env typ)
   | WeakT typ ->
     T.Weak (check_typ env typ)
@@ -1927,7 +1938,7 @@ and infer_exp'' env exp : T.typ =
     let env' = infer_async_cap (adjoin_typs env te ce) sort cs tbs (Some exp1) exp.at in
     let t1, ve1 = infer_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env' pat in
     let ve2 = T.Env.adjoin ve ve1 in
-    let ts2 = List.map (check_typ_item env') ts2 in
+    let ts2 = List.map (check_typ_item false env') ts2 in
     typ.note <- T.seq ts2; (* HACK *)
     let codom = T.codom c (fun () -> T.Con(List.hd cs,[])) ts2 in
     if not env.pre then begin
