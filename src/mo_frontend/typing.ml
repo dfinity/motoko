@@ -737,8 +737,8 @@ let rec check_typ env ?(allow_implicit=false) (typ : typ) : T.typ =
   t
 
 and check_implicit env allow_implicit id =
-    if id.it = "implicit" && not allow_implicit then
-      local_error env id.at "MOXXX" "misplaced `implicit`"
+  if not env.pre && id.it = "implicit" && not allow_implicit then
+    local_error env id.at "M0240" "misplaced `implicit`"
 
 and check_typ_item allow_implicit env typ_item =
   match typ_item with
