@@ -19,14 +19,14 @@ module S = Set.Make(String)
 type avl = Available | Unavailable
 
 type lab_env = T.typ T.Env.t
-type val_info = T.typ * Source.region * Scope.val_kind * avl
+type val_info = T.lab option * T.typ * Source.region * Scope.val_kind * avl
 type val_env  = val_info T.Env.t
 
 (* separate maps for values and types; entries only for _public_ elements *)
 type visibility_src = {depr : string option; id_region : Source.region; field_region : Source.region}
 type visibility_env = visibility_src T.Env.t * visibility_src T.Env.t
 
-let available env = T.Env.map (fun (ty, at, kind) -> (ty, at, kind, Available)) env
+let available env = T.Env.map (fun (implicit_lab, ty, at, kind) -> (implicit_lab, ty, at, kind, Available)) env
 
 let initial_scope =
   { Scope.empty with
@@ -179,10 +179,10 @@ let display_obj fmt typ =
 
 let display_vals fmt vals =
   if !Flags.ai_errors then
-    let tfs = T.Env.fold (fun x (t, _, _, _) acc ->
+    let tfs = T.Env.fold (fun x (implicit_lab, t, _, _, _) acc ->
       if x = "Prim" || Syntax.is_privileged x
       then acc
-      else T.{lab = x; src = empty_src; typ = t}::acc)
+      else T.{lab = x; implicit_lab; src = empty_src; typ = t}::acc)
       vals []
     in
     let ty = T.Obj(T.Object, List.rev tfs) in
@@ -193,7 +193,7 @@ let display_vals fmt vals =
 let display_labs fmt labs =
   if !Flags.ai_errors then
     let tfs = T.Env.fold (fun x t acc ->
-      T.{lab = x; src = empty_src; typ = t}::acc)
+      T.{lab = x; implicit_lab = None; src = empty_src; typ = t}::acc)
       labs []
     in
     let ty = T.Obj(T.Object, List.rev tfs) in
@@ -209,7 +209,7 @@ let display_typs fmt typs =
           | Def ([], (Prim _ | Any | Non)) -> string_of_con c = x
           | _ -> false)
       then acc
-      else T.{lab = x; src = empty_src; typ = T.Typ c}::acc)
+      else T.{lab = x; implicit_lab = None; src = empty_src; typ = T.Typ c}::acc)
       typs []
     in
     let ty = T.Obj(T.Object, List.rev tfs) in
@@ -316,7 +316,7 @@ let ignore_warning_for_id id =
 
 let detect_unused env inner_identifiers =
   if not env.pre && env.check_unused then
-    T.Env.iter (fun id (_, at, kind) ->
+    T.Env.iter (fun id (_, _, at, kind) ->
       if (not (ignore_warning_for_id id)) && (is_unused_identifier env id) then
         add_unused_warning env (id, at, kind)
     ) inner_identifiers
@@ -333,15 +333,15 @@ let leave_scope env inner_identifiers initial_usage =
 
 (* Value environments *)
 
-let singleton id t = T.Env.singleton id.it (t, id.at, Scope.Declaration)
-let add_id val_env id t = T.Env.add id.it (t, id.at, Scope.Declaration) val_env
+let singleton id implicit_id t = T.Env.singleton id.it (implicit_id, t, id.at, Scope.Declaration)
+let add_id val_env id implicit_id t = T.Env.add id.it (implicit_id, t, id.at, Scope.Declaration) val_env
 
 (* Context extension *)
 
 let add_lab env x t = {env with labs = T.Env.add x t env.labs}
 
-let add_val env id t =
-  { env with vals = T.Env.add id.it (t, id.at, Scope.Declaration, Available) env.vals }
+let add_val env id implicit_id t =
+  { env with vals = T.Env.add id.it (Option.map (fun x -> x.it) implicit_id, t, id.at, Scope.Declaration, Available) env.vals }
 
 let add_typs env xs cs =
   { env with
@@ -435,9 +435,9 @@ let system_funcs tfs =
      (let msg_typ = T.decode_msg_typ tfs in
       let record_typ =
         T.(Obj (Object, List.sort compare_field
-           [{lab = "caller"; typ = principal; src = empty_src};
-            {lab = "arg"; typ = blob; src = empty_src};
-            {lab = "msg"; typ = msg_typ; src = empty_src}]))
+           [{implicit_lab = None; lab = "caller"; typ = principal; src = empty_src};
+            {implicit_lab = None; lab = "arg"; typ = blob; src = empty_src};
+            {implicit_lab = None; lab = "msg"; typ = msg_typ; src = empty_src}]))
       in
         T.(Func (Local, Returns, [],  [record_typ], [bool]))))
   ]
@@ -504,10 +504,10 @@ and check_obj_path' env path : T.typ =
   | IdH id ->
     use_identifier env id.it;
     (match T.Env.find_opt id.it env.vals with
-     | Some (T.Pre, _, _, _) ->
+     | Some (_, T.Pre, _, _, _) ->
        error env id.at "M0024" "cannot infer type of forward variable reference %s" id.it
-     | Some (t, _, _, Available) -> t
-     | Some (t, _, _, Unavailable) ->
+     | Some (_, t, _, _, Available) -> t
+     | Some (_, t, _, _, Unavailable) ->
        error env id.at "M0025" "unavailable variable %s" id.it
      | None ->
        error env id.at "M0026" "unbound variable %s%a%s" id.it
@@ -808,7 +808,7 @@ and check_typ' env typ : T.typ =
   | ObjT (sort, fields) ->
     check_ids env "object type" "field"
       (List.filter_map (fun (field : typ_field) ->
-        match field.it with ValF (x, _, _) -> Some x | _ -> None
+        match field.it with ValF (x, _, _, _) -> Some x | _ -> None
       ) fields);
     check_ids env "object type" "type field"
       (List.filter_map (fun (field : typ_field) ->
@@ -860,7 +860,7 @@ and check_typ_def env at (id, typ_binds, typ) : T.kind =
   k
 
 and check_typ_field env s typ_field : T.field = match typ_field.it with
-  | ValF (id, typ, mut) ->
+  | ValF (id, implicit_lab, typ, mut) ->
     let t = infer_mut mut (check_typ env typ) in
     if not env.pre && s = T.Actor then begin
       if not (T.is_shared_func t) then
@@ -868,18 +868,21 @@ and check_typ_field env s typ_field : T.field = match typ_field.it with
           id.it (T.string_of_typ_expand t)
     end;
     Field_sources.add_src env.srcs id.at;
-    T.{lab = id.it; typ = t; src = {empty_src with track_region = id.at}}
+    T.{lab = id.it;
+      implicit_lab = Option.map (fun id -> id.it) implicit_lab;
+      typ = t;
+      src = {empty_src with track_region = id.at}}
   | TypF (id, typ_binds, typ) ->
     let k = check_typ_def env typ_field.at (id, typ_binds, typ) in
     let c = Cons.fresh id.it k in
     Field_sources.add_src env.srcs id.at;
-    T.{lab = id.it; typ = Typ c; src = {empty_src with track_region = id.at}}
+    T.{lab = id.it; implicit_lab = None; typ = Typ c; src = {empty_src with track_region = id.at}}
 
 and check_typ_tag env typ_tag =
   let {tag; typ} = typ_tag.it in
   let t = check_typ env typ in
   Field_sources.add_src env.srcs tag.at;
-  T.{lab = tag.it; typ = t; src = {empty_src with track_region = tag.at}}
+  T.{lab = tag.it; implicit_lab = None; typ = t; src = {empty_src with track_region = tag.at}}
 
 and check_typ_binds_acyclic env typ_binds cs ts  =
   let n = List.length cs in
@@ -1228,32 +1231,32 @@ let check_lit env t lit at suggest =
 let array_obj t =
   let open T in
   let immut t =
-    [ {lab = "get";  typ = Func (Local, Returns, [], [Prim Nat], [t]); src = empty_src};
-      {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); src = empty_src};
-      {lab = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)]); src = empty_src};
-      {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj t]); src = empty_src};
-      {lab = "values"; typ = Func (Local, Returns, [], [], [iter_obj t]); src = empty_src};
+    [ {implicit_lab = None; lab = "get";  typ = Func (Local, Returns, [], [Prim Nat], [t]); src = empty_src};
+      {implicit_lab = None; lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); src = empty_src};
+      {implicit_lab = None; lab = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)]); src = empty_src};
+      {implicit_lab = None; lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj t]); src = empty_src};
+      {implicit_lab = None; lab = "values"; typ = Func (Local, Returns, [], [], [iter_obj t]); src = empty_src};
     ] in
   let mut t = immut t @
-    [ {lab = "put"; typ = Func (Local, Returns, [], [Prim Nat; t], []); src = empty_src} ] in
+    [ {implicit_lab = None; lab = "put"; typ = Func (Local, Returns, [], [Prim Nat; t], []); src = empty_src} ] in
   Object,
   List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t)
 
 let blob_obj () =
   let open T in
   Object,
-  [ {lab = "get";  typ = Func (Local, Returns, [], [Prim Nat], [Prim Nat8]); src = empty_src};
-    {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); src = empty_src};
-    {lab = "values"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); src = empty_src};
-    {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); src = empty_src};
-    {lab = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)]); src = empty_src};
+  [ {implicit_lab = None; lab = "get";  typ = Func (Local, Returns, [], [Prim Nat], [Prim Nat8]); src = empty_src};
+    {implicit_lab = None; lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); src = empty_src};
+    {implicit_lab = None; lab = "values"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); src = empty_src};
+    {implicit_lab = None; lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); src = empty_src};
+    {implicit_lab = None; lab = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)]); src = empty_src};
   ]
 
 let text_obj () =
   let open T in
   Object,
-  [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)]); src = empty_src};
-    {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); src = empty_src};
+  [ {implicit_lab = None; lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)]); src = empty_src};
+    {implicit_lab = None; lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); src = empty_src};
   ]
 
 
@@ -1289,7 +1292,7 @@ let rec combine_pat_fields_srcs env t tfs (pfs : pat_field list) : unit =
      combine_pat_fields_srcs env t tfs' pfs
   | _, {it = TypPF(_); _}::pfs' ->
      combine_pat_fields_srcs env t tfs pfs'
-  | T.{lab; typ; src}::tfs', {it = ValPF(id, pat); _}::pfs' ->
+  | T.{lab; implicit_lab; typ; src}::tfs', {it = ValPF(id, pat); _}::pfs' ->
     match compare id.it lab with
     | -1 -> combine_pat_fields_srcs env t [] pfs
     | +1 -> combine_pat_fields_srcs env t tfs' pfs
@@ -1300,7 +1303,7 @@ let rec combine_pat_fields_srcs env t tfs (pfs : pat_field list) : unit =
 and combine_id_srcs env t id : unit =
   match T.Env.find_opt id.it env.vals with
   | None -> ()
-  | Some (t', _, _, _) ->
+  | Some (_, t', _, _, _) ->
     (* Use [sub] to merge the fields of sources, if one type is indeed a subtype
        of the other. *)
     try ignore (T.sub ~src_fields:env.srcs t t') with
@@ -1383,7 +1386,7 @@ let is_lib_module (n, t) =
   | T.Obj (T.Module, fs) -> Some (n, (t, fs))
   | _ -> None
 
-let is_val_module (n, ((t, _, _, _) : val_info)) =
+let is_val_module (n, ((_, t, _, _, _) : val_info)) =
   is_lib_module (n, t)
 
 let module_exp in_libs env module_name =
@@ -1391,6 +1394,17 @@ let module_exp in_libs env module_name =
     VarE {it = module_name; at = no_region; note = (Const, None)}
   else
     ImplicitLibE module_name
+
+(**
+  fn compare<K, V>(
+    self : Map<K, V>,
+    other : Map<K, V>,
+    implicit(compare) compareKey : (K, K) -> Order,
+    implicit(compare) compareValue : (V, V) -> Order,
+  ) : Order {
+    ...
+  };
+*)
 
 (** Searches for hole resolutions for [name] on a given [hole_sort] and [typ].
     Returns [Ok(candidate)] when a single resolution is
@@ -1406,7 +1420,7 @@ type hole_error =
 let resolve_hole env at hole_sort typ =
   let is_matching_lab lab =
     match hole_sort with
-    | Named lab1 -> lab = lab1
+    | Named lab1 -> String.starts_with ~prefix:lab1 lab
     | Anon _ -> true
   in
 
@@ -1415,9 +1429,9 @@ let resolve_hole env at hole_sort typ =
   let has_matching_field_typ = function
     | T.{ lab; typ = Typ c; _ } -> None
     | T.{ lab; typ = Mut t; _ } -> None
-    | T.{ lab = lab1; typ = typ1; src } ->
+    | T.{ lab = lab1; implicit_lab; typ = typ1; src } ->
        if is_matching_typ typ1
-       then Some (lab1, typ1, src.T.region)
+       then Some (Option.value ~default:lab1 implicit_lab , typ1, src.T.region)
        else None
   in
   let find_candidate_fields in_libs (module_name, (_, fs)) =
@@ -1437,7 +1451,8 @@ let resolve_hole env at hole_sort typ =
           ({ path; desc = quote (module_name^"."^ lab); typ; module_name_opt = Some module_name; id=lab; region } : hole_candidate))
   in
   let find_candidate_id = function
-    (id, (t, region, _, _)) ->
+    (* TODO use implicit_id *)
+    (id, (implicit_id, t, region, _, _)) ->
     if is_matching_typ t
     then
       let path =
@@ -1684,13 +1699,13 @@ and infer_exp'' env exp : T.typ =
   | VarE id ->
     use_identifier env id.it;
     (match T.Env.find_opt id.it env.vals with
-    | Some (T.Pre, _, _, _) ->
+    | Some (_, T.Pre, _, _, _) ->
       error env id.at "M0055" "cannot infer type of forward variable %s" id.it;
-    | Some (t, _, _, Unavailable) ->
+    | Some (_, t, _, _, Unavailable) ->
       if !Flags.compiled then
         error env id.at "M0056" "variable %s is in scope but not available in compiled code" id.it
       else t
-    | Some (t, _, _, Available) -> id.note <- (if T.is_mut t then (Var, None) else (Const, None)); t
+    | Some (_, t, _, _, Available) -> id.note <- (if T.is_mut t then (Var, None) else (Const, None)); t
     | None ->
       let candidate_libs =
         if Option.is_some(!Flags.implicit_package) then
@@ -1812,7 +1827,7 @@ and infer_exp'' env exp : T.typ =
   | TagE (id, exp1) ->
     let t1 = infer_exp env exp1 in
     Field_sources.add_src env.srcs id.at;
-    T.Variant [T.{lab = id.it; typ = t1; src = {empty_src with track_region = id.at}}]
+    T.Variant [T.{implicit_lab = None; lab = id.it; typ = t1; src = {empty_src with track_region = id.at}}]
   | ProjE (exp1, n) ->
     let t1 = infer_exp_promote env exp1 in
     (try
@@ -2251,7 +2266,8 @@ and infer_exp_field env rf =
   let t = infer_exp env exp in
   let t1 = if mut.it = Syntax.Var then T.Mut t else t in
   Field_sources.add_src env.srcs id.at;
-  T.{lab = id.it; typ = t1; src = {empty_src with track_region = id.at}}
+  (* TODO *)
+  T.{lab = id.it; implicit_lab = None; typ = t1; src = {empty_src with track_region = id.at}}
 
 and infer_check_bases_fields env (check_fields : T.field list) exp_at exp_bases exp_fields =
   let open List in
@@ -2558,7 +2574,7 @@ and check_exp' env0 t exp : T.typ =
     let t' = infer_exp env0 exp in
     check_inferred env0 env t t' exp
 
-and check_inferred env0 env t t' exp = 
+and check_inferred env0 env t t' exp =
   if not (sub env exp.at t' t) then
   begin
     local_error env0 exp.at "M0096"
@@ -2586,14 +2602,14 @@ and check_exp_field env (ef : exp_field) fts =
   in
   let ft_opt = List.find_opt (fun ft -> ft.T.lab = id.it) fts in
   match ft_opt with
-  | Some { T.lab = _; typ = T.Mut t; src } ->
+  | Some { T.lab = _; implicit_lab = _; typ = T.Mut t; src } ->
     if mut.it <> Syntax.Var then
       error env ef.at "M0149" "expected mutable 'var' field %s of type%a\nbut found immutable field (insert 'var'?)"
         id.it
         display_typ t;
     update_srcs src;
     check_exp env t exp
-  | Some { T.lab = _; typ = t; src } ->
+  | Some { T.lab = _; implicit_lab = _; typ = t; src } ->
     if mut.it = Syntax.Var then
       error env ef.at "M0150" "expected immutable field %s of type%a\nbut found mutable 'var' field (delete 'var'?)"
         id.it
@@ -2887,7 +2903,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   t_ret'
 
 and wrong_call_args env tbs ctx_dot at t_args implicits_arity syntax_args =
-  let inst = 
+  let inst =
     match ctx_dot with
     | Some (_, _, _, inst) -> inst
     | None -> T.open_binds tbs
@@ -3197,7 +3213,7 @@ and infer_pat' name_types env pat : T.typ * Scope.val_env =
   | TagP (id, pat1) ->
     let t1, ve = infer_pat false env pat1 in
     Field_sources.add_src env.srcs id.at;
-    T.Variant [T.{lab = id.it; typ = t1; src = {empty_src with track_region = id.at}}], ve
+    T.Variant [T.{lab = id.it; implicit_lab = None; typ = t1; src = {empty_src with track_region = id.at}}], ve
   | AltP (pat1, pat2) ->
     error env pat.at "M0184"
         "cannot infer the type of this or-pattern, please add a type annotation";
@@ -3242,7 +3258,7 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
     let typ, ve1 = infer_pat false env pat in
     let ve' = disjoint_union env id.at "M0017" "duplicate binding for %s in pattern" ve ve1 in
     Field_sources.add_src env.srcs id.at;
-    infer_pat_fields at env pfs' (T.{lab = id.it; typ; src = {empty_src with track_region = id.at}}::ts) ve'
+    infer_pat_fields at env pfs' (T.{lab = id.it; implicit_lab = None; typ; src = {empty_src with track_region = id.at}}::ts) ve'
 
 and check_shared_pat env shared_pat : T.func_sort * Scope.val_env =
   match shared_pat.it with
@@ -3291,7 +3307,7 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
   | WildP ->
     T.Env.empty
   | VarP id ->
-    T.Env.singleton id.it (t, id.at, val_kind)
+    T.Env.singleton id.it (None, t, id.at, val_kind)
   | LitP lit ->
     if not env.pre then begin
       let t' = if eq env pat.at t T.nat then T.int else t in  (* account for Nat <: Int *)
@@ -3354,11 +3370,12 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
     let ve2 = check_pat env t pat2 in
     if T.Env.keys ve1 <> T.Env.keys ve2 then
       error env pat.at "M0189" "different set of bindings in pattern alternatives";
-    T.Env.(iter (fun k (t1, _, _) ->
-      let (t2, _, _) = find k ve2 in
+    T.Env.(iter (fun k (_, t1, _, _) ->
+      let (_, t2, _, _) = find k ve2 in
       warn_lossy_bind_type env pat.at k t1 t2)
     ) ve1;
-    let merge_entries (t1, at1, kind1) (t2, at2, kind2) = (T.lub ~src_fields:env.srcs t1 t2, at1, kind1) in
+    (* TODO: Think about this *)
+    let merge_entries (implicit_id, t1, at1, kind1) (_, t2, at2, kind2) = (implicit_id, T.lub ~src_fields:env.srcs t1 t2, at1, kind1) in
     T.Env.merge (fun _ -> Lib.Option.map2 merge_entries) ve1 ve2
   | AnnotP (pat1, typ) ->
     let t' = check_typ env typ in
@@ -3440,7 +3457,7 @@ and check_pat_fields env t tfs pfs ve at : Scope.val_env =
             | ValPF(_) -> check_pat_fields env t [] pfs ve at
             | _ -> check_pat_fields env t tfs pfs' ve at)
      | _ -> match tf, pf with
-        | T.{lab; typ; src}, {it = ValPF(id, pat); _} ->
+        | T.{lab; implicit_lab = _; typ; src}, {it = ValPF(id, pat); _} ->
            if T.is_mut typ then
              error env pf.at "M0120" "cannot pattern match mutable field %s" lab;
            check_deprecation env pf.at "field" lab src.T.depr;
@@ -3599,8 +3616,8 @@ and scope_of_object env (fields : T.field list) =
       match field with
       | T.{ lab; typ = T.Typ t; _ } ->
          Scope.{ acc with typ_env = T.Env.add lab t acc.typ_env }
-      | T.{ lab; typ = t; _ } ->
-         Scope.{ acc with val_env = T.Env.add lab (t, Source.no_region, Scope.FieldReference) acc.val_env }
+      | T.{ lab; implicit_lab; typ = t; _ } ->
+         Scope.{ acc with val_env = T.Env.add lab (implicit_lab, t, Source.no_region, Scope.FieldReference) acc.val_env }
     ) Scope.empty fields
 
 (* TODO: remove by merging conenv and valenv or by separating typ_fields *)
@@ -3612,21 +3629,21 @@ and object_of_scope env sort dec_fields scope at =
         match T.Env.find_opt id pub_typ with
         | Some src ->
           Field_sources.add_src env.srcs src.id_region;
-          T.{lab = id; typ = T.Typ c; src = {depr = src.depr; track_region = src.id_region; region = src.field_region}}::tfs
+          T.{lab = id; implicit_lab = None; typ = T.Typ c; src = {depr = src.depr; track_region = src.id_region; region = src.field_region}}::tfs
         | _ when sort = T.Mixin ->
-           T.{lab = id; typ = T.Typ c; src = {depr = None; track_region = at; region = at}}::tfs
+           T.{lab = id; implicit_lab = None; typ = T.Typ c; src = {depr = None; track_region = at; region = at}}::tfs
         | _ -> tfs
       ) scope.Scope.typ_env  []
   in
   let tfs' =
     T.Env.fold
-      (fun id (t, _, _) tfs ->
+      (fun id (implicit_lab, t, _, _) tfs ->
         match T.Env.find_opt id pub_val with
         | Some src ->
           Field_sources.add_src env.srcs src.id_region;
-          T.{lab = id; typ = t; src = {depr = src.depr; track_region = src.id_region; region = src.field_region}}::tfs
+          T.{lab = id; implicit_lab; typ = t; src = {depr = src.depr; track_region = src.id_region; region = src.field_region}}::tfs
         | _ when sort = T.Mixin ->
-          T.{lab = id; typ = t; src = {depr = None; track_region = at; region = at}}::tfs
+          T.{lab = id; implicit_lab; typ = t; src = {depr = None; track_region = at; region = at}}::tfs
         | _ -> tfs
       ) scope.Scope.val_env tfs
   in
@@ -3768,7 +3785,7 @@ and check_system_fields env sort scope tfs dec_fields =
           (* TBR why does Stable.md require this to be a manifest function, not just any expression of appropriate type?  *)
           if vis = System then
             begin
-              let (t1, _, _) = T.Env.find id.it scope.Scope.val_env in
+              let (_, t1, _, _) = T.Env.find id.it scope.Scope.val_env in
               if not (sub env id.at t1 t) then
                 local_error env df.at "M0127" "system function %s is declared with type%a\ninstead of expected type%a" id.it
                    display_typ t1
@@ -3884,7 +3901,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
    check_ids env "pre actor type" "stable variable" pre_ids;
    (* Reject any fields in range not in post signature (unintended data loss) *)
    let stab_ids = List.map (fun tf -> tf.T.lab) stab_tfs in
-   List.iter (fun T.{lab;typ;src} ->
+   List.iter (fun T.{lab;implicit_lab;typ;src} ->
      match typ with
      | T.Typ c -> ()
      | _ ->
@@ -3900,7 +3917,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
      rng_tfs;
    (* Warn about any field in domain, not in range, and declared stable in actor *)
    (* This may indicate unintentional data loss. *)
-   List.iter (fun T.{lab;typ;src} ->
+   List.iter (fun T.{lab;implicit_lab;typ;src} ->
      match typ with
      | T.Typ c -> ()
      | _ ->
@@ -3968,7 +3985,7 @@ and check_stab env sort scope dec_fields =
   let check_stable id at =
     match T.Env.find_opt id scope.Scope.val_env with
     | None -> assert false
-    | Some (t, _, _) ->
+    | Some (_, t, _, _) ->
       let t1 = T.as_immut t in
       if not (T.stable t1) then
         local_error env at "M0131"
@@ -4003,9 +4020,10 @@ and check_stab env sort scope dec_fields =
   List.sort T.compare_field
     (List.map
       (fun id ->
-         let typ, _, _ = T.Env.find id.it scope.Scope.val_env in
+         let implicit_lab, typ, _, _ = T.Env.find id.it scope.Scope.val_env in
          Field_sources.add_src env.srcs id.at;
          T.{ lab = id.it;
+             implicit_lab;
              typ;
              src = {depr = None; track_region = id.at; region = id.at}})
       ids)
@@ -4022,8 +4040,8 @@ and infer_block env decs at check_unused : T.typ * Scope.scope =
       List.fold_left (fun ve' dec ->
         match dec.it with
         | ClassD(_, _, { it = T.Actor; _}, id, _, _, _,  _, _) ->
-          T.Env.mapi (fun id' (typ, at, kind, avl) ->
-            (typ, at, kind, if id' = id.it then Unavailable else avl)) ve'
+          T.Env.mapi (fun id' (implicit_lab, typ, at, kind, avl) ->
+            (implicit_lab, typ, at, kind, if id' = id.it then Unavailable else avl)) ve'
         | _ -> ve') env'.vals decs
     | _ -> env'.vals
   in
@@ -4102,7 +4120,7 @@ and infer_dec env dec : T.typ =
     end;
     T.unit
   | ClassD (exp_opt, shared_pat, obj_sort, id, typ_binds, pat, typ_opt, self_id, dec_fields) ->
-    let (t, _, _, _) = T.Env.find id.it env.vals in
+    let (_, t, _, _, _) = T.Env.find id.it env.vals in
     if not env.pre then begin
       let c = T.Env.find id.it env.typs in
       let _typ_opt = infer_migration env obj_sort exp_opt in
@@ -4123,7 +4141,7 @@ and infer_dec env dec : T.typ =
       let async_cap, _, class_cs = infer_class_cap env obj_sort.it tbs cs in
       let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) class_cs) in
       let env''' =
-        { (add_val env'' self_id self_typ) with
+        { (add_val env'' self_id None self_typ) with
           labs = T.Env.empty;
           rets = NoRet;
           async = async_cap;
@@ -4206,7 +4224,7 @@ and infer_val_path env exp : T.typ option =
     Some (check_import env exp.at f ri)
   | VarE id ->
     (match T.Env.find_opt id.it env.vals with (* TBR: return None for Unavailable? *)
-     | Some (t, _, _, _) -> Some t
+     | Some (_, t, _, _, _) -> Some t
      | _ -> None)
   | ImplicitLibE lib ->
     (match T.Env.find_opt lib env.libs with
@@ -4251,7 +4269,7 @@ and gather_dec env scope dec : Scope.t =
        with any mixin imports we've found so far, so Include's in the
        actor body can be resolved *)
     let scope' = gather_block_decs { env with mixins = T.Env.adjoin scope.mixin_env env.mixins } decs in
-    let ve' = add_id scope.val_env id (object_of_scope env obj_sort.it dec_fields scope' at) in
+    let ve' = add_id scope.val_env id None (object_of_scope env obj_sort.it dec_fields scope' at) in
     let obj_env = T.Env.add id.it scope' scope.obj_env in
     { val_env = ve';
       typ_env = scope.typ_env;
@@ -4293,7 +4311,7 @@ and gather_dec env scope dec : Scope.t =
       | ClassD _ ->
         if T.Env.mem id.it scope.val_env then
           error_duplicate env "" id;
-        add_id scope.val_env id T.Pre
+        add_id scope.val_env id None T.Pre
       | _ -> scope.val_env
     in
     { val_env;
@@ -4316,7 +4334,7 @@ and gather_dec env scope dec : Scope.t =
           { acc with typ_env = T.Env.add lab t acc.typ_env }
         | T.{ lab; typ = t; _ } ->
           if T.Env.mem lab acc.val_env then error_duplicate env "" { it = lab; at = i.at; note = () };
-          { acc with val_env = T.Env.add lab (t, Source.no_region, Scope.Declaration) acc.val_env }
+          { acc with val_env = T.Env.add lab (None, t, Source.no_region, Scope.Declaration) acc.val_env }
       in
       List.fold_left add_field scope fields
     end
@@ -4343,7 +4361,8 @@ and gather_pat_field env scope pf : Scope.t =
 and gather_id env ve id val_kind : Scope.val_env =
   if T.Env.mem id.it ve then
     error_duplicate env "" id;
-  T.Env.add id.it (T.Pre, id.at, val_kind) ve
+  (* TODO *)
+  T.Env.add id.it (None, T.Pre, id.at, val_kind) ve
 
 and gather_typ_id env scope id : Scope.t =
   let open Scope in
@@ -4395,7 +4414,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let obj_scope = Scope.adjoin scope obj_scope_typs in
     Scope.{ empty with
       con_env = obj_scope.con_env;
-      val_env = singleton id (object_of_scope env obj_sort.it dec_fields obj_scope at);
+      val_env = singleton id None (object_of_scope env obj_sort.it dec_fields obj_scope at);
       obj_env = T.Env.singleton id.it obj_scope
     }
   (* TODO: generalize beyond let <id> = <valpath> *)
@@ -4409,9 +4428,10 @@ and infer_dec_typdecs env dec : Scope.t =
      | None -> Scope.empty
      | Some t ->
        let open Scope in
+       (* TODO *)
        match T.promote t with
-       | T.Obj (_, _) as t' -> { Scope.empty with val_env = singleton id t' }
-       | _ -> { Scope.empty with val_env = singleton id T.Pre }
+       | T.Obj (_, _) as t' -> { Scope.empty with val_env = singleton id None t' }
+       | _ -> { Scope.empty with val_env = singleton id None T.Pre }
     )
            end
   | LetD (pat, exp, _) ->
@@ -4441,7 +4461,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let async_cap, class_tbs, class_cs = infer_class_cap env obj_sort.it tbs cs in
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) class_cs) in
     let env'' =
-     { (add_val (adjoin_vals env' ve) self_id self_typ) with
+     { (add_val (adjoin_vals env' ve) self_id None self_typ) with
           labs = T.Env.empty;
           rets = NoRet;
           async = async_cap;
@@ -4498,7 +4518,7 @@ and infer_dec_valdecs env dec : Scope.t =
     in
     let obj_typ = object_of_scope env obj_sort.it dec_fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
-    Scope.{empty with val_env = singleton id obj_typ}
+    Scope.{empty with val_env = singleton id None obj_typ}
   | LetD (pat, exp, fail) ->
      let t = infer_exp {env with pre = true; check_unused = false} exp in
      let ve' = match fail with
@@ -4508,7 +4528,7 @@ and infer_dec_valdecs env dec : Scope.t =
      Scope.{empty with val_env = ve'}
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
-    Scope.{empty with val_env = singleton id (T.Mut t)}
+    Scope.{empty with val_env = singleton id None (T.Mut t)}
   | TypD (id, _, _) ->
     let c = Option.get id.note in
     Scope.{ empty with
@@ -4543,7 +4563,7 @@ and infer_dec_valdecs env dec : Scope.t =
       [T.close cs t2])
     in
     Scope.{ empty with
-      val_env = singleton id t;
+      val_env = singleton id None t;
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c;
     }
@@ -4673,7 +4693,7 @@ let check_stab_sig scope sig_ : T.stab_sig  Diag.result =
           let check_fields sfs =
             check_ids env "object type" "field"
               (List.filter_map (fun (field : typ_field) ->
-                   match field.it with ValF (id, _, _) -> Some id | _ -> None)
+                   match field.it with ValF (id, _, _, _) -> Some id | _ -> None)
                  sfs);
             check_ids env "object type" "type field"
               (List.filter_map (fun (field : typ_field) ->
@@ -4684,7 +4704,7 @@ let check_stab_sig scope sig_ : T.stab_sig  Diag.result =
             List.iter (fun (field : Syntax.typ_field) ->
                 match field.it with
                 | TypF _ -> ()
-                | ValF (id, typ, _) ->
+                | ValF (id, _, typ, _) ->
                   if not (T.stable typ.note) then
                      error env id.at "M0131" "variable %s is declared stable but has non-stable type%a"
                      id.it

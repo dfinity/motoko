@@ -71,7 +71,7 @@ let suggest_conversion libs vals ty1 ty2 =
       else
       let imported_name =
         (* try to determine imported name, if any *)
-        Env.fold (fun id (ty1, _, _, _) acc ->
+        Env.fold (fun id (_, ty1, _, _, _) acc ->
             if ty == ty1 (*HACK*)
             then Some id
             else acc)
