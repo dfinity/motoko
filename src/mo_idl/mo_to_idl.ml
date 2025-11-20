@@ -164,7 +164,7 @@ module MakeState() = struct
     | Weak _
     | Pre -> assert false
     ) @@ no_region
-  and field {lab; typ = t; src = {region; _}} =
+  and field {lab; implicit_lab = _; typ = t; src = {region; _}} =
     let open Idllib.Escape in
     match unescape lab with
     | Nat nat ->
