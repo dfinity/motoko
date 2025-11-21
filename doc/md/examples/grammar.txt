@@ -13,6 +13,9 @@
     E
     X SEP <list_er(X, E, SEP)>
 
+<implicit> ::= 
+    'implicit'
+
 <id_wild> ::= 
     '_'
 
@@ -71,10 +74,12 @@
 
 <typ> ::= 
     <typ_nobin>
+    <implicit> <typ_nobin>
     <typ> 'and' <typ>
     <typ> 'or' <typ>
 
 <typ_item> ::= 
+    <implicit> ':' <typ>
     <id> ':' <typ>
     <id_wild> ':' <typ>
     <typ>
