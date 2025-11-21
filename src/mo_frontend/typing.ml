@@ -1418,7 +1418,7 @@ let resolve_hole env at hole_sort typ =
   let is_matching_lab lab =
     match hole_sort with
     | Named lab1 -> lab = lab1
-    | Anon _ -> true
+    | Anon _ -> not (Syntax.is_privileged lab)
   in
 
   let is_matching_typ typ1 = T.sub typ1 typ
@@ -2750,7 +2750,7 @@ and arity_with_implicits t_args =
 
 and insert_holes at ts es =
   let mk_hole pos hole_id =
-    let hole_sort = if hole_id = "" then Anon pos else Named hole_id in
+    let hole_sort = if hole_id = "_" then Anon pos else Named hole_id in
     {it = HoleE (hole_sort, ref {it = PrimE "hole"; at; note=empty_typ_note });
       at;
       note = empty_typ_note }
