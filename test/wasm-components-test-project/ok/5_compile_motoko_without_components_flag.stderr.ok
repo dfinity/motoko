@@ -1,0 +1,2 @@
+wasm-components-test-project/lib/mops/component/zstd@0.0.1/lib.mo:5.9-5.41: type error [M0240], Wasm components support not enabled, use -wasm-components flag
+wasm-components-test-project/lib/mops/component/zstd@0.0.1/lib.mo:7.9-7.41: type error [M0240], Wasm components support not enabled, use -wasm-components flag

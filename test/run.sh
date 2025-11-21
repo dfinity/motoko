@@ -82,6 +82,7 @@ function normalize () {
         -e 's,/private/tmp/,/tmp/,g' \
         -e 's,/tmp/.*ic.[^/]*,/tmp/ic.XXX,g' \
         -e 's,/build/.*ic.[^/]*,/tmp/ic.XXX,g' \
+        -e 's,^.*/wasm-components-test-project/lib/mops/component,wasm-components-test-project/lib/mops/component,g' \
         -e 's,^.*/idl/_out/,..../idl/_out/,g' | # node puts full paths in error messages
     sed -e 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' \
         -e 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' \

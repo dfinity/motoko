@@ -42,6 +42,7 @@ known_untested_codes = {
     "M0165", # odd expected type
     "M0191", # compiler warning about wasm features (hard to trigger)
     "M0232", # cannot infer type of implicit argument
+    "M0240", # wasm components support not enabled, use -wasm-components flag
     }
 
 def populate_error_codes():

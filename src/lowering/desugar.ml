@@ -54,6 +54,10 @@ and exp e =
     | S.AnnotE (e', t) -> exp e'
     | _ -> typed_phrase' exp' e
 
+and exps_or_single e = match e.it with
+  | S.TupE es -> exps es
+  | _ -> [exp e]
+
 and exp' at note = function
   | S.HoleE (_, e) -> (exp !e).it
   | S.VarE i ->
@@ -207,6 +211,27 @@ and exp' at note = function
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "getCertificate";_},_);_}, _, (_, e)) ->
     assert (is_empty_tup !e);
     I.PrimE (I.GetCertificate, [])
+  (* Component *)
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE fn;_},_); note = callee_note; _}, _, (_, e))
+    when !Mo_config.Flags.wasm_components && Lib.String.chop_prefix "component:" fn <> None ->
+    let parts = String.split_on_char ':' fn in
+    (* parts[0] == "component", parts[1] == <component-name>, parts[2] = <function-name> *)
+    let component_name = List.nth parts 1 in
+    let function_name = List.nth parts 2 in
+    let fn_typ = T.normalize callee_note.note_typ in
+    begin match fn_typ with
+    | T.Func (T.Local, T.Returns, [], ts1, _) ->
+      let return_type = note.Note.typ in
+      let arg_types, args =
+        match !e.it with
+        | S.TupE es ->
+          assert (List.length ts1 = List.length es);
+          ts1, exps es
+        | _ -> [Type.seq ts1], [exp !e]
+      in
+      I.PrimE (I.ComponentPrim (fn, component_name, function_name, arg_types, return_type), args)
+    | _ -> assert false
+    end
   (* Other *)
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, (_, e)) ->
    (match (!e).it with

@@ -1,0 +1,9 @@
+package root:ic-sig-verifier;
+
+world ic-sig-verifier {
+  export api: interface {
+    verify-bls-sig: func(signature: list<u8>, message: list<u8>, public-key: list<u8>) -> result<_, string>;
+    verify-canister-sig: func(signature-cbor: list<u8>, message: list<u8>, public-key-der: list<u8>, ic-root-public-key-raw: list<u8>) -> result<_, string>;
+    verify-canister-sig-mainnet: func(args-serialized: list<u8>) -> result<_, string>;
+  }
+}

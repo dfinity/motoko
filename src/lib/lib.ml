@@ -440,6 +440,27 @@ struct
     | x :: xs ->
       f x :: (safe_map[@tailcall]) f xs
     [@@coverage off]
+
+  let fold_lefti f acc xs =
+    let rec loop acc i = function
+      | [] -> acc
+      | x::xs -> loop (f acc i x) (i+1) xs
+    in loop acc 0 xs
+
+  let fold_left2i f acc xs ys =
+    let rec loop acc i xs ys =
+      match xs, ys with
+      | [], _
+      | _, [] -> acc
+      | x::xs', y::ys' -> loop (f acc i x y) (i+1) xs' ys'
+    in loop acc 0 xs ys
+
+  let zip3 xs ys zs =
+    let rec loop acc xs ys zs =
+      match xs, ys, zs with
+      | [], _, _ | _, [], _ | _, _, [] -> acc
+      | x::xs', y::ys', z::zs' -> loop ((x, y, z) :: acc) xs' ys' zs'
+    in loop [] xs ys zs |> List.rev
 end
 
 module List32 =

@@ -1,0 +1,15 @@
+[package]
+name = "zstd"
+version = "0.1.0"
+edition = "2024"
+
+[package.metadata.component]
+package = "rust:zstd"
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+zstd = "0.13"
+wit-bindgen = "0.46"
