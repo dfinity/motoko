@@ -4,7 +4,7 @@
       "flake": false,
       "locked": {
         "lastModified": 1762175579,
-        "narHash": "sha256-ChlkmnamNG6LfpxEW6GwES6xigYwFgdBgzoNLrq0zJ4=",
+        "narHash": "sha256-FeQjl70Yi3ZoJNI88dtTWaOG2ikhm/Xnk96KVKLEYZU=",
         "owner": "dfinity",
         "repo": "candid",
         "rev": "bc49504faf55fce75793a6501e61e7ace680d922",
