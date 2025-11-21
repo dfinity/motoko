@@ -1502,7 +1502,7 @@ let resolve_hole env at hole_sort typ =
               ("a new", mid)
           in
             info env candidate.region
-             "Consider renaming `%s` to `%s.%s` in %s module `%s`. Then it can serve as an implicit argument `%s` in this call:\n%s%s"
+             "Consider renaming %s to `%s.%s` in %s module `%s`. Then it can serve as an implicit argument `%s` in this call:\n%s%s"
              candidate.desc mid id mod_desc mid id call_region call_src)
       explicit_terms
   in
