@@ -1543,7 +1543,7 @@ type ctx_dot_candidate =
 let permissive_sub t1 (tbs, t2) =
   try
     (* Solve only tvars from the receiver, let the unused tvars be unsolved *)
-    let (inst, c) = Bi_match.bi_match_subs None tbs None [t1, t2] ~must_solve:[t2] in
+    let (inst, c) = Bi_match.bi_match_subs None tbs None [t1, t2, no_region] ~must_solve:[t2] in
     (* Call finalize to verify the instantiation (sanity checks), optional step. *)
     ignore (Bi_match.finalize inst c []);
     Some inst
@@ -2818,7 +2818,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       t_args, []
     | Some(e, t, _id, _inst) -> begin
       match t_args with
-      | t'::ts -> ts, [(t, t')]
+      | t'::ts -> ts, [(t, t', e.at)]
       | [] -> assert false
     end
   in
@@ -2944,7 +2944,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
       | _ ->
         (* Infer and add a subtype problem for bi_match *)
         let t = infer_exp env exp in
-        subs := (t, target_type) :: !subs;
+        subs := (t, target_type, exp.at) :: !subs;
         t
     in
     let t2 = decompose exp target_type in
@@ -2975,7 +2975,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
     let subs = List.rev subs in
     match t_expect_opt with
     | None -> Some t_ret, subs
-    | Some expected_ret -> None, (t_ret, Bi_match.name_ret_typ expected_ret) :: subs
+    | Some expected_ret -> None, (t_ret, Bi_match.name_ret_typ expected_ret, at) :: subs
   in
   (* Make sure the order of constraints is: receiver, expected return type and arguments starting from the first one *)
   let subs = extra_subtype_problems @ subs in
@@ -2993,7 +2993,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
     let subs = ref [] in
     let infer_body body_typ env body =
       let actual_t = infer_exp env body in
-      subs := (actual_t, body_typ) :: !subs
+      subs := (actual_t, body_typ, body.at) :: !subs
     in
     deferred |> List.iter (fun (exp, typ) ->
       (* Substitute fixed type variables *)
@@ -3018,7 +3018,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
         if not closed_codom then
           if body_typ <> codom then
             (* [body_typ] is closed, body is already checked above, we just need to solve the subtype problem *)
-            subs := (body_typ, codom) :: !subs
+            subs := (body_typ, codom, body.at) :: !subs
           else begin
             (* We just have open [codom], we need to infer the body *)
             infer_body body_typ env' body;
@@ -3031,7 +3031,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
          end
       | _ ->
         (* Future work: Inferring will fail, we could report an explicit error instead *)
-        subs := (infer_exp env exp, typ) :: !subs
+        subs := (infer_exp env exp, typ, exp.at) :: !subs
     );
     let ts, subst_env = Bi_match.finalize ts remaining !subs in
 
@@ -3050,7 +3050,13 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
         (String.concat ", " (List.map T.string_of_typ ts));
   *)
     ts, T.open_ ts t_arg, T.open_ ts t_ret
-  with Bi_match.Bimatch { message; hint } ->
+  with Bi_match.Bimatch { message; hint; reason } ->
+    reason |> Option.iter (fun Bi_match.{ actual; expected; at } ->
+      error env at "M0096"
+        "expression of type%a\ncannot produce expected type%a"
+        display_typ_expand actual
+        display_typ_expand expected);
+
     let t1 = T.normalize t1 in
     let remove_holes_nary ts =
       match exp2.it, ts with
@@ -3110,7 +3116,7 @@ and debug_print_infer_defer_split exp2 t_arg t2 subs deferred =
   print_endline (Printf.sprintf "exp2 : %s" (Source.read_region_with_markers exp2.at |> Option.value ~default:""));
   print_endline (Printf.sprintf "t_arg : %s" (T.string_of_typ t_arg));
   print_endline (Printf.sprintf "t2 : %s" (T.string_of_typ t2));
-  print_endline (Printf.sprintf "subs : %s" (String.concat ", " (List.map (fun (t, t') -> Printf.sprintf "%s <: %s" (T.string_of_typ t) (T.string_of_typ t')) subs)));
+  print_endline (Printf.sprintf "subs : %s" (String.concat ", " (List.map (fun (t, t', _at) -> Printf.sprintf "%s <: %s" (T.string_of_typ t) (T.string_of_typ t')) subs)));
   print_endline (Printf.sprintf "deferred : %s" (String.concat ", " (List.map (fun (exp, t) -> Printf.sprintf "%s : %s" (Source.read_region exp.at |> Option.value ~default:"") (T.string_of_typ t)) deferred)));
   print_endline ""
 

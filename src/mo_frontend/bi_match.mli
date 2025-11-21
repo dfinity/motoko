@@ -44,9 +44,13 @@ open Type
    (modulo mixing my left foot with my right)
 *)
 
+type reason =
+  { actual : typ; expected : typ; at : Source.region }
+
 exception Bimatch of {
   message : string;
   hint : string option;
+  reason : reason option;
 }
 
 val name_ret_typ : typ -> typ
@@ -79,7 +83,7 @@ val bi_match_subs :
   scope option ->
   bind list ->
   typ option ->
-  (typ * typ) list ->
+  (typ * typ * Source.region) list ->
   must_solve: typ list ->
   typ list * ctx
 
@@ -95,7 +99,7 @@ val bi_match_subs :
 val finalize :
   typ list ->
   ctx ->
-  (typ * typ) list ->
+  (typ * typ * Source.region) list ->
   typ list * typ ConEnv.t
 
 (** Checks that all types are closed (no unresolved type variables) *)

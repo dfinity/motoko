@@ -88,12 +88,10 @@ to argument of type
   T
 because there is no way to satisfy subtyping
   T  <:  U  (for argument `y`) 
-inference.mo:172.8-172.54: type error [M0098], cannot apply function of type
-  <T>(b : Bool, x : [var T], y : [var T]) -> [var T]
-to argument of type
-  (Bool, [var Nat], [var Int])
-because there is no way to satisfy subtyping
-  [var Int]  <:  [var Nat]  (for argument `y`) 
+inference.mo:172.40-172.53: type error [M0096], expression of type
+  [var Int]
+cannot produce expected type
+  [var Nat]
 inference.mo:177.8-177.44: type error [M0098], cannot apply function of type
   <T>(o : {x : T}) -> T
 to argument of type
