@@ -102,6 +102,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `Nightly macOS Test Failure (${date})`,
-              body: `Nightly tests for macOS  failed. Please investigate.\n\nWorkflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              body: `Nightly tests for macOS failed. Please investigate.\n\nWorkflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               labels: ['macos-failure', 'bug']
             }); 
