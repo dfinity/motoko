@@ -1,21 +1,21 @@
 (unknown location): Compatibility error [M0170], the new type of stable variable `products` is not compatible with the previous version.
  The previous type
-  var {root : Tree<Text, Product>; size : Nat}
+  var {root : Old.Tree<Text, Old.Product>; size : Nat}
  is not a subtype of
   Map<Text, OldProduct> = {root : Tree<Text, OldProduct>; size : Nat}
  because: The type 
   {
     acceptanceCriteria : [Text];
-    dependencies : [Dependency];
+    dependencies : [Old.Dependency];
     description : Text;
     githubRepos : [Text];
     id : Text;
     ...
-    shipDate : Time;
+    shipDate : Old.Time;
     signalGroup : Text;
     slackChannel : Text;
-    status : Status;
-    team : Team
+    status : Old.Status;
+    team : Old.Team
   }
  is not compatible with type 
   (Text, Nat)

@@ -372,6 +372,7 @@ module type PrettyConfig = sig
   val show_stamps : bool
   val show_scopes : bool
   val show_hash_suffix : bool
+  val show_con_scopes : bool
   val con_sep : string
   val par_sep : string
   val max_list : int option

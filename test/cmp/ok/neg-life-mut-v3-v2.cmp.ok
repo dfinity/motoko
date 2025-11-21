@@ -2,7 +2,7 @@
  The previous type
   var
    {
-     #v1 : [[var Cell]];
+     #v1 : [[var Old.Cell]];
      #v2 : {bits : [var Nat64]; size : Nat};
      #v3 : {offset : Nat32; size : Nat}
    }
