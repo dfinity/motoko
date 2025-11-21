@@ -532,6 +532,9 @@ let solve ctx (ts1, ts2) must_solve =
       match t2 with
       | Named ("@ret", t2) ->
         Format.asprintf "%a  (for the expected return type) " display_rel (t1, "<:", t2)
+      | Named (_, Named ("implicit", (Named (n, t2))))
+      | Named (n, Named ("implicit",  t2)) ->
+        Format.asprintf "%a  (for `implicit` argument `%s`) " display_rel (t1, "<:", t2) n
       | Named (n, t2) ->
         Format.asprintf "%a  (for argument `%s`) " display_rel (t1, "<:", t2) n
       | t2 ->
