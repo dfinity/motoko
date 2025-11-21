@@ -44,6 +44,7 @@ s/ACTOR/\'actor\'/g
 s/COMPOSITE/\'composite\'/g
 s/IGNORE/\'ignore\'/g
 s/IMPORT/\'import\'/g
+s/IMPLICIT/\'implicit\'/g
 s/XOROP/\'^\'/g
 s/XORASSIGN/\'^=\'/g
 s/WHILE/\'while\'/g

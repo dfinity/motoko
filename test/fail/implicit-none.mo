@@ -11,7 +11,7 @@ module M {
 
 };
 
-func f1(n : Nat, m : Nat, c : (implicit : (Nat, Nat) -> Order)) {
+func f1(n : Nat, m : Nat, implicit c : (Nat, Nat) -> Order) {
   ignore c(n, m);
 };
 

@@ -731,21 +731,31 @@ let infer_class_cap env obj_sort (tbs : T.bind list) cs =
 
 (* Types *)
 
-let rec check_typ env (typ : typ) : T.typ =
-  let t = check_typ' env typ in
+let rec check_typ env ?(allow_implicit=false) (typ : typ) : T.typ =
+  let t = check_typ' ~allow_implicit env typ in
   typ.note <- t;
   t
 
-and check_typ_item env typ_item =
-  match typ_item with
-  | (None, typ) -> check_typ env typ
-  | (Some id, typ) -> T.Named (id.it, check_typ env typ)
+and check_implicit env allow_implicit id =
+  if not env.pre && id.it = "implicit" && not allow_implicit then
+    local_error env id.at "M0240" "misplaced `implicit`"
 
-and check_typ' env typ : T.typ =
+and check_typ_item allow_implicit env typ_item =
+  match typ_item with
+  | (None, {it = NamedT (id, typ); _}) ->
+     check_implicit env allow_implicit id;
+     T.Named (id.it, check_typ env ~allow_implicit typ)
+  | (None, typ) ->
+     check_typ env typ
+  | (Some id, typ) ->
+     check_implicit env allow_implicit id;
+     T.Named (id.it, check_typ env ~allow_implicit typ)
+
+and check_typ' env ?(allow_implicit=false) typ : T.typ =
   match typ.it with
   | PathT (path, typs) ->
     let c = check_typ_path env path in
-    let ts = List.map (check_typ env) typs in
+    let ts = List.map (check_typ env ~allow_implicit:false) typs in
     let T.Def (tbs, _) | T.Abs (tbs, _) = Cons.kind c in
     let tbs' = List.map (fun tb -> { tb with T.bound = T.open_ ts tb.T.bound }) tbs in
     check_typ_bounds env tbs' ts (List.map (fun typ -> typ.at) typs) typ.at;
@@ -760,14 +770,14 @@ and check_typ' env typ : T.typ =
     let t = check_typ env typ in
     T.Array (infer_mut mut t)
   | TupT typ_items ->
-    T.Tup (List.map (check_typ_item env) typ_items)
+    T.Tup (List.map (check_typ_item allow_implicit env) typ_items)
   | FuncT (sort, binds, typ1, typ2) ->
     let cs, tbs, te, ce = check_typ_binds env binds in
     let env' = infer_async_cap (adjoin_typs env te ce) sort.it cs tbs None typ.at in
     let typs1 = as_domT typ1 in
     let c, typs2 = as_codomT sort.it typ2 in
-    let ts1 = List.map (check_typ_item env') typs1 in
-    let ts2 = List.map (check_typ_item env') typs2 in
+    let ts1 = List.map (check_typ_item true env') typs1 in
+    let ts2 = List.map (check_typ_item false env') typs2 in
     check_shared_return env typ2.at sort.it c ts2;
     if not env.pre && Type.is_shared_sort sort.it then begin
       check_shared_binds env typ.at tbs;
@@ -845,9 +855,10 @@ and check_typ' env typ : T.typ =
         display_typ_expand t2;
     t
   | ParT typ ->
-    check_typ env typ
+    check_typ env ~allow_implicit typ
   | NamedT (name, typ) ->
-    T.Named (name.it, check_typ env typ)
+    check_implicit env allow_implicit name;
+    T.Named (name.it, check_typ env ~allow_implicit typ)
   | WeakT typ ->
     T.Weak (check_typ env typ)
 
@@ -985,7 +996,7 @@ and check_con_env env at ce =
   end;
 
 and infer_inst env sort tbs typs t_ret at =
-  let ts = List.map (check_typ env) typs in
+  let ts = List.map (check_typ env ~allow_implicit:false) typs in
   let ats = List.map (fun typ -> typ.at) typs in
   match tbs, typs with
   | {T.bound; sort = T.Scope; _}::tbs', typs' ->
@@ -1407,7 +1418,7 @@ let resolve_hole env at hole_sort typ =
   let is_matching_lab lab =
     match hole_sort with
     | Named lab1 -> lab = lab1
-    | Anon _ -> true
+    | Anon _ -> not (Syntax.is_privileged lab)
   in
 
   let is_matching_typ typ1 = T.sub typ1 typ
@@ -1491,7 +1502,7 @@ let resolve_hole env at hole_sort typ =
               ("a new", mid)
           in
             info env candidate.region
-             "Consider renaming `%s` to `%s.%s` in %s module `%s`. Then it can serve as an implicit argument `%s` in this call:\n%s%s"
+             "Consider renaming %s to `%s.%s` in %s module `%s`. Then it can serve as an implicit argument `%s` in this call:\n%s%s"
              candidate.desc mid id mod_desc mid id call_region call_src)
       explicit_terms
   in
@@ -1927,7 +1938,7 @@ and infer_exp'' env exp : T.typ =
     let env' = infer_async_cap (adjoin_typs env te ce) sort cs tbs (Some exp1) exp.at in
     let t1, ve1 = infer_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env' pat in
     let ve2 = T.Env.adjoin ve ve1 in
-    let ts2 = List.map (check_typ_item env') ts2 in
+    let ts2 = List.map (check_typ_item false env') ts2 in
     typ.note <- T.seq ts2; (* HACK *)
     let codom = T.codom c (fun () -> T.Con(List.hd cs,[])) ts2 in
     if not env.pre then begin
@@ -2739,7 +2750,7 @@ and arity_with_implicits t_args =
 
 and insert_holes at ts es =
   let mk_hole pos hole_id =
-    let hole_sort = if hole_id = "" then Anon pos else Named hole_id in
+    let hole_sort = if hole_id = "_" then Anon pos else Named hole_id in
     {it = HoleE (hole_sort, ref {it = PrimE "hole"; at; note=empty_typ_note });
       at;
       note = empty_typ_note }
@@ -3208,10 +3219,10 @@ and infer_pat' name_types env pat : T.typ * Scope.val_env =
     if not env.pre then T.Env.(iter (fun k t1 -> warn_lossy_bind_type env pat.at k t1 (find k ve2))) ve1;
     t, T.Env.merge (fun _ -> Lib.Option.map2 (T.lub ~src_fields:env.srcs)) ve1 ve2*)
   | AnnotP ({it = VarP id; _} as pat1, typ) when name_types ->
-    let t = check_typ env typ in
+    let t = check_typ env ~allow_implicit:true typ in
     T.Named (id.it, t), check_pat env t pat1
   | AnnotP (pat1, typ) ->
-    let t = check_typ env typ in
+    let t = check_typ env ~allow_implicit:name_types typ in
     t, check_pat env t pat1
   | ParP pat1 ->
     infer_pat name_types env pat1
