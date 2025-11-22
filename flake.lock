@@ -241,11 +241,11 @@
     "pocket-ic-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1757573980,
-        "narHash": "sha256-yOjLoRCMsi29tEK8M1XNC8AaU1ixkHE3B5sdGSr6u6s=",
+        "lastModified": 1763769101,
+        "narHash": "sha256-/VaUL3Wu9NILofasZPTCtFVIoXmsOokiO/sTUZQJTZw=",
         "owner": "dfinity",
         "repo": "ic",
-        "rev": "861616d46ded00091fecbfe01f441b38b56b483c",
+        "rev": "f07e9896fef2c24db8d4d0bed3d3ed42f0934e2a",
         "type": "github"
       },
       "original": {
