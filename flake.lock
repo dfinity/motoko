@@ -68,22 +68,6 @@
         "type": "github"
       }
     },
-    "ic-src": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1761929779,
-        "narHash": "sha256-5jqAkVDelrPBepsaODDGUCKNe2L1DGm9wSEagL4t1BU=",
-        "owner": "dfinity",
-        "repo": "ic",
-        "rev": "7a8c16764cdcfb901759ff62e64ac983633fcc17",
-        "type": "github"
-      },
-      "original": {
-        "owner": "dfinity",
-        "repo": "ic",
-        "type": "github"
-      }
-    },
     "ic-wasm-src": {
       "flake": false,
       "locked": {
@@ -260,7 +244,6 @@
         "candid-src": "candid-src",
         "esm": "esm",
         "flake-utils": "flake-utils",
-        "ic-src": "ic-src",
         "ic-wasm-src": "ic-wasm-src",
         "libtommath-src": "libtommath-src",
         "motoko-base-src": "motoko-base-src",

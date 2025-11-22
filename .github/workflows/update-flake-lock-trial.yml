@@ -36,7 +36,7 @@ jobs:
           branch: "update_flake_lock_action_trial"
           inputs: |
             nixpkgs
-            ic-src
+            pocket-ic-src
             rust-overlay
           pr-title: "chore: weekly `flake.lock` update"
           pr-labels: |
