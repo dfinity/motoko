@@ -2172,30 +2172,6 @@ the `chars`, `vals`, `keys` and `vals` members produce stateful iterator objects
 :::
 
 
-### Contextual dot resolution
-
-When applying an object projection `x.f(a)` where `x` is not an object type with a field `f` the context is searched for a module with a function with a matching name and first argument type called "self" as follows:
-
-The expression `<exp1>.<id> <exp2>` has type `t_res` provided the following holds:
-
-```
-x : t </: { f : _ }
-M : module { <id> : <T>(self : targ_1...targ_n) -> t_res }
-
-exists. T such that t <: instantiate(T, targ_1)
-
-and M is the only match in the context
-```
-
-It then evaluates as `M.<id>(extend_args(<exp1>, <exp2>, arity(M.<id>)))` where `extend_args` is:
-
-```
-extend_args(x, args, arity) : (exp, exp, int) -> exp
-extend_args(x, y, 2) = (x, y);
-extend_args(x, (), _) = x;
-extend_args(x, (y1, y2, y3, ... yn), _) = (x, y1, y2, y3, ..., yn);
-```
-
 ### Assignment
 
 The assignment `<exp1> := <exp2>` has type `()` provided:
@@ -2262,6 +2238,43 @@ Otherwise,
 
 -   Otherwise, `v` is `vi`, the value currently stored in the `i`-th location of the array.
 
+
+### Dotted function calls
+
+The dotted function call expression `<parenthetical>? <exp1>.<id> <T0,…​,Tn>? <exp2>` has type `T` provided
+the expanded function call expression `<parenthetical>? <exp3> <T0,…​,Tn>? <exp4>` has type `T`,
+where
+
+  * If the projection `<exp0>.<id>` has some function type then `<exp3> = <exp0>.<id>` and `<exp4> = <exp2>`.
+
+  * Otherwise, the module environment is used to determine an appropriate function `<exp3>` and argument `<exp4>` by
+    constructing a set of candidates Cs and disambiguation Ds:
+
+      * If the receiver `<exp1>` has type `R` and
+      * Cs = { `(<mid>, V1[Ts/Xs], a)` | `<mid>` has type `module {}` and `<mid>.<id>` has type `<Xs <: Vs>(self : V1, ..., Va) -> V` and `R <: V1[Ts/Xs]` for `Ts` } and
+      * Ds = { `(<mid>, V, a)`  in Cs | for all `(_, W, _)` in Cs, `V <: W` } and
+      * { `(<mid>, _, _)` } = Ds and
+
+    Then `<exp3> = <mid>.<id>` and `<exp4> = extend_args(<exp1>, <exp2>, a)`.
+
+    Here:
+
+    * `R` is the type of the receiver expression `<exp1>`.
+    *  Cs is the set of candidate functions `<mid>.<id>` in modules named `<mid>`, with explicitly name `self` parameter that matches the receiver type `R`.
+    *  Ds is the disambiguated set of candidates, filtered by specifity.
+    * `<mid>` is the name of the unique disambiguation, if one exists (that is, when Ds is a singleton set).
+    *  Finally `extend_args` is the following auxilliary function that inserts the receiver into arguments `<exp2>`, using the candidate's arity `a`:
+
+    ```
+    extend_args(<exp1> : exp, <exp2> : exp, arity : Nat) : exp
+    extend_args(<exp1>, <exp2>, 2) = (<exp1>, <exp2>)
+    extend_args(<exp1>, (), arity) = <exp1>
+    extend_args(<exp1, (<exp21>, <exp22>, ... <exp2n>), a) = (<exp1>, <exp21>, <exp22>, ..., <exp2n>)
+    ```
+
+The dotted function call expression `<parenthetical>? <exp1>.<id> <T0,…​,Tn>? <exp2>` evaluates
+as its expanded function call expression `<parenthetical>? <exp3> <T0,…​,Tn>? <exp4>`.
+
 ### Function calls
 
 The function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <exp2>` has type `T` provided:
@@ -2276,7 +2289,7 @@ The function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <exp2>` ha
 
 -   `T == [T0/X0, …​, Tn/Xn]U2`.
 
-The call expression `<exp1> <T0,…​,Tn>? <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, then the result is `trap`.
+The call expression `<exp1> <T0,…​,Tn>? <exp2>` evaluates `<exp1>` to a result `r1`. If `r1` is `trap`, then the result is `trap`.
 
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
