@@ -64,7 +64,26 @@ pkgs: let
       echo '             .with_runtime(runtime)' >> pocket_ic_server.patch
 
       echo "Applying patch..."
-      patch -p1 < pocket_ic_server.patch
+      patch -p1 << EOF
+      diff --git a/rs/pocket_ic_server/src/pocket_ic.rs b/rs/pocket_ic_server/src/pocket_ic.rs
+      --- a/rs/pocket_ic_server/src/pocket_ic.rs
+      +++ b/rs/pocket_ic_server/src/pocket_ic.rs
+      @@ -619,6 +619,14 @@ impl PocketIcSubnets {
+                   .embedders_config
+                   .feature_flags
+                   .rate_limiting_of_debug_prints = FlagStatus::Disabled;
+      +        hypervisor_config
+      +            .embedders_config
+      +            .feature_flags
+      +            .canister_backtrace = FlagStatus::Disabled;
+      +        hypervisor_config
+      +            .embedders_config
+      +            .feature_flags
+      +            .environment_variables = FlagStatus::Enabled;
+               let state_machine_config = StateMachineConfig::new(subnet_config, hypervisor_config);
+               StateMachineBuilder::new()
+                   .with_runtime(runtime)
+      EOF
     '';
     nativeBuildInputs = with pkgs; [
       pkg-config
