@@ -2277,21 +2277,55 @@ as its expanded function call expression `<parenthetical>? <exp3> <T0,…​,Tn>
 
 ### Function calls
 
-The function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <exp2>` has type `T` provided:
 
--   The function `<exp1>` has function type `<shared>? < X0 <: V0, ..., Xn <: Vn > U1-> U2`.
+Function types can specify `implicit` parameters.
+The _arity_ of a function is its number of parameters.
+The _implicit arity_ of a function is its number of `implicit` parameters.
 
--   If `<T0,…​,Tn>?` is absent but n > 0 then there exists minimal `T0, …​, Tn` inferred by the compiler such that:
+An argument expression has arity n if it is a parenthesized sequence of `n` arguments, and arity 1 otherwise.
+
+A function call can either supply a tuple for all parameters, one argument per parameter, or one argument per non-implicit parameter, omitting arguments for all implicit parameters.
+The values of omitted arguments are inferred statically from the context.
+
+The function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <exp2>` has type `T` provided the
+the expanded function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <exp3>` has type `T` where:
+
+-   The function `<exp1>` has function type `F = <shared>? < X0 <: V0, ..., Xn <: Vn > U1 -> U2`.
+
+-   If `F` has implicit arity 0 then `<exp3> = <exp2>`, otherwise:
+
+    * `<exp2>` has arity `a = arity(F) - implicit_arity(F)`; and
+    * `<exp2> = (exp21, ... exp2a)`; and
+    * `<exp3>` = insert_holes(0;  U1 ; (exp21,...,exp2a))`;
+
+    where
+
+    ```
+    insert_holes(n ; <empty> ; <exps>) = <exps>
+    insert_holes(n ; (implict c : U, Us) ; <exps>) = `hole(n, c, U), insert_holes(n+1, Us, exps)
+    insert_holes(n , (U,Us),  (<exp>, <exps>)) = <exp>, insert_holes(n, Us, <exps>)
+    ```
+
+-   If `<T0,…​,Tn>?` is absent but `n > 0` then there exists minimal `T0, …​, Tn` inferred by the compiler such that:
 
 -   Each type argument satisfies the corresponding type parameter’s bounds: for each `1 <= i <= n`, `Ti <: [T0/X0, …​, Tn/Xn]Vi`.
 
--   The argument `<exp2>` has type `[T0/X0, …​, Tn/Xn]U1`.
+-   The argument `<exp3>` has type `[T0/X0, …​, Tn/Xn]U1`, where
+
+      * if, for some <id>, `<id> : [T0/X0, …​, Tn/Xn]Ui` then
+        `hole(i, ci, Ui) = <id>`.
+        Otherwise:
+
+      * Cs = { `(<mid>.<id>, V)` | `<mid>` has type `module {}` and `<mid>.<id>` has type `V` and `V <: [T0/X0, …​, Tn/Xn]U1` }; and
+      * Ds = { `(<mid>.<id>, V)`  in Cs | for all `(_, W)` in Cs, `V <: W` }; and
+      * { `(<mid>.<id>, _)` } = Ds; and
+      * `hole(i, ci, Ui) = <mid>.<id>`.
 
 -   `T == [T0/X0, …​, Tn/Xn]U2`.
 
 The call expression `<exp1> <T0,…​,Tn>? <exp2>` evaluates `<exp1>` to a result `r1`. If `r1` is `trap`, then the result is `trap`.
 
-Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
+Otherwise, `<exp3>` (the hole expansion `<exp2>`) is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
 Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, …​, n <: Vn> <pat1> { <exp> }` (for some implicit environment), and `r2` is a value `v2`. If `<shared-pat>` is present and of the form `shared <query>? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p` is the [`Principal`](https://internetcomputer.org/docs/motoko/core/Principal.md) invoking the function, typically a user or canister. Matching continues by matching `v1` against `<pat1>`. If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value not shown extended with those bindings. Otherwise, some pattern match has failed and the call results in `trap`.
 
