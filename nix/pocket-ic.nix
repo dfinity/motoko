@@ -42,27 +42,7 @@ pkgs: let
       rustflags = [ "-C", "linker=c++" ]
       EOF
 
-      # Create a patch file for pocket-ic-server to disable canister backtrace.
-      echo "Creating patch file..."
-      echo 'diff --git a/rs/pocket_ic_server/src/pocket_ic.rs b/rs/pocket_ic_server/src/pocket_ic.rs' > pocket_ic_server.patch
-      echo '--- a/rs/pocket_ic_server/src/pocket_ic.rs' >> pocket_ic_server.patch
-      echo '+++ b/rs/pocket_ic_server/src/pocket_ic.rs' >> pocket_ic_server.patch
-      echo '@@ -619,6 +619,14 @@ impl PocketIcSubnets {' >> pocket_ic_server.patch
-      echo '             .embedders_config' >> pocket_ic_server.patch
-      echo '             .feature_flags' >> pocket_ic_server.patch
-      echo '             .rate_limiting_of_debug_prints = FlagStatus::Disabled;' >> pocket_ic_server.patch
-      echo '+        hypervisor_config' >> pocket_ic_server.patch
-      echo '+            .embedders_config' >> pocket_ic_server.patch
-      echo '+            .feature_flags' >> pocket_ic_server.patch
-      echo '+            .canister_backtrace = FlagStatus::Disabled;' >> pocket_ic_server.patch
-      echo '+        hypervisor_config' >> pocket_ic_server.patch
-      echo '+            .embedders_config' >> pocket_ic_server.patch
-      echo '+            .feature_flags' >> pocket_ic_server.patch
-      echo '+            .environment_variables = FlagStatus::Enabled;' >> pocket_ic_server.patch
-      echo '         let state_machine_config = StateMachineConfig::new(subnet_config, hypervisor_config);' >> pocket_ic_server.patch
-      echo '         StateMachineBuilder::new()' >> pocket_ic_server.patch
-      echo '             .with_runtime(runtime)' >> pocket_ic_server.patch
-
+      # Patch for pocket-ic-server to disable canister backtrace.
       echo "Applying patch..."
       patch -p1 << EOF
       diff --git a/rs/pocket_ic_server/src/pocket_ic.rs b/rs/pocket_ic_server/src/pocket_ic.rs
