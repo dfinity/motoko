@@ -2266,10 +2266,10 @@ where
     *  Finally `extend_args` is the following auxilliary function that inserts the receiver into arguments `<exp2>`, using the candidate's arity `a`:
 
     ```
-    extend_args(<exp1>, <exp2>, arity) : (exp, exp, Nat) -> exp
+    extend_args(<exp1> : exp, <exp2> : exp, arity : Nat) : exp
     extend_args(<exp1>, <exp2>, 2) = (<exp1>, <exp2>)
-    extend_args(<exp1>, (), _) = <exp1>
-    extend_args(<exp1, (<exp21>, <exp22>, ... <exp2n>)) = (<exp1>, <exp21>, <exp22>, ..., <exp2n>)
+    extend_args(<exp1>, (), arity) = <exp1>
+    extend_args(<exp1, (<exp21>, <exp22>, ... <exp2n>), a) = (<exp1>, <exp21>, <exp22>, ..., <exp2n>)
     ```
 
 The dotted function call expression `<parenthetical>? <exp1>.<id> <T0,…​,Tn>? <exp2>` evaluates
