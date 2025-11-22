@@ -49,9 +49,9 @@
 
       rust-stable = self.rust-bin.stable."1.88.0".default;
 
-      rustPlatform-stable = self.makeRustPlatform {
+      rustPlatform-stable = self.makeRustPlatform rec {
         rustc = self.rust-stable;
-        cargo = self.rust-stable;
+        cargo = rustc;
       };
     })
 
