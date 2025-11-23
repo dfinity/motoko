@@ -91,8 +91,8 @@ The following keywords are reserved and may not be used as identifiers:
 ``` bnf
 actor and assert async async* await await? await* break case catch class
 composite continue debug debug_show do else false flexible finally for
-from_candid func if ignore import in module not null persistent object or label
-let loop private public query return shared stable switch system throw
+from_candid func if ignore implicit import in label let loop module not null
+object or persistent private public query return shared stable switch system throw
 to_candid true transient try type var weak while with
 ```
 
@@ -567,12 +567,24 @@ The syntax of a pattern is as follows:
   ? <pat>                                        Option
   <pat> : <typ>                                  Type annotation
   <pat> or <pat>                                 Disjunctive pattern
+  implicit <id> : <typ>                          implicit named parameter
+  implicit <id> : <typ> = <pat>                  implicit named parameter (NYI)
+  implicit _ : <typ> = <pat>                     implicit wildcard parameter (NYI)
+
 
 <pat-field> ::=                                Object pattern fields
-  <id> (: <typ>) = <pat>                         Field
-  <id> (: <typ>)                                 Punned field
+  <id> (: <typ>)? = <pat>                        Field
+  <id> (: <typ>)?                                Punned field
   type <id>                                      Type field
 ```
+
+`implicit` patterns may only appear in function or class argument positions to declare implicit parameters that can be omitted at calls.
+<!-- what about mixins? -->
+The pattern `implict <id> : <typ>` is sugar for `<id> : (implicit <id> : <typ>)`.
+The named implicit pattern `implict <id> : <typ> = <pat>` is sugar for `<pat> : (implicit <id> : <typ>)`.
+The wildcard implicit pattern `implicit _ : <typ> = <pat>` is sugar for `<pat> : (implicit _ : <typ>)`.
+
+
 
 ## Type syntax
 
@@ -596,8 +608,9 @@ Type expressions are used to specify the types of arguments, constraints on type
   <typ> and <typ>                               Intersection
   <typ> or <typ>                                Union
   Error                                         Errors/exceptions
+  implicit <id> : <typ>                         Implicit named parameter
+  implicit _ : <typ>                            Implicit wildcard parameter
   ( <typ> )                                     Parenthesized type
-
 
 <typ-sort> ::= (actor | module | object)
 
@@ -610,6 +623,8 @@ Type expressions are used to specify the types of arguments, constraints on type
 ```
 
 An absent `<sort>?` abbreviates `object`.
+
+`implicit <id> : <typ>` and `implicit _ : <typ>`, used to indicate named and wildcard implicit parameters, may only appear in parameter positions of function types.
 
 ### Primitive types
 
@@ -1099,7 +1114,10 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 16.   `T` (respectively `U`) is a constructed type `C<V0, …​, Vn>` that is equal, by definition of type constructor `C`, to `W`, and `W <: U` (respectively `U <: W`).
 
-17.   For some type `V`, `T <: V` and `V <: U` (*transitivity*).
+17.   `T` (respectively `U`) is an implicit type `implicit c : W` that is equal, by definition, to `W`, and `W <: U` (respectively `U <: W`).
+<!-- to be reviewed - does this make sense? -->
+
+18.   For some type `V`, `T <: V` and `V <: U` (*transitivity*).
 
 #### Stable Subtyping
 
