@@ -2294,34 +2294,52 @@ the expanded function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <
 
 -   If `F` has implicit arity 0 then `<exp3> = <exp2>`, otherwise:
 
-    * `<exp2>` has arity `a = arity(F) - implicit_arity(F)`; and
-    * `<exp2> = (exp21, ... exp2a)`; and
-    * `<exp3>` = insert_holes(0;  U1 ; (exp21,...,exp2a))`;
+    * `<exp2> = ( exp21, ..., exp2a )`; and
+    * `a = arity(F) - implicit_arity(F)`; and
+    * `<exp3> = ( insert_holes(0;  U1 ; (exp21,...,exp2a)) )`;
 
-    where
+    where `insert_holes` extends the actual arguments list with placeholders `hole(i, o, U)` for missing implicit parameters:
 
     ```
-    insert_holes(n ; <empty> ; <exps>) = <exps>
-    insert_holes(n ; (implict c : U, Us) ; <exps>) = `hole(n, c, U), insert_holes(n+1, Us, exps)
-    insert_holes(n , (U,Us),  (<exp>, <exps>)) = <exp>, insert_holes(n, Us, <exps>)
+    insert_holes(n ; <empty> ; <exps>) =
+      <exps>
+    insert_holes(n ; (implict <id> : U, Us) ; <exps>) =
+      hole(n, ?<id>, U), insert_holes(n + 1, Us, exps)
+    insert_holes(n ; (implict _ : U, Us) ; <exps>) =
+      hole(n, null, U), insert_holes(n + 1, Us, exps)
+    insert_holes(n , (U, Us),  (<exp>, <exps>)) =
+      <exp>, insert_holes(n, Us, <exps>)
     ```
 
 -   If `<T0,…​,Tn>?` is absent but `n > 0` then there exists minimal `T0, …​, Tn` inferred by the compiler such that:
 
--   Each type argument satisfies the corresponding type parameter’s bounds: for each `1 <= i <= n`, `Ti <: [T0/X0, …​, Tn/Xn]Vi`.
+-   Each type argument satisfies the corresponding type parameter's bounds: for each `1 <= i <= n`, `Ti <: [T0/X0, …​, Tn/Xn]Vi`.
 
--   The argument `<exp3>` has type `[T0/X0, …​, Tn/Xn]U1`, where
+-   The argument `<exp3>` has type `[T0/X0, …​, Tn/Xn]U1`, and
 
-      * if, for some <id>, `<id> : [T0/X0, …​, Tn/Xn]Ui` then
-        `hole(i, ci, Ui) = <id>`.
-        Otherwise:
+-   `T == [T0/X0, …​, Tn/Xn]U2`.
+
+-   For each `i` in `(0..implicit_arity(F)]`:
+
+      * `<id> : [T0/X0, …​, Tn/Xn]Ui`, for some `<id>`; and
+      * `hole(i, o, Ui) = <id>`; and
+      * `o != null` implies `o = ?<id>`;
+
+      Otherwise:
 
       * Cs = { `(<mid>.<id>, V)` | `<mid>` has type `module {}` and `<mid>.<id>` has type `V` and `V <: [T0/X0, …​, Tn/Xn]U1` }; and
       * Ds = { `(<mid>.<id>, V)`  in Cs | for all `(_, W)` in Cs, `V <: W` }; and
       * { `(<mid>.<id>, _)` } = Ds; and
-      * `hole(i, ci, Ui) = <mid>.<id>`.
+      * `hole(i, o, Ui) = <mid>.<id>`; and
+      *	`o != null` implies `o = ?<id>`.
 
--   `T == [T0/X0, …​, Tn/Xn]U2`.
+    Here:
+
+    * `hole(i, o, Ui)` is the description of the `ith` hole, a placeholder for an expression `<id>` or `<mid>.<id>`.
+    *  `<id>` is the resolution of the hole from the local context, if any;
+    *  Cs is the set of candidate values `<mid>.<id>` in modules named `<mid>`, with type `V` that matches hole type `Ui` (after type instantiation).
+    *  Ds is the disambiguated set of candidates, filtered by specifity.
+    * `<mid>.<id>` is the name of the unique disambiguation, if one exists (that is, when Ds is a singleton set).
 
 The call expression `<exp1> <T0,…​,Tn>? <exp2>` evaluates `<exp1>` to a result `r1`. If `r1` is `trap`, then the result is `trap`.
 
