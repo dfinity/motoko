@@ -2429,7 +2429,6 @@ module Closure = struct
     (* get the table index *)
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env funptr_field ^^
-    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     (* All done: Call! *)
     let table_index = 0l in
     G.i (CallIndirect (nr table_index, nr ty)) ^^
@@ -13820,7 +13819,7 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   let elems = List.map (fun (fi, fp) -> nr {
     index = nr 0l;
-    offset = nr (G.to_instr_list (compile_const_32 fp));
+    offset = nr (G.to_instr_list (compile_unboxed_const (Int64.of_int32 fp)));
     init = [ nr fi ];
     }) (E.get_elems env) in
 
@@ -13829,7 +13828,7 @@ and conclude_module env set_serialization_globals start_fi_o =
   let module_ = rename_funcs remapping {
       types = List.map nr (E.get_types env);
       funcs = List.map (fun (f,_,_) -> f) funcs;
-      tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, FuncRefType) } ];
+      tables = [ nr { ttype = HugeTableType (Int64.{ min = of_int32 table_sz; max = Some (of_int32 table_sz) }, FuncRefType) } ];
       elems;
       start = Some (nr rts_start_fi);
       globals = E.get_globals env;
