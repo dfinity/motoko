@@ -1,8 +1,8 @@
 use super::heap::MotokoHeap;
 use super::utils::{
-    GC, ObjectIdx, WORD_SIZE, get_scalar_value, make_pointer, read_word, unskew_pointer,
+    get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, GC, WORD_SIZE,
 };
-use crate::gc::{CheckMode, compute_reachable_objects};
+use crate::gc::{compute_reachable_objects, CheckMode};
 use fxhash::{FxHashMap, FxHashSet};
 use motoko_rts::types::*;
 use std::fmt::Write;
@@ -15,7 +15,7 @@ impl GC {
         let unused_root = &mut Value::from_scalar(0) as *mut Value;
 
         unsafe {
-            use motoko_rts::gc::incremental::{IncrementalGC, get_incremental_gc_state};
+            use motoko_rts::gc::incremental::{get_incremental_gc_state, IncrementalGC};
             const INCREMENTS_UNTIL_COMPLETION: usize = 16;
             for _ in 0..INCREMENTS_UNTIL_COMPLETION {
                 let roots = [

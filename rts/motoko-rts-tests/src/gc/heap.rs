@@ -7,7 +7,7 @@ mod classical;
 #[enhanced_orthogonal_persistence]
 mod enhanced;
 
-use super::utils::{GC, ObjectIdx};
+use super::utils::{ObjectIdx, GC};
 
 use motoko_rts::memory::Memory;
 use motoko_rts::types::*;

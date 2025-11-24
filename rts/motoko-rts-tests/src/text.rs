@@ -8,7 +8,7 @@ use motoko_rts::text::{
     text_singleton, text_size,
 };
 use motoko_rts::text_iter::{text_iter, text_iter_done, text_iter_next};
-use motoko_rts::types::{Bytes, TAG_BLOB_T, Value};
+use motoko_rts::types::{Bytes, Value, TAG_BLOB_T};
 
 use std::convert::TryFrom;
 
@@ -83,19 +83,21 @@ pub unsafe fn test() {
     concat_test(&mut mem, vec![String::from("a"), String::from("")]);
     concat_test(&mut mem, vec![String::from(""), String::from("b")]);
     concat_test(&mut mem, vec![String::from("a"), String::from("b")]);
-    concat_test(&mut mem, vec![
-        String::from(""),
-        String::from(""),
-        String::from(""),
-    ]);
-    concat_test(&mut mem, vec![
-        String::from("test-"),
-        String::from("abc"),
-        String::from("-0123"),
-        String::from("_!?"),
-        String::from("äöü"),
-        long_text,
-    ]);
+    concat_test(
+        &mut mem,
+        vec![String::from(""), String::from(""), String::from("")],
+    );
+    concat_test(
+        &mut mem,
+        vec![
+            String::from("test-"),
+            String::from("abc"),
+            String::from("-0123"),
+            String::from("_!?"),
+            String::from("äöü"),
+            long_text,
+        ],
+    );
 
     drop(mem);
 

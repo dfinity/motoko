@@ -1,23 +1,23 @@
 use std::{
     collections::HashSet,
-    io::{Write, stdout},
+    io::{stdout, Write},
     mem::size_of,
 };
 
 use motoko_rts::{
     gc::incremental::{
-        IncrementalGC,
         partitioned_heap::{
-            PARTITION_SIZE, Partition, PartitionedHeap, PartitionedHeapIterator,
+            Partition, PartitionedHeap, PartitionedHeapIterator, PARTITION_SIZE,
             SURVIVAL_RATE_THRESHOLD,
         },
         set_incremental_gc_state,
         time::BoundedTime,
+        IncrementalGC,
     },
-    memory::{Memory, alloc_array, alloc_blob},
+    memory::{alloc_array, alloc_blob, Memory},
     types::{
-        Array, Blob, Bytes, Obj, TAG_ARRAY_I, TAG_ARRAY_M, TAG_ARRAY_S, TAG_ARRAY_T, TAG_BLOB_A,
-        TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T, Tag, Value, Words,
+        Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY_I, TAG_ARRAY_M, TAG_ARRAY_S,
+        TAG_ARRAY_T, TAG_BLOB_A, TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T,
     },
 };
 

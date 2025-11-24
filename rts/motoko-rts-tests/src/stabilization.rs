@@ -5,18 +5,18 @@ mod stable_memory;
 
 use crate::{
     gc::{
-        CheckMode, TestHeap, check_dynamic_heap, heap::MotokoHeap, random::generate, utils::GC,
-        utils::WORD_SIZE,
+        check_dynamic_heap, heap::MotokoHeap, random::generate, utils::GC, utils::WORD_SIZE,
+        CheckMode, TestHeap,
     },
     memory::TestMemory,
     stabilization::stable_memory::clear_stable_memory,
 };
 use motoko_rts::{
-    memory::{Memory, alloc_array},
+    memory::{alloc_array, Memory},
     stabilization::{
         deserialization::Deserialization, graph_copy::GraphCopy, serialization::Serialization,
     },
-    types::{TAG_ARRAY_M, Value, Words},
+    types::{Value, Words, TAG_ARRAY_M},
 };
 use oorandom::Rand32;
 
@@ -52,7 +52,7 @@ pub fn deserialized_size() -> usize {
 }
 
 fn reset_gc(heap_base_address: usize) {
-    use motoko_rts::gc::incremental::{IncrementalGC, set_incremental_gc_state};
+    use motoko_rts::gc::incremental::{set_incremental_gc_state, IncrementalGC};
 
     unsafe {
         let state = IncrementalGC::<MotokoHeap>::initial_gc_state(heap_base_address);
