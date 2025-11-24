@@ -125,6 +125,18 @@ module Debug = struct
       (string_of_typ current)
       (string_of_typ t)
       (string_of_typ updated))
+
+  let print_update_bound_error c current t =
+    print_endline (Printf.sprintf "update_bound_error %s: current %s with %s"
+      (Cons.name c)
+      (string_of_typ current)
+      (string_of_typ t))
+
+  let print_extra_errors extra_errors =
+    print_endline (Printf.sprintf "extra_errors : %s" (String.concat ", " (List.map (fun (c, current, t) -> Printf.sprintf "%s: current %s incompatible with %s"
+      (Cons.name c)
+      (string_of_typ current)
+      (string_of_typ t)) extra_errors)))
 end
 
 module SS = Set.Make (OrdPair)
@@ -222,15 +234,61 @@ let check c (l, u) =
   else
     Some (l, u)
 
-let update binop c t ce =
-  let current = ConEnv.find c ce in
-  let updated = binop ?src_fields:None t current in
-  if debug then
-    Debug.print_update_bound c current t updated;
-  (* Future work: consider an error when joining two unrelated types, e.g. [lub Nat Text = Any], would be a breaking change *)
-  ConEnv.add c updated ce
+let lub_e ?src_fields t1 t2 =
+  let b = lub ?src_fields t1 t2 in
+  (* Error when the two types are unrelated, their lowest upper bound is [Any] *)
+  b, eq b Any && not (eq t1 Any) && not (eq t2 Any)
+
+let glb_e ?src_fields t1 t2 =
+  let b = glb ?src_fields t1 t2 in
+  (* Error when the two types are unrelated, their greatest lower bound is [Non] *)
+  b, eq b Non && not (eq t1 Non) && not (eq t2 Non)
+
+module CtxE : sig
+  type t
+  val empty : unit -> t
+  val update_bound_error : t -> con -> typ -> typ -> unit
+  val finalize : t -> typ ConEnv.t -> typ ConEnv.t * (con * typ * typ) list
+end = struct
+  type t = (con * typ * typ) list ref
+  let empty () = ref []
+  let update_bound_error stack c current t =
+    if debug then
+      Debug.print_update_bound_error c current t;
+    stack := (c, current, t) :: !stack
+  let finalize stack env =
+    let all_extra_errors = !stack in
+    let extra_errors = ref [] in
+    (* Preprocess the substitution for better error messages. Drop variables solved to Any/Non.
+      1. Unconstrained variables are solved to Any/Non, don't substitute them, the error was not there.
+      2. Matching unrelated types, e.g. Nat and Text, is permitted (resulting in Any/Non bound),
+        However, it usually indicates an error. Don't solve these variables.
+        These potential extra errors are attached when 
+    *)
+    let env = ConEnv.filter (fun c t ->
+      let about_c = List.filter (fun (c', _, _) -> Cons.eq c c') all_extra_errors in
+      extra_errors := about_c @ !extra_errors;
+      (* Skip extra errors for solved variables to avoid duplicate errors *)
+      if not (eq Any t || eq Non t) then true else
+      (* Attach extra errors for variables that could not be solved *)
+      false ) env in
+    env, !extra_errors
+end
 
 let bi_match_typs ctx =
+  (* Future work: Avoid global state by propagating it inside the [inst] tuple *)
+  let ctx_e = CtxE.empty () in
+
+  let update binop c t ce =
+    let current = ConEnv.find c ce in
+    let updated, maybe_error = binop ?src_fields:None t current in
+    if debug then
+      Debug.print_update_bound c current t updated;
+    if maybe_error then
+      CtxE.update_bound_error ctx_e c current t;
+    ConEnv.add c updated ce
+  in
+
   let flexible c = ConSet.mem c ctx.var_set in
 
   let rec bi_match_list_result p rel eq inst any xs1 xs2 ats =
@@ -238,7 +296,7 @@ let bi_match_typs ctx =
     | x1::xs1', x2::xs2', at::ats' ->
       (match p rel eq inst any x1 x2 with
       | Some inst -> bi_match_list_result p rel eq inst any xs1' xs2' ats'
-      | None -> Result.Error (inst, (x1, x2, at)))
+      | None -> Result.Error (inst, ctx_e, (x1, x2, at)))
     | [], [], [] -> Ok inst
     | _, _, _ -> assert false
   in
@@ -278,15 +336,15 @@ let bi_match_typs ctx =
       if mentions t1 any || not (denotable t1) then
         None
       else check con2
-       (update lub con2 t1 l,
-        if rel != eq then u else update glb con2 t1 u)
+       (update lub_e con2 t1 l,
+        if rel != eq then u else update glb_e con2 t1 u)
     | Con (con1, ts1), _ when flexible con1 ->
       assert (ts1 = []);
       if mentions t2 any || not (denotable t2) then
         None
       else check con1
-        ((if rel != eq then l else update lub con1 t2 l),
-         update glb con1 t2 u)
+        ((if rel != eq then l else update lub_e con1 t2 l),
+         update glb_e con1 t2 u)
     | Con (con1, _), Con (con2, _) when flexible con1 && flexible con2 ->
       (* Because we do matching, not unification, we never relate two flexible variables *)
       assert false
@@ -522,13 +580,20 @@ let solve ctx (ts1, ts2, ats) must_solve =
         "bug: inferred bad instantiation\n  <%s>\nplease report this error message and, for now, supply an explicit instantiation instead"
         instantiation)
     end
-  | Error ((l, u), (t1, t2, at)) ->
+  | Error ((l, u), ctx_e, (t1, t2, at)) ->
     let env, _unsolved = solve_bounds ignore ctx ConSet.empty l u in
     (* Preprocess the substitution for better error messages. Drop variables solved to Any/Non.
       1. Unconstrained variables are solved to Any/Non, don't substitute them, the error was not there.
       2. Matching unrelated types, e.g. Nat and Text, is permitted (resulting in Any/Non bound),
         However, it usually indicates an error. Don't solve these variables.
     *)
+    let env, extra_errors = CtxE.finalize ctx_e env in
+    if debug then Debug.print_extra_errors extra_errors;
+    let extra_errors = extra_errors
+      |> List.map (fun (c, current, t) -> Format.asprintf "\n  `%s` inferred to `%a` but incompatible with `%a`"
+        (Cons.name c) pp_typ current pp_typ t)
+      |> String.concat "\n"
+    in
     let env = env |> ConEnv.filter (fun c t -> not (eq Any t || eq Non t)) in
     let t1 = subst env t1 in
     let t2 = subst env t2 in
@@ -547,7 +612,7 @@ let solve ctx (ts1, ts2, ats) must_solve =
     | t2 ->
       Format.asprintf "%a" display_rel (t1, "<:", t2)
     in
-    error ~reason (Format.asprintf "there is no way to satisfy subtyping%s" rel)
+    error ~reason (Format.asprintf "there is no way to satisfy subtyping%s%s" rel extra_errors)
 
 let bi_match_subs scope_opt tbs ret_typ =
   (* Create a fresh constructor for each type parameter.

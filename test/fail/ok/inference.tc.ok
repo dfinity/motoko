@@ -46,6 +46,7 @@ to argument of type
   Bool
 because there is no way to satisfy subtyping
   Bool  <:  T  (for argument `x`) 
+  `T` inferred to `Int` but incompatible with `()`
 inference.mo:116.1-116.27: type error [M0098], cannot apply function of type
   <T>(f : <U>T -> U) -> ()
 to argument of type
@@ -76,6 +77,7 @@ to argument of type
   [var Nat]
 because there is no way to satisfy subtyping
   [var Nat]  <:  [var T]  (for argument `x`) 
+  `T` inferred to `()` but incompatible with `Nat`
 inference.mo:137.4-137.8: type error [M0098], cannot apply function of type
   <U <: {}>(y : U) -> ()
 to argument of type
