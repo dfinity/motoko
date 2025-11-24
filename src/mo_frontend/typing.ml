@@ -1349,6 +1349,7 @@ type hole_candidate =
     desc: string;
     typ : T.typ;
     module_name_opt: string option;
+    implicit_id : T.lab option;
     id : T.lab;
     region : Source.region;
   }
@@ -1418,9 +1419,9 @@ type hole_error =
   | HoleAmbiguous of (env -> unit)
 
 let resolve_hole env at hole_sort typ =
-  let is_matching_lab lab =
+  let is_matching_lab candidate =
     match hole_sort with
-    | Named lab1 -> String.starts_with ~prefix:lab1 lab
+    | Named lab1 -> String.equal lab1 (Option.value ~default:candidate.id candidate.implicit_id)
     | Anon _ -> true
   in
 
@@ -1431,27 +1432,28 @@ let resolve_hole env at hole_sort typ =
     | T.{ lab; typ = Mut t; _ } -> None
     | T.{ lab = lab1; implicit_lab; typ = typ1; src } ->
        if is_matching_typ typ1
-       then Some (Option.value ~default:lab1 implicit_lab , typ1, src.T.region)
+       then Some (lab1, implicit_lab, typ1, src.T.region)
        else None
   in
   let find_candidate_fields in_libs (module_name, (_, fs)) =
     List.filter_map has_matching_field_typ fs |>
-      List.map (fun (lab, typ, region)->
+      List.map (fun (id, implicit_id, typ, region)->
           let path =
             { it = DotE(
                 { it = module_exp in_libs env module_name;
                   at = Source.no_region;
                   note = empty_typ_note
                 },
-                { it = lab; at = no_region; note = () },
+                { it = id; at = no_region; note = () },
                 ref None);
               at = Source.no_region;
               note = empty_typ_note; }
           in
-          ({ path; desc = quote (module_name^"."^ lab); typ; module_name_opt = Some module_name; id=lab; region } : hole_candidate))
+          ({ desc = quote (module_name ^ "." ^ id);
+             module_name_opt = Some module_name;
+             path; typ; id; implicit_id; region }))
   in
   let find_candidate_id = function
-    (* TODO use implicit_id *)
     (id, (implicit_id, t, region, _, _)) ->
     if is_matching_typ t
     then
@@ -1460,14 +1462,14 @@ let resolve_hole env at hole_sort typ =
           at = Source.no_region;
           note = empty_typ_note }
       in
-      Some { path; desc = quote id; typ = t; module_name_opt = None; id; region }
+      Some { path; desc = quote id; typ = t; module_name_opt = None; id; implicit_id; region }
     else None
   in
   let (eligible_ids, explicit_ids) =
     T.Env.to_seq env.vals |>
       Seq.filter_map find_candidate_id |>
       List.of_seq |>
-      List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
+      List.partition is_matching_lab
   in
   let candidates in_libs xs f =
     T.Env.to_seq xs |>
@@ -1475,7 +1477,7 @@ let resolve_hole env at hole_sort typ =
       Seq.map (find_candidate_fields in_libs) |>
       List.of_seq |>
       List.flatten |>
-      List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
+      List.partition is_matching_lab
   in
   let eligible_terms, explicit_terms  =
     match eligible_ids with
