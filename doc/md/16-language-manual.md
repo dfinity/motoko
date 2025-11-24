@@ -2361,7 +2361,7 @@ the expanded function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <
 
 The call expression `<exp1> <T0,…​,Tn>? <exp2>` evaluates `<exp1>` to a result `r1`. If `r1` is `trap`, then the result is `trap`.
 
-Otherwise, `<exp3>` (the hole expansion `<exp2>`) is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
+Otherwise, `<exp3>` (the hole expansion of `<exp2>`) is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
 Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, …​, n <: Vn> <pat1> { <exp> }` (for some implicit environment), and `r2` is a value `v2`. If `<shared-pat>` is present and of the form `shared <query>? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p` is the [`Principal`](https://internetcomputer.org/docs/motoko/core/Principal.md) invoking the function, typically a user or canister. Matching continues by matching `v1` against `<pat1>`. If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value not shown extended with those bindings. Otherwise, some pattern match has failed and the call results in `trap`.
 
