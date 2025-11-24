@@ -38,10 +38,19 @@ func test () {
 
   debugPrint(Array.toText([1,2,3], Nat.nat)); // explicit arguments
   debugPrint(Array.toText([1,2,3])); // implicit arguments
-
+  let p = (0,1);
   debugPrint(Pair.toText(Nat.nat, Int.int, (1,2)));
   debugPrint(let _ = Pair.toText((1,2))); // implicit arguments
   debugPrint(let _ = Pair.toText((1,2))); // implicit arguments
+  // higher-order test
+  type F =
+    <T, U>(implicit _ : T -> Text,
+           implicit _ : U -> Text,
+           p : (T, U))
+    -> Text;
+  func _apply(f : F, p : (Nat, Int)) : Text {
+     f(p);
+  };
 
 };
 
