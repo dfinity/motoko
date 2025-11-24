@@ -1114,7 +1114,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 16.   `T` (respectively `U`) is a constructed type `C<V0, …​, Vn>` that is equal, by definition of type constructor `C`, to `W`, and `W <: U` (respectively `U <: W`).
 
-17.   `T` (respectively `U`) is an implicit type `implicit c : W` that is equal, by definition, to `W`, and `W <: U` (respectively `U <: W`).
+17.   `T` (respectively `U`) is an implicit type `implicit (<id>|_) : W` that is equal, by definition, to `W`, and `W <: U` (respectively `U <: W`).
 <!-- to be reviewed - does this make sense? -->
 
 18.   For some type `V`, `T <: V` and `V <: U` (*transitivity*).
