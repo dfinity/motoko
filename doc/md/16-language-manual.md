@@ -2356,7 +2356,7 @@ the expanded function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <
     * `hole(i, o, Ui)` is the description of the `ith` hole, a placeholder for an expression `<id>` or `<mid>.<id>`.
     *  `<id>` is the resolution of the hole from the local context, if any;
     *  Cs is the set of candidate values `<mid>.<id>` in modules named `<mid>`, with type `V` that matches hole type `Ui` (after type instantiation).
-    *  Ds is the disambiguated set of candidates, filtered by specifity.
+    *  Ds is the disambiguated set of candidates, filtered by generality.
     * `<mid>.<id>` is the name of the unique disambiguation, if one exists (that is, when Ds is a singleton set).
 
 The call expression `<exp1> <T0,…​,Tn>? <exp2>` evaluates `<exp1>` to a result `r1`. If `r1` is `trap`, then the result is `trap`.
