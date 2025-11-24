@@ -1,9 +1,9 @@
 SHELL:=bash -O globstar
 
-CLANG ?= clang-18
+CLANG ?= clang-19
 LLVM_LINK = llvm-link
-WASM_CLANG ?= clang-18
-WASM_LD ?= wasm-ld-18
+WASM_CLANG ?= clang-19
+WASM_LD ?= wasm-ld-19
 
 #
 # We manually list all the .c files of libtommath that we care about.
@@ -284,13 +284,13 @@ EXPORTED_SYMBOLS=\
 WASM_A_DEPENDENCIES_32=$(TOMMATH_WASM_32_A)
 LINKER_OPTIONS_32=\
   --import-memory --shared --no-entry --gc-sections \
-  $(EXPORTED_SYMBOLS:%=--export=%) \
+  $(EXPORTED_SYMBOLS:%=--export=%) --import-undefined \
   --whole-archive --experimental-pic
 
 WASM_A_DEPENDENCIES_64=$(TOMMATH_WASM_64_A)
 LINKER_OPTIONS_64=\
   -mwasm64 --import-memory --shared --no-entry --gc-sections \
-  $(EXPORTED_SYMBOLS:%=--export=%) \
+  $(EXPORTED_SYMBOLS:%=--export=%) --import-undefined \
   --whole-archive --experimental-pic
 
 mo-rts-non-incremental.wasm: $(RTS_RUST_NON_INCREMENTAL_WASM_32_A) $(WASM_A_DEPENDENCIES_32)
