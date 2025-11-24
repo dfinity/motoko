@@ -10,7 +10,7 @@
   "emit-debug-gdb-scripts": false,
   "exe-suffix": ".wasm",
   "generate-arange-section": false,
-  "has-thread-local": true,
+  "has-thread-local": false,
   "is-like-wasm": true,
   "limit-rdylib-exports": false,
   "linker": "rust-lld",
