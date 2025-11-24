@@ -6,15 +6,13 @@ module Nat {
   public func nat(n : Nat) : Text { debug_show n };
 };
 
-
 module Int {
   public func int(i : Int) : Text { debug_show i };
 };
 
-
 module Array {
 
-  public func toText<T>(as : [T], implicit toText : (_ : T -> Text)) : Text {
+  public func toText<T>(as : [T], implicit _ : T -> Text = toText) : Text {
      var t = "";
      for (a in as.vals()) {
        t := t # (toText(a));
@@ -24,19 +22,17 @@ module Array {
 
 };
 
-
 module Pair {
 
   public func toText<T,U>(
-    implicit toTextT : (_ : T -> Text),
-    implicit toTextU : (_ : U -> Text),
+    implicit _ : T -> Text = toTextT,
+    implicit _ : U -> Text = toTextU,
     p : (T, U))
     : Text {
       "(" # toTextT(p.0) # "," # toTextU(p.1) # ")"
     };
 
 };
-
 
 func test () {
 
