@@ -2,7 +2,7 @@ name: Update flake.lock (daily)
 on:
   # Manual override, one can start the workflow by running:
   # curl -H "Accept: application/vnd.github.everest-preview+json" \
-  #  -H "Authorization: token <your-token-here>" \
+  #  -H "Authorization: token $(gh auth token)" \
   #  --request POST \
   #  --data '{"event_type": "flake-updater-nudge", "client_payload": {}}' \
   #  https://api.github.com/repos/dfinity/motoko/dispatches
