@@ -1,0 +1,10 @@
+type-alias-path.mo:16.41-16.42: type error [M0096], expression of type
+  {m1 : M1.Map<Nat, Text>; m2 : M2.Map<Nat, Text>}
+cannot produce expected type
+  {m2 : M1.Map<Nat, Text>}
+type-alias-path.mo:19.5-19.50: type error [M0098], cannot apply function of type
+  <T>(t : T, T -> ()) -> ()
+to argument of type
+  (M1.Map<Nat, Text>, (m : M2.Map<Nat, Text>) -> ())
+because there is no way to satisfy subtyping
+  (m : M2.Map<Nat, Text>) -> ()  <:  M1.Map<Nat, Text> -> ()

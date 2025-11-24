@@ -1969,9 +1969,24 @@ let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s%s%d" x Cfg.par_sep i
 
 let string_of_con c =
-  let name = Cons.to_string Cfg.show_stamps Cfg.con_sep c in
-  if Cfg.show_hash_suffix then name
-  else remove_hash_suffix name
+  let base_name = Cons.to_string Cfg.show_stamps Cfg.con_sep c in
+  let name =
+    if Cfg.show_hash_suffix then base_name else remove_hash_suffix base_name
+  in
+  let scope_segments =
+    match Cons.scope c with
+    | None -> []
+    | Some segments -> segments
+  in
+  let module_path =
+    match scope_segments with
+    | [] -> []
+    | _file :: rest when rest <> [] -> rest
+    | _ -> []
+  in
+  match module_path with
+  | [] -> name
+  | segments -> String.concat "." (segments @ [name])
 
 let rec can_sugar = function
   | Func(s, Promises, tbs, ts1, ts2)

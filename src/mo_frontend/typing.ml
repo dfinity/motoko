@@ -56,6 +56,7 @@ type env =
     pre : bool;
     weak : bool;
     msgs : Diag.msg_store;
+    cons_scope : Cons.scope;
     scopes : Source.region T.ConEnv.t;
     check_unused : bool;
     used_identifiers : S.t ref;
@@ -70,7 +71,7 @@ and ret_env =
   | Ret of T.typ
   | BimatchRet of (env -> exp -> unit)
 
-let env_of_scope ?(viper_mode=false) msgs scope =
+let env_of_scope ?(viper_mode=false) ?(cons_scope=[]) msgs scope =
   { vals = available scope.Scope.val_env;
     libs = scope.Scope.lib_env;
     mixins = scope.Scope.mixin_env;
@@ -86,6 +87,7 @@ let env_of_scope ?(viper_mode=false) msgs scope =
     pre = false;
     weak = false;
     msgs;
+    cons_scope;
     scopes = T.ConEnv.empty;
     check_unused = true;
     used_identifiers = ref S.empty;
@@ -358,6 +360,10 @@ let adjoin env scope =
     objs = T.Env.adjoin env.objs scope.Scope.obj_env;
     mixins = T.Env.adjoin env.mixins scope.Scope.mixin_env;
   }
+
+let with_cons_scope env name f =
+  let scope = env.cons_scope @ [name] in
+  Cons.with_scope (Some scope) (fun () -> f {env with cons_scope = scope})
 
 let adjoin_vals env ve = {env with vals = T.Env.adjoin env.vals (available ve)}
 let adjoin_typs env te ce =
@@ -4236,7 +4242,7 @@ and gather_dec env scope dec : Scope.t =
       ( {it = ObjBlockE (_, obj_sort, _, dec_fields); at; _}
       | {it = AwaitE (_, { it = AsyncE (_, _, _, { it = ObjBlockE (_, ({ it = Type.Actor; _} as obj_sort), _, dec_fields); at; _ }) ; _  }); _ }),
        _
-    ) ->
+    ) -> with_cons_scope env id.it (fun env ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let open Scope in
     if T.Env.mem id.it scope.val_env then
@@ -4254,7 +4260,7 @@ and gather_dec env scope dec : Scope.t =
       obj_env = obj_env;
       mixin_env = scope.mixin_env;
       fld_src_env = scope.fld_src_env;
-    }
+    })
   | LetD (pat, exp, _) -> (match is_mixin_import env exp.it with
     | None -> gather_pat env scope pat
     | Some (imports, args, t, decs) ->
@@ -4381,7 +4387,7 @@ and infer_dec_typdecs env dec : Scope.t =
       ( {it = ObjBlockE (_exp_opt, obj_sort, _t, dec_fields); at; _}
       | {it = AwaitE (_, { it = AsyncE (_, _, _, { it = ObjBlockE (_exp_opt, ({ it = Type.Actor; _} as obj_sort), _t, dec_fields); at; _ }) ; _ }); _ }),
         _
-    ) ->
+    ) -> with_cons_scope env id.it (fun env ->
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) dec_fields in
     let scope = T.Env.find id.it env.objs in
     let env' = adjoin env scope in
@@ -4391,7 +4397,7 @@ and infer_dec_typdecs env dec : Scope.t =
       con_env = obj_scope.con_env;
       val_env = singleton id (object_of_scope env obj_sort.it dec_fields obj_scope at);
       obj_env = T.Env.singleton id.it obj_scope
-    }
+    })
   (* TODO: generalize beyond let <id> = <valpath> *)
   | LetD ({it = VarP id; _}, exp, _) ->
      begin match is_mixin_import env exp.it with
@@ -4482,7 +4488,7 @@ and infer_dec_valdecs env dec : Scope.t =
       ( {it = ObjBlockE (_exp_opt, obj_sort, _t, dec_fields); at; _}
       | {it = AwaitE (_, { it = AsyncE (_, _, _, { it = ObjBlockE (_exp_opt, ({ it = Type.Actor; _} as obj_sort), _t, dec_fields); at; _ }) ; _ }); _ }),
         _
-    ) ->
+    ) -> with_cons_scope env id.it (fun env ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let obj_scope = T.Env.find id.it env.objs in
     let obj_scope' =
@@ -4492,7 +4498,7 @@ and infer_dec_valdecs env dec : Scope.t =
     in
     let obj_typ = object_of_scope env obj_sort.it dec_fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
-    Scope.{empty with val_env = singleton id obj_typ}
+    Scope.{empty with val_env = singleton id obj_typ})
   | LetD (pat, exp, fail) ->
      let t = infer_exp {env with pre = true; check_unused = false} exp in
      let ve' = match fail with
@@ -4550,7 +4556,12 @@ let infer_prog ?(viper_mode=false) scope pkg_opt async_cap prog
     (fun msgs ->
       recover_opt
         (fun prog ->
-          let env0 = env_of_scope ~viper_mode msgs scope in
+          let filename = prog.Source.note.Syntax.filename in
+          (* TODO: don't use filenames *)
+          let base_scope = if filename = "" then [] else [filename] in
+          let scope_opt = match base_scope with [] -> None | _ -> Some base_scope in
+          Cons.with_scope scope_opt (fun () ->
+          let env0 = env_of_scope ~viper_mode ~cons_scope:base_scope msgs scope in
           let env = {
              env0 with async = async_cap;
           } in
@@ -4558,6 +4569,7 @@ let infer_prog ?(viper_mode=false) scope pkg_opt async_cap prog
           if pkg_opt = None && Diag.is_error_free msgs then emit_unused_warnings env;
           let fld_src_env = Field_sources.of_mutable_tbl env.srcs in
           t, {sscope with Scope.fld_src_env}
+          )
         ) prog
     )
 
@@ -4604,7 +4616,12 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
     (fun msgs ->
       recover_opt
         (fun lib ->
-          let env = { (env_of_scope msgs scope) with errors_only = pkg_opt <> None } in
+          (* TODO: don't use filenames *)
+          let filename = lib.Source.note.Syntax.filename in
+          let base_scope = if filename = "" then [] else [filename] in
+          let scope_opt = match base_scope with [] -> None | _ -> Some base_scope in
+          Cons.with_scope scope_opt (fun () ->
+          let env = { (env_of_scope ~cons_scope:base_scope msgs scope) with errors_only = pkg_opt <> None } in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
           let typ, _ = infer_block env (imp_ds @ ds) lib.at false in
@@ -4652,7 +4669,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
           in
           if pkg_opt = None && Diag.is_error_free msgs then emit_unused_warnings env;
           let fld_src_env = Field_sources.of_mutable_tbl env.srcs in
-          {imp_scope with Scope.fld_src_env}
+          {imp_scope with Scope.fld_src_env})
         ) lib
     )
 

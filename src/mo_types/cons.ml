@@ -10,7 +10,7 @@ This module interface guarantees that constructors with the same stamp have the
 same ref.
 *)
 
-type scope = string
+type scope = string list
 
 type 'a con = {name : string;
                stamp : int * scope option;
@@ -33,6 +33,13 @@ let session ?scope f =
   let original = !stamps in
   stamps := {!stamps with scope};
   Fun.protect ~finally:(fun _ -> stamps := original) f
+
+let with_scope scope f =
+  let original_scope = !stamps.scope in
+  stamps := {!stamps with scope};
+  Fun.protect
+    ~finally:(fun _ -> stamps := {!stamps with scope = original_scope})
+    f
 
 let fresh_stamp name =
   let scope = !stamps.scope in
@@ -59,9 +66,16 @@ let kind c = !(c.kind)
 let unsafe_set_kind c k = c.kind := k
 
 let name c = c.name
+let scope c = snd c.stamp
 
 let to_string show_stamps sep c =
-  if not show_stamps || c.stamp = (0, Some "prelude")
+  let stamp_id, scope_opt = c.stamp in
+  let is_prelude =
+    match scope_opt with
+    | Some ["prelude"] -> true
+    | _ -> false
+  in
+  if not show_stamps || (stamp_id = 0 && is_prelude)
   then c.name else Printf.sprintf "%s%s%i" c.name sep c.hash
 
 let compare c1 c2 =
@@ -69,7 +83,7 @@ let compare c1 c2 =
   | 0 ->
     (match Int.compare (fst c1.stamp) (fst c2.stamp) with
      | 0 ->
-       (match Option.compare String.compare (snd c1.stamp) (snd c2.stamp) with
+       (match Option.compare Stdlib.compare (snd c1.stamp) (snd c2.stamp) with
         | 0 -> String.compare c1.name c2.name
         | ord -> ord)
      | ord -> ord)
