@@ -29,7 +29,6 @@ func test () {
   debugPrint(Array.toText([1,2,3], Nat.toText)); // explicit arguments
   debugPrint(Array.toText([1,2,3])); // implicit arguments
   debugPrint(Pair.toText(Nat.toText, Nat.toText, (1,2)));
-  let p = (0,1);
   debugPrint(let _ = Pair.toText((1,2))); // implicit arguments
   debugPrint(let _ = Pair.toText((1,2))); // implicit arguments
 };
