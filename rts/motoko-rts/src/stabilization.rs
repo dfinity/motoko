@@ -28,7 +28,7 @@ use core::cmp::min;
 use crate::{
     constants::KB,
     rts_trap_with,
-    stable_mem::{self, PAGE_SIZE, ic0_stable64_write},
+    stable_mem::{self, ic0_stable64_write, PAGE_SIZE},
 };
 
 use self::layout::StableValue;
@@ -72,9 +72,7 @@ fn grant_stable_space(byte_size: u64) {
         debug_assert_ne!(additional_pages, u64::MAX);
         let result = stable_memory_physical_grow(additional_pages);
         if result == u64::MAX {
-            unsafe {
-                rts_trap_with("Insufficient stable memory");
-            }
+            rts_trap_with("Insufficient stable memory");
         }
     }
 }

@@ -27,7 +27,7 @@
 
 use crate::{
     barriers::allocation_barrier,
-    memory::{Memory, alloc_blob},
+    memory::{alloc_blob, Memory},
     persistence::compatibility::TypeDescriptor,
     region::{
         VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS, VERSION_STABLE_HEAP_NO_REGIONS,
@@ -35,10 +35,10 @@ use crate::{
     },
     stabilization::{clear_stable_memory, grant_stable_space},
     stable_mem::{
-        PAGE_SIZE, get_version, ic0_stable64_read, ic0_stable64_size, ic0_stable64_write, read_u32,
-        read_u64, set_version, write_u32, write_u64,
+        get_version, ic0_stable64_read, ic0_stable64_size, ic0_stable64_write, read_u32, read_u64,
+        set_version, write_u32, write_u64, PAGE_SIZE,
     },
-    types::{Bytes, TAG_BLOB_B, Tag, Value, size_of},
+    types::{size_of, Bytes, Tag, Value, TAG_BLOB_B},
 };
 
 use super::performance::InstructionMeter;

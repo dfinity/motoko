@@ -1,6 +1,6 @@
 use crate::{
     stabilization::serialization::stable_memory_stream::StableMemoryStream,
-    types::{TAG_WEAK_REF, Value},
+    types::{Value, TAG_WEAK_REF},
 };
 
 use super::{Serializer, StableObjectKind, StableValue, StaticScanner};

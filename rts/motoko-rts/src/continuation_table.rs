@@ -30,9 +30,9 @@
 use core::ptr::addr_of_mut;
 
 use crate::barriers::{allocation_barrier, write_with_barrier};
-use crate::memory::{Memory, alloc_array};
+use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
-use crate::types::{TAG_ARRAY_M, Value};
+use crate::types::{Value, TAG_ARRAY_M};
 
 use motoko_rts_macros::ic_mem_fn;
 

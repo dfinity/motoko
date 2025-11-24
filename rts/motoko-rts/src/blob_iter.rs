@@ -1,7 +1,7 @@
 use crate::{
     barriers::allocation_barrier,
     memory::Memory,
-    types::{Array, Bytes, TAG_ARRAY_T, Value, Words, size_of},
+    types::{size_of, Array, Bytes, Value, Words, TAG_ARRAY_T},
 };
 
 use motoko_rts_macros::ic_mem_fn;

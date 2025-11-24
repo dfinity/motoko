@@ -6,7 +6,7 @@ use crate::{
     gc::incremental::array_slicing::slice_array,
     memory::Memory,
     stabilization::deserialization::scan_stack::STACK_EMPTY,
-    types::{FwdPtr, TAG_ARRAY_SLICE_MIN, TAG_FWD_PTR, Tag, Value},
+    types::{FwdPtr, Tag, Value, TAG_ARRAY_SLICE_MIN, TAG_FWD_PTR},
     visitor::visit_pointer_fields,
 };
 
@@ -14,8 +14,8 @@ use self::{scan_stack::ScanStack, stable_memory_access::StableMemoryAccess};
 
 use super::{
     clear_stable_memory,
-    graph_copy::{GraphCopy, limit::ExecutionMonitor},
-    layout::{StableValue, deserialize},
+    graph_copy::{limit::ExecutionMonitor, GraphCopy},
+    layout::{deserialize, StableValue},
 };
 
 pub struct Deserialization {

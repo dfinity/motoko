@@ -6,11 +6,11 @@ use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
     memory::Memory,
-    types::{Value, is_skewed},
+    types::{is_skewed, Value},
 };
 
 use super::{
-    Phase, count_allocation, get_incremental_gc_state, post_allocation_barrier, pre_write_barrier,
+    count_allocation, get_incremental_gc_state, post_allocation_barrier, pre_write_barrier, Phase,
 };
 
 #[no_mangle]

@@ -5,7 +5,7 @@
 
 use core::fmt;
 
-extern "C" {
+unsafe extern "C" {
     // `print_ptr` is implemented by the code generator and has different implementations depending
     // on the target platform (WASI or IC).
     fn print_ptr(ptr: usize, len: usize);

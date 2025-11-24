@@ -1,18 +1,18 @@
 use crate::{
-    memory::{Memory, alloc_blob},
+    memory::{alloc_blob, Memory},
     stabilization::{
         deserialization::stable_memory_access::StableMemoryAccess,
         serialization::{
-            SerializationContext,
             stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
+            SerializationContext,
         },
     },
-    types::{Blob, Bytes, TAG_BLOB_A, TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T, Tag, Value, size_of},
+    types::{size_of, Blob, Bytes, Tag, Value, TAG_BLOB_A, TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T},
 };
 
 use super::{
-    Serializer, StableObjectKind, StableToSpace, StableValue, StaticScanner, round_to_u64,
-    write_padding_u64,
+    round_to_u64, write_padding_u64, Serializer, StableObjectKind, StableToSpace, StableValue,
+    StaticScanner,
 };
 
 #[repr(C)]

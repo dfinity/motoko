@@ -7,12 +7,12 @@ use crate::{
     gc::incremental::{is_gc_stopped, resume_gc, stop_gc},
     memory::Memory,
     persistence::{
-        compatibility::{TypeDescriptor, memory_compatible},
+        compatibility::{memory_compatible, TypeDescriptor},
         set_upgrade_instructions,
     },
     rts_trap_with,
     stabilization::ic::metadata::StabilizationMetadata,
-    stable_mem::{self, PAGE_SIZE, moc_stable_mem_set_size},
+    stable_mem::{self, moc_stable_mem_set_size, PAGE_SIZE},
     types::Value,
 };
 
@@ -226,7 +226,7 @@ unsafe fn memory_sanity_check<M: Memory>(_mem: &mut M) {
     {
         use crate::gc::incremental::{
             get_partitioned_heap,
-            sanity_checks::{CheckerMode, check_memory},
+            sanity_checks::{check_memory, CheckerMode},
         };
 
         let state = DESTABILIZATION_STATE.as_mut().unwrap();

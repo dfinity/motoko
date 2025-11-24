@@ -1,7 +1,7 @@
 //! Streamed read/write access to stable memory.
 //! Supporting Cheney's to-space in stable memory.
 
-use core::mem::{MaybeUninit, size_of};
+use core::mem::{size_of, MaybeUninit};
 
 use crate::{
     stabilization::{

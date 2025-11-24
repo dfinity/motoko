@@ -1,11 +1,11 @@
 #![allow(non_upper_case_globals)]
 
 use crate::bitrel::BitRel;
-use crate::buf::{Buf, read_byte, read_word, skip_leb128};
+use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::idl_trap_with;
 
-use crate::memory::{Memory, alloc_blob};
-use crate::types::{TAG_BLOB_B, Words};
+use crate::memory::{alloc_blob, Memory};
+use crate::types::{Words, TAG_BLOB_B};
 use crate::utf8::utf8_validate;
 
 use core::cmp::min;

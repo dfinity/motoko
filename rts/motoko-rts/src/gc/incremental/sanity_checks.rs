@@ -10,7 +10,7 @@ use crate::gc::remembered_set::RememberedSet;
 
 use super::mark_stack::{MarkStack, STACK_EMPTY};
 use super::partitioned_heap::PartitionedHeap;
-use super::roots::{Roots, visit_roots};
+use super::roots::{visit_roots, Roots};
 
 pub unsafe fn check_memory<M: Memory>(
     mem: &mut M,
