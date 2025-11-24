@@ -2346,7 +2346,7 @@ the expanded function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <
       Otherwise:
 
       * Cs = { `(<mid>.<id>, V)` | `<mid>` has type `module {}` and `<mid>.<id>` has type `V` and `V <: [T0/X0, …​, Tn/Xn]U1` }; and
-      * Ds = { `(<mid>.<id>, V)`  in Cs | for all `(_, W)` in Cs, `V <: W` }; and
+      * Ds = { `(<mid>.<id>, V)`  in Cs | for all `(_, W)` in Cs, `W <: V` }; and
       * { `(<mid>.<id>, _)` } = Ds; and
       * `hole(i, o, Ui) = <mid>.<id>`; and
       *	`o != null` implies `o = ?<id>`.
