@@ -90,7 +90,7 @@ jobs:
 
   create-issue:
     needs: [common-tests, gc-tests, systems-go-tests, motoko-core-tests]
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    if: ${{ always() && contains(needs.*.result, 'failure') && github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest # No need to run on macOS, the ubuntu runner should be cheaper to run.
     steps:
       - name: Create Issue
