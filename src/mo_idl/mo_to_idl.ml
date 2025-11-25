@@ -224,7 +224,7 @@ module MakeState() = struct
 
   let actor prog =
     let open E in
-    let { body = cub; _ } = (CompUnit.comp_unit_of_prog false None prog).it in
+    let { body = cub; _ } = (CompUnit.comp_unit_of_prog false prog).it in
     match cub.it with
     | ProgU _ | ModuleU _ | MixinU _ -> None
     | ActorU _ -> Some (typ cub.note.note_typ)

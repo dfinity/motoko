@@ -135,7 +135,7 @@ let mono_dec_fields (dfs : dec_field list) : dec_field list =
   MonoGoalEnv.fold (fun _ df dfs -> df :: dfs) mono_dfs base_dfs'
 
 let prep_unit (u : comp_unit) : comp_unit =
-  let { body; _ } = u.it in
+  let { imports; body } = u.it in
   match body.it with
   | ActorU(persistence, id_opt, exp_opt, decs) ->
     (* TODO exp_opt (also below) *)
@@ -143,5 +143,5 @@ let prep_unit (u : comp_unit) : comp_unit =
     (* let _ = List.map (fun g -> print_endline (string_of_mono_goal g)) goals in *)
     let body' = ActorU(persistence, id_opt, exp_opt, decs') in
     (* let _ = List.map (fun d -> print_endline (Wasm.Sexpr.to_string 80 (Arrange.dec_field d))) decs' in *)
-    { u with it = { u.it with body = { body with it = body' } } }
+    { u with it = {imports; body = { body with it = body' } } }
   | _ -> u

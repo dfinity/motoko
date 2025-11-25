@@ -58,9 +58,9 @@ and class_doc = {
 and object_doc = { name : string; fields : doc list; sort : Syntax.obj_sort }
 
 let un_prog prog =
-  let comp_unit = Mo_def.CompUnit.comp_unit_of_prog true None prog in
+  let comp_unit = Mo_def.CompUnit.comp_unit_of_prog true prog in
   let open Syntax in
-  let { imports; body; _ } = comp_unit.it in
+  let { imports; body } = comp_unit.it in
   let imports =
     List.concat_map
       (fun i ->

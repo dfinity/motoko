@@ -230,7 +230,7 @@ let rec unit reqs (u : M.comp_unit) : prog Diag.result =
   )
 
 and unit' reqs (u : M.comp_unit) : prog =
-  let { M.imports; M.body; _ } = u.it in
+  let { M.imports; M.body } = u.it in
   match body.it with
   | M.ActorU(_persistence, eo_, id_opt, decs) ->
     (* TODO eo *)

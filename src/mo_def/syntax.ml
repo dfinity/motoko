@@ -285,7 +285,6 @@ type comp_unit = (comp_unit', prog_note) Source.annotated_phrase
 and comp_unit' = {
   imports : import list;
   body : comp_unit_body;
-  id : id option;
   }
 
 type lib = comp_unit

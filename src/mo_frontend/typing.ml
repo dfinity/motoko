@@ -4616,12 +4616,12 @@ let check_actors ?(viper_mode=false) ?(check_actors=false) scope progs : unit Di
         ) progs
     )
 
-let check_lib scope pkg_opt lib : Scope.t Diag.result =
+let check_lib scope pkg_opt id lib : Scope.t Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt
-        (fun (lib : lib) ->
-          let* () = open_namespace_id lib.it.id in
+        (fun lib ->
+          let* () = open_namespace_id id in
           let env = { (env_of_scope msgs scope) with errors_only = pkg_opt <> None } in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
