@@ -94,3 +94,8 @@ and over_case (f : exp -> exp) (case : case) : case =
 
 and over_prog (f : exp -> exp) (prog : prog) : prog =
   { prog with it = List.map (over_dec f) prog.it }
+
+and on_import_over_prog (f : pat -> exp -> string * resolved_import ref -> unit) (prog : prog) : unit =
+   List.iter (fun d -> match d.it with
+   | LetD (pat, ({ it = ImportE imp; _} as exp), _) -> f pat exp imp
+   | _ -> ()) prog.it

@@ -1870,6 +1870,14 @@ let string_of_func_sort = function
   | Shared Query -> "shared query "
   | Shared Composite -> "shared composite query " (* TBR *)
 
+let normalize_for_pp t = match t with
+  | Con (c, _) ->
+    (match normalize t with
+    (* Legacy: Ignore printing the scope for prim types with the same name *)
+    | Prim p when string_of_prim p = Cons.name c -> Prim p
+    | _ -> t)
+  | _ -> t
+
 (* PrettyPrinter configurations *)
 
 module type PrettyConfig = sig
@@ -2041,7 +2049,7 @@ and pp_typ_item vs ppf t =
   | typ -> pp_typ' vs ppf t
 
 and pp_typ_nullary vs ppf t =
-  match t with
+  match normalize_for_pp t with
   | Named (n, t) ->
     fprintf ppf "@[<1>(%s : %a)@]" n (pp_typ' vs) t
   | Tup ts ->
@@ -2244,9 +2252,9 @@ and pp_stab_sig ppf sig_ =
   let ds =
     let cs' = ConSet.filter (fun c ->
       match Cons.kind c with
-      | Def ([], Prim p) when string_of_con c = string_of_prim p -> false
-      | Def ([], Any) when string_of_con c = "Any" -> false
-      | Def ([], Non) when string_of_con c = "None" -> false
+      | Def ([], Prim p) when Cons.name c = string_of_prim p -> false
+      | Def ([], Any) when Cons.name c = "Any" -> false
+      | Def ([], Non) when Cons.name c = "None" -> false
       | Def _ -> true
       | Abs _ -> false) cs in
     ConSet.elements cs' in

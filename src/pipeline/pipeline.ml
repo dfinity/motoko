@@ -174,7 +174,7 @@ let print_deps (file : string) : unit =
 let async_cap_of_prog prog =
   let open Syntax in
   let open Source in
-  match (CompUnit.comp_unit_of_prog false prog).it.body.it with
+  match (CompUnit.comp_unit_of_prog false None prog).it.body.it with
   | ActorClassU _ -> Async_cap.NullCap
   | ActorU _ -> Async_cap.initial_cap()
   | MixinU _ -> Async_cap.initial_cap()
@@ -231,8 +231,8 @@ let check_lib senv pkg_opt lib : Scope.scope Diag.result =
     let* () = Definedness.check_lib lib in
     Diag.return sscope)
 
-let lib_of_prog f prog : Syntax.lib  =
-  let lib = CompUnit.comp_unit_of_prog true prog in
+let lib_of_prog f id prog : Syntax.lib  =
+  let lib = CompUnit.comp_unit_of_prog true id prog in
   { lib with Source.note = { lib.Source.note with Syntax.filename = f } }
 
 (* Prelude and internals *)
@@ -340,7 +340,7 @@ let check_prim () : Syntax.lib * stat_env =
     in
     let body = {it = ModuleU (None, fs); at = no_region; note = empty_typ_note} in
     let lib = {
-      it = { imports = []; body };
+      it = { imports = []; body; id = None };
       at = no_region;
       note = { filename = "@prim"; trivia = Trivia.empty_triv_table }
     } in
@@ -378,10 +378,27 @@ type load_decl_result =
 let resolved_import_name ri =
   Syntax.(match ri.Source.it with
   | Unresolved -> "/* unresolved */"
-  | LibPath { package = _; path }
+  | LibPath { package = _; path; id = _ }
   | IDLPath (path, _)
   | ImportedValuePath path -> path
   | PrimPath -> "@prim")
+
+let strip_extension s =
+  try
+    let idx = String.rindex s '.' in
+    if idx > 0 then String.sub s 0 idx else s
+  with Not_found -> s
+
+let cons_scope_of_import name =
+  if name = "" then []
+  else
+    let base = Filename.basename name in
+    let candidate = strip_extension base in
+    let tail =
+      if candidate = "" || candidate = name then []
+      else [candidate]
+    in
+    name :: tail
 
 let chase_imports_cached parsefn senv0 imports scopes_map
     : (Syntax.lib list * Scope.scope * scope_cache) Diag.result
@@ -411,6 +428,7 @@ let chase_imports_cached parsefn senv0 imports scopes_map
   let rec go_cached pkg_opt ri =
     let ri_name = resolved_import_name ri in
     match Type.Env.find_opt ri_name !cache with
+    (* | None -> Cons.session ~scope:(cons_scope_of_import ri_name) (fun () -> go pkg_opt ri) *)
     | None -> Cons.session ~scope:[ri_name] (fun () -> go pkg_opt ri)
     | Some sscope ->
       senv := Scope.adjoin !senv sscope;
@@ -430,7 +448,7 @@ let chase_imports_cached parsefn senv0 imports scopes_map
         cache := Type.Env.add ri_name sscope !cache;
         Diag.return ()
     | Syntax.Unresolved -> assert false
-    | Syntax.(LibPath {path = f; package = lib_pkg_opt}) ->
+    | Syntax.(LibPath {path = f; package = lib_pkg_opt; id}) ->
       if Type.Env.mem f !senv.Scope.lib_env then
         Diag.return ()
       else if mem it !pending then
@@ -446,7 +464,7 @@ let chase_imports_cached parsefn senv0 imports scopes_map
         let cur_pkg_opt = if lib_pkg_opt <> None then lib_pkg_opt else pkg_opt in
         let* more_imports = ResolveImport.resolve (resolve_flags cur_pkg_opt) prog base in
         let* () = go_set cur_pkg_opt more_imports in
-        let lib = lib_of_prog f prog in
+        let lib = lib_of_prog f id prog in
         let* sscope = check_lib !senv cur_pkg_opt lib in
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
@@ -616,7 +634,7 @@ let viper_files' parsefn files : viper_result =
   let* libs, progs, senv = load_progs ~viper_mode:true parsefn files initial_stat_env in
   let* () = Typing.check_actors ~viper_mode:true ~check_actors:true senv progs in
   let prog = CompUnit.combine_progs progs in
-  let u = CompUnit.comp_unit_of_prog false prog in
+  let u = CompUnit.comp_unit_of_prog false None prog in
   let reqs = Viper.Common.init_reqs () in
   let* v = Viper.Trans.unit reqs (Viper.Prep.prep_unit u) in
   let s = Viper.Pretty.prog_mapped "" (Viper.Prelude.prelude reqs) v in
@@ -872,7 +890,7 @@ and compile_unit_to_wasm mode imports (u : Syntax.comp_unit) : string Diag.resul
 and compile_progs mode do_link libs progs : Wasm_exts.CustomModule.extended_module Diag.result =
   let imports = compile_libs mode libs in
   let prog = CompUnit.combine_progs progs in
-  let u = CompUnit.comp_unit_of_prog false prog in
+  let u = CompUnit.comp_unit_of_prog false None prog in
   compile_unit mode do_link imports u
 
 let compile_files mode do_link files : compile_result =
@@ -909,7 +927,7 @@ let interpret_ir_progs libs progs =
   let prog = CompUnit.combine_progs progs in
   let name = prog.Source.note.Syntax.filename in
   let imports = import_libs libs in
-  let u = CompUnit.comp_unit_of_prog false prog in
+  let u = CompUnit.comp_unit_of_prog false None prog in
   let* prog_ir = desugar_unit imports u name in
   let prog_ir = ir_passes (!Flags.compile_mode) prog_ir name in
   phase "Interpreting" name;

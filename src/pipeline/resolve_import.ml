@@ -182,7 +182,7 @@ let in_base base f =
   then f
   else Filename.concat base f
 
-let resolve_import_string msgs base actor_idl_path aliases packages imported (f, ri_ref, at)  =
+let resolve_import_string msgs base actor_idl_path aliases packages imported (f, ri_ref, at, id)  =
   let resolve_ic bytes = match actor_idl_path with
     | None -> err_actor_import_without_idl_path msgs at
     | Some actor_base ->
@@ -193,12 +193,12 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
   | Ok (Url.Relative path) ->
     (* TODO support importing local .did file *)
     add_lib_import msgs imported ri_ref at
-      { path = in_base base path; package = None }
+      { path = in_base base path; package = None; id }
   | Ok (Url.Package (pkg,path)) ->
     begin match M.find_opt pkg packages with
     | Some pkg_path ->
       add_lib_import msgs imported ri_ref at
-        { path = in_base pkg_path path; package = Some pkg }
+        { path = in_base pkg_path path; package = Some pkg; id }
     | None -> err_package_not_defined msgs at pkg
     end
   | Ok (Url.Ic bytes) ->
@@ -236,12 +236,14 @@ let resolve_alias_principal (msgs:Diag.msg_store) (alias:string) (f:string) : bl
   | Error msg -> err_unrecognized_alias msgs alias f msg; ""
 
 
-let prog_imports (p : prog): (url * resolved_import ref * region) list =
+let prog_imports (p : prog): (url * resolved_import ref * region * id option) list =
   let res = ref [] in
-  let f e = match e.it with
-    | ImportE (f, fp) -> res := (f, fp, e.at) ::!res; e
-    | _ -> e in
-  let _ = ignore (Traversals.over_prog f p) in
+  let f pat e (f, fp) =
+    let name = match pat.it with
+    | VarP id -> Some id
+    | _ -> None in
+    res := (f, fp, e.at, name) ::!res in
+  let _ = ignore (Traversals.on_import_over_prog f p) in
   List.rev !res
 
 type actor_idl_path = filepath option
@@ -305,7 +307,7 @@ let package_imports base packages =
     else
       let files = list_files url in
       List.map (fun path ->
-          LibPath {package = Some package; path = path}
+          LibPath {package = Some package; path = path; id = None}
         ) files::acc)
     packages []
   in
@@ -345,7 +347,7 @@ let collect_imports (p:prog) base : ((url * url option) list) Diag.result =
   let base = if Sys.is_directory base then base else Filename.dirname base in
   Diag.with_message_store (fun msgs ->
       let imports =
-        List.map (fun (f, _, at) ->
+        List.map (fun (f, _, at, _) ->
             match Url.parse f with
             | Ok (Url.Relative path) -> begin
                match resolve_lib_import at (in_base base path) append_mo_extension with

@@ -361,9 +361,24 @@ let adjoin env scope =
     mixins = T.Env.adjoin env.mixins scope.Scope.mixin_env;
   }
 
+let with_cons_scope' env (pat : pat) (exp : exp) f =
+  match pat.it, exp.it with
+  | VarP id, ImportE _ ->
+    let name = id.it in
+    let scope = env.cons_scope @ [name] in
+    Cons.with_scope (Some scope) (fun () -> f {env with cons_scope = scope})
+    | _ -> f env
+
 let with_cons_scope env name f =
   let scope = env.cons_scope @ [name] in
   Cons.with_scope (Some scope) (fun () -> f {env with cons_scope = scope})
+
+let (let*) f x = f x 
+
+let add_cons_scope env (pat : pat) (exp : exp) =
+  match pat.it, exp.it with
+  | VarP id, ImportE _ -> {env with cons_scope = env.cons_scope @ [id.it]}
+  | _ -> env
 
 let adjoin_vals env ve = {env with vals = T.Env.adjoin env.vals (available ve)}
 let adjoin_typs env te ce =
@@ -4075,6 +4090,8 @@ and infer_dec env dec : T.typ =
     T.unit
   | ExpD exp -> infer_exp env exp
   | LetD (pat, exp, fail_opt) ->
+    (* TODO: do we need it? *)
+    let* env = with_cons_scope' env pat exp in
     (match fail_opt with
     | None ->
       (* For developer convenience, ignore top-level actor and module identifiers in unused detection. *)
@@ -4261,7 +4278,10 @@ and gather_dec env scope dec : Scope.t =
       mixin_env = scope.mixin_env;
       fld_src_env = scope.fld_src_env;
     })
-  | LetD (pat, exp, _) -> (match is_mixin_import env exp.it with
+  | LetD (pat, exp, _) ->
+    (* TODO: do we need it? *)
+    let* env = with_cons_scope' env pat exp in
+    (match is_mixin_import env exp.it with
     | None -> gather_pat env scope pat
     | Some (imports, args, t, decs) ->
       match pat.it with
@@ -4399,7 +4419,9 @@ and infer_dec_typdecs env dec : Scope.t =
       obj_env = T.Env.singleton id.it obj_scope
     })
   (* TODO: generalize beyond let <id> = <valpath> *)
-  | LetD ({it = VarP id; _}, exp, _) ->
+  | LetD ({it = VarP id; _} as pat, exp, _) ->
+    (* TODO: do we need it? *)
+    let* env = with_cons_scope' env pat exp in
      begin match is_mixin_import env exp.it with
      | Some (imports, args, t, decs) ->
         (* Format.printf "Adding mixin %s at %a\n" id.it display_typ t; *)
@@ -4500,6 +4522,8 @@ and infer_dec_valdecs env dec : Scope.t =
     let _ve = check_pat env obj_typ pat in
     Scope.{empty with val_env = singleton id obj_typ})
   | LetD (pat, exp, fail) ->
+    (* TODO: do we need it? *)
+    let* env = with_cons_scope' env pat exp in
      let t = infer_exp {env with pre = true; check_unused = false} exp in
      let ve' = match fail with
        | None -> check_pat_exhaustive (if is_import dec then local_error else warn) env t pat
@@ -4560,7 +4584,7 @@ let infer_prog ?(viper_mode=false) scope pkg_opt async_cap prog
           (* TODO: don't use filenames *)
           let base_scope = if filename = "" then [] else [filename] in
           let scope_opt = match base_scope with [] -> None | _ -> Some base_scope in
-          Cons.with_scope scope_opt (fun () ->
+          let* () = Cons.with_scope scope_opt in
           let env0 = env_of_scope ~viper_mode ~cons_scope:base_scope msgs scope in
           let env = {
              env0 with async = async_cap;
@@ -4569,7 +4593,6 @@ let infer_prog ?(viper_mode=false) scope pkg_opt async_cap prog
           if pkg_opt = None && Diag.is_error_free msgs then emit_unused_warnings env;
           let fld_src_env = Field_sources.of_mutable_tbl env.srcs in
           t, {sscope with Scope.fld_src_env}
-          )
         ) prog
     )
 
@@ -4615,12 +4638,16 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt
-        (fun lib ->
-          (* TODO: don't use filenames *)
+        (fun (lib : lib) ->
           let filename = lib.Source.note.Syntax.filename in
+          (* TODO: don't use filenames *)
+          (* TODO: why it breaks without the filename? *)
           let base_scope = if filename = "" then [] else [filename] in
+          let base_scope = match lib.it.id with
+            | Some id -> base_scope @ [id.it]
+            | None -> base_scope in
           let scope_opt = match base_scope with [] -> None | _ -> Some base_scope in
-          Cons.with_scope scope_opt (fun () ->
+          let* () = Cons.with_scope scope_opt in
           let env = { (env_of_scope ~cons_scope:base_scope msgs scope) with errors_only = pkg_opt <> None } in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
@@ -4669,7 +4696,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
           in
           if pkg_opt = None && Diag.is_error_free msgs then emit_unused_warnings env;
           let fld_src_env = Field_sources.of_mutable_tbl env.srcs in
-          {imp_scope with Scope.fld_src_env})
+          {imp_scope with Scope.fld_src_env}
         ) lib
     )
 
