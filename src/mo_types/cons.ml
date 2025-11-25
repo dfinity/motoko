@@ -10,11 +10,13 @@ This module interface guarantees that constructors with the same stamp have the
 same ref.
 *)
 
-type scope = string list
+type scope = string
+type namespace = string list
 
 type 'a con = {name : string;
                stamp : int * scope option;
                hash: int; (* hash of name, stamp *)
+               namespace: namespace;
                kind : 'a ref}
 
 type 'a t = 'a con
@@ -25,20 +27,20 @@ module Stamps = Env.Make (struct
   let compare = Stdlib.compare
 end)
 
-type stamps = {stamps : int Stamps.t; scope : scope option}
+type stamps = {stamps : int Stamps.t; scope : scope option; namespace: namespace}
 
-let stamps : stamps ref = ref {stamps = Stamps.empty; scope = None}
+let stamps : stamps ref = ref {stamps = Stamps.empty; scope = None; namespace = []}
 
 let session ?scope f =
   let original = !stamps in
   stamps := {!stamps with scope};
   Fun.protect ~finally:(fun _ -> stamps := original) f
 
-let with_scope scope f =
-  let original_scope = !stamps.scope in
-  stamps := {!stamps with scope};
+let open_namespace name f =
+  let original_namespace = !stamps.namespace in
+  stamps := {!stamps with namespace = original_namespace @ [name]};
   Fun.protect
-    ~finally:(fun _ -> stamps := {!stamps with scope = original_scope})
+    ~finally:(fun _ -> stamps := {!stamps with namespace = original_namespace})
     f
 
 let fresh_stamp name =
@@ -51,7 +53,7 @@ let hash name stamp = Hashtbl.hash (name, stamp)
 
 let fresh name k =
   let stamp = fresh_stamp name in
-  {name; stamp;
+  {name; stamp; namespace = !stamps.namespace;
    hash = hash name stamp;
    kind = ref k}
 let clone c k =
@@ -59,6 +61,7 @@ let clone c k =
   let stamp = fresh_stamp c.name in
   {name;
    stamp;
+   namespace = c.namespace;
    hash = hash name stamp;
    kind = ref k}
 
@@ -66,16 +69,10 @@ let kind c = !(c.kind)
 let unsafe_set_kind c k = c.kind := k
 
 let name c = c.name
-let scope c = snd c.stamp
+let namespace (c : 'a con) = c.namespace
 
 let to_string show_stamps sep c =
-  let stamp_id, scope_opt = c.stamp in
-  let is_prelude =
-    match scope_opt with
-    | Some ["prelude"] -> true
-    | _ -> false
-  in
-  if not show_stamps || (stamp_id = 0 && is_prelude)
+  if not show_stamps || c.stamp = (0, Some "prelude")
   then c.name else Printf.sprintf "%s%s%i" c.name sep c.hash
 
 let compare c1 c2 =
@@ -83,7 +80,7 @@ let compare c1 c2 =
   | 0 ->
     (match Int.compare (fst c1.stamp) (fst c2.stamp) with
      | 0 ->
-       (match Option.compare Stdlib.compare (snd c1.stamp) (snd c2.stamp) with
+       (match Option.compare String.compare (snd c1.stamp) (snd c2.stamp) with
         | 0 -> String.compare c1.name c2.name
         | ord -> ord)
      | ord -> ord)

@@ -1,20 +1,21 @@
 (* Generative constructors *)
 
-type scope = string list
+type scope = string
+type namespace = string list
 
 type 'a t
 
 (* Reset to the original state after running the provided function. The [scope]
-   is used to create a new unique stamp for each constructor per scope. *)
+   is used to create a new unique stamp for each constructor per file. *)
 val session : ?scope:scope -> (unit -> 'a) -> 'a
 
-val with_scope : scope option -> (unit -> 'a) -> 'a
+val open_namespace : string -> (unit -> 'a) -> 'a
 
 val fresh : string -> 'a -> 'a t
 val clone: 'a t -> 'a -> 'a t
 
 val name : 'a t -> string
-val scope : 'a t -> scope option
+val namespace : 'a t -> namespace
 
 val to_string : bool -> string -> 'a t -> string
 
