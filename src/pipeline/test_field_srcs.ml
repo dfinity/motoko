@@ -102,7 +102,7 @@ let run_get_sources_test source =
   let infer_prog prog senv async_cap : Mo_types.Field_sources.srcs_map Diag.result =
     let filename = prog.Source.note.Mo_def.Syntax.filename in
     let* _typ, sscope =
-      Mo_types.Cons.session ~filename (fun () ->
+      Mo_types.Cons.session ~scope:filename (fun () ->
         Mo_frontend.Typing.infer_prog
           ~viper_mode:false
           senv
@@ -160,7 +160,7 @@ let run_compare_typed_asts_test filename =
   let open Diag.Syntax in
   let load_prog () =
     let* _libs, progs, _sscope, _cache =
-      Mo_types.Cons.session ~filename (fun () ->
+      Mo_types.Cons.session ~scope:filename (fun () ->
         Pipeline.load_progs_cached
           ~viper_mode:false
           ~check_actors:false

@@ -1873,7 +1873,7 @@ let string_of_func_sort = function
 let normalize_for_pp t = match t with
   | Con (c, _) ->
     (match normalize t with
-    (* Legacy: Ignore printing the scope for prim types with the same name *)
+    (* Legacy: Ignore printing the namespace for prim types with the same name *)
     | Prim p when string_of_prim p = Cons.name c -> Prim p
     | _ -> t)
   | _ -> t

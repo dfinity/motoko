@@ -383,23 +383,6 @@ let resolved_import_name ri =
   | ImportedValuePath path -> path
   | PrimPath -> "@prim")
 
-let strip_extension s =
-  try
-    let idx = String.rindex s '.' in
-    if idx > 0 then String.sub s 0 idx else s
-  with Not_found -> s
-
-let cons_scope_of_import name =
-  if name = "" then []
-  else
-    let base = Filename.basename name in
-    let candidate = strip_extension base in
-    let tail =
-      if candidate = "" || candidate = name then []
-      else [candidate]
-    in
-    name :: tail
-
 let chase_imports_cached parsefn senv0 imports scopes_map
     : (Syntax.lib list * Scope.scope * scope_cache) Diag.result
   =
