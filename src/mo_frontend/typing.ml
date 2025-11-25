@@ -4083,8 +4083,6 @@ and infer_dec env dec : T.typ =
     T.unit
   | ExpD exp -> infer_exp env exp
   | LetD (pat, exp, fail_opt) ->
-    (* TODO: do we need it? *)
-    let* () = open_namespace_import pat exp in
     (match fail_opt with
     | None ->
       (* For developer convenience, ignore top-level actor and module identifiers in unused detection. *)
@@ -4252,7 +4250,8 @@ and gather_dec env scope dec : Scope.t =
       ( {it = ObjBlockE (_, obj_sort, _, dec_fields); at; _}
       | {it = AwaitE (_, { it = AsyncE (_, _, _, { it = ObjBlockE (_, ({ it = Type.Actor; _} as obj_sort), _, dec_fields); at; _ }) ; _  }); _ }),
        _
-    ) -> Cons.open_namespace id.it (fun () ->
+    ) ->
+    let* () = Cons.open_namespace id.it in
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let open Scope in
     if T.Env.mem id.it scope.val_env then
@@ -4270,7 +4269,7 @@ and gather_dec env scope dec : Scope.t =
       obj_env = obj_env;
       mixin_env = scope.mixin_env;
       fld_src_env = scope.fld_src_env;
-    })
+    }
   | LetD (pat, exp, _) ->
     (* TODO: do we need it? *)
     let* () = open_namespace_import pat exp in
@@ -4400,7 +4399,8 @@ and infer_dec_typdecs env dec : Scope.t =
       ( {it = ObjBlockE (_exp_opt, obj_sort, _t, dec_fields); at; _}
       | {it = AwaitE (_, { it = AsyncE (_, _, _, { it = ObjBlockE (_exp_opt, ({ it = Type.Actor; _} as obj_sort), _t, dec_fields); at; _ }) ; _ }); _ }),
         _
-    ) -> Cons.open_namespace id.it (fun () ->
+    ) ->
+    let* () = Cons.open_namespace id.it in
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) dec_fields in
     let scope = T.Env.find id.it env.objs in
     let env' = adjoin env scope in
@@ -4410,7 +4410,7 @@ and infer_dec_typdecs env dec : Scope.t =
       con_env = obj_scope.con_env;
       val_env = singleton id (object_of_scope env obj_sort.it dec_fields obj_scope at);
       obj_env = T.Env.singleton id.it obj_scope
-    })
+    }
   (* TODO: generalize beyond let <id> = <valpath> *)
   | LetD ({it = VarP id; _} as pat, exp, _) ->
     (* TODO: do we need it? *)
@@ -4503,7 +4503,8 @@ and infer_dec_valdecs env dec : Scope.t =
       ( {it = ObjBlockE (_exp_opt, obj_sort, _t, dec_fields); at; _}
       | {it = AwaitE (_, { it = AsyncE (_, _, _, { it = ObjBlockE (_exp_opt, ({ it = Type.Actor; _} as obj_sort), _t, dec_fields); at; _ }) ; _ }); _ }),
         _
-    ) -> Cons.open_namespace id.it (fun () ->
+    ) ->
+    let* () = Cons.open_namespace id.it in
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let obj_scope = T.Env.find id.it env.objs in
     let obj_scope' =
@@ -4513,7 +4514,7 @@ and infer_dec_valdecs env dec : Scope.t =
     in
     let obj_typ = object_of_scope env obj_sort.it dec_fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
-    Scope.{empty with val_env = singleton id obj_typ})
+    Scope.{empty with val_env = singleton id obj_typ}
   | LetD (pat, exp, fail) ->
     (* TODO: do we need it? *)
     let* () = open_namespace_import pat exp in
