@@ -134,6 +134,23 @@
         "type": "github"
       }
     },
+    "motoko-hex-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1754150050,
+        "narHash": "sha256-BYNnC+7xjB18DwPGmNkK8HJMgLAkpowcKDOGhsgt0mU=",
+        "owner": "f0i",
+        "repo": "hex",
+        "rev": "c087fd2df9fbf4c9e9671c719715fa483c8d4c08",
+        "type": "github"
+      },
+      "original": {
+        "owner": "f0i",
+        "repo": "hex",
+        "rev": "c087fd2df9fbf4c9e9671c719715fa483c8d4c08",
+        "type": "github"
+      }
+    },
     "motoko-matchers-src": {
       "flake": false,
       "locked": {
@@ -187,6 +204,22 @@
         "owner": "NixOS",
         "ref": "nixos-24.11",
         "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs-unstable-for-wac": {
+      "locked": {
+        "lastModified": 1751077182,
+        "narHash": "sha256-VsrfpS3/UV019UeEh+5kJ364qxa/HBaaEEn1ki+Ji94=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "09a1a8eee6dccb593bfc1f312512a83ddf48fc12",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "09a1a8eee6dccb593bfc1f312512a83ddf48fc12",
         "type": "github"
       }
     },
@@ -248,9 +281,11 @@
         "libtommath-src": "libtommath-src",
         "motoko-base-src": "motoko-base-src",
         "motoko-core-src": "motoko-core-src",
+        "motoko-hex-src": "motoko-hex-src",
         "motoko-matchers-src": "motoko-matchers-src",
         "nix-update-flake": "nix-update-flake",
         "nixpkgs": "nixpkgs",
+        "nixpkgs-unstable-for-wac": "nixpkgs-unstable-for-wac",
         "ocaml-recovery-parser-src": "ocaml-recovery-parser-src",
         "ocaml-vlq-src": "ocaml-vlq-src",
         "pocket-ic-src": "pocket-ic-src",

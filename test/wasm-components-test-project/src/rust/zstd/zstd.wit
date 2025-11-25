@@ -1,0 +1,8 @@
+package root:zstd;
+
+world zstd {
+  export api: interface {
+    encode-all: func(data: list<u8>, level: s32) -> result<list<u8>, string>;
+    decode-all: func(data: list<u8>) -> result<list<u8>, string>;
+  }
+}

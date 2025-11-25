@@ -167,6 +167,8 @@ and prim =
   | SystemTimeoutSetPrim
   | SetCertifiedData
   | GetCertificate
+  (* Wasm Component function *)
+  | ComponentPrim of string * string * string * Type.typ list * Type.typ
 
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)
@@ -320,6 +322,7 @@ let map_prim t_typ t_lab p =
   | SystemTimeoutSetPrim
   | SetCertifiedData
   | GetCertificate
+  | ComponentPrim _
   | OtherPrim _ -> p
   | CPSAwait (s, t) -> CPSAwait (s, t_typ t)
   | CPSAsync (s, t) -> CPSAsync (s, t_typ t)

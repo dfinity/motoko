@@ -1,0 +1,14 @@
+[package]
+name = "meet-and-greet"
+version = "0.1.0"
+edition = "2024"
+
+[package.metadata.component]
+package = "rust:meet-and-greet-component"
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+wit-bindgen = "0.46"

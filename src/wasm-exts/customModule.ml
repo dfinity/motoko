@@ -67,6 +67,12 @@ let empty_candid_sections = {
 
 type persistence_section = (bool * string) option
 
+(** Data related to imported WASM components *)
+type wit_wac = {
+  wit_file_content : string;
+  wac_file_content : string;
+}
+
 type extended_module = {
   (* The non-custom sections *)
   module_ : module_';
@@ -83,4 +89,5 @@ type extended_module = {
   (* source map section *)
   source_mapping_url : string option;
   wasm_features : string list;
+  wit_wac : wit_wac option;
 }

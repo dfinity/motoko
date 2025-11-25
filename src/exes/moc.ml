@@ -125,6 +125,9 @@ let argspec =
   "-wasi-system-api",
     Arg.Unit (fun () -> Flags.(compile_mode := WASIMode)),
       " use the WASI system API (wasmtime)";
+  "-wasm-components",
+    Arg.Unit (fun () -> Flags.(wasm_components := true)),
+      " enable calling external Wasm components (experimental)";
   "-ref-system-api",
   Arg.Unit (fun () -> Flags.(compile_mode := RefMode)),
       " use the reference implementation of the Internet Computer system API (ic-ref-run)";
@@ -305,6 +308,18 @@ let process_files files : unit =
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModuleEncode.encode module_ in
     output_string oc wasm; close_out oc;
+
+    let open Wasm_exts.CustomModule in
+    module_.wit_wac |> Option.iter (fun {wit_file_content; wac_file_content} ->
+      let filename = Filename.remove_extension !out_file in
+      let dump content ext =
+        let oc = open_out (filename ^ ext) in
+        output_string oc content;
+        close_out oc
+      in
+      dump wit_file_content ".wit";
+      dump wac_file_content ".wac";
+    );
 
     if !gen_source_map then begin
       let oc_ = open_out source_map_file in

@@ -1,0 +1,102 @@
+--- Compiling Motoko that imports components with -wasm-components flag...
+--- Generated WIT-file target/motoko.wit
+package motoko:component;
+
+world motoko {
+  import ic-sig-verifier: interface {
+    verify-bls-sig: func(signature: list<u8>, message: list<u8>, public-key: list<u8>) -> result<_, string>;
+    verify-canister-sig: func(signature-cbor: list<u8>, message: list<u8>, public-key-der: list<u8>, ic-root-public-key-raw: list<u8>) -> result<_, string>;
+    verify-canister-sig-mainnet: func(args-serialized: list<u8>) -> result<_, string>;
+  }
+  import meet-and-greet: interface {
+    variant c { c(string) }
+    variant v1 { def, abc, gh }
+    concat0: func() -> list<u8>;
+    concat2: func(a: list<u8>, b: list<u8>) -> list<u8>;
+    nested-variant1: func(v: result<result<c, string>, v1>) -> result<result<c, string>, v1>;
+    nested-variant2: func(v: result<result<v1, string>, c>) -> result<result<v1, string>, c>;
+    prim-bool: func(a: bool) -> bool;
+    prim-char: func(a: char) -> char;
+    prim-f64: func(a: f64) -> f64;
+    prim-i16: func(a: s16) -> s16;
+    prim-i32: func(a: s32) -> s32;
+    prim-i64: func(a: s64) -> s64;
+    prim-i8: func(a: s8) -> s8;
+    prim-string: func(a: string) -> string;
+    prim-string-in: func(a: string) -> s32;
+    prim-string-out: func() -> string;
+    prim-u16: func(a: u16) -> u16;
+    prim-u32: func(a: u32) -> u32;
+    prim-u64: func(a: u64) -> u64;
+    prim-u8: func(a: u8) -> u8;
+    say-bye: func(guest-name: string, formal: bool) -> string;
+    say-hello: func(guest-name: string) -> string;
+    to-vec-bool: func(i: s32, b: bool) -> list<bool>;
+    to-vec-char: func(u: u8, c: char) -> list<char>;
+    to-vec-f64: func(u: u16, f: f64) -> list<f64>;
+    to-vec-i16: func(u: u16, i: s16) -> list<s16>;
+    to-vec-i64: func(u: u16, i: s64) -> list<s64>;
+    to-vec-i8: func(u: u16, c: char) -> list<s8>;
+    to-vec-string: func(s1: string, s2: string) -> list<string>;
+    to-vec-u32: func(u: u16, i: u32) -> list<u32>;
+    to-vec-u8-as-blob: func(u: u16, c: char) -> list<u8>;
+    to-vec-vec: func(vec: list<u64>) -> list<list<u64>>;
+    to-vec-vec-simple: func() -> list<list<u64>>;
+    to-vec-vec-u64: func(u: u64) -> list<list<u64>>;
+    tuple-string-u64: func(v: tuple<string, u64>) -> tuple<string, u64>;
+    tuple-variant-array-result: func(v: tuple<v1, list<string>, result<u16, string>>) -> tuple<v1, list<string>, result<u16, string>>;
+    tuples-nested: func(v1: tuple<bool, tuple<u8, u16>>, v2: tuple<tuple<u8, u16>, u64>) -> tuple<tuple<bool, u32>, tuple<u8, u64>>;
+    tuples-nested1: func(v1: tuple<bool, tuple<u8, u16>>, v2: tuple<tuple<u8, u16>, u32>) -> tuple<tuple<bool, u32>, tuple<u8, u32>>;
+    unit: func();
+    unit-result: func(v: result) -> result;
+    unit-result-er: func(v: result<_, string>) -> result<_, string>;
+    unit-result-ok: func(v: result<string>) -> result<string>;
+    variant-array: func(v: list<v1>) -> list<v1>;
+    variant-array-in: func(v: list<v1>) -> string;
+    variant-array-result: func(v: list<result<u16, string>>) -> list<result<u16, string>>;
+    variant-array-result-in: func(v: list<result<u16, string>>) -> string;
+    variant-array-result-same: func(v: list<result<u16, u16>>) -> list<result<u16, u16>>;
+    variant-array-result-same-in: func(v: list<result<u16, u16>>) -> string;
+    variant-in11: func(v: v1) -> string;
+    variant-in12: func(v1: v1, v2: v1) -> string;
+    variant-result: func(v: result<u16, string>) -> result<u16, string>;
+    variant-result-in: func(v: result<u16, string>) -> string;
+    variant-result-same: func(v: result<u16, u16>) -> result<u16, u16>;
+    variant-result-same-in: func(v: result<u16, u16>) -> string;
+    variant-string: func(v: c) -> c;
+    variant-string-in: func(v: c) -> string;
+    variant11: func(v: v1) -> v1;
+    variant12: func(v1: v1, v2: v1) -> v1;
+    vec-bool: func(a: list<bool>) -> string;
+    vec-char: func(a: list<char>) -> string;
+    vec-f64: func(a: list<f64>) -> string;
+    vec-i32: func(a: list<s32>) -> string;
+    vec-i64: func(a: list<s64>) -> string;
+    vec-i8: func(a: list<s8>) -> string;
+    vec-string: func(a: list<string>) -> string;
+    vec-string-nested: func(a: list<list<string>>) -> string;
+    vec-u16: func(a: list<u16>) -> string;
+    vec-u32: func(a: list<u32>) -> string;
+    vec-u8-as-blob: func(a: list<u8>) -> string;
+  }
+  import zstd: interface {
+    decode-all: func(data: list<u8>) -> result<list<u8>, string>;
+    encode-all: func(data: list<u8>, level: s32) -> result<list<u8>, string>;
+  }
+}
+--- Generated WAC-file target/motoko.wac
+package motoko:composition;
+
+let ic-sig-verifier = new component:ic-sig-verifier {};
+let meet-and-greet = new component:meet-and-greet {};
+let zstd = new component:zstd {};
+
+let motoko = new motoko:component {
+    ic-sig-verifier : ic-sig-verifier.api,
+    meet-and-greet : meet-and-greet.api,
+    zstd : zstd.api,
+    ...
+};
+
+export motoko.run;
+--- Compiling done, output written to target/motoko.wasm

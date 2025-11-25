@@ -1,6 +1,6 @@
 # TODO: Include ld when it supports Wasm64 
 QUICK_DIRS = cmp fail idl mo-idl repl run
-OTHER_DIRS = bench perf run-deser run-drun trap
+OTHER_DIRS = bench perf run-deser run-drun trap wasm-components-test-project
 TEST_DIRS = $(QUICK_DIRS) $(OTHER_DIRS)
 SOURCE_PATHS ?= ../src # will be overridden when building coverage report with nix
 
