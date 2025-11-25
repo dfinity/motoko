@@ -6,31 +6,31 @@ sidebar_position: 16
 
 
 
-The design of Motoko strives to minimize built-in types and operations. Instead of built-in types, Motoko provides a base library of modules to handle many kinds of common operations and make the language feel complete. This base library is still evolving with modules that support core features, and the base library APIs are subject to change over time to varying degrees. You should note, in particular, that the size and number of modules and functions included in the base library is likely to increase dramatically. Updates to the base library modules might introduce breaking changes that require you to update your programs to remain compatible. Breaking changes are communicated through the [Motoko migration guides](../migration-guides/overview.md).
+The design of Motoko strives to minimize built-in types and operations. Instead of built-in types, Motoko provides a core package of modules to handle many kinds of common operations and make the language feel complete. This core package is still evolving with modules that support core features, and the core package APIs are subject to change over time. You should note, in particular, that the size and number of modules and functions included in the core package is likely to increase dramatically. Updates to the core package modules might introduce breaking changes that require you to update your programs to remain compatible. Breaking changes are communicated through the [Motoko migration guides](../migration-guides/overview.md).
 
 This section provides examples of different scenarios for using the `module` and `import` keywords.
 
-## Importing from the base library
+## Importing from the core package
 
-View the [online documentation for the Motoko base library](../base/index.md).
+View the [online documentation for the Motoko core package](../core).
 
-You can find source code for the Motoko base modules in the open source [repository](https://github.com/dfinity/motoko-base).
+You can find source code for the Motoko core modules in [`dfinity/motoko-core` GitHub repository](https://github.com/dfinity/motoko-core).
 
-There are instructions in the repository for generating a local copy of the current documentation for the Motoko base package.
+There are instructions in the repository for generating a local copy of the current documentation for the Motoko core package.
 
-To import from the base library, use the `import` keyword followed by a local module name and a URL where the `import` declaration can find the module. For example:
+To import from the core package, use the `import` keyword followed by a local module name and a URL where the `import` declaration can find the module. For example:
 
 ``` motoko
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 Debug.print("hello world");
 ```
 
-This example illustrates how to import Motoko code—indicated by using the `mo:` prefix to identify the module as a Motoko module. The declaration does not include the `.mo` file type extension. Then, it uses the `base/` base library path and the module name [`Debug`](../base/Debug.md).
+This example illustrates how to import Motoko code—indicated by using the `mo:` prefix to identify the module as a Motoko module. The declaration does not include the `.mo` file type extension. Then, it uses the `core` package and the module name [`Debug`](../core/Debug.md).
 
 You can also selectively import a subset of named values from a module by using the object pattern syntax:
 
 ``` motoko
-import { map; find; foldLeft = fold } = "mo:base/Array";
+import { map; find; foldLeft = fold } = "mo:core/Array";
 ```
 
 In this example, the functions `map` and `find` are imported unaltered, while the `foldLeft` function is renamed to `fold`.
@@ -163,7 +163,7 @@ When importing canisters, it is important to note that the type for the imported
 
 For the imported canister actor, types are derived from the Candid `project-name.did` file for the canister, rather than from Motoko itself.
 
-The translation from Motoko actor type to Candid service type is typically one-to-one, and there are some distinct Motoko types that map to the same Candid type. For example, the Motoko [`Nat32`](../base/Nat32.md) and `Char` types are both exported as Candid type [`Nat32`](../base/Nat32.md), but [`Nat32`](../base/Nat32.md) is canonically imported as Motoko [`Nat32`](../base/Nat32.md), not `Char`.
+The translation from Motoko actor type to Candid service type is typically one-to-one, and there are some distinct Motoko types that map to the same Candid type. For example, the Motoko [`Nat32`](../core/Nat32.md) and `Char` types are both exported as Candid type [`Nat32`](../core/Nat32.md), but [`Nat32`](../core/Nat32.md) is canonically imported as Motoko [`Nat32`](../core/Nat32.md), not `Char`.
 
 The type of an imported canister function might differ from the type of the original Motoko code that implements it. For example, if the Motoko function had type `shared Nat32 -> async Char` in the implementation, its exported Candid type would be `(nat32) -> (nat32)`, but the Motoko type imported from this Candid type will actually be the correct type `shared Nat32 -> async Nat32`.
 
@@ -171,12 +171,12 @@ The type of an imported canister function might differ from the type of the orig
 
 Although the most common convention is to identify imported modules by the module name as illustrated in the examples above, there’s no requirement for you to do so. For example, you might want to use different names to avoid naming conflicts or to simplify the naming scheme.
 
-The following example illustrates different names you might use when importing the `List` base library module, avoiding a clash with another `List` library from a fictional `collections` package:
+The following example illustrates different names you might use when importing the `List` module in the core package, avoiding a clash with another `List` library from a fictional `collections` package:
 
 ``` motoko no-repl
-import List "mo:base/List:";
+import List "mo:core/List";
 import Sequence "mo:collections/List";
-import L "mo:base/List";
+import L "mo:core/List";
 ```
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

@@ -135,7 +135,7 @@ Currently, converting between different number types requires going through `Nat
 ```
 func nat8ToNat16(n : Nat8) : Nat16 { Nat18.fromNat(Nat8.toNat(n)) }
 ```
-Obviously, that's both inconvenient and expensive. The base library should directly support the complete conversion matrix for all number types (nats, ints, and floats).
+Obviously, that's both inconvenient and expensive. The base package should directly support the complete conversion matrix for all number types (nats, ints, and floats).
 
 
 #### Blobs

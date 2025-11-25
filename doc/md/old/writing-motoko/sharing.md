@@ -41,19 +41,22 @@ For simplicity, assume that the `notify` function accepts relevant notification 
 The publisher side of the code stores an array of subscribers. For simplicity, assume that each subscriber only subscribes itself once using a `subscribe` function:
 
 ``` motoko no-repl
-import Array "mo:base/Array";
+import List "mo:core/List";
 
 persistent actor Publisher {
-
-  var subs : [Subscriber] = [];
-
-  public func subscribe(sub : Subscriber) {
-    subs := Array.append<Subscriber>(subs, [sub]);
+  type Subscriber = {
+    notify : shared () -> async ();
   };
 
-  public func publish() {
-    for (sub in subs.values()) {
-      sub.notify();
+  var subs = List.empty<Subscriber>();
+
+  public func subscribe(sub : Subscriber) {
+    List.add(subs, sub);
+  };
+
+  public func publish() : async () {
+    for (sub in List.values(subs)) {
+      await sub.notify();
     };
   };
 }
@@ -138,10 +141,10 @@ persistent actor Subscriber {
   var count : Nat = 0;
 
   public func init() {
-    Publisher.subscribe({callback = incr;});
+    Publisher.subscribe({ callback = increment });
   };
 
-  public func incr() {
+  public func increment() {
     count += 1;
   };
 
@@ -151,12 +154,12 @@ persistent actor Subscriber {
 }
 ```
 
-Compared to the original version, the only lines that change are those that rename `notify` to `incr`, and form the new `subscribe` message payload using the expression `{callback = incr}`.
+Compared to the original version, the only lines that change are those that rename `notify` to `increment`, and form the new `subscribe` message payload using the expression `{ callback = increment }`.
 
 Likewise, we can update the publisher to have a matching interface:
 
 ``` motoko no-repl
-import Array "mo:base/Array";
+import Array "mo:core/Array";
 
 persistent actor Publisher {
 

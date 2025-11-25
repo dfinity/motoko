@@ -1,5 +1,5 @@
-import Text "mo:base/Text";
-import Debug "mo:base/Debug";
+import Text "mo:core/Text";
+import Debug "mo:core/Debug";
 
 persistent actor {
 

@@ -1,4 +1,4 @@
-# TrieMap
+# base/TrieMap
 Class `TrieMap<K, V>` provides a map from keys of type `K` to values of type `V`.
 The class wraps and manipulates an underlying hash trie, found in the `Trie` module.
 The trie is a binary tree where element positions are determined using the hash of the keys.

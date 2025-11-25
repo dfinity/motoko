@@ -262,8 +262,8 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         increment.mark_roots(roots);
     }
 
-    unsafe fn mark_completed(&self) -> bool {
-        self.state.phase == Phase::Mark && MarkIncrement::<M>::mark_completed(self.state)
+    unsafe fn mark_completed(&mut self) -> bool {
+        self.state.phase == Phase::Mark && MarkIncrement::<M>::mark_completed(self.mem, self.state)
     }
 
     unsafe fn check_mark_completion(&mut self, _roots: Roots) {
@@ -281,7 +281,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn start_evacuating(&mut self, roots: Roots) {
         self.check_mark_completion(roots);
         debug_assert!(self.mark_completed());
-        MarkIncrement::<M>::complete_phase(self.state);
+        MarkIncrement::<M>::complete_phase(self.mem, self.state);
         self.state.phase = Phase::Evacuate;
         EvacuationIncrement::<M>::start_phase(self.mem, self.state);
     }

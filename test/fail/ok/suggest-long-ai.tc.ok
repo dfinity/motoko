@@ -1,5 +1,12 @@
 suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in type:
   module {
+    type BlobIterator =
+      {
+        isBlobLive : (b : Blob) -> Bool;
+        nextDeadBlob : () -> Blob;
+        pruneDeadBlobs : (confirmedDeadBlobs : [Blob]) -> ();
+        size : () -> Nat
+      };
     type ErrorCode =
       {
         #call_error : {err_code : Nat32};
@@ -11,9 +18,18 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
         #system_transient;
         #system_unknown
       };
+    type __List =
+      {
+        index : Nat;
+        var next : ?__List;
+        originalBlob : Blob;
+        value : ?__WeakRef
+      };
+    type __WeakRef = {ref : weak Blob};
     Array_init : <T>(len : Nat, x : T) -> [var T];
     Array_tabulate : <T>(len : Nat, gen : Nat -> T) -> [T];
     Array_tabulateVar : <T>(len : Nat, gen : Nat -> T) -> [var T];
+    BlobIterator : (hash : [var __List]) -> BlobIterator;
     Ret : <T>() -> T;
     Types :
       module {
@@ -39,7 +55,9 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
         type Region = Region;
         type Text = Text
       };
+    __getDedupTable : () -> ?[var __List];
     abs : (x : Int) -> Nat;
+    allocWeakRef : <T>(obj : T) -> weak T;
     arccos : (f : Float) -> Float;
     arcsin : (f : Float) -> Float;
     arctan : (f : Float) -> Float;
@@ -109,6 +127,8 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     debugPrintNat : (x : Nat) -> ();
     decodeUtf8 : (b : Blob) -> ?Text;
     encodeUtf8 : (t : Text) -> Blob;
+    envVar : <system>(name : Text) -> ?Text;
+    envVarNames : <system>() -> [Text];
     error : (message : Text) -> Error;
     errorCode : (e : Error) -> ErrorCode;
     errorMessage : (e : Error) -> Text;
@@ -141,6 +161,8 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     getCandidLimits :
       <system>() -> {bias : Nat32; denominator : Nat32; numerator : Nat32};
     getCertificate : () -> ?Blob;
+    getDeadBlobs : () -> ?[Blob];
+    getSelfPrincipal : <system>() -> Principal;
     hashBlob : (b : Blob) -> Nat32;
     idlHash : (x : Text) -> Nat32;
     int16ToInt : (n : Int16) -> Int;
@@ -172,7 +194,9 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     intToNat64Wrap : (n : Int) -> Nat64;
     intToNat8Wrap : (n : Int) -> Nat8;
     isController : (p : Principal) -> Bool;
+    isLive : (weak_ref : weak Any) -> Bool;
     isReplicatedExecution : () -> Bool;
+    isStorageBlobLive : (b : Blob) -> Bool;
     log : (f : Float) -> Float;
     nat16ToInt16 : (n : Nat16) -> Int16;
     nat16ToNat : (n : Nat16) -> Nat;
@@ -204,6 +228,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     popcntNat8 : (w : Nat8) -> Nat8;
     principalOfActor : (act : actor {}) -> Principal;
     principalOfBlob : (act : Blob) -> Principal;
+    pruneConfirmedDeadBlobs : (confirmedDeadBlobs : [Blob]) -> ();
     regionGrow : (r : Region, pages : Nat64) -> Nat64;
     regionId : (r : Region) -> Nat;
     regionLoadBlob : (r : Region, offset : Nat64, size : Nat) -> Blob;
@@ -234,6 +259,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     rts_callback_table_size : () -> Nat;
     rts_collector_instructions : () -> Nat;
     rts_heap_size : () -> Nat;
+    rts_lifetime_instructions : () -> Nat;
     rts_logical_stable_memory_size : () -> Nat;
     rts_max_live_size : () -> Nat;
     rts_max_stack_size : () -> Nat;
@@ -281,6 +307,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     textLowercase : (t : Text) -> Text;
     textUppercase : (t : Text) -> Text;
     time : () -> Nat64;
-    trap : (x : Text) -> None
+    trap : (x : Text) -> None;
+    weakGet : <T>(w : weak T) -> ?T
   }
 The field stableM is not available. Try something else?

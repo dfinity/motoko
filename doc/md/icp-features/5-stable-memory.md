@@ -4,10 +4,6 @@ sidebar_position: 5
 
 # Stable memory and regions
 
-<!---The small code blocks in this these snippets build upon each other, it might be useful to have a single program run in the backend to eliminate unbound errors-->
-
-<!---This section could also benefit from illustrations but i'm not sure what md will allow-->
-
 Canisters have two types of storage: Wasm memory and stable memory. The Wasm memory is often referred to as the [heap memory](https://internetcomputer.org/docs/building-apps/canister-management/storage#heap-memory). It is automatically used for heap-allocated objects and has a maximum size limitation of 4 GiB or 6 GiB respective to whether you are using 32-bit or 64-bit heap storage without enhanced orthogonal persistence. When a canister is upgraded, the heap memory is cleared, only retaining data stored in stable variables.
 
 Stable memory has a maximum size of 500 GiB and is preserved across canister upgrades. Motoko utilizes [stable memory](https://internetcomputer.org/docs/building-apps/canister-management/storage#stable-memory) through the [stable storage feature](https://internetcomputer.org/docs/building-apps/canister-management/storage#motoko-storage-handling) to preserve data across canister upgrades. Stable regions extend this functionality to allow more structured and flexible memory management.
@@ -20,9 +16,9 @@ The `Regions` library should only be used if [enhanced orthogonal persistence](h
 
 ## What is a `Region`?
 
-A [`Region`](https://internetcomputer.org/docs/motoko/base/Region) is an isolated chunk of stable memory that can be allocated, grown, and managed independently. It functions like a dedicated section of storage, ensuring that its contents remain separate and inaccessible to other parts of the program.
+A [`Region`](https://internetcomputer.org/docs/motoko/core/Region) is an isolated chunk of stable memory that can be allocated, grown, and managed independently. It functions like a dedicated section of storage, ensuring that its contents remain separate and inaccessible to other parts of the program.
 
-Each [`Region`](https://internetcomputer.org/docs/motoko/base/Region) has a starting address, a current size, and can grow dynamically. One could think of a [`Region`](https://internetcomputer.org/docs/motoko/base/Region) similarly to an array, where each position corresponds to an index and data is accessed through byte offsets. However, unlike a traditional array, memory management within a [`Region`](https://internetcomputer.org/docs/motoko/base/Region) is manual, requiring explicit tracking of space usage and current position to ensure accurate data access and storage.
+Each [`Region`](https://internetcomputer.org/docs/motoko/core/Region) has a starting address, a current size, and can grow dynamically. One could think of a [`Region`](https://internetcomputer.org/docs/motoko/core/Region) similarly to an array, where each position corresponds to an index and data is accessed through byte offsets. However, unlike a traditional array, memory management within a [`Region`](https://internetcomputer.org/docs/motoko/core/Region) is manual, requiring explicit tracking of space usage and current position to ensure accurate data access and storage.
 
 ### Pages
 
@@ -34,17 +30,17 @@ A **block** is the physical allocation unit used by the ICP runtime system to ma
 
 ### Position and offsets
 
-An **offset** represents a specific byte position within a [`Region`](https://internetcomputer.org/docs/motoko/base/Region), starting from `0`. It is used to locate data within the allocated memory space. Positions within a [`Region`](https://internetcomputer.org/docs/motoko/base/Region) are calculated using `current_position + bytes_used`, ensuring proper tracking of where new data should be written or read.
+An **offset** represents a specific byte position within a [`Region`](https://internetcomputer.org/docs/motoko/core/Region), starting from `0`. It is used to locate data within the allocated memory space. Positions within a [`Region`](https://internetcomputer.org/docs/motoko/core/Region) are calculated using `current_position + bytes_used`, ensuring proper tracking of where new data should be written or read.
 
 Since stable memory does not inherently manage layout, it is the developer’s responsibility to keep track of what data is stored at each offset.
 
 ## Using a `Region`
 
-It is the developer's responsibility to properly manipulate and interpret the data within a regions structure, which may be error-prone. However, the safety of Motoko's native value heap objects is always guaranteed, independent of the stable [`Region`](https://internetcomputer.org/docs/motoko/base/Region) content. The cost of accessing stable regions is significantly higher than using Motoko's native memory.
+It is the developer's responsibility to properly manipulate and interpret the data within a regions structure, which may be error-prone. However, the safety of Motoko's native value heap objects is always guaranteed, independent of the stable [`Region`](https://internetcomputer.org/docs/motoko/core/Region) content. The cost of accessing stable regions is significantly higher than using Motoko's native memory.
 
 ### Creation and allocation
 
-A new [`Region`](https://internetcomputer.org/docs/motoko/base/Region) is created using `Region.new()`, initializing it with a size of 0 pages. The current size can be checked with `Region.size(myRegion)`, which returns the number of allocated pages. To expand the [`Region`](https://internetcomputer.org/docs/motoko/base/Region), use `Region.grow(myRegion, X)`, where `X` is the number of pages to be added. The function will return the previous size before expansion, allowing verification of successful growth. If the operation fails due to memory constraints, it will return `0xFFFF_FFFF_FFFF_FFFF`, indicating that no additional memory could be allocated.
+A new [`Region`](https://internetcomputer.org/docs/motoko/core/Region) is created using `Region.new()`, initializing it with a size of 0 pages. The current size can be checked with `Region.size(myRegion)`, which returns the number of allocated pages. To expand the [`Region`](https://internetcomputer.org/docs/motoko/core/Region), use `Region.grow(myRegion, X)`, where `X` is the number of pages to be added. The function will return the previous size before expansion, allowing verification of successful growth. If the operation fails due to memory constraints, it will return `0xFFFF_FFFF_FFFF_FFFF`, indicating that no additional memory could be allocated.
 
 ```motoko no-repl
 // Create a new region of initial size 0
@@ -62,7 +58,7 @@ let previousSize = Region.grow(myRegion, 10);  // Add 10 pages (640 KiB)
 
 `Regions` can only grow, never shrink. Growth may fail due to [ICP resource limitations](https://internetcomputer.org/docs/building-apps/canister-management/resource-limits) and it is recommended to use the minimum pages needed to conserve resources.
 
-Growing a [`Region`](https://internetcomputer.org/docs/motoko/base/Region) safely requires checking the current allocated size and ensuring that the required space does not exceed available capacity. Since stable memory is allocated in fixed-size pages of 64 KiB, any expansion must be done in page increments. To determine how many additional pages are needed, the difference between the required memory and the current capacity is calculated and rounded up to the nearest page boundary. Once the necessary pages are determined, the [`Region`](https://internetcomputer.org/docs/motoko/base/Region) is expanded accordingly. After growth, verifying that the expansion was successful ensures stability and prevents unintended memory access issues.
+Growing a [`Region`](https://internetcomputer.org/docs/motoko/core/Region) safely requires checking the current allocated size and ensuring that the required space does not exceed available capacity. Since stable memory is allocated in fixed-size pages of 64 KiB, any expansion must be done in page increments. To determine how many additional pages are needed, the difference between the required memory and the current capacity is calculated and rounded up to the nearest page boundary. Once the necessary pages are determined, the [`Region`](https://internetcomputer.org/docs/motoko/core/Region) is expanded accordingly. After growth, verifying that the expansion was successful ensures stability and prevents unintended memory access issues.
 
 ```motoko no-repl
  // Helper function to ensure a region has enough space
@@ -87,7 +83,7 @@ func ensureCapacity(r : Region, requiredBytes : Nat64) {
 
 Since stable memory does not inherently manage data structure layouts, offsets must be tracked manually to ensure correct placement and retrieval of values.
 
-Smaller data types, such as an 8-bit naturals ([`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8)), can be written and retrieved from a designated offset. The chosen offset determines where in the [`Region`](https://internetcomputer.org/docs/motoko/base/Region) the value is stored.
+Smaller data types, such as an 8-bit naturals ([`Nat8`](https://internetcomputer.org/docs/motoko/core/Nat8)), can be written and retrieved from a designated offset. The chosen offset determines where in the [`Region`](https://internetcomputer.org/docs/motoko/core/Region) the value is stored.
 
 ```motoko no-repl
 // Store an 8-bit value at offset 0
@@ -97,7 +93,7 @@ Region.storeNat8(myRegion, 0, 42);
 let value = Region.loadNat8(myRegion, 0);  // Returns 42
 ```
 
-Larger values, such as [`Nat64`](https://internetcomputer.org/docs/motoko/base/Nat64), require multiple bytes for storage. Allocating offsets with enough space prevents overlapping data.
+Larger values, such as [`Nat64`](https://internetcomputer.org/docs/motoko/core/Nat64), require multiple bytes for storage. Allocating offsets with enough space prevents overlapping data.
 
 In this example, the 64-bit integer is stored at offset `100` to ensure it has sufficient space.
 
@@ -109,7 +105,7 @@ Region.storeNat64(myRegion, 100, 123456789);
 let longValue = Region.loadNat64(myRegion, 100);  // Returns 123456789
 ```
 
-Floating-point numbers can also be stored in a [`Region`](https://internetcomputer.org/docs/motoko/base/Region). Since these values occupy multiple bytes, offsets should be spaced accordingly to avoid overwriting adjacent data.
+Floating-point numbers can also be stored in a [`Region`](https://internetcomputer.org/docs/motoko/core/Region). Since these values occupy multiple bytes, offsets should be spaced accordingly to avoid overwriting adjacent data.
 
 ```motoko no-repl
 // Store a floating-point value at offset 200
@@ -121,7 +117,7 @@ let pi = Region.loadFloat(myRegion, 200);  // Returns 3.14159
 
 Regions can be used for storing and retrieving binary data as `Blob`s. This is useful for handling arbitrary sequences of bytes, such as serialized objects or encoded information.
 
-`Blob`s can be stored at any offset, but their size must be considered when choosing a starting position. Retrieving the correct number of bytes ensures that data integrity is maintained when working with binary storage in a [`Region`](https://internetcomputer.org/docs/motoko/base/Region).
+`Blob`s can be stored at any offset, but their size must be considered when choosing a starting position. Retrieving the correct number of bytes ensures that data integrity is maintained when working with binary storage in a [`Region`](https://internetcomputer.org/docs/motoko/core/Region).
 
 ```motoko no-repl
 // Create a blob
@@ -136,7 +132,7 @@ let retrievedData = Region.loadBlob(myRegion, 300, 5);  // Returns the same blob
 
 ### Mops packages for Regions
 
-- [`memory-region`](https://mops.one/memory-region]): A library for abstraction over the [`Region`](https://internetcomputer.org/docs/motoko/base/Region) type that supports reusing deallocated memory.
+- [`memory-region`](https://mops.one/memory-region]): A library for abstraction over the [`Region`](https://internetcomputer.org/docs/motoko/core/Region) type that supports reusing deallocated memory.
 
 - [`stable-enum`](https://mops.one/stable-enum): Enumerations implemented in stable regions.
 
@@ -148,8 +144,8 @@ let retrievedData = Region.loadBlob(myRegion, 300, 5);  // Returns the same blob
 This example illustrates the simultaneous use of stable variables and stable memory. It uses a single stable variable, `state`, to keep track of the two regions and their size in bytes, but stores the contents of the log directly in stable memory.
 
 ```motoko no-repl
-import Nat64 "mo:base/Nat64";
-import Region "mo:base/Region";
+import Nat64 "mo:core/Nat64";
+import Region "mo:core/Region";
 
 persistent actor StableLog {
 
@@ -219,9 +215,9 @@ persistent actor StableLog {
 
 Stable memory management can introduce issues such as out-of-bounds access, growth failures, and data corruption.
 
-One common error is `accessing memory beyond allocated limits`, leading to out-of-bounds access. This occurs when attempting to read or write data beyond the [`Region`](https://internetcomputer.org/docs/motoko/base/Region)’s current size. To prevent this, always ensure the [`Region`](https://internetcomputer.org/docs/motoko/base/Region) has been expanded sufficiently before performing operations.
+One common error is `accessing memory beyond allocated limits`, leading to out-of-bounds access. This occurs when attempting to read or write data beyond the [`Region`](https://internetcomputer.org/docs/motoko/core/Region)’s current size. To prevent this, always ensure the [`Region`](https://internetcomputer.org/docs/motoko/core/Region) has been expanded sufficiently before performing operations.
 
-A [`Region`](https://internetcomputer.org/docs/motoko/base/Region) may also fail to grow when calling `Region.grow()`, returning `0xFFFF_FFFF_FFFF_FFFF` instead of the previous size. This typically indicates that the stable memory limit has been reached. Implementing fallback strategies or optimizing memory usage can help mitigate this issue.
+A [`Region`](https://internetcomputer.org/docs/motoko/core/Region) may also fail to grow when calling `Region.grow()`, returning `0xFFFF_FFFF_FFFF_FFFF` instead of the previous size. This typically indicates that the stable memory limit has been reached. Implementing fallback strategies or optimizing memory usage can help mitigate this issue.
 
 Data corruption can occur when memory layouts are mismanaged, resulting in unintended overwrites. Proper bounds checking and structured memory layouts help prevent this problem, ensuring that stored data remains intact.
 

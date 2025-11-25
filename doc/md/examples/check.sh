@@ -8,14 +8,21 @@ set -e
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
+if [ -z "$MOTOKO_CORE" ]
+then
+  echo "\$MOTOKO_CORE not set. Are you running this in a nix-shell?"
+  exit 1
+fi
+
 if [ -z "$MOTOKO_BASE" ]
 then
   echo "\$MOTOKO_BASE not set. Are you running this in a nix-shell?"
   exit 1
 fi
 
+
 for file in *.mo
 do
   echo "$file" ...
-  moc --check --package base "$MOTOKO_BASE" "$file"
+  moc --check --package core "$MOTOKO_CORE" --package base "$MOTOKO_BASE" "$file"
 done

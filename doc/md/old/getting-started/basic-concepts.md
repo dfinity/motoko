@@ -17,15 +17,15 @@ Before you begin writing canisters in Motoko, you should be familiar with a few 
 
 Motoko supports the following primitive types and values:
 
--   [`Bool`](../base/Bool.md): Boolean values (`true` and `false`).
+-   [`Bool`](../core/Bool.md): Boolean values (`true` and `false`).
 
--   [`Int`](../base/Int.md): Integers (…​,`-2`, `-1`, `0`, `1`, `2`, …​) - bounded and unbounded variants.
+-   [`Int`](../core/Int.md): Integers (…​,`-2`, `-1`, `0`, `1`, `2`, …​) - bounded and unbounded variants.
 
--   [`Nat`](../base/Nat.md): Natural numbers (`0`, `1`, `2`, …​) - bounded and unbounded variants.
+-   [`Nat`](../core/Nat.md): Natural numbers (`0`, `1`, `2`, …​) - bounded and unbounded variants.
 
 - `Char`: Unicode text characters (`'a'`, `'B'`,  `'☃'`).
 
--   [`Text`](../base/Text.md): Text values of strings of unicode characters.
+-   [`Text`](../core/Text.md): Text values of strings of unicode characters.
 
 By default, **integers** and **natural numbers** are **unbounded** and do not overflow. Instead, they use representations that grow to accommodate any finite number.
 
@@ -55,11 +55,11 @@ For precise language definitions of primitive and non-primitive values, see the 
 
 ## Printing values
 
-The function `print`, from base library [`Debug`](../base/Debug.md), accepts a text string of type [`Text`](../base/Text.md) as input, and produces the unit value of unit type or `()`, as its output.
+The function `print`, from core package [`Debug`](../core/Debug.md), accepts a text string of type [`Text`](../core/Text.md) as input, and produces the unit value of unit type or `()`, as its output.
 
 Because unit values carry no information, all values of type unit are identical, so the `print` function doesn’t actually produce an interesting result. Instead of a result, the function `print` has the effect of emitting the text string in a human-readable form to the output terminal. Functions that have side effects, such as emitting output or modifying state, are often called **impure**. Functions that just return values without further side-effects, are called **pure**.
 
-You can transform most Motoko values into human-readable text strings for debugging purposes, without having to write those transformations by hand. The `debug_show` primitive permits converting a large class of values into values of type [`Text`](../base/Text.md).
+You can transform most Motoko values into human-readable text strings for debugging purposes, without having to write those transformations by hand. The `debug_show` primitive permits converting a large class of values into values of type [`Text`](../core/Text.md).
 
 ## Motoko program syntax
 
@@ -79,7 +79,7 @@ let y = x + 1;
 x * y + x;
 ```
 
-This program’s type is [`Nat`](../base/Nat.md) (natural number), and when run, it evaluates to the [`Nat`](../base/Nat.md) value of `3`.
+This program’s type is [`Nat`](../core/Nat.md) (natural number), and when run, it evaluates to the [`Nat`](../core/Nat.md) value of `3`.
 
 This program is a declaration list that consists of three declarations:
 
@@ -91,7 +91,7 @@ This program is a declaration list that consists of three declarations:
 
 The expression `x * y + x` illustrates that each expression can be thought of as a declaration where necessary, since the language implicitly declares an unnamed variable with that expression’s result value.
 
-When the expression appears as the final declaration, this expression may have any type. Here, the expression `x * y + x` has type [`Nat`](../base/Nat.md).
+When the expression appears as the final declaration, this expression may have any type. Here, the expression `x * y + x` has type [`Nat`](../core/Nat.md).
 
 Expressions that do not appear at the end, but rather within the list of declarations must have unit type `()`.
 
@@ -137,7 +137,7 @@ Consider this very short program:
 let x : Nat = 1
 ```
 
-In this example, the compiler infers that the expression `1` has type [`Nat`](../base/Nat.md), and that `x` has the same type.
+In this example, the compiler infers that the expression `1` has type [`Nat`](../core/Nat.md), and that `x` has the same type.
 
 In this case, we can omit this annotation without changing the meaning of the program:
 
@@ -159,16 +159,13 @@ The rules that Motoko applies to verify the correctness of code before compiling
 
 The type system is a safety feature that prevents a slew of errors that would otherwise have to be detected and reported at runtime, when they would be difficult or impossible to address.
 
+## Motoko core package
 
-## Motoko base library
+The design of Motoko strives to minimize built-in types and operations. Instead, the [Motoko core package](../core) includes commonly-used operations, types, and conventions.
 
-For various practical language engineering reasons, the design of Motoko strives to minimize built-in types and operations.
+The core package lists a selection of modules, focusing on core features used in the examples that are unlikely to radically change.
 
-Instead, whenever possible, the Motoko base library provides the types and operations that make the language feel complete. However, this base library is still under development, and is still incomplete.
-
-The [Motoko base library](../base/index.md) lists a selection of modules, focusing on core features used in the examples that are unlikely to change radically. The base library APIs will likely evolve over time and in particular, grow in size and number as Motoko matures.
-
-To import from the base library, use the `import` keyword. Give a local module name to introduce, in this example `D` for “**D**ebug”, and a URL where the `import` declaration may locate the imported module:
+To import from the core package, use the `import` keyword. Give a local module name to introduce, in this example `Debug`, and a URL where the `import` declaration may locate the imported module:
 
 ``` motoko file=../../examples/print.mo
 ```
@@ -189,12 +186,12 @@ Traps that occur within actor messages are more subtle: they don’t abort the e
 
 Occasionally it can be useful to force an unconditional trap, with a user-defined message.
 
-The [`Debug`](../base/Debug.md) library provides the function `trap(t)` for this purpose, which can be used in any context:
+The [`Runtime`](../core/Runtime.md) module provides the function `trap(t)` for this purpose, which can be used in any context:
 
 ``` motoko
-import Debug "mo:base/Debug";
+import Runtime "mo:core/Runtime";
 
-Debug.trap("oops!");
+Runtime.trap("oops!");
 ```
 
 **Assertions** allow you to conditionally trap when some Boolean test fails to hold, but continue execution otherwise:

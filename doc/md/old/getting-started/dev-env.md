@@ -6,8 +6,7 @@ sidebar_position: 3
 # Developer environment
 
 
-
-To develop and deploy Motoko canister smart contracts, you will need a developer environment that contains the Motoko compiler and base library. It is recommended to use the [IC SDK](https://github.com/dfinity/sdk#readme), which includes Motoko, along with `dfx`, a command-line tool used to create, build, and deploy canisters on ICP.
+To develop and deploy Motoko canister smart contracts, you will need a developer environment that contains the Motoko compiler and core package. It is recommended to use the [IC SDK](https://github.com/dfinity/sdk#readme), which includes Motoko, along with `dfx`, a command-line tool used to create, build, and deploy canisters on ICP.
 
 Developer environments come in several types and formats, making developing flexible and accessible.
 
@@ -100,18 +99,18 @@ For `vessel`, set the following environment variable:
 DFX_MOC_PATH="$(vessel bin)/moc" dfx deploy
 ```
 
-## Specifying a custom version of the base library
+## Specifying a custom version of the core package
 
-To specify a custom version of the Motoko base library to be used with `dfx`, you can use the package manager `mops` with the following command:
+To specify a custom version of the Motoko core package to be used with `dfx`, you can use the package manager `mops` with the following command:
 
 ```
 mops add base@<VERSION>
 ```
 
-For example, to use base library version `0.9.0`, use the command:
+For example, to use core package version `1.0.0`, use the command:
 
 ```
-mops add base@0.9.0
+mops add base@1.0.0
 ```
 
 ### Specifying a custom version of `dfx`

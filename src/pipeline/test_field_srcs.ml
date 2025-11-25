@@ -125,7 +125,7 @@ let run_get_sources_test source =
     ~finally:(fun () -> Mo_config.Flags.typechecker_combine_srcs := false)
 
 let%expect_test "" =
-  let s = {|actor {
+  let s = {|persistent actor {
   class Class1() = self {
     public func meth(_ : Int) : Nat {
       return 1
@@ -149,10 +149,6 @@ let%expect_test "" =
   [%expect {|
     Ok:
     Collected sources:
-    (meth
-      (@@ test-field-srcs.mo (Pos 3 16) (Pos 3 20))
-      (@@ test-field-srcs.mo (Pos 9 16) (Pos 9 20))
-    )
     Sources table:
     test-field-srcs.mo:2.9-2.15: test-field-srcs.mo:2.9-2.15
     test-field-srcs.mo:3.17-3.21: test-field-srcs.mo:3.17-3.21

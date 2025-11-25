@@ -1,18 +1,16 @@
-import Principal "mo:base/Principal";
-import OrderedSet "mo:base/OrderedSet";
-import Error "mo:base/Error";
+import Principal "mo:core/Principal";
+import Set "mo:core/pure/Set";
+import Error "mo:core/Error";
 
 persistent actor {
 
-    transient let principalSet = OrderedSet.Make<Principal>(Principal.compare);
-
     // Create set to record principals
-    var principals : OrderedSet.Set<Principal> = principalSet.empty();
+    var principals : Set.Set<Principal> = Set.empty();
 
     // Check if principal is recorded
     public shared query(msg) func isRecorded() : async Bool {
         let caller = msg.caller;
-        principalSet.contains(principals, caller);
+        Set.contains(principals, Principal.compare, caller);
     };
 
     // Record a new principal
@@ -22,6 +20,6 @@ persistent actor {
             throw Error.reject("Anonymous principal not allowed");
         };
 
-        principals := principalSet.put(principals, caller)
+        principals := Set.add(principals, Principal.compare, caller)
     };
 };

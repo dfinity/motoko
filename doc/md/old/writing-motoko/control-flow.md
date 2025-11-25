@@ -39,7 +39,7 @@ Any of these can be prefixed with a `label <name>` qualifier to give the loop a 
 In the following example, the `for` expression loops over characters of some text and abandons iteration as soon as an exclamation sign is encountered.
 
 ``` motoko
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 label letters for (c in "ran!!dom".chars()) {
   Debug.print(debug_show(c));
   if (c == '!') { break letters };
@@ -60,8 +60,8 @@ The syntax for type-annotated labels is `label <name> : <type> <expr>`, signifyi
 Judicious use of these constructs allows the programmer to focus on the primary program logic and handle exceptional case via `break`.
 
 ``` motoko
-import Text "mo:base/Text";
-import Iter "mo:base/Iter";
+import Text "mo:core/Text";
+import Iter "mo:core/Iter";
 
 type Host = Text;
 let formInput = "us@dfn";
@@ -146,12 +146,12 @@ The `range` function produces an iterator of type `Iter<Nat>` with the given low
 The following loop example prints the numbers `0` through `10` over its eleven iterations:
 
 ``` motoko
-import Iter "mo:base/Iter";
-import Debug "mo:base/Debug";
+import Nat "mo:core/Nat";
+import Debug "mo:core/Debug";
 var i = 0;
-for (j in Iter.range(0, 10)) {
+for (j in Nat.range(0, 10)) {
   Debug.print(debug_show(j));
-  assert(j == i);
+  assert(i == j);
   i += 1;
 };
 assert(i == 11);
@@ -194,11 +194,11 @@ Many built-in data structures come with pre-defined iterators. Below table lists
 | Type      | Name                  | Iterator | Elements                  | Element type |
 |-----------|-----------------------|----------|---------------------------|--------------|
 | `[T]`     | Array of `T`​s         | `vals`   | The array’s members       | `T`          |
-| `[T]`     | Array of `T`​s         | `keys`   | The array’s valid indices | [`Nat`](../base/Nat.md)        |
+| `[T]`     | Array of `T`​s         | `keys`   | The array’s valid indices | [`Nat`](../core/Nat.md)        |
 | `[var T]` | Mutable array of `T`​s | `vals`   | The array’s members       | `T`          |
-| `[var T]` | Mutable array of `T`​s | `keys`   | The array’s valid indices | [`Nat`](../base/Nat.md)        |
-| [`Text`](../base/Text.md)    | Text                  | `chars`  | The text’s characters     | `Char`       |
-| [`Blob`](../base/Blob.md)    | Blob                  | `vals`   | The blob’s bytes          | [`Nat8`](../base/Nat8.md)       |
+| `[var T]` | Mutable array of `T`​s | `keys`   | The array’s valid indices | [`Nat`](../core/Nat.md)        |
+| [`Text`](../core/Text.md)    | Text                  | `chars`  | The text’s characters     | `Char`       |
+| [`Blob`](../core/Blob.md)    | Blob                  | `vals`   | The blob’s bytes          | [`Nat8`](../core/Nat8.md)       |
 
 
 User-defined data structures can define their own iterators. As long they conform with the `Iter<A>` type for some element type `A`, these behave like the built-in ones and can be consumed with ordinary `for`-loops.

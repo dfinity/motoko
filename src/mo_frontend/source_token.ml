@@ -65,6 +65,8 @@ type token =
   | OLD
   | NOT
   | IMPORT
+  | INCLUDE
+  | MIXIN
   | MODULE
   | DEBUG_SHOW
   | TO_CANDID
@@ -114,6 +116,7 @@ type token =
   | ROTRASSIGN
   | NULL
   | DOT_NUM of string
+  | NUM_DOT_ID of string * string
   | NAT of string
   | FLOAT of string
   | CHAR of Mo_values.Value.unicode
@@ -121,7 +124,9 @@ type token =
   | ID of string
   | TEXT of string
   | PRIM
+  | PIPE
   | UNDERSCORE
+  | WEAK
   | COMPOSITE
   | INVARIANT
   (* Trivia *)
@@ -130,7 +135,6 @@ type token =
   | SPACE of int
   | TAB of int (* shudders *)
   | COMMENT of string
-  | PIPE
 
 let to_parser_token :
     token -> (Parser.token, line_feed trivia) result = function
@@ -198,6 +202,8 @@ let to_parser_token :
   | OLD -> Ok Parser.OLD
   | NOT -> Ok Parser.NOT
   | IMPORT -> Ok Parser.IMPORT
+  | INCLUDE -> Ok Parser.INCLUDE
+  | MIXIN -> Ok Parser.MIXIN
   | MODULE -> Ok Parser.MODULE
   | DEBUG_SHOW -> Ok Parser.DEBUG_SHOW
   | TO_CANDID -> Ok Parser.TO_CANDID
@@ -246,6 +252,7 @@ let to_parser_token :
   | ROTLASSIGN -> Ok Parser.ROTLASSIGN
   | ROTRASSIGN -> Ok Parser.ROTRASSIGN
   | NULL -> Ok Parser.NULL
+  | NUM_DOT_ID (ns, id) -> Ok (Parser.NUM_DOT_ID (ns, id))
   | DOT_NUM s -> Ok (Parser.DOT_NUM s)
   | NAT s -> Ok (Parser.NAT s)
   | FLOAT s -> Ok (Parser.FLOAT s)
@@ -258,6 +265,7 @@ let to_parser_token :
   | COMPOSITE -> Ok Parser.COMPOSITE
   | INVARIANT -> Ok Parser.INVARIANT
   | PIPE -> Ok Parser.PIPE
+  | WEAK -> Ok Parser.WEAK
   (*Trivia *)
   | SINGLESPACE -> Error (Space 1)
   | SPACE n -> Error (Space n)
@@ -329,6 +337,8 @@ let string_of_parser_token = function
   | Parser.OR -> "OR"
   | Parser.NOT -> "NOT"
   | Parser.IMPORT -> "IMPORT"
+  | Parser.INCLUDE -> "INCLUDE"
+  | Parser.MIXIN -> "MIXIN"
   | Parser.MODULE -> "MODULE"
   | Parser.DEBUG_SHOW -> "DEBUG_SHOW"
   | Parser.TO_CANDID -> "TO_CANDID"
@@ -380,6 +390,7 @@ let string_of_parser_token = function
   | Parser.ROTLASSIGN -> "ROTLASSIGN"
   | Parser.ROTRASSIGN -> "ROTRASSIGN"
   | Parser.NULL -> "NULL"
+  | Parser.NUM_DOT_ID _ -> "NUM_DOT_IDENT of string * string"
   | Parser.DOT_NUM _ -> "DOT_NUM of string"
   | Parser.NAT _ -> "NAT of string"
   | Parser.FLOAT _ -> "FLOAT of string"
@@ -394,6 +405,7 @@ let string_of_parser_token = function
   | Parser.IMPLIES -> "IMPLIES"
   | Parser.OLD -> "OLD"
   | Parser.PIPE -> "PIPE"
+  | Parser.WEAK -> "WEAK"
 
 let is_lineless_trivia : token -> void trivia option = function
   | SINGLESPACE -> Some (Space 1)

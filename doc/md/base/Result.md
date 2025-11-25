@@ -1,4 +1,4 @@
-# Result
+# base/Result
 Error handling with the `Result` type.
 
 ## Type `Result`

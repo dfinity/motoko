@@ -106,3 +106,25 @@ let suggest_conversion libs vals ty1 ty2 =
   (* not primitive types, make no suggestion *)
   | _, _ -> ""
 
+(** Convert a filesystem path to a mo:<package>/<module> URL if it lies under any configured package path. *)
+let mo_url_of_path path =
+  let seq = Flags.M.to_seq !Flags.package_urls in
+  Seq.fold_left (fun acc (package, base) ->
+    match acc with
+    | Some _ -> acc
+    | None ->
+      let base_norm = Lib.FilePath.normalise base in
+      let path_norm = Lib.FilePath.normalise path in
+      match Lib.FilePath.relative_to base_norm path_norm with
+      | None -> None
+      | Some rel ->
+        if Filename.basename rel = "lib.mo" then
+          Some (Printf.sprintf "mo:%s" package)
+        else
+          Some (Printf.sprintf "mo:%s/%s" package (Filename.chop_extension rel))
+  ) None seq
+
+let module_name_as_url module_path =
+  match mo_url_of_path module_path with
+  | Some url -> url
+  | None -> module_path

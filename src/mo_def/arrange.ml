@@ -58,38 +58,23 @@ module Make (Cfg : Config) = struct
   | Mo_types.Type.Triv -> Atom "Triv"
   | Mo_types.Type.Await -> Atom "Await"
 
-  let annot_arrange_typ t it =
-    if Cfg.include_types
-    then
-      match Cfg.include_type_rep with
-      | Without_type_rep -> ":" $$ [it; typ t]
-      | With_type_rep srcs_tbl ->
-        let module Arrange_type = Arrange_type.Make (struct
-          let srcs_tbl = srcs_tbl
-        end) in
-        ":" $$ [it; typ t; Arrange_type.typ t]
-    else it
-
   let annot_typ t it =
     if Cfg.include_types
     then ":" $$ [it; typ t]
     else it
 
-  let annot ?arrange_typ note =
-    if Option.value ~default:false arrange_typ
-    then annot_arrange_typ note.note_typ
-    else annot_typ note.note_typ
-
   let id i = source i.at ("ID" $$ [Atom i.it])
   let tag i = Atom ("#" ^ i.it)
 
-  (* TODO: For the language server, we occasionally need not only the resulting
-     [typ] of a node but also its [Arrange_type.typ] (which motivated these
-     changes). Arranging the type for every node would be expensive; there
-     would be considerable duplication as there is no sharing mechanism
-     currently. As a compromise, we annotate only the nodes that currently
-     matter for the language server, i.e. the left expression of a [DotE] node. *)
-  let rec exp ?(arrange_typ = false) e = source e.at (annot ~arrange_typ e.note (match e.it with
+  let obj_sort s = match s.it with
+    | Type.Object -> Atom "Object"
+    | Type.Actor -> Atom "Actor"
+    | Type.Mixin -> Atom "Mixin"
+    | Type.Module -> Atom "Module"
+    | Type.Memory -> Atom "Memory"
+
+  let rec exp e = source e.at (annot_typ e.note.note_typ (match e.it with
+    | HoleE (_, e) -> "HoleE" $$ [exp !e]
     | VarE x              -> "VarE"      $$ [id x]
     | LitE l              -> "LitE"      $$ [lit !l]
     | ActorUrlE e         -> "ActorUrlE" $$ [exp e]
@@ -112,7 +97,7 @@ module Make (Cfg : Config) = struct
                                                 ] @ List.map dec_field dfs
     | ObjE ([], efs)      -> "ObjE"      $$ List.map exp_field efs
     | ObjE (bases, efs)   -> "ObjE"      $$ exps bases @ [Atom "with"] @ List.map exp_field efs
-    | DotE (e, x)         -> "DotE"      $$ [exp ~arrange_typ:true e; id x]
+    | DotE (e, x, ol)     -> "DotE"      $$ [exp e; match !ol with None -> id x | Some e -> exp e]
     | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
     | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ exps es
     | IdxE (e1, e2)       -> "IdxE"      $$ [exp e1; exp e2]
@@ -127,7 +112,7 @@ module Make (Cfg : Config) = struct
         Atom (if sugar then "" else "=");
         exp e'
       ]
-    | CallE (par_opt, e1, ts, e2) -> "CallE" $$ parenthetical par_opt ([exp e1] @ inst ts @ [exp e2])
+    | CallE (par_opt, e1, ts, (_, e2)) -> "CallE" $$ parenthetical par_opt ([exp e1] @ inst ts @ [exp !e2])
     | BlockE ds           -> "BlockE"  $$ List.map dec ds
     | NotE e              -> "NotE"    $$ [exp e]
     | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
@@ -167,12 +152,13 @@ module Make (Cfg : Config) = struct
     | TagE (i, e)         -> "TagE"    $$ [id i; exp e]
     | PrimE p             -> "PrimE"   $$ [Atom p]
     | ImportE (f, _fp)    -> "ImportE" $$ [Atom f]
+    | ImplicitLibE l      -> "ImplicitLibE" $$ [Atom l]
     | ThrowE e            -> "ThrowE"  $$ [exp e]
     | TryE (e, cs, None)  -> "TryE"    $$ [exp e] @ List.map catch cs
     | TryE (e, cs, Some f)-> "TryE"    $$ [exp e] @ List.map catch cs @ Atom ";" :: [exp f]
     | IgnoreE e           -> "IgnoreE" $$ [exp e]))
 
-  and exps es = List.map (exp ?arrange_typ:None) es
+  and exps es = List.map exp es
 
   and inst inst = match inst.it with
     | None -> []
@@ -216,7 +202,9 @@ module Make (Cfg : Config) = struct
 
   and catch c = "catch" $$ [pat c.it.pat; exp c.it.exp]
 
-  and pat_field pf = source pf.at (pf.it.id.it $$ [pat pf.it.pat])
+  and pat_field pf = source pf.at (match pf.it with
+    | ValPF(id, p) -> "ValPF" $$ [Atom id.it; pat p]
+    | TypPF(id) -> "TypPF" $$ [Atom id.it])
 
   (* conditionally include parenthetical to avoid breaking lsp *)
   and parenthetical eo sexps =
@@ -225,11 +213,6 @@ module Make (Cfg : Config) = struct
       sexps
     else sexps
 
-  and obj_sort s = match s.it with
-    | Type.Object -> Atom "Object"
-    | Type.Actor -> Atom "Actor"
-    | Type.Module -> Atom "Module"
-    | Type.Memory -> Atom "Memory"
 
   and shared_pat sp = match sp.it with
     | Type.Local -> Atom "Local"
@@ -301,7 +284,8 @@ module Make (Cfg : Config) = struct
   | AndT (t1, t2) -> "AndT" $$ [typ t1; typ t2]
   | OrT (t1, t2) -> "OrT" $$ [typ t1; typ t2]
   | ParT t -> "ParT" $$ [typ t]
-  | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]))
+  | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]
+  | WeakT t -> "WeakT" $$ [typ t]))
 
   and dec d = trivia d.at (source d.at (match d.it with
     | ExpD e -> "ExpD" $$ [exp e]
@@ -318,7 +302,9 @@ module Make (Cfg : Config) = struct
         (match rt with None -> Atom "_" | Some t -> typ t);
         obj_sort s;
         id i
-      ] @ List.map dec_field dfs)))
+      ] @ List.map dec_field dfs)
+    | MixinD (_, dfs) -> "MixinD" $$ List.map dec_field dfs
+    | IncludeD (i, e, _) -> "IncludeD" $$ [id i; exp e]))
 
   and prog p = "Prog" $$ List.map dec p.it
 end

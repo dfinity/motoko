@@ -7,6 +7,15 @@
     X
     X SEP <list(X, SEP)>
 
+<list_er(X, E, SEP)> ::= 
+    <empty>
+    X
+    E
+    X SEP <list_er(X, E, SEP)>
+
+<id_wild> ::= 
+    '_'
+
 <typ_obj_sort> ::= 
     'object'
     'actor'
@@ -48,6 +57,7 @@
 <typ_un> ::= 
     <typ_nullary>
     '?' <typ_un>
+    'weak' <typ_un>
 
 <typ_pre> ::= 
     <typ_un>
@@ -66,6 +76,7 @@
 
 <typ_item> ::= 
     <id> ':' <typ>
+    <id_wild> ':' <typ>
     <typ>
 
 <typ_args> ::= 
@@ -164,7 +175,10 @@
 <exp_obj> ::= 
     '{' <list(<exp_field>, ';')> '}'
     '{' <exp_post> 'and' <exp_post> ('and' <exp_post>)* '}'
-    '{' <exp_post> ('and' <exp_post>)* 'with' <list1(<exp_field>, ';')> '}'
+    '{' <exp_post> ('and' <exp_post>)* <with_exp_fields> '}'
+
+<with_exp_fields> ::= 
+    'with' <list1(<exp_field>, ';')>
 
 <exp_plain> ::= 
     <lit>
@@ -176,19 +190,26 @@
     <id>
     '_'
 
+<exp_arg> ::= 
+    <ob>
+    <lit>
+    '(' <list(<exp>, ',')> ')'
+    <id>
+    '_'
+
 <exp_post> ::= 
     <exp_nullary>
     '[' 'var'? <list(<exp_nonvar>, ',')> ']'
     <exp_post> '[' <exp> ']'
     <exp_post> '.'<nat>
     <exp_post> '.' <id>
-    <exp_post> <inst> <exp_nullary>
+    <exp_post> <inst> <exp_arg>
     <exp_post> '!'
     '(' 'system' <exp_post> '.' <id> ')'
 
 <exp_un> ::= 
     <exp_post>
-    <parenthetical> <exp_post> <inst> <exp_nullary>
+    <parenthetical> <exp_post> <inst> <exp_arg>
     '#' <id>
     '#' <id> <exp_nullary>
     '?' <exp_un>
@@ -252,7 +273,12 @@
     <exp>
 
 <block> ::= 
-    '{' <list(<dec>, ';')> '}'
+    '{' <list_er(<dec>, <block_dec_error>, ';')> '}'
+
+<block_dec_error> ::= 
+    <id> '=' <exp>
+    <id> '=' <exp> ';' <list(<exp_field>, ';')>
+    <id> <with_exp_fields>
 
 <case> ::= 
     'case' <pat_nullary> <exp_nest>
@@ -307,6 +333,7 @@
 <pat_field> ::= 
     <id> (':' <typ>)?
     <id> (':' <typ>)? '=' <pat>
+    'type' <id>
 
 <func_pat> ::= 
     <id>? <typ_params_opt> <pat_plain>
@@ -319,6 +346,8 @@
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     <shared_pat_opt> 'func' <func_pat> (':' <typ>)? <func_body>
     <parenthetical>? <obj_or_class_dec>
+    'mixin' <pat_plain> <obj_body>
+    'include' <id> <exp>
 
 <obj_or_class_dec> ::= 
     <obj_sort> <id>? (':' <typ>)? '='? <obj_body>

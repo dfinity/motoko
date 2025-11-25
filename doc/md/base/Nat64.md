@@ -1,4 +1,4 @@
-# Nat64
+# base/Nat64
 Provides utility functions on 64-bit unsigned integers.
 
 :::note

@@ -1,0 +1,6 @@
+install $ID persistent-default/version0.mo ""
+upgrade $ID persistent-default/version1.mo ""
+upgrade $ID persistent-default/version2.mo ""
+upgrade $ID persistent-default/version3.mo ""
+
+

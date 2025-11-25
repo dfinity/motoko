@@ -41,10 +41,8 @@ module PS = Set.Make
       | ord -> ord
   end)
 
-let variances cons t =
-  let map = ref
-    (ConSet.fold (fun c ce -> ConEnv.add c Bivariant ce) cons ConEnv.empty)
-  in
+let update ?(start = Covariant) env t =
+  let map = ref env in
   let seen = ref PS.empty in
   let rec go p t =
     if PS.mem (p,t) !seen then ()
@@ -53,13 +51,13 @@ let variances cons t =
       match t with
       | Var _ | Pre -> assert false
       | Prim _ | Any | Non -> ()
-      | Con (c, []) when ConSet.mem c cons ->
+      | Con (c, []) when ConSet.mem c (ConEnv.dom env) ->
         map := ConEnv.add c (join p (ConEnv.find c !map)) (!map)
       | Con (c, ts) ->
         (match Cons.kind c with
         | Abs _ -> ()
         | Def (_, t) -> go p (open_ ts t)) (* TBR this may fail to terminate *)
-      | Array t | Opt t -> go p t
+      | Array t | Opt t | Weak t (*TBR*) -> go p t
       | Mut t -> go Invariant t
       | Async (s, t1, t2) ->
         go Invariant t1;
@@ -76,5 +74,14 @@ let variances cons t =
       | Named (n, t) -> go p t
     end
   in
-  go Covariant t;
+  go start t;
   !map
+
+let variances cons = update (ConSet.fold (fun c ce -> ConEnv.add c Bivariant ce) cons ConEnv.empty)
+
+let string_of p =
+  match p with
+  | Bivariant -> "Bivariant"
+  | Covariant -> "Covariant"
+  | Contravariant -> "Contravariant"
+  | Invariant -> "Invariant"

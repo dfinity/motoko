@@ -12,7 +12,8 @@ type visitor =
 
 let rec over_exp (v : visitor) (exp : exp) : exp =
   v.visit_exp (match exp.it with
-  | ImportE _ | PrimE _ | VarE _ | LitE _ | ActorUrlE _ -> exp
+  | HoleE (s, e) -> { exp with it = HoleE (s, ref (over_exp v !e)) }
+  | ImportE _ | ImplicitLibE _ | PrimE _ | VarE _ | LitE _ | ActorUrlE _ -> exp
   | UnE (x, y, exp1) -> { exp with it = UnE (x, y, over_exp v exp1) }
   | ShowE (x, exp1) -> { exp with it = ShowE (x, over_exp v exp1) }
   | ToCandidE exps ->  { exp with it = ToCandidE (List.map (over_exp v) exps) }
@@ -22,7 +23,7 @@ let rec over_exp (v : visitor) (exp : exp) : exp =
   | DoOptE exp1 -> { exp with it = DoOptE (over_exp v exp1) }
   | BangE exp1 -> { exp with it = BangE (over_exp v exp1) }
   | TagE (x, exp1) -> { exp with it = TagE (x, over_exp v exp1) }
-  | DotE (exp1, x) -> { exp with it = DotE (over_exp v exp1, x) }
+  | DotE (exp1, x, n) -> { exp with it = DotE (over_exp v exp1, x, ref (Option.map (over_exp v) !n)) }
   | NotE exp1 -> { exp with it = NotE (over_exp v exp1) }
   | AssertE (how, exp1) -> { exp with it = AssertE (how, over_exp v exp1) }
   | LabelE (x, y, exp1) -> { exp with it = LabelE (x, y, over_exp v exp1) }
@@ -36,7 +37,7 @@ let rec over_exp (v : visitor) (exp : exp) : exp =
   | IdxE (exp1, exp2) -> { exp with it = IdxE (over_exp v exp1, over_exp v exp2) }
   | RelE (x, exp1, y, exp2) -> { exp with it = RelE (x, over_exp v exp1, y, over_exp v exp2) }
   | AssignE (exp1, exp2) -> { exp with it = AssignE (over_exp v exp1, over_exp v exp2) }
-  | CallE (exp_opt, exp1, inst, exp2) -> { exp with it = CallE (Option.map (over_exp v) exp_opt, over_exp v exp1, over_inst v inst, over_exp v exp2) }
+  | CallE (exp_opt, exp1, inst, (s, exp2)) -> { exp with it = CallE (Option.map (over_exp v) exp_opt, over_exp v exp1, over_inst v inst, (s, ref (over_exp v (!exp2)))) }
   | AndE (exp1, exp2) -> { exp with it = AndE (over_exp v exp1, over_exp v exp2) }
   | OrE (exp1, exp2) -> { exp with it = OrE (over_exp v exp1, over_exp v exp2) }
   | ImpliesE (exp1, exp2) -> { exp with it = ImpliesE (over_exp v exp1, over_exp v exp2) }
@@ -76,7 +77,9 @@ and over_dec (v : visitor) (d : dec) : dec =
   | ExpD e -> { d with it = ExpD (over_exp v e)}
   | VarD (x, e) -> { d with it = VarD (x, over_exp v e)}
   | LetD (p, e, fail) -> { d with it = LetD (over_pat v p, over_exp v e, Option.map (over_exp v) fail)}
-  | ClassD (eo, sp, s, cid, tbs, p, t_o, id, dfs) -> { d with it = ClassD (Option.map (over_exp v) eo, sp, s, cid, tbs, over_pat v p, Option.map (over_typ v) t_o, id, List.map (over_dec_field v) dfs)})
+  | ClassD (eo, sp, s, cid, tbs, p, t_o, id, dfs) -> { d with it = ClassD (Option.map (over_exp v) eo, sp, s, cid, tbs, over_pat v p, Option.map (over_typ v) t_o, id, List.map (over_dec_field v) dfs)}
+  | MixinD (p, dfs) -> { d with it = MixinD (over_pat v p, List.map (over_dec_field v) dfs) }
+  | IncludeD (i, e, n) -> { d with it = IncludeD (i, over_exp v e, n) })
 
 and over_dec_field (v : visitor) (df : dec_field) : dec_field =
   { df with it = { df.it with dec = over_dec v df.it.dec } }
@@ -85,7 +88,9 @@ and over_exp_field (v : visitor) (ef : exp_field) : exp_field =
   { ef with it = { ef.it with exp = over_exp v ef.it.exp } }
 
 and over_pat_field (v : visitor) (pf : pat_field) : pat_field =
-  { pf with it = { pf.it with pat = over_pat v pf.it.pat } }
+  match pf.it with
+  | ValPF (id, p) -> { pf with it = ValPF(id, over_pat v p) }
+  | TypPF (_) -> pf
 
 and over_case (v : visitor) (case : case) : case =
   { case with it = { pat = over_pat v case.it.pat;

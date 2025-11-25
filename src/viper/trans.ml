@@ -232,7 +232,7 @@ let rec unit reqs (u : M.comp_unit) : prog Diag.result =
 and unit' reqs (u : M.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
-  | M.ActorU(eo_, id_opt, decs) ->
+  | M.ActorU(_persistence, eo_, id_opt, decs) ->
     (* TODO eo *)
     let ctxt = {
       self = None;
@@ -769,7 +769,7 @@ and pat_match ctxt (scrut : M.exp) (p : M.pat) : exp list * (id * T.typ) list * 
     [cond], p_scope, (ds, stmts)
   | M.ObjP pat_fields ->
     let e_scrut = exp ctxt scrut in
-    let p_scope = List.map (fun M.{ it = { id = _; pat }; _ } -> unwrap_var_pat pat) pat_fields in
+    let p_scope = List.filter_map (fun pf -> Option.map unwrap_var_pat (M.pf_pattern pf)) pat_fields in
     let ds = List.map (fun (x, t) -> !!(x, tr_typ ctxt t)) p_scope in
     let fld_assign_stmt lval fld_name =
       let rhs = !!(FldAcc (e_scrut, id fld_name)) in
@@ -777,10 +777,10 @@ and pat_match ctxt (scrut : M.exp) (p : M.pat) : exp list * (id * T.typ) list * 
     in
     let stmts =
       List.map2
-        (fun M.{ it = { id = fld_name; pat = _ }; _ } (x, _) ->
+        (fun fld_name (x, _) ->
           let fld_name = get_record_field ctxt (T.normalize p.note) fld_name in
           fld_assign_stmt (LValueUninitVar x) fld_name)
-        pat_fields p_scope
+        (List.map M.pf_id pat_fields) p_scope
     in
     [], p_scope, (ds, stmts)
   | M.WildP -> [], [], ([], [])
@@ -805,10 +805,10 @@ and assign_stmts ctxt at (lval : lvalue) (e : M.exp) : seqn' =
   match e with
   | M.({it=TupE [];_}) -> [], []
   | M.({it=AnnotE (e, _);_}) -> assign_stmts ctxt at lval e
-  | M.({it=CallE (_, {it=M.DotE ({it=M.VarE(m);_}, {it="init";_});_}, _inst, args);_})
+  | M.({it=CallE (_, {it=M.DotE ({it=M.VarE(m);_}, {it="init";_}, _);_}, _inst, (_, args));_})
       when Imports.find_opt (m.it) ctxt.imports = Some(IM_base_Array)
       ->
-    begin match args with
+    begin match !args with
     | M.({it=TupE([e1;e2]); _}) ->
       fld_via_tmp_var ctxt lval t (fun x ->
         let lhs = !!(LocalVar (x, tr_typ ctxt t)) in
@@ -817,7 +817,7 @@ and assign_stmts ctxt at (lval : lvalue) (e : M.exp) : seqn' =
             ; !!(InhaleS (array_size_inv at lhs (exp ctxt e1)))
             ; !!(InhaleS (array_init_const at ctxt lhs (array_elem_t t) (exp ctxt e2))) ]
       )
-    | _ -> unsupported args.at (Arrange.exp args)
+    | _ -> unsupported (!args).at (Arrange.exp (!args))
     end
   | M.({it = CallE(_, {it = VarE m; _}, inst, args); _}) ->
     fld_via_tmp_var ctxt lval t (fun x ->
@@ -858,8 +858,8 @@ and via_tmp_var ctxt (lval : lvalue) (t : T.typ) (f : id -> seqn') : seqn' =
     let stmt = !!(assign_stmt lval tmp_e) in
     d :: ds, stmts @ [stmt]
 
-and call_args ctxt e =
-  match e with
+and call_args ctxt (_, e) =
+  match !e with
   | {it = M.TupE args; _} -> List.map (fun arg -> exp ctxt arg) args
   | arg -> [exp ctxt arg]
 
@@ -880,8 +880,9 @@ and exp ctxt e =
     end
   | M.AnnotE(a, b) ->
     exp ctxt a
-  | M.CallE (_, {it=M.DotE (e1, {it="size";_});_}, _inst, {it=M.TupE ([]);at;_})
-      -> sizeE at (exp ctxt e1)
+  | M.CallE (_, {it=M.DotE (e1, {it="size";_}, _);_}, _inst, (_, arg))
+    when !(arg).it = M.(TupE [])
+      -> sizeE (!arg).at (exp ctxt e1)
   | M.LitE r ->
     begin match !r with
     | M.BoolLit b ->
@@ -952,7 +953,7 @@ and exp ctxt e =
       !!(CallE (record_ctor_name.it, args))
     | T.Obj _ -> unsupported e.at (Arrange.exp e)
     | _ -> assert false)
-  | M.DotE (proj, fld) when Type_map.mem (T.normalize proj.note.M.note_typ) ctxt.type_to_record_ctor ->
+  | M.DotE (proj, fld, _) when Type_map.mem (T.normalize proj.note.M.note_typ) ctxt.type_to_record_ctor ->
     let proj_t = T.normalize proj.note.M.note_typ in
     let proj = exp ctxt proj in
     let fld = id (get_record_field ctxt proj_t fld) in
@@ -961,30 +962,37 @@ and exp ctxt e =
       let n = List.length es in
       ctxt.reqs.tuple_arities := IntSet.add n !(ctxt.reqs.tuple_arities);
       !!(CallE (tup_con_name n, List.map (exp ctxt) es))
-  | M.CallE (_, { it = M.DotE ({it=M.VarE(m);_}, {it=predicate_name;_}); _ }, _inst, { it = M.FuncE (_, _, _, pattern, _, _, e); note; _ })
-    when Imports.find_opt (m.it) ctxt.imports = Some(IM_Prim)
-      && (predicate_name = "forall" || predicate_name = "exists")
+  | M.CallE (_, { it = M.DotE ({it=M.VarE(m);_}, {it=predicate_name;_}, _); _ }, _inst, (_, arg))
+     when match !arg with
+          | { it = M.FuncE (_, _, _, pattern, _, _, e); note; _ } ->
+            Imports.find_opt (m.it) ctxt.imports = Some(IM_Prim)
+            && (predicate_name = "forall" || predicate_name = "exists")
+          | _ -> false
     ->
-    let binders = extract_binders pattern in
-    let typs =
-      match M.(note.note_typ) with
-      | T.Func (_, _, _, [ T.Tup args ], _) -> args
-      | T.Func (_, _, _, [ arg ], _) -> [ arg ]
-      | _ -> []
-    in
-    let typed_binders =
-      List.fold_left2
-        (fun acc b t -> (id b, t) :: acc)
-        [] binders typs
-    in
-    let ctxt = add_locals ctxt typed_binders in
-    let typed_binders = List.map (fun (b, t) -> (b, tr_typ ctxt t)) typed_binders in
-    let e = exp ctxt e in
-    (match predicate_name with
-    | "forall" -> !!(ForallE (typed_binders, e))
-    | "exists" -> !!(ExistsE (typed_binders, e))
-    | _ -> assert false)
-  | M.CallE (_, { it = M.DotE ({it=M.VarE(m);_}, {it="Ret";_}); _ }, _, _)
+    begin match !arg with
+      | { it = M.FuncE (_, _, _, pattern, _, _, e); note; _ } ->
+      let binders = extract_binders pattern in
+      let typs =
+        match M.(note.note_typ) with
+        | T.Func (_, _, _, [ T.Tup args ], _) -> args
+        | T.Func (_, _, _, [ arg ], _) -> [ arg ]
+        | _ -> []
+      in
+      let typed_binders =
+        List.fold_left2
+          (fun acc b t -> (id b, t) :: acc)
+          [] binders typs
+      in
+      let ctxt = add_locals ctxt typed_binders in
+      let typed_binders = List.map (fun (b, t) -> (b, tr_typ ctxt t)) typed_binders in
+      let e = exp ctxt e in
+      (match predicate_name with
+      | "forall" -> !!(ForallE (typed_binders, e))
+      | "exists" -> !!(ExistsE (typed_binders, e))
+      | _ -> assert false)
+      | _ -> unsupported e.at (Arrange.exp e)
+    end
+  | M.CallE (_, { it = M.DotE ({it=M.VarE(m);_}, {it="Ret";_}, _); _ }, _, _)
     when Imports.find_opt (m.it) ctxt.imports = Some(IM_Prim) -> !!(FldE "$Res")
   | _ ->
      unsupported e.at (Arrange.exp e)

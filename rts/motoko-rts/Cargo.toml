@@ -2,7 +2,7 @@
 name = "motoko-rts"
 version = "0.1.0"
 authors = ["dfinity <team-motoko@dfinity.org>"]
-edition = "2018"
+edition = "2021"
 
 # For rlib use native/Cargo.toml
 [lib]
@@ -25,7 +25,7 @@ ic = []
 # This feature enables extensive memory sanity checks in the incremental GC.
 memory_check = []
 
-# Incremental GC, using the extended object header containing the forwarding pointer. 
+# Incremental GC, using the extended object header containing the forwarding pointer.
 incremental_gc = []
 
 # Classical persistence, 32-bit, with Candid stabilization
@@ -36,6 +36,7 @@ enhanced_orthogonal_persistence = ["incremental_gc"]
 
 [dependencies]
 libc = { version = "0.2.139", default-features = false, optional = true }
+libm = "=0.2.15"
 motoko-rts-macros = { path = "../motoko-rts-macros" }
 
 [profile.dev]

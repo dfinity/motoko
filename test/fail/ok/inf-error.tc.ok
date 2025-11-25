@@ -1,0 +1,45 @@
+inf-error.mo:46.13-46.52: type error [M0098], cannot apply function of type
+  <K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Order), n : K) ->
+    ?V
+to argument of type
+  ({map : [(Nat, [var Text])]}, (n : Nat, m : Nat) -> Order, Text)
+because there is no way to satisfy subtyping
+  Text  <:  Nat  (for argument `n`) 
+inf-error.mo:47.13-47.39: type error [M0230], Cannot determine implicit argument `compare` of type
+  (Any, Any) -> Order
+Hint: If you're trying to omit an implicit argument named `compare` you need to have a matching declaration named `compare` in scope.
+inf-error.mo:51.13-51.47: type error [M0098], cannot apply function `.get` of type
+  <K, V>(compare : (implicit : (K, K) -> Order), n : K) -> ?V
+to argument of type
+  ((n : Nat, m : Nat) -> Order, Text)
+because there is no way to satisfy subtyping
+  Text  <:  Nat  (for argument `n`) 
+inf-error.mo:52.13-52.34: type error [M0230], Cannot determine implicit argument `compare` of type
+  (Any, Any) -> Order
+Hint: If you're trying to omit an implicit argument named `compare` you need to have a matching declaration named `compare` in scope.
+inf-error.mo:59.13-59.56: type error [M0098], cannot apply function of type
+  <K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Order), n : K,
+         v : V) ->
+    Map<K, V>
+to argument of type
+  ({map : [(Nat, [var Text])]}, (n : Nat, m : Nat) -> Order, Text, Text)
+because there is no way to satisfy subtyping
+  Text  <:  Nat  (for argument `n`) 
+inf-error.mo:60.13-60.43: type error [M0230], Cannot determine implicit argument `compare` of type
+  (Any, Any) -> Order
+Hint: If you're trying to omit an implicit argument named `compare` you need to have a matching declaration named `compare` in scope.
+inf-error.mo:62.13-62.51: type error [M0098], cannot apply function `.set` of type
+  <K, V>(compare : (implicit : (K, K) -> Order), n : K, v : V) -> Map<K, V>
+to argument of type
+  ((n : Nat, m : Nat) -> Order, Text, Text)
+because there is no way to satisfy subtyping
+  Text  <:  Nat  (for argument `n`) 
+inf-error.mo:64.13-64.51: type error [M0098], cannot apply function `.set` of type
+  <K, V>(compare : (implicit : (K, K) -> Order), n : K, v : V) -> Map<K, V>
+to argument of type
+  ((n : Nat, m : Nat) -> Order, Text, Text)
+because there is no way to satisfy subtyping
+  Text  <:  Nat  (for argument `n`) 
+inf-error.mo:65.13-65.38: type error [M0230], Cannot determine implicit argument `compare` of type
+  (Any, Any) -> Order
+Hint: If you're trying to omit an implicit argument named `compare` you need to have a matching declaration named `compare` in scope.

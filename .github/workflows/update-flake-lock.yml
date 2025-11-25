@@ -2,7 +2,7 @@ name: Update flake.lock (daily)
 on:
   # Manual override, one can start the workflow by running:
   # curl -H "Accept: application/vnd.github.everest-preview+json" \
-  #  -H "Authorization: token <your-token-here>" \
+  #  -H "Authorization: token $(gh auth token)" \
   #  --request POST \
   #  --data '{"event_type": "flake-updater-nudge", "client_payload": {}}' \
   #  https://api.github.com/repos/dfinity/motoko/dispatches
@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install Determinate Nix
         uses: DeterminateSystems/nix-installer-action@main
       - name: Create GitHub App Token
@@ -43,7 +43,7 @@ jobs:
             ic-wasm-src
             libtommath-src
             motoko-base-src
-            motoko-matchers-src
+            motoko-core-src
             ocaml-vlq-src
             wasm-spec-src
             ocaml-recovery-parser-src

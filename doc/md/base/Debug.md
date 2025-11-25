@@ -1,4 +1,4 @@
-# Debug
+# base/Debug
 Utility functions for debugging.
 
 Import from the base library to use this module.

@@ -132,6 +132,27 @@ actor A {
         debugPrint "test10()";
 
         await (with cycles = 34567) (func(name : Text) : async () { debugPrint (name # ": " # debug_show(Cycles.available())) }) "anon";
+    };
+
+    func star() : async* () {
+        debugPrint ("star: " # debug_show(Cycles.available()));
+        oneshot();
+    };
+
+    public func test11() : async () {
+        debugPrint "test11()";
+        await* (with timeout = 1; cycles = do { debugPrint "evaled"; 987 }) star();
+    };
+
+    func outer() : async () {
+        debugPrint ("outer cycles: " # debug_show(Cycles.available()));
+    };
+
+    public func test12() : async () {
+        debugPrint "test12()";
+        await (with cycles = 9876) outer(await async { debugPrint ("inner cycles: " # debug_show(Cycles.available())) });
+        func p(c : Nat) : Nat { debugPrint (debug_show c); c };
+        await (with cycles = p 8765) outer(await (with cycles = p 7654) async { debugPrint ("inner cycles: " # debug_show(Cycles.available())) });
     }
 }
 
@@ -150,3 +171,6 @@ actor A {
 //CALL ingress test8 "DIDL\x00\x00"
 //CALL ingress test9 "DIDL\x00\x00"
 //CALL ingress test10 "DIDL\x00\x00"
+//CALL ingress test11 "DIDL\x00\x00"
+//CALL ingress test12 "DIDL\x00\x00"
+//SKIP-SANITY-CHECKS

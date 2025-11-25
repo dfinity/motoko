@@ -1,4 +1,4 @@
-# Int16
+# base/Int16
 Provides utility functions on 16-bit signed integers.
 
 :::note

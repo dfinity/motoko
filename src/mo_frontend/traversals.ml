@@ -3,7 +3,8 @@ open Syntax
 open Source
 
 let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
-  | ImportE _ | PrimE _ | VarE _ | LitE _ | ActorUrlE _ -> f exp
+  | HoleE (s, exp1) -> f { exp with it = HoleE (s, ref (over_exp f (!exp1))) }
+  | ImportE _ | ImplicitLibE _ | PrimE _ | VarE _ | LitE _ | ActorUrlE _ -> f exp
   | UnE (x, y, exp1) -> f { exp with it = UnE (x, y, over_exp f exp1) }
   | ShowE (x, exp1) -> f { exp with it = ShowE (x, over_exp f exp1) }
   | ToCandidE exps ->  f { exp with it = ToCandidE (List.map (over_exp f) exps) }
@@ -13,7 +14,7 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
   | DoOptE exp1 -> f { exp with it = DoOptE (over_exp f exp1) }
   | BangE exp1 -> f { exp with it = BangE (over_exp f exp1) }
   | TagE (x, exp1) -> f { exp with it = TagE (x, over_exp f exp1) }
-  | DotE (exp1, x) -> f { exp with it = DotE (over_exp f exp1, x) }
+  | DotE (exp1, x, n) -> f { exp with it = DotE (over_exp f exp1, x, ref (Option.map (over_exp f) !n)) }
   | NotE exp1 -> f { exp with it = NotE (over_exp f exp1) }
   | AssertE (how, exp1) -> f { exp with it = AssertE (how, over_exp f exp1) }
   | LabelE (x, y, exp1) -> f { exp with it = LabelE (x, y, over_exp f exp1) }
@@ -31,8 +32,8 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
      f { exp with it = RelE (x, over_exp f exp1, y, over_exp f exp2) }
   | AssignE (exp1, exp2) ->
      f { exp with it = AssignE (over_exp f exp1, over_exp f exp2) }
-  | CallE (par_opt, exp1, x, exp2) ->
-     f { exp with it = CallE (Option.map (over_exp f) par_opt, over_exp f exp1, x, over_exp f exp2) }
+  | CallE (par_opt, exp1, x, (s, exp2)) ->
+     f { exp with it = CallE (Option.map (over_exp f) par_opt, over_exp f exp1, x, (s, ref (over_exp f !exp2))) }
   | AndE (exp1, exp2) ->
      f { exp with it = AndE (over_exp f exp1, over_exp f exp2) }
   | OrE (exp1, exp2) ->
@@ -78,6 +79,9 @@ and over_dec (f : exp -> exp) (d : dec) : dec = match d.it with
      { d with it = LetD (x, over_exp f e, Option.map (over_exp f) fail)}
   | ClassD (e_o, sp, s, cid, tbs, p, t_o, id, dfs) ->
      { d with it = ClassD (Option.map (over_exp f) e_o, sp, s, cid, tbs, p, t_o, id, List.map (over_dec_field f) dfs)}
+  | MixinD (p, dfs) ->
+     { d with it = MixinD (p, List.map (over_dec_field f) dfs)}
+  | IncludeD (id, e, n) -> { d with it = IncludeD(id, over_exp f e, n) }
 
 and over_dec_field (f : exp -> exp) (df : dec_field) : dec_field =
   { df with it = { df.it with dec = over_dec f df.it.dec } }

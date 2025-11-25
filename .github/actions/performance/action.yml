@@ -27,7 +27,13 @@ runs:
     - name: Discover `test/bench` changes
       if: ${{ inputs.is_fork == 'false' }}
       run: |
-        git diff --no-index $(nix build --print-out-paths .#tests.bench)/share test/bench/ok | patch -p1 -R
+        # git diff --no-index $(nix build --print-out-paths .#tests.bench)/share test/bench/ok | patch -f -u -p1 -R
+        BENCH_RESULT=$(nix build --print-out-paths .#tests.bench)
+        if ! git diff --no-index $BENCH_RESULT/share test/bench/ok | patch -f -u -p1 -R; then
+          echo "Patch failed, copying fresh .ok files directly"
+          cp $BENCH_RESULT/share/*.ok test/bench/ok/
+          git add test/bench/ok/
+        fi
         git switch ${{ inputs.head_ref }}
         git branch --show-current
       shell: bash

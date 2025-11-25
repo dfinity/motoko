@@ -1,5 +1,11 @@
 // test small scalar ops
-import { Array_tabulate; performanceCounter; debugPrint; rts_heap_size } = "mo:⛔";
+import {
+  Array_tabulate;
+  performanceCounter;
+  debugPrint;
+  rts_heap_size;
+  rts_lifetime_instructions;
+} = "mo:⛔";
 
 actor Tagged {
 
@@ -23,7 +29,12 @@ actor Tagged {
     };
     let (m1, n1) = counters();
     debugPrint(debug_show (m1 - m0, n1 - n0));
-  }
-}
+  };
+
+  public func getPerfData() : async () {
+    debugPrint("instructions: " # debug_show (rts_lifetime_instructions()));
+  };
+};
 
 //CALL ingress go 0x4449444C0000
+//CALL ingress getPerfData 0x4449444C0000

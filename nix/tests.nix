@@ -1,4 +1,4 @@
-{ pkgs, llvmEnv, esm, viper-server, commonBuildInputs, debugMoPackages }:
+{ pkgs, llvmEnv, esm, viper-server, commonBuildInputs, debugMoPackages, test-runner }:
 with debugMoPackages;
 let
   # The following were previously arguments to default.nix but flakes don't accept options yet.
@@ -26,7 +26,7 @@ let
 
   # extra deps for test/ld
   ldTestDeps =
-    with pkgs.llvmPackages_18; [ lld clang ];
+    with pkgs.llvmPackages_19; [ lld clang ];
 
   testDerivation = args:
     pkgs.stdenv.mkDerivation (testDerivationArgs // args);
@@ -40,7 +40,10 @@ let
     cleanSourceWith {
       filter = path: type:
         let relPath = removePrefix (toString ../test + "/") (toString path); in
-        type != "directory" || hasPrefix "${dir}/" "${relPath}/";
+        type != "directory"
+        || hasPrefix "${dir}/" "${relPath}/"
+        || hasPrefix "core-stub/" "${relPath}/"
+        || hasPrefix "base-stub/" "${relPath}/";
       src = ../test;
       name = "test-${dir}-src";
     };
@@ -56,13 +59,19 @@ let
         export ESM=${esm}
         export VIPER_SERVER=${viper-server}
         type -p moc && moc --version
-        make -C ${dir}${pkgs.lib.optionalString accept " accept"}
+        ${if dir == "run-drun" 
+          then "make -C ${dir}${pkgs.lib.optionalString (pkgs.system != "x86_64-darwin") " parallel -j4"} ${pkgs.lib.optionalString accept " accept"}"
+          else "make -C ${dir}${pkgs.lib.optionalString accept " accept"}"
+        }
       '';
     } // pkgs.lib.optionalAttrs accept {
       installPhase = pkgs.lib.optionalString accept ''
         mkdir -p $out/share
         cp -v ${dir}/ok/*.ok $out/share
       '';
+    } // pkgs.lib.optionalAttrs (builtins.elem test-runner deps) {
+      POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
+      SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
     });
 
   test_subdir = dir: deps: acceptable_subdir false dir deps;
@@ -111,7 +120,7 @@ let
         # sanity check
         if ! grep -q ^gas/ $out/stats.csv
         then
-          echo "perf stats do not include gas. change in drun output format?" >&2
+          echo "perf stats do not include gas. change in pocket-ic output format?" >&2
           exit 1
         fi
       '';
@@ -125,7 +134,7 @@ let
 
   qc = testDerivation {
     buildInputs =
-      [ moc pkgs.wasmtime haskellPackages.qc-motoko pkgs.drun ];
+      [ moc pkgs.wasmtime haskellPackages.qc-motoko ];
     checkPhase = ''
       export LANG=C.utf8 # for haskell
       qc-motoko${pkgs.lib.optionalString (replay != 0)
@@ -216,13 +225,13 @@ fix_names
     run-debug = snty_subdir "run" [ moc ];
     run-eop-release = enhanced_orthogonal_persistence_subdir "run" [ moc ];
     run-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run" [ moc ];
-    drun-release = test_subdir "run-drun" [ moc pkgs.drun ];
-    drun-debug = snty_subdir "run-drun" [ moc pkgs.drun ];
-    drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc pkgs.drun ];
-    drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc pkgs.drun ];
-    drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc pkgs.drun ];
-    drun-eop-release = enhanced_orthogonal_persistence_subdir "run-drun" [ moc pkgs.drun ];
-    drun-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run-drun" [ moc pkgs.drun ];
+    drun-release = test_subdir "run-drun" [ moc test-runner pkgs.pocket-ic.server pkgs.cacert ];
+    drun-debug = snty_subdir "run-drun" [ moc test-runner pkgs.pocket-ic.server pkgs.cacert ];
+    drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc test-runner pkgs.pocket-ic.server pkgs.cacert ];
+    drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc test-runner pkgs.pocket-ic.server pkgs.cacert ];
+    drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc test-runner pkgs.pocket-ic.server pkgs.cacert ];
+    drun-eop-release = enhanced_orthogonal_persistence_subdir "run-drun" [ moc test-runner pkgs.pocket-ic.server pkgs.cacert ];
+    drun-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run-drun" [ moc test-runner pkgs.pocket-ic.server pkgs.cacert ];
     fail = test_subdir "fail" [ moc ];
     repl = test_subdir "repl" [ moc ];
     ld = test_subdir "ld" ([ mo-ld ] ++ ldTestDeps);
@@ -233,11 +242,11 @@ fix_names
     trap = test_subdir "trap" [ moc ];
     trap-eop = enhanced_orthogonal_persistence_subdir "trap" [ moc ];
     run-deser = test_subdir "run-deser" [ deser ];
-    perf = perf_subdir false "perf" [ moc pkgs.drun ];
+    perf = perf_subdir false "perf" [ moc test-runner pkgs.pocket-ic.server pkgs.cacert ];
     viper = test_subdir "viper" [ moc pkgs.which pkgs.openjdk pkgs.z3 ];
     # TODO: profiling-graph is excluded because the underlying parity_wasm is deprecated and does not support passive data segments and memory64.
     inherit qc unit candid coverage;
   }
   // pkgs.lib.optionalAttrs
   (pkgs.system == accept-bench)
-  (fix_names { bench = perf_subdir true "bench" [ moc pkgs.drun pkgs.ic-wasm ]; })
+  (fix_names { bench = perf_subdir true "bench" [ moc test-runner pkgs.pocket-ic.server pkgs.ic-wasm pkgs.cacert ]; })

@@ -18,7 +18,8 @@ overview-slides.html : overview-slides.md
 	  # # -V maxScale=2
 
 base:
-	mo-doc --source $(MOTOKO_BASE) --output $(OUT)/base --format plain
+	mo-doc --source $(MOTOKO_CORE) --package core --output $(OUT)/core --format plain
+	mo-doc --source $(MOTOKO_BASE) --package base --output $(OUT)/base --format plain
 
 html:
         # TODO: perhaps use node and remark-cli to compile out remark plugins first or use docusaurus to build site properly

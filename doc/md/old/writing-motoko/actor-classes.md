@@ -7,7 +7,7 @@ sidebar_position: 3
 
 
 
-Actor classes enable you to create networks of actors programmatically. Actor classes have to be defined in a separate source file. To illustrate how to define and import actor classes, the following example implements a distributed map of keys of type [`Nat`](../base/Nat.md) to values of type [`Text`](../base/Text.md). It provides simple insert and lookup functions, `put(k, v)` and `get(k)`, for working with these keys and values.
+Actor classes enable you to create networks of actors programmatically. Actor classes have to be defined in a separate source file. To illustrate how to define and import actor classes, the following example implements a distributed map of keys of type [`Nat`](../core/Nat.md) to values of type [`Text`](../core/Text.md). It provides simple insert and lookup functions, `put(k, v)` and `get(k)`, for working with these keys and values.
 
 ## Defining an actor class
 
@@ -69,7 +69,7 @@ Clients of actor class `Map` are now free to determine the maximum number of buc
 
 :::note
 
-On ICP, calls to a class constructor must be provisioned with cycles to pay for the creation of a principal. See [ExperimentalCycles](../base/ExperimentalCycles.md) for instructions on how to add cycles to a call using the imperative `ExperimentalCycles.add<system>(cycles)` function.
+On ICP, calls to a class constructor must be provisioned with cycles to pay for the creation of a principal. See [Cycles](../core/Cycles.md) for instructions on how to add cycles to a call using the imperative `Cycles.add<system>(cycles)` function.
 
 :::
 

@@ -12,15 +12,15 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: cachix/install-nix-action@v31
     - uses: cachix/cachix-action@v16
       with:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - name: Update drun cargo hash
+    - name: Update pocket-ic-server cargo hash
       run: |
-        nix run .#nix-update -- --flake --version=skip drun
+        nix run .#nix-update -- --flake --version=skip pocket-ic-server
     - name: Create GitHub App Token
       uses: actions/create-github-app-token@v2
       id: app-token

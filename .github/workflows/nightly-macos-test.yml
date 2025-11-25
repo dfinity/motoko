@@ -6,51 +6,92 @@ on:
   
 jobs:
   common-tests:
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Run Common Tests
         uses: ./.github/actions/test-blueprint
         with:
-          os: macos-13
+          os: macos-latest
           test-target: common-tests
-          test-name: macos-13-common-tests
+          test-name: macos-common-tests
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
   gc-tests:
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Run GC Tests
         uses: ./.github/actions/test-blueprint
         with:
-          os: macos-13
+          os: macos-latest
           test-target: gc-tests
-          test-name: macos-13-gc-tests
+          test-name: macos-gc-tests
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
   systems-go-tests:
     strategy:
       matrix:
         build_type: [release, debug]
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Run Tests
         uses: ./.github/actions/test-blueprint
         with:
-          os: macos-13
+          os: macos-latest
           test-target: ${{ matrix.build_type }}-systems-go
-          test-name: macos-13-${{ matrix.build_type }}-tests
+          test-name: macos-${{ matrix.build_type }}-tests
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
+  motoko-core-tests:
+    needs: systems-go-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get `motoko` Repo
+        uses: actions/checkout@v6
+      - name: Populate `moc`
+        uses: ./.github/actions/test-blueprint
+        with:
+          os: ubuntu-latest
+          test-target: moc
+          test-name: fetch-moc
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Build `moc`
+        run: |
+          nix build .#moc --print-out-paths
+      - name: Save the `test-blueprint` action
+        # This is needed by the "Post Populate `moc`" step (cleanup)
+        # but since the checkout of `motoko-core` destroys the `pwd` contents
+        # we have to keep it elsewhere and restore later.
+        run: cp -r ./.github/actions/test-blueprint ..
+      - name: Get `motoko-core` Repo
+        uses: actions/checkout@v6
+        with:
+          repository: dfinity/motoko-core
+          fetch-depth: "0"
+      - name: Restore the `test-blueprint` action
+        run:  mv ../test-blueprint ./.github/actions
+      - name: Set up `mops`
+        uses: dfinity/motoko-core/.github/actions/setup@main
+      - name: Set up `mops` cache
+        run: |
+          npx ic-mops --version
+          npx ${DFX_MOC_PATH} --version
+      - name: Fixup `mops` cache
+        run: |
+          ln -sf /nix/store/*-moc/bin/moc $(cat .mops/moc-*)
+          npx ${DFX_MOC_PATH} --version
+      - name: Run `motoko-core` Tests
+        run: npm test
+
   create-issue:
-    needs: [common-tests, gc-tests, systems-go-tests]
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
-    runs-on: ubuntu-latest # No need to run on macOS-13, the ubuntu runner should be cheaper to run.
+    needs: [common-tests, gc-tests, systems-go-tests, motoko-core-tests]
+    if: ${{ always() && contains(needs.*.result, 'failure') && github.ref == 'refs/heads/master' }}
+    runs-on: ubuntu-latest # No need to run on macOS, the ubuntu runner should be cheaper to run.
     steps:
       - name: Create Issue
         uses: actions/github-script@v7
@@ -60,7 +101,7 @@ jobs:
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `Nightly macOS-13 Test Failure (${date})`,
-              body: `Nightly tests for macOS-13 failed. Please investigate.\n\nWorkflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-              labels: ['macos-13-failure', 'bug']
+              title: `Nightly macOS Test Failure (${date})`,
+              body: `Nightly tests for macOS failed. Please investigate.\n\nWorkflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              labels: ['macos-failure', 'bug']
             }); 

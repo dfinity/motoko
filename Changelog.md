@@ -1,5 +1,290 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Improved error messages for context dot: only the receiver type variables are solved, remaining type variables stay unsolved, not solved to `Any` or `Non` (#5634).
+
+  * Fixed the type instantiation hint to have the correct arity (#5634).
+
+  * Fix for #5618 (compiling dotted `await`s) (#5622).
+
+  * Improved type inference of the record update syntax (#5625).
+
+  * New flag `--error-recovery` to enable reporting of multiple syntax errors (#5632).
+
+  * Improved solving and error messages for invariant type parameters (#5464).
+    Error messages now include suggested type instantiations when there is no principal solution.
+
+    Invariant type parameters with bounds like `Int  <:  U  <:  Any` (when the upper bound is `Any`) can now be solved by choosing the lower bound (`Int` here) when it has no proper supertypes other than `Any`.
+    This means that when choosing between **exactly two** solutions: the lower bound and `Any` as the upper bound, the lower bound is chosen as the solution for the invariant type parameter (`U` here).
+    Symmetrically, with bounds like `Non  <:  U  <:  Nat` (when the lower bound is `Non`), the upper bound (`Nat` here) is chosen when it has no proper subtypes other than `Non`.
+
+    For example, the following code now compiles without explicit type arguments:
+
+    ```motoko
+    import VarArray "mo:core/VarArray";
+    let varAr = [var 1, 2, 3];
+    let result = VarArray.map(varAr, func x = x : Int);
+    ```
+
+    This compiles because the body of `func x = x : Int` has type `Int`, which implies that `Int  <:  U  <:  Any`.
+    Since `Int` has no proper supertypes other than `Any`, it can be chosen as the solution for the invariant type parameter `U`, resulting in the output type `[var Int]`.
+
+    However, note that if the function body was of type `Nat`, it would not compile, because `Nat` is a proper subtype of `Int` (`Nat <: Int`).
+    In this case, there would be no principal solution with `Nat  <:  U  <:  Any`, and the error message would suggest:
+
+    ```
+    Hint: Add explicit type instantiation, e.g. <Nat, Nat>
+    ```
+
+    The suggested type instantiation can be used to fix the code:
+
+    ```motoko
+    let result = VarArray.map<Nat, Nat>(varAr, func x = x);
+    ```
+
+    Note that the error message suggests only one possible solution, but there may be alternatives. In the example above, `<Nat, Int>` would also be a valid instantiation.
+
+  * Fixes type inference of deferred funcs that use `return` in their body (#5615).
+    Avoids confusing errors like `Bool does not have expected type T` on `return` expressions. Should type check successfully now.
+
+  * Add warning `M0239` that warns when binding a unit `()` value by `let` or `var` (#5599).
+
+  * Use `self` parameter, not `Self` type, to enable contextual dot notation (#5574).
+
+  * Enable parser recovery to gather more syntax errors at once (previously only enabled for `moc.js`) (#5589).
+
+  * Custom syntax error message when a record is provided where a block is expected (#5589).
+
+  * Add (caffeine) warning `M0237` (#5588).
+    Warns if explicit argument could have been inferred and omitted,
+    e.g. `a.sort(Nat.compare)` vs `a.sort()`.
+    (allowed by default, warn with `-W 0237`).
+
+  * Add (caffeine) warning `M0236` (#5584).
+    Warns if contextual dot notation could have been used,
+    e.g. `Map.filter(map, ...)` vs `map.filter(...)`.
+    Does not warn for binary `M.equals(e1, e2)` or `M.compareXXX(e1, e2)`.
+    (allowed by default, warn with `-W 0236`).
+
+  * Add (caffeine) deprecation code `M0235` (#5583).
+    Deprecates any public types and values with special doc comment
+    `/// @deprecated M0235`.
+    (allowed by default, warn with `-W 0235`).
+
+  * Experimental support for `implicit` argument declarations (#5517).
+
+  * Experimental support for Mixins (#5459).
+
+  * bugfix: importing of `blob:file:` URLs in subdirectories should work now (#5507, #5569).
+
+  * bugfix: escape `composite_query` fields on the Candid side, as it is a keyword (#5617).
+
+  * bugfix: implement Candid spec improvements (#5504, #5543, #5505).
+    May now cause rejection of certain type-incorrect Candid messages that were accepted before.
+
+## 0.16.3 (2025-09-29)
+
+* motoko (`moc`)
+
+  * Added `Prim.getSelfPrincipal<system>() : Principal` to get the principal of the current actor (#5518).
+
+  * Contextual dot notation (#5458):
+
+    Writing `e0.f(<Ts>)(e1,...,en)` is short-hand for `M.f(<Ts>)(e0, e1, ..., en)`, provided:
+
+    * `f` is not already a field or special member of `e0`.
+    * There is a unique module `M` with member `f` in the context that declares:
+      * a public type `Self<T1,..., Tn>` that can be instantiated to the type of `e0`;
+      * a public field `f` that accepts `(e0, e2, ..., en)` as arguments.
+
+  * Added an optional warning for **redundant type instantiations** in generic function calls (#5468).
+    Note that this warning is off by default.
+    It can be enabled with the `-W M0223` flag.
+
+  * Added `-A` and `-W` flags to disable and enable warnings given their message codes (#5496).
+
+    For example, to disable the warning for redundant `stable` keyword, use `-A M0217`.
+    To enable the warning for redundant type instantiations, use `-W M0223`.
+    Multiple warnings can be disabled or enabled by comma-separating the message codes, e.g. `-A M0217,M0218`.
+    Both flags can be used multiple times.
+
+  * Added `-E` flag to treat specified warnings as errors given their message codes (#5502).
+
+  * Added `--warn-help` flag to show available warning codes, current lint level (**A**llowed, **W**arn or **E**rror), and descriptions (#5502).
+
+  * `moc.js` : Added `setExtraFlags` method for passing some of the `moc` flags (#5506).
+
+## 0.16.2 (2025-09-12)
+
+* motoko (`moc`)
+
+  * Added primitives to access canister environment variables (#5443):
+
+    ```motoko
+    Prim.envVarNames : <system>() -> [Text]
+    Prim.envVar : <system>(name : Text) -> ?Text
+    ```
+
+    These require `system` capability to prevent supply-chain attacks.
+
+  * Added ability to import `Blob`s from the local file system by means of the `blob:file:` URI scheme (#4935).
+
+## 0.16.1 (2025-08-25)
+
+* motoko (`moc`)
+
+  * bugfix: fix compile-time exception showing `???` type when using 'improved type inference' (#5423).
+
+  * Allow inference of invariant type parameters, but only when the bound/solution is an 'isolated' type (meaning it has no proper subtypes nor supertypes other than `Any`/`None`) (#5359).
+    This addresses the limitation mentioned in #5180.
+    Examples of isolated types include all primitive types except `Nat` and `Int`, such as `Bool`, `Text`, `Blob`, `Float`, `Char`, `Int32`, etc.
+    `Nat` and `Int` are not isolated because `Nat` is a subtype of `Int` (`Nat <: Int`).
+
+    For example, the following code now works without explicit type arguments:
+
+    ```motoko
+    import VarArray "mo:core/VarArray";
+    let varAr = [var 1, 2, 3];
+    let result = VarArray.map(varAr, func x = debug_show (x) # "!"); // [var Text]
+    ```
+
+  * `ignore` now warns when its argument has type `async*`, as it will have no effect (#5419).
+
+  * bugfix: fix rare compiler crash when using a label and identifier of the same name in the same scope (#5283, #5412).
+
+  * bugfix: `moc` now warns about parentheticals on `async*` calls, and makes sure that they get discarded (#5415).
+
+## 0.16.0 (2025-08-19)
+
+* motoko (`moc`)
+
+  * Breaking change: add new type constructor `weak T` for constructing weak references.
+
+    ```motoko
+        Prim.allocWeakRef: <T>(value : T) -> weak T
+        Prim.weakGet: <T>weak T -> ?(value : T)
+        Prim.isLive: weak Any -> Bool
+    ```
+
+    A weak reference can only be allocated from a value whose type representation is always a heap reference; `allowWeakRef` will trap on values of other types.
+    A weak reference does not count as a reference to its value and allows the collector to collect the value once no other references to it remain.
+    `weakGet` will return `null`, and `isLive` will return false once the value of the reference has been collected by the garbage collector.
+    The type constructor `weak T` is covariant.
+
+    Weak reference operations are only supported with --enhanced-orthogonal-persistence and cannot be used with the classic compiler.
+
+  * bugfix: the EOP dynamic stable compatibility check incorrectly rejected upgrades from `Null` to `?T` (#5404).
+
+  * More explanatory upgrade error messages with detailing of cause (#5391).
+
+  * Improved type inference for calling generic functions (#5180).
+    This means that type arguments can be omitted when calling generic functions in _most common cases_.
+    For example:
+
+    ```motoko
+    let ar = [1, 2, 3];
+    Array.map(ar, func x = x * 2);  // Needs no explicit type arguments anymore!
+    ```
+
+    Previously, type arguments were usually required when there was an anonymous not annotated function in arguments.
+    The reason being that the type inference algorithm cannot infer the type of `func`s in general,
+    e.g. `func x = x * 2` cannot be inferred without knowing the type of `x`.
+
+    Now, the improved type inference can handle such `func`s when there is enough type information from other arguments.
+    It works by splitting the type inference into two phases:
+    1. In the first phase, it infers part of the instantiation from the non-`func` arguments.
+       The goal is to infer all parameters of the `func` arguments, e.g. `x` in the example above.
+       The `ar` argument in the example above is used to infer the partial instantiation `Array.map<Nat, O>`, leaving the second type argument `O` to be inferred in the second phase.
+       With this partial instantiation, it knows that `x : Nat`.
+    2. In the second phase, it completes the instantiation by inferring the bodies of the `func` arguments; assuming that all parameters were inferred in the first phase.
+       In the example above, it knows that `x : Nat`, so inferring the body `x * 2` will infer the type `O` to be `Nat`.
+       With this, the full instantiation `Array.map<Nat, Nat>` is inferred, and the type arguments can be omitted.
+
+    Limitations:
+    - Invariant type parameters must be explicitly provided in most cases.
+      e.g. `VarArray.map` must have the return type annotation:
+      ```motoko
+      let result = VarArray.map<Nat, Nat>(varAr, func x = x * 2);
+      ```
+      Or the type of the result must be explicitly provided:
+      ```motoko
+      let result : [var Nat] = VarArray.map(varAr, func x = x * 2);
+      ```
+
+    - When there is not enough type information from the non-`func` arguments, the type inference will not be able to infer the `func` arguments.
+      However this is not a problem in most cases.
+
+## 0.15.1 (2025-07-30)
+
+* motoko (`moc`)
+
+  * bugfix: `persistent` imported actor classes incorrectly rejected as non-`persistent` (#5667).
+
+  * Allow matching type fields of modules and objects in patterns (#5056)
+    This allows importing a type from a module without requiring an indirection or extra binding.
+
+    ```
+    // What previously required indirection, ...
+    import Result "mo:core/Result";
+    type MyResult<Ok> = Result.Result<Ok, Text>;
+
+    // or rebinding, ...
+    import Result "mo:core/Result";
+    type Result<Ok, Err> = Result.Result<Ok, Err>;
+    type MyResult<Ok> = Result<Ok, Text>;
+
+    // can now be written more concisely as:
+    import { type Result } "mo:core/Result";
+    type MyResult<Ok> = Result<Ok, Text>;
+    ```
+
+## 0.15.0 (2025-07-25)
+
+* motoko (`moc`)
+
+  * Breaking change: the `persistent` keyword is now required on actors and actor classes (#5320, #5298).
+    This is a transitional restriction to force users to declare transient declarations as `transient` and actor/actor classes as `persistent`.
+    New error messages and warnings will iteratively guide you to insert `transient` and `persistent` as required, after which any `stable` keywords can be removed. Use the force.
+
+    In the near future, the `persistent` keyword will be made optional again, and `let` and `var` declarations within actor and actor classes will be `stable` (by default) unless declared `transient`, inverting the previous default for non-`persistent` actors.
+    The goal of this song and dance is to *always* default actor declarations to stable unless declared `transient` and make the `persistent` keyword redundant.
+
+  * Breaking change: enhanced orthogonal persistence is now the default compilation mode for `moc` (#5305).
+    Flag `--enhanced-orthogonal-persistence` is on by default.
+    Users not willing or able to migrate their code can opt in to the behavior of moc prior to this release with the new flag `--legacy-persistence`.
+    Flag `--legacy-persistence` is required to select the legacy `--copying-gc` (the previous default), `--compacting-gc`,  or `generational-gc`.
+
+    As a safeguard, to protect users from unwittingly, and irreversibly, upgrading from legacy to enhanced orthogonal persistence, such upgrades will fail unless the new code is compiled with flag `--enhanced-orthogonal-persistence` explicitly set.
+    New projects should not require the flag at all (#5308) and will simply adopt enhanced mode.
+
+    To recap, enhanced orthogonal persistence implements scalable and efficient orthogonal persistence (stable variables) for Motoko:
+    * The Wasm main memory (heap) is retained on upgrade with new program versions directly picking up this state.
+    * The Wasm main memory has been extended to 64-bit to scale as large as stable memory in the future.
+    * The runtime system checks that data changes of new program versions are compatible with the old state.
+
+    Implications:
+    * Upgrades become extremely fast, only depending on the number of types, not on the number of heap objects.
+    * Upgrades will no longer hit the IC instruction limit, even for maximum heap usage.
+    * The change to 64-bit increases the memory demand on the heap, in worst case by a factor of two.
+    * For step-wise release handling, the IC initially only offers a limited capacity of the 64-bit space (e.g. 4GB or 6GB), that will be gradually increased in future to the capacity of stable memory.
+    * There is moderate performance regression of around 10% for normal execution due to combined related features (precise tagging, change to incremental GC, and handling of compile-time-known data).
+    * The garbage collector is fixed to incremental GC and cannot be chosen.
+    * `Float.format(#hex prec, x)` is no longer supported (expected to be very rarely used in practice).
+    * The debug print format of `NaN` changes (originally `nan`).
+
+  * Fixed file indices in the DWARF encoding of the `debug_line` section. This change is only relevant when using the `-g` flag (#5281).
+
+  * Improved large array behavior under the incremental GC (#5314)
+
+## 0.14.14 (2025-06-30)
+
+* motoko (`moc`)
+
+  * Lazy WASM imports: avoids unnecessary function imports from the runtime, improving compatibility with more runtime versions (#5276).
+
+  * Improved stable compatibility error messages to be more concise and clear during canister upgrades (#5271).
+
 ## 0.14.13 (2025-06-17)
 
 * motoko (`moc`)

@@ -1,4 +1,4 @@
-# Float
+# base/Float
 Double precision (64-bit) floating-point numbers in IEEE 754 representation.
 
 This module contains common floating-point constants and utility functions.

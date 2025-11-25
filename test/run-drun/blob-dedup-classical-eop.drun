@@ -1,0 +1,5 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+install $ID blob-dedup-classical-eop/v1.mo ""
+ingress $ID test "DIDL\x00\x00"
+upgrade $ID blob-dedup-classical-eop/v2.mo ""
+ingress $ID test "DIDL\x00\x00"

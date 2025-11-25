@@ -1,4 +1,4 @@
-# Iter
+# base/Iter
 
 ## Type `Iter`
 ``` motoko no-repl

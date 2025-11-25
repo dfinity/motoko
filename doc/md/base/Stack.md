@@ -1,4 +1,4 @@
-# Stack
+# base/Stack
 Class `Stack<X>` provides a minimal LIFO stack of elements of type `X`.
 
 See library `Deque` for mixed LIFO/FIFO behavior.

@@ -1,4 +1,5 @@
 %{
+open Mo_config
 open Mo_def
 open Mo_types
 open Mo_values
@@ -67,9 +68,9 @@ let assign_op lhs rhs_f at =
   let ds, lhs', rhs' =
     match lhs.it with
     | VarE x -> [], lhs, dup_var x
-    | DotE (e1, x) ->
+    | DotE (e1, x, n) ->
       let ds, ex11, ex12 = name_exp e1 in
-      ds, DotE (ex11, x) @? lhs.at, DotE (ex12, x.it @@ x.at) @? lhs.at
+      ds, DotE (ex11, x, n) @? lhs.at, DotE (ex12, x.it @@ x.at, n) @? lhs.at
     | IdxE (e1, e2) ->
       let ds1, ex11, ex12 = name_exp e1 in
       let ds2, ex21, ex22 = name_exp e2 in
@@ -167,8 +168,7 @@ let share_stab default_stab stab_opt dec =
   | None ->
     (match dec.it with
      | VarD _
-     | LetD _ ->
-       Some (default_stab @@ dec.at)
+     | LetD _ -> Some default_stab
      | _ -> None)
   | _ -> stab_opt
 
@@ -184,7 +184,7 @@ let share_dec_field default_stab (df : dec_field) =
   | Public _ ->
     {df with it = {df.it with
       dec = share_dec df.it.dec;
-      stab = share_stab Flexible df.it.stab df.it.dec}}
+      stab = share_stab (Flexible @@ df.it.dec.at) df.it.stab df.it.dec}}
   | System -> ensure_system_cap df
   | _ when is_sugared_func_or_module (df.it.dec) ->
     {df with it =
@@ -201,8 +201,9 @@ let share_dec_field default_stab (df : dec_field) =
              (match df.it.dec.it with
              | ExpD _
              | TypD _
+             | MixinD _
              | ClassD _ -> None
-             | _ -> Some (default_stab @@ df.it.dec.at))
+             | _ -> Some default_stab)
           | some -> some}
     }
 
@@ -227,7 +228,7 @@ and objblock eo s id ty dec_fields =
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
 %token AND OR NOT
-%token IMPORT MODULE
+%token IMPORT INCLUDE MODULE MIXIN
 %token DEBUG_SHOW
 %token TO_CANDID FROM_CANDID
 %token ASSERT
@@ -245,6 +246,7 @@ and objblock eo s id ty dec_fields =
 %token TRANSIENT PERSISTENT
 %token<string> DOT_NUM
 %token<string> NAT
+%token<string * string> NUM_DOT_ID
 %token<string> FLOAT
 %token<Mo_values.Value.unicode> CHAR
 %token<bool> BOOL
@@ -254,6 +256,7 @@ and objblock eo s id ty dec_fields =
 %token PRIM
 %token UNDERSCORE
 %token COMPOSITE
+%token WEAK
 
 %nonassoc IMPLIES (* see assertions.mly *)
 
@@ -274,6 +277,7 @@ and objblock eo s id ty dec_fields =
 %left POWOP WRAPPOWOP
 
 %type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_obj exp_nest
+%type<Mo_def.Syntax.exp * bool> exp_arg
 %type<Mo_def.Syntax.typ_item> typ_item
 %type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre typ_nobin
 %type<Mo_def.Syntax.vis> vis
@@ -353,6 +357,11 @@ seplist1(X, SEP) :
   | x=X { [x] }
   | x=X SEP xs=seplist(X, SEP) { x::xs }
 
+seplist_er(X, E, SEP) :
+  | (* empty *) { [] }
+  | x=X { [x] } [@recover.cost inf]
+  | E { [] }
+  | x=X SEP xs=seplist_er(X, E, SEP) { x::xs }
 
 (* Basics *)
 
@@ -362,6 +371,9 @@ seplist1(X, SEP) :
 
 %inline id :
   | id=ID { id @@ at $sloc }
+
+%inline id_wild :
+  | UNDERSCORE { "_" @@ at $sloc }
 
 %inline typ_id :
   | id=ID { id @= at $sloc }
@@ -380,13 +392,15 @@ seplist1(X, SEP) :
   | MODULE {Type.Module @@ at $sloc }
 
 %inline obj_sort :
-  | OBJECT { (false, Type.Object @@ at $sloc) }
+  | OBJECT { (false @@ no_region, Type.Object @@ at $sloc) }
   | po=persistent ACTOR { (po, Type.Actor @@ at $sloc) }
-  | MODULE { (false, Type.Module @@ at $sloc) }
+  | MODULE { (false @@ no_region, Type.Module @@ at $sloc) }
 
 %inline obj_sort_opt :
   | os=obj_sort { os }
-  | (* empty *) { (false, Type.Object @@ no_region) }
+  | (* empty *) {
+      ((!Flags.actors = Flags.DefaultPersistentActors) @@ no_region, Type.Object @@ no_region)
+    }
 
 %inline query:
   | QUERY { Type.Query }
@@ -444,6 +458,9 @@ typ_un :
     { t }
   | QUEST t=typ_un
     { OptT(t) @! at $sloc }
+  | WEAK t=typ_un
+    { WeakT(t) @! at $sloc }
+
 
 typ_pre :
   | t=typ_un
@@ -475,6 +492,7 @@ typ :
 
 typ_item :
   | i=id COLON t=typ { Some i, t }
+  | i=id_wild COLON t=typ { Some i, t }
   | t=typ { None, t }
 
 typ_args :
@@ -606,8 +624,12 @@ exp_obj :
     { ObjE ([], efs) @? at $sloc }
   | LCURLY base=exp_post(ob) AND bases=separated_nonempty_list(AND, exp_post(ob)) RCURLY
     { ObjE (base :: bases, []) @? at $sloc }
-  | LCURLY bases=separated_nonempty_list(AND, exp_post(ob)) WITH efs=seplist1(exp_field, semicolon) RCURLY
+  | LCURLY bases=separated_nonempty_list(AND, exp_post(ob)) efs=with_exp_fields RCURLY
     { ObjE (bases, efs) @? at $sloc }
+
+%inline with_exp_fields :
+  | WITH efs=seplist1(exp_field, semicolon)
+    { efs }
 
 exp_plain :
   | l=lit
@@ -627,6 +649,20 @@ exp_nullary [@recover.expr mk_stub_expr loc] (B) :
   | UNDERSCORE
     { VarE ("_" @~ at $sloc) @? at $sloc }
 
+exp_arg:
+  | e=ob { e, false }
+  | l=lit
+    { LitE(ref l) @? at $sloc, false }
+  | LPAR es=seplist(exp(ob), COMMA) RPAR
+    { match es with [e] -> e, true | _ -> TupE(es) @? at $sloc, false }
+  | x=id
+    { VarE (x.it @~ x.at) @? at $sloc, false }
+  | PRIM s=TEXT
+    { PrimE(s) @? at $sloc, false }
+  | UNDERSCORE
+    { VarE ("_" @~ at $sloc) @? at $sloc, false }
+
+
 exp_post(B) :
   | e=exp_nullary(B)
     { e }
@@ -637,21 +673,39 @@ exp_post(B) :
   | e=exp_post(B) s=DOT_NUM
     { ProjE (e, int_of_string s) @? at $sloc }
   | e=exp_post(B) DOT x=id
-    { DotE(e, x) @? at $sloc }
-  | e1=exp_post(B) inst=inst e2=exp_nullary(ob)
-    { CallE(None, e1, inst, e2) @? at $sloc }
+    { DotE(e, x, ref None) @? at $sloc }
+  | nid = NUM_DOT_ID
+    { let (num, id) = nid in
+      let {left; right} = at $sloc in
+      let e =
+	LitE(ref (PreLit (num, Type.Nat))) @?
+	{ left;
+	  right = { right with column = left.column + String.length num }}
+      in
+      let x =
+	id @@
+	{ left = { left with column = right.column - String.length id };
+	  right } in
+      DotE(e, x, ref None) @? at $sloc
+    }
+  | e1=exp_post(B) inst=inst e2=exp_arg
+    {
+      let e2, sugar = e2 in
+      CallE(None, e1, inst, (sugar, ref e2)) @? at $sloc
+    }
   | e1=exp_post(B) BANG
     { BangE(e1) @? at $sloc }
   | LPAR SYSTEM e1=exp_post(B) DOT x=id RPAR
     { DotE(
-        DotE(e1, "system" @@ at ($startpos($1),$endpos($1))) @? at $sloc,
-        x) @? at $sloc }
+        DotE(e1, "system" @@ at ($startpos($1),$endpos($1)), ref None) @? at $sloc,
+        x, ref None) @? at $sloc }
 
 exp_un(B) :
   | e=exp_post(B)
     { e }
-  | par=parenthetical e1=exp_post(B) inst=inst e2=exp_nullary(ob)
-    { CallE(par, e1, inst, e2) @? at $sloc }
+  | par=parenthetical e1=exp_post(B) inst=inst e2=exp_arg
+     { let e2, sugar = e2 in
+       CallE(par, e1, inst, (sugar, ref e2)) @? at $sloc }
   | HASH x=id
     { TagE (x, TupE([]) @? at $sloc) @? at $sloc }
   | HASH x=id e=exp_nullary(ob)
@@ -793,8 +847,16 @@ exp [@recover.expr mk_stub_expr loc] (B) :
     { e }
 
 block :
-  | LCURLY ds=seplist(dec, semicolon) RCURLY
+  | LCURLY ds=seplist_er(dec, block_dec_error, semicolon) RCURLY
     { BlockE(ds) @? at $sloc }
+
+// When block is actually a record, emit custom errors
+// Idea: `id EQ` and `id WITH` indicate a record, continue parsing as it was a record `exp_obj`
+block_dec_error :
+  | id EQ exp(ob) [@recover.cost inf]
+  | id EQ exp(ob) semicolon seplist(exp_field, semicolon)
+  | id with_exp_fields
+    { syntax_error (at $sloc) "M0001" "expected block but got record; wrap the record in braces: { { … } }" }
 
 case :
   | CASE p=pat_nullary e=exp_nest
@@ -832,8 +894,8 @@ stab :
   | TRANSIENT { Some (Flexible @@ at $sloc) }
 
 %inline persistent :
-  | (* empty *) { false }
-  | PERSISTENT { true }
+  | (* empty *) { (!Flags.actors = Flags.DefaultPersistentActors) @@ no_region }
+  | PERSISTENT { true @@ at $sloc }
 
 (* Patterns *)
 
@@ -884,9 +946,11 @@ pat :
 
 pat_field :
   | x=id t=annot_opt
-    { {id = x; pat = annot_pat (VarP x @! x.at) t} @@ at $sloc }
+    { ValPF(x, annot_pat (VarP x @! x.at) t) @@ at $sloc }
   | x=id t=annot_opt EQ p=pat
-    { {id = x; pat = annot_pat p t} @@ at $sloc }
+    { ValPF(x, annot_pat p t) @@ at $sloc }
+  | TYPE x=typ_id
+    { TypPF(x) @@ at $sloc }
 
 pat_opt :
   | p=pat_plain
@@ -919,6 +983,11 @@ dec_nonvar :
       let is_sugar, e = desugar_func_body sp x t fb in
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
   | eo=parenthetical_opt mk_d=obj_or_class_dec  { mk_d eo }
+  | MIXIN p=pat_plain dfs=obj_body {
+     let dfs = List.map (share_dec_field (Stable @@ no_region)) dfs in
+     MixinD(p, dfs) @? at $sloc
+  }
+  | INCLUDE x=id e=exp(ob) { IncludeD(x, e, ref None) @? at $sloc }
 
 obj_or_class_dec :
   | ds=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
@@ -930,14 +999,14 @@ obj_or_class_dec :
       let named, x = xf sort $sloc in
       let e =
         if s.it = Type.Actor then
-          let default_stab = if persistent then Stable else Flexible in
+          let default_stab = (if persistent.it then Stable else Flexible) @@ no_region in
           let id = if named then Some x else None in
           AwaitE
             (Type.AwaitFut false,
              AsyncE(None, Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
-                    objblock eo s id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
+                    objblock eo { s with note = persistent } id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
              @? at $sloc) @? at $sloc
-        else objblock eo s None t efs @? at $sloc
+        else objblock eo { s with note = persistent } None t efs @? at $sloc
       in
       let_or_exp named x e.it e.at }
   | sp=shared_pat_opt ds=obj_sort_opt CLASS
@@ -950,14 +1019,14 @@ obj_or_class_dec :
       let x, dfs = cb in
       let dfs', tps', t' =
        if s.it = Type.Actor then
-          let default_stab = if persistent then Stable else Flexible in
+          let default_stab = (if persistent.it then Stable else Flexible) @@ no_region in
           (List.map (share_dec_field default_stab) dfs,
-	   ensure_scope_bind "" tps,
+           ensure_scope_bind "" tps,
            (* Not declared async: insert AsyncT but deprecate in typing *)
-	   ensure_async_typ t)
+           ensure_async_typ t)
         else (dfs, tps, t)
       in
-      ClassD(eo, sp, s, cid, tps', p, t', x, dfs') @? at $sloc }
+      ClassD(eo, sp, {s with note = persistent}, cid, tps', p, t', x, dfs') @? at $sloc }
 
 dec :
   | d=dec_var

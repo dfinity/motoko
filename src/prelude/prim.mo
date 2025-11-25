@@ -84,17 +84,304 @@ func rts_mutator_instructions() : Nat {
 func rts_collector_instructions() : Nat {
   (prim "rts_collector_instructions" : () -> Nat)();
 };
+func rts_lifetime_instructions() : Nat {
+  (prim "rts_lifetime_instructions" : () -> Nat)();
+};
 func rts_upgrade_instructions() : Nat {
   (prim "rts_upgrade_instructions" : () -> Nat)();
 };
 
 func rts_stable_memory_size() : Nat {
-  (prim "rts_stable_memory_size" : () -> Nat) ()
+  (prim "rts_stable_memory_size" : () -> Nat)();
 };
 
 func rts_logical_stable_memory_size() : Nat {
-  (prim "rts_logical_stable_memory_size" : () -> Nat) ()
+  (prim "rts_logical_stable_memory_size" : () -> Nat)();
 };
+
+//TODO: just call this `weak`?
+func allocWeakRef<T>(obj : T) : weak T {
+  (prim "alloc_weak_ref" : T -> weak T)(obj);
+};
+
+func weakGet<T>(w : weak T) : ?T {
+  (prim "weak_get" : weak T -> ?T)(w);
+};
+
+func isLive(weak_ref : weak Any) : Bool {
+  (prim "weak_ref_is_live" : weak Any -> Bool)(weak_ref);
+};
+
+func envVarNames<system>() : [Text] {
+  (prim "env_var_names" : () -> [Text])();
+};
+
+func envVar<system>(name : Text) : ?Text {
+  (prim "env_var" : Text -> ?Text)(name);
+};
+
+/// EXPERIMENTAL SECTION AND API. DO NOT USE IN PRODUCTION CODE!
+///
+type __WeakRef = {
+  ref : weak Blob;
+};
+type __List = {
+  var next : ?__List;
+  value : ?__WeakRef;
+  originalBlob : Blob;
+  index : Nat;
+};
+func __getDedupTable() : ?[var __List] {
+  (prim "get_dedup_table" : () -> ?[var __List])();
+};
+
+class BlobIterator(hash : [var __List]) {
+  let HASH_ARRAY_SIZE = 16_384;
+  var currentIndex : Nat = 0;
+  var currentList : ?__List = null;
+  let hashArray = hash;
+
+  // Counts the number of dead blobs.
+  public func size() : Nat {
+    var len = 0;
+    var i = 0;
+    while (i < HASH_ARRAY_SIZE) {
+      var list = hashArray[i];
+      label countLoop loop {
+        let weakRef = list.value;
+        switch weakRef {
+          case (?weakRef) {
+            let deref = weakGet(weakRef.ref);
+            switch deref {
+              case (?deref) {};
+              case null { len += 1 };
+            };
+          };
+          case null {};
+        };
+        let next = list.next;
+        switch next {
+          case (?next) { list := next };
+          case null { break countLoop };
+        };
+      };
+      i += 1;
+    };
+    len;
+  };
+
+  func getDeadBlobFromListNode(list : ?__List) : ?Blob {
+    switch list {
+      case (?myList) {
+        let weakRef = myList.value;
+        switch weakRef {
+          case (?weakRef) {
+            let deref = weakGet(weakRef.ref);
+            switch deref {
+              case (?deref) { return null };
+              case null { return ?myList.originalBlob };
+            };
+          };
+          case null { return null };
+        };
+      };
+      case null { return null };
+    };
+  };
+
+  func advanceListNode(list : ?__List) : ?__List {
+    switch list {
+      case (?list) { list.next };
+      case null { null };
+    };
+  };
+
+  public func nextDeadBlob() : Blob {
+    // Start at the current index and list.
+    loop {
+      // Get the blob from the current list node.
+      let blob = getDeadBlobFromListNode(currentList);
+      switch blob {
+        // If we found a blob, return it.
+        case (?blob) {
+          // Advance to the next list node.
+          // So that next time we call nextDeadBlob(), we get the next blob.
+          currentList := advanceListNode(currentList);
+          return blob;
+        };
+        case null {
+          // If we didn't find a blob, advance to the next list node.
+          currentList := advanceListNode(currentList);
+
+          switch currentList {
+            case (?_) {};
+            // If we reached the end of the list, advance to the next index.
+            case null {
+              currentIndex += 1;
+              // If we reached the end of the hash array, return null.
+              if (currentIndex >= HASH_ARRAY_SIZE) {
+                return "";
+              };
+              // Get the new list node.
+              currentList := ?hashArray[currentIndex];
+            };
+          };
+
+        };
+      };
+    };
+    "";
+  };
+
+  func computeIndex(b : Blob) : Nat {
+    // Append the magic bytes to compute the hash.
+    let magicBytes : [Nat8] = [0x21, 0x63, 0x61, 0x66, 0x21];
+    let originalBlob : [Nat8] = blobToArray(b);
+    let concat = Array_tabulate(magicBytes.size() + originalBlob.size(), func(i : Nat) : Nat8 = if (i < magicBytes.size()) { magicBytes[i] } else { originalBlob[i - magicBytes.size()] });
+    let bWithMagic = arrayToBlob(concat);
+    // Get hash bucket.
+    let hashValue = hashBlob(bWithMagic);
+    nat32ToNat(hashValue) % HASH_ARRAY_SIZE;
+  };
+
+  public func isBlobLive(b : Blob) : Bool {
+    let index = computeIndex(b);
+    var list = hashArray[index];
+    // Walk the list and check if the blob is live.
+    loop {
+      if (blobCompare(list.originalBlob, b) == 0) {
+        let weakRef = list.value;
+        switch weakRef {
+          case (?weakRef) { return isLive(weakRef.ref) };
+          // The weak ref should not be null, but just in case.
+          case null { return false };
+        };
+      } else {
+        // Advance to the next list node.
+        let next = list.next;
+        switch next {
+          case (?next) { list := next };
+          // If we reached the end of the list, return false.
+          case null { return false };
+        };
+      };
+    };
+  };
+
+  func pruneFirstElement(list : __List, b : Blob, index : Nat) : Bool {
+    let deadBlob = getDeadBlobFromListNode(?list);
+    switch deadBlob {
+      case (?deadBlob) {
+        if (blobCompare(deadBlob, b) == 0) {
+          let nextElem = list.next;
+          switch nextElem {
+            case (?next) { hashArray[index] := next; return true };
+            case null {
+              // Do nothing. This case should not happen as the array is initialized
+              // with a sentinel (empty) value that is non-null.};
+            };
+          };
+        };
+      };
+      // No dead blob in this list node.
+      case null {};
+    };
+    false;
+  };
+
+  public func pruneDeadBlobs(confirmedDeadBlobs : [Blob]) {
+    // For each element in the confirmedDeadBlobs array, we check if it is in the hash array.
+    // If it is, and if the corresponding WeakRef is null, we remove the whole list node
+    // from the hash array.
+    var i = 0;
+    while (i < confirmedDeadBlobs.size()) {
+      let b = confirmedDeadBlobs[i];
+      // Get hash bucket.
+      let index = computeIndex(b);
+      // Get the list of the hash bucket and walk it until we find the blob b.
+      let list = hashArray[index];
+      // Special case for the first list node.
+      let pruned = pruneFirstElement(list, b, index);
+      if (pruned == false) {
+        // If we're here, we know that the blob is not the first list node.
+        // So we can advance to the next list node.
+        var prev = ?list;
+        var crntNode = advanceListNode(?list);
+        label findLoop loop {
+          let crntBlob = getDeadBlobFromListNode(crntNode);
+          switch crntBlob {
+            case (?crntBlob) {
+              if (blobCompare(crntBlob, b) == 0) {
+                // We found the blob and we know for sure it's dead.
+                // We just need to prune the current list node.
+                switch (prev, crntNode) {
+                  case (?prev, ?crntNode) {
+                    prev.next := crntNode.next;
+                    // Break the loop, we found the blob and pruned.
+                    break findLoop;
+                  };
+                  case _ {};
+                };
+              };
+            };
+            case null {
+              // No dead blob in this list node.
+              // We can advance pointers.
+              prev := crntNode;
+              crntNode := advanceListNode(crntNode);
+            };
+          };
+          switch crntNode {
+            case (?crntNode) {};
+            // We reached the end, break.
+            case null { break findLoop };
+          };
+        };
+      };
+      // Continue loop.
+      i += 1;
+    };
+
+  };
+
+};
+
+func getDeadBlobs() : ?[Blob] {
+  let dedupTableOption = __getDedupTable();
+  switch dedupTableOption {
+    case (?dedupTable) {
+      let dedupTableIter = BlobIterator(dedupTable);
+      let numDeadBlobs = dedupTableIter.size();
+      let deadBlobs = Array_tabulate<Blob>(numDeadBlobs, func(i : Nat) : Blob { dedupTableIter.nextDeadBlob() });
+      return ?deadBlobs;
+    };
+    case null { return null };
+  };
+
+};
+
+func pruneConfirmedDeadBlobs(confirmedDeadBlobs : [Blob]) {
+  let dedupTableOption = __getDedupTable();
+  switch dedupTableOption {
+    case (?dedupTable) {
+      let dedupTableIter = BlobIterator(dedupTable);
+      dedupTableIter.pruneDeadBlobs(confirmedDeadBlobs);
+    };
+  };
+};
+
+func isStorageBlobLive(b : Blob) : Bool {
+  let dedupTableOption = __getDedupTable();
+  switch dedupTableOption {
+    case (?dedupTable) {
+      let iter = BlobIterator(dedupTable);
+      iter.isBlobLive(b);
+    };
+    case null { false };
+  };
+};
+///
+/// END EXPERIMENTAL SECTION.
 
 // Total conversions (fixed to big)
 
@@ -158,7 +445,6 @@ func int64ToInt32(n : Int64) : Int32 = (prim "num_conv_Int64_Int32" : Int64 -> I
 func int32ToInt16(n : Int32) : Int16 = (prim "num_conv_Int32_Int16" : Int32 -> Int16) n;
 func int16ToInt8(n : Int16) : Int8 = (prim "num_conv_Int16_Int8" : Int16 -> Int8) n;
 
-
 // Exploding to bytes
 func explodeNat16(n : Nat16) : (msb : Nat8, lsb : Nat8) = (prim "explode_Nat16" : Nat16 -> (Nat8, Nat8)) n;
 func explodeInt16(n : Int16) : (msb : Nat8, lsb : Nat8) = (prim "explode_Int16" : Int16 -> (Nat8, Nat8)) n;
@@ -166,7 +452,6 @@ func explodeNat32(n : Nat32) : (msb : Nat8, Nat8, Nat8, lsb : Nat8) = (prim "exp
 func explodeInt32(n : Int32) : (msb : Nat8, Nat8, Nat8, lsb : Nat8) = (prim "explode_Int32" : Int32 -> (Nat8, Nat8, Nat8, Nat8)) n;
 func explodeNat64(n : Nat64) : (msb : Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, lsb : Nat8) = (prim "explode_Nat64" : Nat64 -> (Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8)) n;
 func explodeInt64(n : Int64) : (msb : Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, lsb : Nat8) = (prim "explode_Int64" : Int64 -> (Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8)) n;
-
 
 // Char conversion and properties
 
@@ -195,9 +480,9 @@ func encodeUtf8(t : Text) : Blob = (prim "encodeUtf8" : Text -> Blob) t;
 func textCompare(t1 : Text, t2 : Text) : Int8 = (prim "text_compare" : (Text, Text) -> Int8)(t1, t2);
 
 // Text lowercase
-func textLowercase(t : Text) : Text = (prim "text_lowercase" : (Text) -> Text) (t);
+func textLowercase(t : Text) : Text = (prim "text_lowercase" : (Text) -> Text)(t);
 // Text uppercase
-func textUppercase(t : Text) : Text = (prim "text_uppercase" : (Text) -> Text) (t);
+func textUppercase(t : Text) : Text = (prim "text_uppercase" : (Text) -> Text)(t);
 
 // Exotic bitwise operations
 func popcntNat8(w : Nat8) : Nat8 = (prim "popcnt8" : Nat8 -> Nat8) w;
@@ -223,12 +508,12 @@ func btstNat64(w : Nat64, amount : Nat64) : Bool = (prim "btst64" : (Nat64, Nat6
 func popcntInt8(w : Int8) : Int8 = (prim "popcntInt8" : Int8 -> Int8) w;
 func clzInt8(w : Int8) : Int8 = (prim "clzInt8" : Int8 -> Int8) w;
 func ctzInt8(w : Int8) : Int8 = (prim "ctzInt8" : Int8 -> Int8) w;
-func btstInt8(w : Int8, amount : Int8) : Bool = (prim "btstInt8" : (Int8, Int8) -> Int8) (w, amount) != (0 : Int8);
+func btstInt8(w : Int8, amount : Int8) : Bool = (prim "btstInt8" : (Int8, Int8) -> Int8)(w, amount) != (0 : Int8);
 
 func popcntInt16(w : Int16) : Int16 = (prim "popcntInt16" : Int16 -> Int16) w;
 func clzInt16(w : Int16) : Int16 = (prim "clzInt16" : Int16 -> Int16) w;
 func ctzInt16(w : Int16) : Int16 = (prim "ctzInt16" : Int16 -> Int16) w;
-func btstInt16(w : Int16, amount : Int16) : Bool = (prim "btstInt16" : (Int16, Int16) -> Int16) (w, amount) != (0 : Int16);
+func btstInt16(w : Int16, amount : Int16) : Bool = (prim "btstInt16" : (Int16, Int16) -> Int16)(w, amount) != (0 : Int16);
 
 func popcntInt32(w : Int32) : Int32 = (prim "popcntInt32" : Int32 -> Int32) w;
 func clzInt32(w : Int32) : Int32 = (prim "clzInt32" : Int32 -> Int32) w;
@@ -321,7 +606,7 @@ func errorMessage(e : Error) : Text = ((prim "cast" : Error -> (ErrorCode, Text)
 
 // Message deadline (best-effort messaging)
 
-func replyDeadline() : Nat64 = (prim "deadline" : () -> Nat64) ();
+func replyDeadline() : Nat64 = (prim "deadline" : () -> Nat64)();
 
 // Time
 
@@ -340,10 +625,11 @@ func principalOfBlob(act : Blob) : Principal {
 
 func principalOfActor(act : actor {}) : Principal = (prim "principalOfActor" : (actor {}) -> Principal) act;
 func isController(p : Principal) : Bool = (prim "is_controller" : Principal -> Bool) p;
-func isReplicatedExecution() : Bool = (prim "replicated_execution" : () -> Bool) ();
+func isReplicatedExecution() : Bool = (prim "replicated_execution" : () -> Bool)();
 func canisterVersion() : Nat64 = (prim "canister_version" : () -> Nat64)();
 func canisterSubnet() : Principal = (prim "canister_subnet" : () -> Principal)();
 func rootKey() : Blob = (prim "root_key" : () -> Blob)();
+func getSelfPrincipal<system>() : Principal = (prim "canister_self" : () -> Principal)();
 
 // Untyped dynamic actor creation from blobs
 let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;
@@ -464,113 +750,90 @@ func stableVarQuery() : shared query () -> async { size : Nat64 } = (prim "stabl
 
 // stable regions
 
-func regionNew() : Region =
-  (prim "regionNew" : () -> Region) ();
+func regionNew() : Region = (prim "regionNew" : () -> Region)();
 
-func regionId(r : Region) : Nat =
-  (prim "regionId" : Region -> Nat) r;
+func regionId(r : Region) : Nat = (prim "regionId" : Region -> Nat) r;
 
-func regionSize(r : Region) : Nat64 =
-  (prim "regionSize" : Region -> Nat64) r;
+func regionSize(r : Region) : Nat64 = (prim "regionSize" : Region -> Nat64) r;
 
-func regionGrow(r : Region, pages : Nat64) : Nat64 =
-  (prim "regionGrow" : (Region, Nat64) -> Nat64) (r, pages);
+func regionGrow(r : Region, pages : Nat64) : Nat64 = (prim "regionGrow" : (Region, Nat64) -> Nat64)(r, pages);
 
-func regionLoadNat32(r : Region, offset : Nat64) : Nat32 =
-  (prim "regionLoadNat32" : (Region, Nat64) -> Nat32) (r, offset);
+func regionLoadNat32(r : Region, offset : Nat64) : Nat32 = (prim "regionLoadNat32" : (Region, Nat64) -> Nat32)(r, offset);
 
-func regionStoreNat32(r : Region, offset : Nat64, val : Nat32) : () =
-  (prim "regionStoreNat32" : (Region, Nat64, Nat32) -> ()) (r, offset, val);
+func regionStoreNat32(r : Region, offset : Nat64, val : Nat32) : () = (prim "regionStoreNat32" : (Region, Nat64, Nat32) -> ())(r, offset, val);
 
-func regionLoadNat8(r : Region, offset : Nat64) : Nat8 =
-  (prim "regionLoadNat8" : (Region, Nat64) -> Nat8) (r, offset);
+func regionLoadNat8(r : Region, offset : Nat64) : Nat8 = (prim "regionLoadNat8" : (Region, Nat64) -> Nat8)(r, offset);
 
-func regionStoreNat8(r : Region, offset : Nat64, val : Nat8) : () =
-  (prim "regionStoreNat8" : (Region, Nat64, Nat8) -> ()) (r, offset, val);
+func regionStoreNat8(r : Region, offset : Nat64, val : Nat8) : () = (prim "regionStoreNat8" : (Region, Nat64, Nat8) -> ())(r, offset, val);
 
-func regionLoadNat16(r : Region, offset : Nat64) : Nat16 =
-  (prim "regionLoadNat16" : (Region, Nat64) -> Nat16) (r, offset);
+func regionLoadNat16(r : Region, offset : Nat64) : Nat16 = (prim "regionLoadNat16" : (Region, Nat64) -> Nat16)(r, offset);
 
-func regionStoreNat16(r : Region, offset : Nat64, val : Nat16) : () =
-  (prim "regionStoreNat16" : (Region, Nat64, Nat16) -> ()) (r, offset, val);
+func regionStoreNat16(r : Region, offset : Nat64, val : Nat16) : () = (prim "regionStoreNat16" : (Region, Nat64, Nat16) -> ())(r, offset, val);
 
-func regionLoadNat64(r : Region, offset : Nat64) : Nat64 =
-  (prim "regionLoadNat64" : (Region, Nat64) -> Nat64) (r, offset);
+func regionLoadNat64(r : Region, offset : Nat64) : Nat64 = (prim "regionLoadNat64" : (Region, Nat64) -> Nat64)(r, offset);
 
-func regionStoreNat64(r : Region, offset : Nat64, val : Nat64) : () =
-  (prim "regionStoreNat64" : (Region, Nat64, Nat64) -> ()) (r, offset, val);
+func regionStoreNat64(r : Region, offset : Nat64, val : Nat64) : () = (prim "regionStoreNat64" : (Region, Nat64, Nat64) -> ())(r, offset, val);
 
-func regionLoadInt32(r : Region, offset : Nat64) : Int32 =
-  (prim "regionLoadInt32" : (Region, Nat64) -> Int32) (r, offset);
+func regionLoadInt32(r : Region, offset : Nat64) : Int32 = (prim "regionLoadInt32" : (Region, Nat64) -> Int32)(r, offset);
 
-func regionStoreInt32(r : Region, offset : Nat64, val : Int32) : () =
-  (prim "regionStoreInt32" : (Region, Nat64, Int32) -> ()) (r, offset, val);
+func regionStoreInt32(r : Region, offset : Nat64, val : Int32) : () = (prim "regionStoreInt32" : (Region, Nat64, Int32) -> ())(r, offset, val);
 
-func regionLoadInt8(r : Region, offset : Nat64) : Int8 =
-  (prim "regionLoadInt8" : (Region, Nat64) -> Int8) (r, offset);
+func regionLoadInt8(r : Region, offset : Nat64) : Int8 = (prim "regionLoadInt8" : (Region, Nat64) -> Int8)(r, offset);
 
-func regionStoreInt8(r : Region, offset : Nat64, val : Int8) : () =
-  (prim "regionStoreInt8" : (Region, Nat64, Int8) -> ()) (r, offset, val);
+func regionStoreInt8(r : Region, offset : Nat64, val : Int8) : () = (prim "regionStoreInt8" : (Region, Nat64, Int8) -> ())(r, offset, val);
 
-func regionLoadInt16(r : Region, offset : Nat64) : Int16 =
-  (prim "regionLoadInt16" : (Region, Nat64) -> Int16) (r, offset);
+func regionLoadInt16(r : Region, offset : Nat64) : Int16 = (prim "regionLoadInt16" : (Region, Nat64) -> Int16)(r, offset);
 
-func regionStoreInt16(r : Region, offset : Nat64, val : Int16) : () =
-  (prim "regionStoreInt16" : (Region, Nat64, Int16) -> ()) (r, offset, val);
+func regionStoreInt16(r : Region, offset : Nat64, val : Int16) : () = (prim "regionStoreInt16" : (Region, Nat64, Int16) -> ())(r, offset, val);
 
-func regionLoadInt64(r : Region, offset : Nat64) : Int64 =
-  (prim "regionLoadInt64" : (Region, Nat64) -> Int64) (r, offset);
+func regionLoadInt64(r : Region, offset : Nat64) : Int64 = (prim "regionLoadInt64" : (Region, Nat64) -> Int64)(r, offset);
 
-func regionStoreInt64(r : Region, offset : Nat64, val : Int64) : () =
-  (prim "regionStoreInt64" : (Region, Nat64, Int64) -> ()) (r, offset, val);
+func regionStoreInt64(r : Region, offset : Nat64, val : Int64) : () = (prim "regionStoreInt64" : (Region, Nat64, Int64) -> ())(r, offset, val);
 
-func regionLoadFloat(r : Region, offset : Nat64) : Float =
-  (prim "regionLoadFloat" : (Region, Nat64) -> Float) (r, offset);
+func regionLoadFloat(r : Region, offset : Nat64) : Float = (prim "regionLoadFloat" : (Region, Nat64) -> Float)(r, offset);
 
-func regionStoreFloat(r : Region, offset : Nat64, val :  Float) : () =
-  (prim "regionStoreFloat" : (Region, Nat64, Float) -> ()) (r, offset, val);
+func regionStoreFloat(r : Region, offset : Nat64, val : Float) : () = (prim "regionStoreFloat" : (Region, Nat64, Float) -> ())(r, offset, val);
 
-func regionLoadBlob(r : Region, offset : Nat64, size : Nat) : Blob =
-  (prim "regionLoadBlob" : (Region, Nat64, Nat) -> Blob) (r, offset, size);
+func regionLoadBlob(r : Region, offset : Nat64, size : Nat) : Blob = (prim "regionLoadBlob" : (Region, Nat64, Nat) -> Blob)(r, offset, size);
 
-func regionStoreBlob(r : Region, offset : Nat64, val :  Blob) : () =
-  (prim "regionStoreBlob" : (Region, Nat64, Blob) -> ()) (r, offset, val);
-
+func regionStoreBlob(r : Region, offset : Nat64, val : Blob) : () = (prim "regionStoreBlob" : (Region, Nat64, Blob) -> ())(r, offset, val);
 
 let call_raw = @call_raw;
 
 func performanceCounter(counter : Nat32) : Nat64 = (prim "performanceCounter" : (Nat32) -> Nat64) counter;
 
 // Candid configuration
-func setCandidLimits<system> (
-  { numerator:  Nat32;
-    denominator:  Nat32;
-    bias: Nat32 }
-  ) {
-  (prim "setCandidLimits" : (Nat32, Nat32, Nat32) -> ())
-    (numerator, denominator, bias)
+func setCandidLimits<system>({
+  numerator : Nat32;
+  denominator : Nat32;
+  bias : Nat32;
+}) {
+  (prim "setCandidLimits" : (Nat32, Nat32, Nat32) -> ())(numerator, denominator, bias);
 };
 
-func getCandidLimits<system>() :
-  { numerator:  Nat32;
-    denominator:  Nat32;
-    bias: Nat32 } {
-  let (numerator, denominator, bias) = (prim "getCandidLimits" : () -> (Nat32, Nat32, Nat32)) ();
-  { numerator;
+func getCandidLimits<system>() : {
+  numerator : Nat32;
+  denominator : Nat32;
+  bias : Nat32;
+} {
+  let (numerator, denominator, bias) = (prim "getCandidLimits" : () -> (Nat32, Nat32, Nat32))();
+  {
+    numerator;
     denominator;
-    bias }
+    bias;
+  };
 };
 
 // predicates for motoko-san
 
-func forall<T>(f: T -> Bool): Bool {
+func forall<T>(f : T -> Bool) : Bool {
   (prim "forall" : <T>(T -> Bool) -> Bool) <T>(f);
 };
 
-func exists<T>(f: T -> Bool): Bool {
+func exists<T>(f : T -> Bool) : Bool {
   (prim "exists" : <T>(T -> Bool) -> Bool) <T>(f);
 };
 
-func Ret<T>(): T {
-  (prim "viperRet" : <T>() -> T) ();
+func Ret<T>() : T {
+  (prim "viperRet" : <T>() -> T)();
 };

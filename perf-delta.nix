@@ -80,9 +80,8 @@ pkgs.runCommandNoCC "perf-delta"
   if cmp -s ${baseWasm} ${prWasm}
   then
     echo "The produced WebAssembly code seems to be completely unchanged." >> $out
-  else
-    diff-stats \
-      ${basePerf}/stats.csv \
-      ${prPerf}/stats.csv >> $out;
   fi
+  diff-stats \
+    ${basePerf}/stats.csv \
+    ${prPerf}/stats.csv >> $out;
 ''

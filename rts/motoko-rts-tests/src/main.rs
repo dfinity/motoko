@@ -1,3 +1,5 @@
+// See: https://doc.rust-lang.org/nightly/edition-guide/rust-2024/static-mut-references.html
+#![allow(static_mut_refs)]
 #![feature(proc_macro_hygiene)]
 
 use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence};
@@ -102,8 +104,8 @@ extern "C" fn bigint_trap() -> ! {
 
 // Called by the RTS for debug prints
 #[no_mangle]
-unsafe extern "C" fn print_ptr(ptr: usize, len: usize) {
-    let str: &[u8] = core::slice::from_raw_parts(ptr as *const u8, len);
+extern "C" fn print_ptr(ptr: usize, len: usize) {
+    let str: &[u8] = unsafe { core::slice::from_raw_parts(ptr as *const u8, len) };
     println!("[RTS] {}", &String::from_utf8_lossy(str));
 }
 

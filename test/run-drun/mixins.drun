@@ -1,0 +1,3 @@
+install $ID mixins/mixins.mo ""
+ingress $ID actorFunc "DIDL\x00\x00"
+ingress $ID mixinFunc "DIDL\x00\x00"

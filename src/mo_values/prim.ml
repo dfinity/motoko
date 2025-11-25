@@ -253,6 +253,7 @@ let prim trap =
      | "rts_callback_table_size"
      | "rts_mutator_instructions"
      | "rts_collector_instructions"
+     | "rts_lifetime_instructions"
      | "rts_upgrade_instructions") ->
         fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "time" -> fun _ v k -> as_unit v; k (Value.Nat64 (Numerics.Nat64.of_int 42))
@@ -435,11 +436,41 @@ let prim trap =
   | "root_key" ->
       fun _ v k -> as_unit v; k (Blob "")
 
+  | "canister_self" ->
+      fun _ v k -> as_unit v; k (Blob "")
+
   (* fake *)
   | "setCandidLimits" ->
       fun _ v k -> k unit
   | "getCandidLimits" ->
       fun _ v k -> k (Tup [
         Nat32 Numerics.Nat32.zero; Nat32 Numerics.Nat32.zero; Nat32 Numerics.Nat32.zero])
+
+  | "alloc_weak_ref" ->
+     fun _ v k ->
+      (* TODO: model trapping on non-scalars *)
+       let w = Weak.create 1 in
+       Weak.set w 0 (Some v);
+       k (Weak w)
+
+  | "weak_get" ->
+     fun _ v k ->
+      (let w = as_weak v in
+       match Weak.get w 0 with
+       | Some v -> k (Opt v)
+       | None -> k (Null))
+
+  | "weak_ref_is_live" ->
+     fun _ v k ->
+       let w = as_weak v in
+       k (Bool (Weak.check w 0))
+
+  | "env_var_names" ->
+     fun _ v k ->
+       k (Array (Array.of_list []))
+
+  | "env_var" ->
+     fun _ v k ->
+       k Null
 
   | s -> trap.trap ("Value.prim: " ^ s)

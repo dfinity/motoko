@@ -1,5 +1,5 @@
 actor {
-    let _noUnusedWarning = ();
+    let _noUnusedWarning = 1;
 
     class TestClass(classParameter1 : Nat, classParameter2 : Int) {
         let field1 = 1;

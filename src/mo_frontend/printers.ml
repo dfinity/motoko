@@ -94,12 +94,15 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (T T_OR) -> simple_token "or"
   | X (T T_OBJECT) -> simple_token "object"
   | X (T T_NULL) -> simple_token "null"
+  | X (T T_NUM_DOT_ID) -> simple_token "num.id"
   | X (T T_NOT) -> simple_token "not"
   | X (T T_NEQOP) -> binop "!="
   | X (T T_NAT) -> "<nat>", "0"
   | X (T T_MULOP) -> binop "*"
   | X (T T_MULASSIGN) -> binassign "*="
   | X (T T_MODULE) -> simple_token "module"
+  | X (T T_INCLUDE) -> simple_token "include"
+  | X (T T_MIXIN) -> simple_token "mixin"
   | X (T T_MODOP) -> binop "%"
   | X (T T_MODASSIGN) -> binassign "%="
   | X (T T_MINUSASSIGN) -> unassign "-="
@@ -167,12 +170,14 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (T T_ACTOR) -> simple_token "actor"
   | X (T T_INVARIANT) -> simple_token "invariant"
   | X (T T_PIPE) -> simple_token "|>"
+  | X (T T_WEAK) -> simple_token "weak"
   (* non-terminals *)
   | X (N N_bl) -> "<bl>", "<bl>"
   | X (N N_case) -> "<case>", eg_case
   | X (N N_catch) -> "<catch>", "catch " ^ eg_pat ^ " {}"
   | X (N N_class_body) -> "<class_body>", "= {}"
   | X (N N_dec) -> "<dec>", eg_dec
+  | X (N N_block_dec_error) -> "<block_dec_error>", "x = 0"
   | X (N N_dec_field) -> "<dec_field>", eg_dec_field
   | X (N N_dec_nonvar) -> "<dec_nonvar>", eg_dec
   | X (N N_dec_var) -> "<dec_var>", "var x : Int = 0"
@@ -190,6 +195,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (N N_exp_nonvar_ob_) -> "<exp_nonvar(ob)>", eg_exp
   | X (N N_exp_nullary_bl_) -> "<exp_nullary(bl)>", eg_exp
   | X (N N_exp_nullary_ob_) -> "<exp_nullary(ob)>", eg_exp
+  | X (N N_exp_arg) -> "<exp_nullary(ob)>", eg_exp
   | X (N N_exp_plain) -> "<exp_plain>", "true"
   | X (N N_exp_post_bl_) -> "<exp_post(bl)>", eg_exp
   | X (N N_exp_post_ob_) -> "<exp_post(ob)>", eg_exp
@@ -223,6 +229,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (N N_annot_opt) -> "<annot_opt>", eg_annot
   | X (N N_seplist_case_semicolon_) -> seplist ("<case>", eg_case) semi
   | X (N N_seplist_dec_SEMICOLON_) -> seplist ("<dec>", eg_dec) semi2
+  | X (N N_seplist_er_dec_block_dec_error_semicolon_)
   | X (N N_seplist_dec_semicolon_) -> seplist ("<dec>", eg_dec) semi
   | X (N N_seplist_typ_dec_semicolon_) -> seplist ("<typ_dec>", eg_typ_dec) semi
   | X (N N_seplist_dec_field_semicolon_) -> seplist ("<dec_field>", eg_dec_field) semi

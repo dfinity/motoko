@@ -1,4 +1,4 @@
-# Blob
+# base/Blob
 `Blob` is an immutable, iterable sequence of bytes. Unlike `[Nat8]`, which is less compact (using 4 bytes per logical byte), `Blob` provides a more efficient representation.
 
 Blobs are not indexable and can be empty. To manipulate a `Blob`, convert it to `[var Nat8]` or `Buffer<Nat8>`, perform your changes, then convert it back.

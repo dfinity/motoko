@@ -32,7 +32,7 @@ use crate::{
         base_array_tag, size_of, Tag, Value, TAG_ARRAY_I, TAG_ARRAY_M, TAG_ARRAY_S,
         TAG_ARRAY_SLICE_MIN, TAG_ARRAY_T, TAG_BIGINT, TAG_BITS64_F, TAG_BITS64_S, TAG_BITS64_U,
         TAG_BLOB_A, TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T, TAG_CONCAT, TAG_MUTBOX, TAG_OBJECT,
-        TAG_REGION, TAG_SOME, TAG_VARIANT, TRUE_VALUE,
+        TAG_REGION, TAG_SOME, TAG_VARIANT, TAG_WEAK_REF, TRUE_VALUE,
     },
 };
 
@@ -40,7 +40,7 @@ use self::{
     stable_array::StableArray, stable_bigint::StableBigInt, stable_bits64::StableBits64,
     stable_blob::StableBlob, stable_concat::StableConcat, stable_mutbox::StableMutBox,
     stable_object::StableObject, stable_region::StableRegion, stable_some::StableSome,
-    stable_variant::StableVariant,
+    stable_variant::StableVariant, stable_weakref::StableWeakRef,
 };
 
 use super::{
@@ -61,6 +61,7 @@ mod stable_object;
 mod stable_region;
 mod stable_some;
 mod stable_variant;
+mod stable_weakref;
 
 /// Different kinds of objects used in the stable format.
 #[repr(u64)]
@@ -84,6 +85,7 @@ pub enum StableObjectKind {
     Concat = 16,
     BigInt = 17,
     Some = 18,
+    WeakRef = 19,
 }
 
 #[repr(C)]
@@ -115,6 +117,7 @@ impl StableTag {
         const STABLE_TAG_CONCAT: u64 = StableObjectKind::Concat as u64;
         const STABLE_TAG_BIGINT: u64 = StableObjectKind::BigInt as u64;
         const STABLE_TAG_SOME: u64 = StableObjectKind::Some as u64;
+        const STABLE_TAG_WEAK_REF: u64 = StableObjectKind::WeakRef as u64;
         match self.0 {
             STABLE_TAG_ARRAY_IMMUTABLE => StableObjectKind::ArrayImmutable,
             STABLE_TAG_ARRAY_MUTABLE => StableObjectKind::ArrayMutable,
@@ -134,7 +137,8 @@ impl StableTag {
             STABLE_TAG_CONCAT => StableObjectKind::Concat,
             STABLE_TAG_BIGINT => StableObjectKind::BigInt,
             STABLE_TAG_SOME => StableObjectKind::Some,
-            _ => unsafe { rts_trap_with("Invalid tag") },
+            STABLE_TAG_WEAK_REF => StableObjectKind::WeakRef,
+            _ => rts_trap_with("Invalid tag"),
         }
     }
 }
@@ -142,6 +146,7 @@ impl StableTag {
 impl StableObjectKind {
     fn deserialize(tag: Tag) -> StableObjectKind {
         match tag {
+            TAG_WEAK_REF => StableObjectKind::WeakRef,
             // During the marking phase of the incremental GC, the mutator can see
             // array slice information in the object tag.
             TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T | TAG_ARRAY_S | TAG_ARRAY_SLICE_MIN.. => {
@@ -167,6 +172,7 @@ impl StableObjectKind {
             TAG_CONCAT => StableObjectKind::Concat,
             TAG_BIGINT => StableObjectKind::BigInt,
             TAG_SOME => StableObjectKind::Some,
+
             _ => unreachable!("invalid tag"),
         }
     }
@@ -369,6 +375,7 @@ pub fn scan_serialized<
         StableObjectKind::Concat => StableConcat::scan_serialized(context, translate),
         StableObjectKind::BigInt => StableBigInt::scan_serialized(context, translate),
         StableObjectKind::Some => StableSome::scan_serialized(context, translate),
+        StableObjectKind::WeakRef => StableWeakRef::scan_serialized(context, translate),
     }
 }
 
@@ -394,6 +401,7 @@ pub unsafe fn serialize(stable_memory: &mut StableMemoryStream, main_object: Val
         StableObjectKind::Concat => StableConcat::serialize(stable_memory, main_object),
         StableObjectKind::BigInt => StableBigInt::serialize(stable_memory, main_object),
         StableObjectKind::Some => StableSome::serialize(stable_memory, main_object),
+        StableObjectKind::WeakRef => StableWeakRef::serialize(stable_memory, main_object),
     }
 }
 
@@ -442,6 +450,9 @@ pub unsafe fn deserialize<M: Memory>(
         }
         StableObjectKind::Some => {
             StableSome::deserialize(main_memory, stable_memory, stable_object, object_kind)
+        }
+        StableObjectKind::WeakRef => {
+            StableWeakRef::deserialize(main_memory, stable_memory, stable_object, object_kind)
         }
     }
 }

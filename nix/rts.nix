@@ -13,7 +13,7 @@ let
   vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
   # SHA256 of Rust std deps
-  rustStdDepsHash = "sha256-U4BTr1CzFuOMdyLuhw5ry3/u8bkRiPmnMr4pLo3IdOQ=";
+  rustStdDepsHash = "sha256-46dd+e9nBhEjwQ7czsDfKtlPkvX4aM5JDz2Bf6deLjI=";
 
   # Vendor directory for Rust std deps
   rustStdDeps = pkgs.stdenvNoCC.mkDerivation {
@@ -56,8 +56,8 @@ pkgs.stdenv.mkDerivation {
   nativeBuildInputs = [ pkgs.makeWrapper pkgs.removeReferencesTo pkgs.cacert ];
 
   buildInputs = with pkgs; [
-    llvmPackages_18.clang
-    llvmPackages_18.bintools
+    llvmPackages_19.clang
+    llvmPackages_19.bintools
     rust-nightly
     wasmtime
     rust-bindgen
@@ -74,7 +74,7 @@ pkgs.stdenv.mkDerivation {
     mkdir -p $CARGO_HOME
     echo "Using vendored sources from ${rtsDeps}"
     unpackFile ${allDeps}
-    cat > $CARGO_HOME/config <<__END__
+    cat > $CARGO_HOME/config.toml <<__END__
       [source."crates-io"]
       "replace-with" = "vendored-sources"
 
@@ -108,19 +108,23 @@ pkgs.stdenv.mkDerivation {
   preFixup = ''
     remove-references-to \
       -t ${pkgs.rust-nightly} \
-      -t ${rtsDeps} \
-      -t ${rustStdDeps} \
-      $out/rts/mo-rts-non-incremental.wasm $out/rts/mo-rts-non-incremental-debug.wasm
-    remove-references-to \
-      -t ${pkgs.rust-nightly} \
-      -t ${rtsDeps} \
-      -t ${rustStdDeps} \
-      $out/rts/mo-rts-incremental.wasm $out/rts/mo-rts-incremental-debug.wasm
-    remove-references-to \
-      -t ${pkgs.rust-nightly} \
-      -t ${rtsDeps} \
-      -t ${rustStdDeps} \
-      $out/rts/mo-rts-eop.wasm $out/rts/mo-rts-eop-debug.wasm
+      $out/rts/mo-rts-non-incremental.wasm \
+      $out/rts/mo-rts-non-incremental-debug.wasm \
+      $out/rts/mo-rts-incremental.wasm \
+      $out/rts/mo-rts-incremental-debug.wasm \
+      $out/rts/mo-rts-eop.wasm \
+      $out/rts/mo-rts-eop-debug.wasm
+
+    for rtsDep in $(find ${rtsDeps} -type l -exec readlink {} +); do
+      remove-references-to \
+        -t "$rtsDep" \
+        $out/rts/mo-rts-non-incremental.wasm \
+        $out/rts/mo-rts-non-incremental-debug.wasm \
+        $out/rts/mo-rts-incremental.wasm \
+        $out/rts/mo-rts-incremental-debug.wasm \
+        $out/rts/mo-rts-eop.wasm \
+        $out/rts/mo-rts-eop-debug.wasm
+    done
   '';
 
   allowedRequisites = [ ];

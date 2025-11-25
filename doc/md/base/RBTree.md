@@ -1,4 +1,4 @@
-# RBTree
+# base/RBTree
 Key-value map implemented as a red-black tree (RBTree) with nodes storing key-value pairs.
 
 A red-black tree is a balanced binary search tree ordered by the keys.

@@ -169,7 +169,7 @@ let eq_prim =
 let structural_equality t =
   let rec go t =
     match t with
-    | T.Var _ | T.Pre | T.Non | T.Async _ | T.Mut _ -> assert false
+    | T.Var _ | T.Pre | T.Non | T.Async _ | T.Mut _ | T.Weak _ -> assert false
     | T.Any | T.Typ _ -> fun v1 v2 -> Bool true
     | T.Prim T.Error
     | T.Prim T.Region -> assert false
@@ -215,7 +215,7 @@ let structural_equality t =
               (match (v1, v2) with
                | Blob s1, Blob s2 -> Bool (s1 = s2)
                | _, _ -> Bool (v1 == v2) (* HACK *))
-        | T.Module | T.Memory -> assert false
+        | T.Module | T.Mixin | T.Memory -> assert false
         | T.Object ->
             fun v1 v2 ->
               let v1 = as_obj v1 in

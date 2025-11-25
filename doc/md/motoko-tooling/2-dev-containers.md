@@ -28,7 +28,7 @@ Make sure Docker is running, then navigate into your project's directory. Create
 ```json
 {
   "name": "ICP Dev Environment",
-  "image": "ghcr.io/dfinity/icp-dev-env-slim:13",
+  "image": "ghcr.io/dfinity/icp-dev-env-slim:latest",
   "forwardPorts": [4943, 5173],
   "portsAttributes": {
     "4943": {
@@ -50,4 +50,3 @@ Make sure Docker is running, then navigate into your project's directory. Create
 
 Then, start the developer container by opening the VS Code command palette (F1 or Ctrl+Shift+P), then select `Dev-Containers: Reopen in Container`.
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

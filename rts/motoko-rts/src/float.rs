@@ -38,3 +38,48 @@ fn written_length(buffer: &[u8]) -> usize {
     }
     buffer.len()
 }
+
+#[no_mangle]
+pub fn pow(a: f64, b: f64) -> f64 {
+    libm::pow(a, b)
+}
+#[no_mangle]
+pub fn tan(a: f64) -> f64 {
+    libm::tan(a)
+}
+#[no_mangle]
+pub fn asin(a: f64) -> f64 {
+    libm::asin(a)
+}
+#[no_mangle]
+pub fn acos(a: f64) -> f64 {
+    libm::acos(a)
+}
+#[no_mangle]
+pub fn atan(a: f64) -> f64 {
+    libm::atan(a)
+}
+#[no_mangle]
+pub fn atan2(a: f64, b: f64) -> f64 {
+    libm::atan2(a, b)
+}
+#[no_mangle]
+pub fn sin(a: f64) -> f64 {
+    libm::sin(a)
+}
+#[no_mangle]
+pub fn cos(a: f64) -> f64 {
+    libm::cos(a)
+}
+#[no_mangle]
+pub fn exp(a: f64) -> f64 {
+    libm::exp(a)
+}
+#[no_mangle]
+pub fn fmod(a: f64, b: f64) -> f64 {
+    libm::fmod(a, b)
+}
+#[no_mangle]
+pub fn log(a: f64) -> f64 {
+    libm::log(a)
+}

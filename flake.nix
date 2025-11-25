@@ -6,7 +6,7 @@
 
     flake-utils.url = "github:numtide/flake-utils";
 
-    nix-update-flake.url = "github:Mic92/nix-update";
+    nix-update-flake.url = "github:Mic92/nix-update/09aadb5d6d9e1fc57df0b61def4bdd8b43ea47a1";
     nix-update-flake.inputs.nixpkgs.follows = "nixpkgs";
 
     rust-overlay.url = "github:oxalica/rust-overlay";
@@ -25,8 +25,8 @@
       url = "github:dfinity/candid";
       flake = false;
     };
-    ic-src = {
-      url = "github:dfinity/ic";
+    pocket-ic-src = {
+      url = "github:dfinity/ic/master";
       flake = false;
     };
     ic-wasm-src = {
@@ -41,8 +41,12 @@
       url = "github:dfinity/motoko-base/next-moc";
       flake = false;
     };
+    motoko-core-src = {
+      url = "github:dfinity/motoko-core";
+      flake = false;
+    };
     motoko-matchers-src = {
-      url = "github:kritzcreek/motoko-matchers";
+      url = "github:kritzcreek/motoko-matchers/5ba5f52bd9a5649dedf5e2a1ccd55d98ed7ff982";
       flake = false;
     };
     ocaml-vlq-src = {
@@ -68,10 +72,11 @@
     , esm
     , viper-server
     , candid-src
-    , ic-src
+    , pocket-ic-src
     , ic-wasm-src
     , libtommath-src
     , motoko-base-src
+    , motoko-core-src
     , motoko-matchers-src
     , ocaml-vlq-src
     , wasm-spec-src
@@ -83,10 +88,11 @@
         sources = {
           inherit
             candid-src
-            ic-src
+            pocket-ic-src
             ic-wasm-src
             libtommath-src
             motoko-base-src
+            motoko-core-src
             motoko-matchers-src
             ocaml-vlq-src
             wasm-spec-src
@@ -97,17 +103,17 @@
       llvmEnv = ''
         # When compiling to wasm, we want to have more control over the flags,
         # so we do not use the nix-provided wrapper in clang
-        export WASM_CLANG="clang-18"
+        export WASM_CLANG="clang-19"
         export WASM_LD=wasm-ld
         # because we use the unwrapped clang, we have to pass in some flags/paths
         # that otherwise the wrapped clang would take care for us
-        export WASM_CLANG_LIB="${pkgs.llvmPackages_18.clang-unwrapped.lib}"
+        export WASM_CLANG_LIB="${pkgs.llvmPackages_19.clang-unwrapped.lib}"
 
         # When compiling natively, we want to use `clang` (which is a nixpkgs
         # provided wrapper that sets various include paths etc).
         # But for some reason it does not handle building for Wasm well, so
-        # there we use plain clang-18. There is no stdlib there anyways.
-        export CLANG="${pkgs.clang_18}/bin/clang"
+        # there we use plain clang-19. There is no stdlib there anyways.
+        export CLANG="${pkgs.clang_19}/bin/clang"
       '';
 
       rts = import ./nix/rts.nix { inherit pkgs llvmEnv; };
@@ -142,7 +148,33 @@
       buildableReleaseMoPackages = buildableMoPackages releaseMoPackages;
       buildableDebugMoPackages = buildableMoPackages debugMoPackages;
 
-      tests = import ./nix/tests.nix { inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages; };
+      # Common cargo lock configuration for test-runner packages.
+      test-runner-cargo-lock = {
+        lockFile = ./test-runner/Cargo.lock;
+        outputHashes = {
+          "pocket-ic-10.0.0" = "sha256-Y71hDHsqxcDlUzKBP9fd9HyO1L51kqwTbIyTrGMRftk=";
+        };
+      };
+
+      # Define test-runner package.
+      test-runner = pkgs.rustPlatform-stable.buildRustPackage {
+        pname = "test-runner";
+        version = "0.1.0";
+        src = ./test-runner;
+        cargoLock = test-runner-cargo-lock;
+        buildInputs = [
+          pkgs.pocket-ic.server
+        ];
+        POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
+        SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+        
+        # Enable tests when building the package.
+        doCheck = true;
+      };
+
+      tests = import ./nix/tests.nix { 
+        inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages test-runner; 
+      };
 
       filterTests = type:
         pkgs.lib.mapAttrsToList (_name: drv: drv) (pkgs.lib.filterAttrs
@@ -151,15 +183,17 @@
               matchDebug = builtins.match ".*-debug$" name;
               matchRelease = builtins.match ".*-release$" name;
               matchGC = builtins.match ".*-gc$" name;
-              # Common tests are those that do not match -debug, -release, or -gc.
+              matchPerf = builtins.match ".*(bench|perf)$" name;
+              # Common tests are those that do not match -debug, -release, -gc, or -bench, -perf.
               matchCommon = matchDebug == null &&
                 matchRelease == null &&
-                matchGC == null;
+                matchGC == null &&
+                matchPerf == null;
             in {
-              "debug" = matchDebug != null;
-              "release" = matchRelease != null;
-              "gc" = matchGC != null;
-              "common" = matchCommon;
+              debug = matchDebug != null;
+              release = matchRelease != null;
+              gc = matchGC != null;
+              common = matchCommon;
             }.${type})
           tests);
 
@@ -168,9 +202,14 @@
         paths = [ "${pkgs.sources.motoko-base-src}/src" ];
       };
 
+      core-src = pkgs.symlinkJoin {
+        name = "core-src";
+        paths = [ "${pkgs.sources.motoko-core-src}/src" ];
+      };
+
       js = import ./nix/moc.js.nix { inherit pkgs commonBuildInputs rts; };
 
-      docs = import ./nix/docs.nix { inherit pkgs js base-src; };
+      docs = import ./nix/docs.nix { inherit pkgs js base-src core-src; };
 
       checks = {
         check-formatting = import ./nix/check-formatting.nix { inherit pkgs; };
@@ -182,32 +221,39 @@
       nix-update = nix-update-flake.packages.${system}.default;
 
       shell = import ./nix/shell.nix {
-        inherit pkgs nix-update base-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages docs;
+        inherit pkgs nix-update base-src core-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages docs test-runner;
         inherit (checks) check-rts-formatting;
       };
 
       common-constituents = rec {
         samples = import ./nix/samples.nix { inherit pkgs; inherit (debugMoPackages) moc; };
-        base-tests = import ./nix/base-tests.nix { inherit pkgs; inherit (debugMoPackages) moc; };
+        # TODO: Re-enable base tests once we recalibrate them so they
+        # don't OOM anymore.
+        # base-tests = import ./nix/base-tests.nix { inherit pkgs; inherit (debugMoPackages) moc; };
         base-doc = import ./nix/base-doc.nix { inherit pkgs; inherit (debugMoPackages) mo-doc; };
         report-site = import ./nix/report-site.nix { inherit pkgs base-doc docs; inherit (tests) coverage; };
 
-        inherit rts base-src docs shell;
+        inherit rts base-src core-src docs shell;
       };
     in
     {
       packages = checks // common-constituents // rec {
-        "release" = buildableReleaseMoPackages;
-        "debug" = buildableDebugMoPackages;
+        release = buildableReleaseMoPackages;
+        debug = buildableDebugMoPackages;
 
-        inherit nix-update tests js;
+        inherit nix-update tests js test-runner;
 
-        inherit (pkgs) nix-build-uncached drun ic-wasm;
+        inherit (pkgs) nix-build-uncached ic-wasm pocket-ic;
 
-        # Platform-specific release files
+        # Get pocket-ic server.
+        pocket-ic-server = pkgs.pocket-ic.server;
+
+
+
+        # Platform-specific release files.
         release-files-ubuntu-latest = import ./nix/release-files-ubuntu-latest.nix { inherit self pkgs; };
         "release-files-ubuntu-24.04-arm" = import ./nix/release-files-ubuntu-24.04-arm.nix { inherit self pkgs; };
-        release-files-macos-13 = import ./nix/release-files-macos-13.nix { inherit self pkgs; };
+        release-files-macos-15-intel = import ./nix/release-files-macos-15-intel.nix { inherit self pkgs; };
         release-files-macos-latest = import ./nix/release-files-macos-latest.nix { inherit self pkgs; };
 
         # Common tests version - includes non-GC, non-release/debug specific tests.
@@ -243,6 +289,8 @@
               filterTests "debug"  # Only include debug tests
               ++ builtins.attrValues js;
         };
+
+        inherit (debug) moc;
 
         default = release-systems-go;
       };

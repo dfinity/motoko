@@ -443,23 +443,38 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   last_env := env;
   Profiler.bump_region exp.at ;
   match exp.it with
+  | HoleE (_, e) -> interpret_exp_mut env (!e) k
   | PrimE s ->
     k (V.Func (CC.call_conv_of_typ exp.note.note_typ,
        Prim.prim { Prim.trap = trap exp.at "%s" } s
     ))
   | VarE id ->
-    begin match Lib.Promise.value_opt (find id.it env.vals) with
-    | Some v -> k v
-    | None -> trap exp.at "accessing identifier before its definition"
-    end
+    (match id.note with
+    | (_, None) ->
+      begin match Lib.Promise.value_opt (find id.it env.vals) with
+      | Some v -> k v
+      | None -> trap exp.at "accessing identifier before its definition"
+      end
+    | (_, Some exp) ->
+    interpret_exp_mut env exp k)
   | ImportE (f, ri) ->
     (match !ri with
     | Unresolved -> assert false
     | LibPath {path; _} ->
       k (find path env.libs)
+    | ImportedValuePath path ->
+      if !Mo_config.Flags.blob_import_placeholders then
+        trap exp.at "blob import placeholder"
+      else begin
+        let contents = Lib.FilePath.contents path in
+        assert T.(exp.note.note_typ = Prim Blob);
+        k (V.Blob contents)
+      end
     | IDLPath _ -> trap exp.at "actor import"
     | PrimPath -> k (find "@prim" env.libs)
     )
+  | ImplicitLibE lib ->
+    k (find lib env.libs)
   | LitE lit ->
     k (interpret_lit env lit)
   | ActorUrlE url ->
@@ -535,9 +550,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exps env exp_bases [] (fun objs -> fields (merges (strip objs)))
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
-  | DotE (exp1, id) when T.(sub exp1.note.note_typ (Obj (Actor, []))) ->
+  | DotE (exp1, id, _) when T.(sub exp1.note.note_typ (Obj (Actor, []))) ->
     interpret_exp env exp1 (fun v1 -> k V.(Tup [v1; Text id.it]))
-  | DotE (exp1, id) ->
+  | DotE (exp1, id, _) ->
     interpret_exp env exp1 (fun v1 ->
       match v1 with
       | V.Obj fs ->
@@ -601,22 +616,30 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | T.Shared _ -> make_message env name exp.note.note_typ v
       | T.Local -> v
     in k v'
-  | CallE (par, exp1, typs, exp2) ->
+  | CallE (par, exp1, typs, (_, exp2)) ->
+    let exp2 = !exp2 in
     interpret_par env par
       (fun v ->
         ignore (V.as_obj v);
+        let exp1, exp2 = match exp1.it with
+          (* Contextual dot call *)
+          | DotE (exp1, _, n) when Option.is_some !n ->
+             let func_exp = Option.get !n in
+             let args = contextual_dot_args exp1 exp2 func_exp in
+             func_exp, args
+          | _ -> exp1, exp2 in
         interpret_exp env exp1 (fun v1 ->
-            let v1 = begin match v1 with
-                     | V.(Tup [Blob aid; Text id]) -> lookup_actor env exp1.at aid id
-                     | _ -> v1
-                     end in
-            interpret_exp env exp2 (fun v2 ->
-                let call_conv, f = V.as_func v1 in
-                check_call_conv exp1 call_conv;
-                check_call_conv_arg env exp v2 call_conv;
-                last_region := exp.at; (* in case the following throws *)
-                let c = context env in
-                f c v2 k)))
+         let v1 = begin match v1 with
+                  | V.(Tup [Blob aid; Text id]) -> lookup_actor env exp1.at aid id
+                  | _ -> v1
+                  end in
+         interpret_exp env exp2 (fun v2 ->
+             let call_conv, f = V.as_func v1 in
+             check_call_conv exp1 call_conv;
+             check_call_conv_arg env exp v2 call_conv;
+             last_region := exp.at; (* in case the following throws *)
+             let c = context env in
+             f c v2 k)))
   | BlockE decs ->
     let k' =
       if T.is_unit exp.note.note_typ (* TODO: peeking at types violates erasure semantics, revisit! *)
@@ -824,8 +847,12 @@ and declare_pat_fields pfs ve : val_env =
   match pfs with
   | [] -> ve
   | pf::pfs' ->
-    let ve' = declare_pat pf.it.pat in
-    declare_pat_fields pfs' (V.Env.adjoin ve ve')
+     match pf_pattern pf with
+     | Some pat ->
+        let ve' = declare_pat pat in
+        declare_pat_fields pfs' (V.Env.adjoin ve ve')
+     | None ->
+        declare_pat_fields pfs' ve
 
 and declare_defined_id id v =
   V.Env.singleton id.it (Lib.Promise.make_fulfilled v)
@@ -914,9 +941,11 @@ and match_pats pats vs ve : val_env option =
 and match_pat_fields pfs vs ve : val_env option =
   match pfs with
   | [] -> Some ve
-  | pf::pfs' ->
-    let v = V.Env.find pf.it.id.it vs in
-    begin match match_pat pf.it.pat v with
+  | { it = TypPF(_); _ }::pfs' ->
+     match_pat_fields pfs' vs ve
+  | { it = ValPF(id, p); _ }::pfs' ->
+    let v = V.Env.find id.it vs in
+    begin match match_pat p v with
     | Some ve' -> match_pat_fields pfs' vs (V.Env.adjoin ve ve')
     | None -> None
     end
@@ -983,7 +1012,11 @@ and interpret_block env decs ro (k : V.value V.cont) =
 and declare_dec dec : val_env =
   match dec.it with
   | ExpD _
-  | TypD _ -> V.Env.empty
+  | TypD _
+  | MixinD (_) -> V.Env.empty
+  | IncludeD _ ->
+     (* TODO support mixins in the interpreter *)
+    assert false
   | LetD (pat, _, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
   | ClassD (_eo, _, _, id, _, _, _, _, _) -> declare_id {id with note = ()}
@@ -1016,6 +1049,15 @@ and interpret_dec env dec (k : V.value V.cont) =
     )
   | TypD _ ->
     k V.unit
+  | MixinD _ -> k V.unit
+  | IncludeD (_, _arg, _note) ->
+     (* TODO
+        - evaluate arg and bind it against note.pat
+        - define note.imports from mixin as local lets
+        - declare/eval note.decs
+        - Do we need to recreate the renaming pass?
+      *)
+     trap dec.at "Mixins are not yet supported in the interpreter"
   | ClassD (_eo, shared_pat, obj_sort, id, _typbinds, pat, _typ_opt, id', dec_fields) ->
     (* NB: we ignore the migration expression _eo *)
     let f = interpret_func env id.it shared_pat pat (fun env' k' ->
@@ -1123,13 +1165,13 @@ let interpret_prog flags scope p : (V.value * scope) option =
 (* Libraries *)
 
 (* Import a module unchanged, and a class constructor as an asynchronous function.
-   The conversion will be unnecessary once we declare classes as asynchronous. *)
+   The conversion will be unnecessary once we declare classes as asynchronous. FIXME: is this correct? *)
 let import_lib env lib =
   let { body = cub; _ } = lib.it in
   match cub.it with
   | Syntax.ModuleU _ ->
     Fun.id
-  | Syntax.ActorClassU (_sp, _eo, id, _tbs, _p, _typ, _self_id, _dec_fields) ->
+  | Syntax.ActorClassU (_persistence, _sp, _eo, id, _tbs, _p, _typ, _self_id, _dec_fields) ->
     (* NB: we ignore the migration expression _eo *)
     fun v -> V.Obj (V.Env.from_list
       [ (id.it, v);
@@ -1142,7 +1184,6 @@ let import_lib env lib =
             then k v
             else trap cub.at "actor class configuration unsupported in interpreter")))) ])
   | _ -> assert false
-
 
 let interpret_lib flags scope lib : scope =
   let env = env_of_scope flags state scope in

@@ -14,32 +14,32 @@ $(dfx cache show)/mo-doc [options]
 
 ### Generate in HTML format (default)
 
-```bash  
-$(dfx cache show)/mo-doc  
+```bash
+$(dfx cache show)/mo-doc
 ```
 
 ### Generate in Markdown format
 
 ```
-$(dfx cache show)/mo-doc --format plain  
+$(dfx cache show)/mo-doc --format plain
 ```
 
 ### Generate in AsciiDoc format
 
 ```
-$(dfx cache show)/mo-doc --format adoc  
+$(dfx cache show)/mo-doc --format adoc
 ```
 
 ### Use a custom source code directory (defaults to `src`)
 
 ```
-$(dfx cache show)/mo-doc --src path/to/motoko/files  
+$(dfx cache show)/mo-doc --src path/to/motoko/files
 ```
 
 ### Use a custom output directory (defaults to `docs`)
 
 ```
-$(dfx cache show)/mo-doc --output path/to/custom/output  
+$(dfx cache show)/mo-doc --output path/to/custom/output
 ```
 
 ## Options
@@ -97,8 +97,7 @@ func factorial(n : Nat) : ?Nat {
 ```
 
 ## Resources
-Check out Motoko's [base library source code](https://github.com/dfinity/motoko-base/tree/master/src) for additional examples and best practices.
+Check out Motoko's [core package source code](https://github.com/dfinity/motoko-core/tree/main/src) for additional examples and best practices.
 
 The source code for `mo-doc` is available in the [dfinity/motoko](https://github.com/dfinity/motoko/tree/master/src/docs) GitHub repository. Contributions are welcome!
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

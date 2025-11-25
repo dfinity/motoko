@@ -1,4 +1,4 @@
-# Int32
+# base/Int32
 Provides utility functions on 32-bit signed integers.
 
 :::note

@@ -23,7 +23,7 @@ jobs:
     outputs:
       version: ${{ steps.get_version.outputs.version }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Get the version from the PR title
       id: get_version
@@ -57,7 +57,7 @@ jobs:
       with:
         app-id: ${{ vars.PR_AUTOMATION_BOT_PUBLIC_APP_ID }}
         private-key: ${{ secrets.PR_AUTOMATION_BOT_PUBLIC_PRIVATE_KEY }}
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         # Checkout the merge commit so we can tag it
         ref: ${{ github.event.pull_request.merge_commit_sha }}

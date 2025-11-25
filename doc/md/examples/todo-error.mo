@@ -1,9 +1,8 @@
-import Int "mo:base/Int";
-import Hash "mo:base/Hash";
-import Map "mo:base/HashMap";
-import Time "mo:base/Time";
-import Result "mo:base/Result";
-import Error "mo:base/Error";
+import Int "mo:core/Int";
+import Map "mo:core/Map";
+import Time "mo:core/Time";
+import Result "mo:core/Result";
+import Error "mo:core/Error";
 
 persistent actor Todo {
 
@@ -16,10 +15,10 @@ persistent actor Todo {
   public type TodoId = Nat;
 
   type Todo = { #todo : { text : Text; opened : Time }; #done : Time };
-  type TodoMap = Map.HashMap<TodoId, Todo>;
+  type TodoMap = Map.Map<TodoId, Todo>;
 
   var idGen : TodoId = 0;
-  transient let todos : TodoMap = Map.HashMap(32, Int.equal, Hash.hash);
+  let todos : TodoMap = Map.empty();
 
   private func nextId() : TodoId {
     let id = idGen;
@@ -31,15 +30,15 @@ persistent actor Todo {
   public shared func newTodo(txt : Text) : async TodoId {
     let id = nextId();
     let now = Time.now();
-    todos.put(id, #todo({ text = txt; opened = now }));
+    Map.add(todos, Int.compare, id, #todo({ text = txt; opened = now }));
     id
   };
 
   public shared func markDoneBad(id : TodoId) : async Seconds {
-    switch (todos.get(id)) {
+    switch (Map.get(todos, Int.compare, id)) {
       case (?(#todo(todo))) {
         let now = Time.now();
-        todos.put(id, #done(now));
+        Map.add(todos, Int.compare, id, #done(now));
         secondsBetween(todo.opened, now)
       };
       case _ { -1 };
@@ -47,10 +46,10 @@ persistent actor Todo {
   };
 
   public shared func markDoneOption(id : TodoId) : async ?Seconds {
-    switch (todos.get(id)) {
+    switch (Map.get(todos, Int.compare, id)) {
       case (?(#todo(todo))) {
         let now = Time.now();
-        todos.put(id, #done(now));
+        Map.add(todos, Int.compare, id, #done(now));
         ?(secondsBetween(todo.opened, now))
       };
       case _ { null };
@@ -60,10 +59,10 @@ persistent actor Todo {
   public type TodoError = { #notFound; #alreadyDone : Time };
 
   public shared func markDoneResult(id : TodoId) : async Result.Result<Seconds, TodoError> {
-    switch (todos.get(id)) {
+    switch (Map.get(todos, Int.compare, id)) {
       case (?(#todo(todo))) {
         let now = Time.now();
-        todos.put(id, #done(now));
+        Map.add(todos, Int.compare, id, #done(now));
         #ok(secondsBetween(todo.opened, now))
       };
       case (?(#done(time))) {
@@ -76,10 +75,10 @@ persistent actor Todo {
   };
 
   public shared func markDoneException(id : TodoId) : async Seconds {
-    switch (todos.get(id)) {
+    switch (Map.get(todos, Int.compare, id)) {
       case (?(#todo(todo))) {
         let now = Time.now();
-        todos.put(id, #done(now));
+        Map.add(todos, Int.compare, id, #done(now));
         secondsBetween(todo.opened, now)
       };
       case (?(#done _)) {

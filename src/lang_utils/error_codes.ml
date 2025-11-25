@@ -8,7 +8,6 @@ let error_codes : (string * string option) list =
     "M0002", None; (* Lexer errors *)
     "M0003", Some([%blob "lang_utils/error_codes/M0003.md"]); (* Self-import *)
     "M0004", None; (* IDL file doesn't define a service *)
-    "M0005", None; (* Case mismatch between import and filename *)
     "M0006", None; (* Failed to parse import URL *)
     "M0007", None; (* Failed to parse actor alias *)
     "M0008", None; (* Actor import without IDL path *)
@@ -64,8 +63,6 @@ let error_codes : (string * string option) list =
     "M0058", None; (* No type can be inferred for actor reference *)
     "M0059", None; (* Operator is not defined for operand type *)
     "M0060", None; (* Operator is not defined for operand types *)
-    "M0061", None; (* Comparing abstract type to itself at supertype *)
-    "M0062", None; (* Comparing incompatible type at common supertype *)
     "M0063", None; (* Show is not defined for operand type *)
     "M0064", None; (* Misplaced '!' without enclosing do block *)
     "M0065", None; (* Expected option type before '!' *)
@@ -77,14 +74,12 @@ let error_codes : (string * string option) list =
     "M0071", None; (* Cannot infer type of forward field reference *)
     "M0072", None; (* Field does not exist in type *)
     "M0073", None; (* Expected mutable assignment target *)
-    "M0074", None; (* Array elements have inconsistent types *)
     "M0075", None; (* Expected array type *)
     "M0076", None; (* Shared functions are not supported *)
     "M0077", None; (* Shared function is only allowed as a public field of an actor *)
     "M0078", None; (* Shared function with () result type has unexpected body *)
     "M0079", None; (* Shared function with async result type has non-async body *)
     (* "M0080" DEFUNCT Local class type is contained in inferred block type *)
-    "M0081", None; (* If branches have inconsistent types *)
     "M0082", None; (* Expected iterable type *)
     "M0083", None; (* Unbound label *)
     "M0084", None; (* Cannot infer return type *)
@@ -92,7 +87,6 @@ let error_codes : (string * string option) list =
     "M0086", None; (* Async expressions are not supported *)
     "M0087", None; (* Ill-scoped await *)
     "M0088", None; (* Expected async type *)
-    "M0089", None; (* Redundant ignore *)
     "M0090", None; (* Actor reference must have an actor type *)
     "M0091", None; (* Mutable array expression cannot produce expected type *)
     "M0092", None; (* Async cannot produce scope *)
@@ -104,7 +98,6 @@ let error_codes : (string * string option) list =
     "M0098", None; (* Cannot instantiate function type *)
     "M0099", None; (* Shared function argument contains abstract type *)
     "M0100", None; (* Shared function call result contains abstract type *)
-    "M0101", None; (* Switch with inconsistent branch types *)
     "M0102", None; (* Cannot infer type of wildcard *)
     "M0103", None; (* Cannot infer type of variable *)
     (* "M0104" DEFUNCT Pattern branches have incompatible types *)
@@ -131,25 +124,20 @@ let error_codes : (string * string option) list =
     "M0125", None; (* Public actor field needs to be a manifest function *)
     "M0126", None; (* Shared function cannot be private *)
     "M0127", None; (* System function with wrong type *)
-    "M0128", None; (* Function with system function name but wrong visibility *)
     "M0129", None; (* Unexpected system method name *)
     "M0130", None; (* Misplaced system visibility *)
     "M0131", None; (* Expected stable type *)
     "M0132", None; (* Misplaced stability declaration *)
     "M0133", None; (* Misplaced stability modifier *)
     "M0134", None; (* Class body type mismatch *)
-    "M0135", None; (* Actor class has non-async return type *)
     "M0136", None; (* Empty block type mismatch *)
     "M0137", Some([%blob "lang_utils/error_codes/M0137.md"]); (* Type definition references type parameter from outer scope *)
     "M0138", None; (* Actor classes are not supported *)
     "M0139", None; (* Inner actor classes are not supported *)
     "M0140", None; (* Actor classes with type parameters are not supported *)
     "M0141", Some([%blob "lang_utils/error_codes/M0141.md"]); (* An actor or actor class must be the only non-imported declaration in a program *)
-    "M0142", None; (* An imported library should be a module or named actor class *)
     "M0143", None; (* Imported actor class cannot be anonymous *)
     "M0144", None; (* Expected a module or actor class *)
-    "M0145", None; (* Pattern does not cover value *)
-    "M0146", None; (* Pattern is never matched *)
     (* "M0147" DEFUNCT Object syntax is deprecated in this position *)
     (* "M0148" DEFUNCT Block syntax is deprecated in this position *)
     "M0149", Some([%blob "lang_utils/error_codes/M0149.md"]); (* Expected mutable 'var' field, found immutable field *)
@@ -157,8 +145,6 @@ let error_codes : (string * string option) list =
     "M0151", Some([%blob "lang_utils/error_codes/M0151.md"]); (* missing field in object literal *)
     (* "M0152" DEFUNCT Word field deprecation *)
     "M0153", Some([%blob "lang_utils/error_codes/M0153.md"]); (* IDL types not expressible in Motoko *)
-    "M0154", Some([%blob "lang_utils/error_codes/M0154.md"]); (* Deprecation annotation *)
-    "M0155", Some([%blob "lang_utils/error_codes/M0155.md"]); (* Inferred type Nat for subtraction *)
     "M0156", Some([%blob "lang_utils/error_codes/M0156.md"]); (* block contains expansive type definitions *)
     "M0157", Some([%blob "lang_utils/error_codes/M0157.md"]); (* block contains non-productive type definitions *)
     "M0158", Some([%blob "lang_utils/error_codes/M0158.md"]); (* a public class cannot be anonymous, please provide a name *)
@@ -169,8 +155,6 @@ let error_codes : (string * string option) list =
     (* "M0163" DEFUNCT Cannot import a Candid service constructor *)
     "M0164", None; (* Unknown record or variant label in textual representation *)
     "M0165", None; (* Odd expected type *)
-    "M0166", None; (* Type intersection results in abstract type *)
-    "M0167", None; (* Type union results in bottom type *)
     "M0168", None; (* Type union or intersection on forward types *)
     "M0169", None; (* Stable variable will be discarded. This may cause data loss. *)
     "M0170", None; (* Stable variable must subtype *)
@@ -193,30 +177,80 @@ let error_codes : (string * string option) list =
     "M0187", None; (* Send capability required (calling composite from non-composite) *)
     "M0188", None; (* Send capability required (calling shared from query) *)
     "M0189", None; (* Different set of bindings in pattern alternatives *)
-    "M0190", None; (* Types inconsistent for alternative pattern variables, losing information *)
-    "M0191", None; (* Code requires Wasm features ... to execute *)
     "M0192", None; (* Object/Actor/Module body type mismatch *)
     "M0193", None; (* Can't declare actor class to have `async*` result *)
-    "M0194", Some([%blob "lang_utils/error_codes/M0194.md"]); (* Unused identifier warning *)
-    "M0195", Some([%blob "lang_utils/error_codes/M0195.md"]); (* warn that `system` capability is implicitly supplied *)
     "M0196", None; (* `system` capability supplied but not required *)
     "M0197", Some([%blob "lang_utils/error_codes/M0197.md"]); (* `system` capability required *)
-    "M0198", Some([%blob "lang_utils/error_codes/M0198.md"]); (* Unused field pattern warning *)
-    "M0199", Some([%blob "lang_utils/error_codes/M0199.md"]); (* Deprecate experimental stable memory *)
     "M0200", Some([%blob "lang_utils/error_codes/M0200.md"]); (* Cannot determine subtyping or equality *)
     "M0201", None; (* Migration produces/consumes non-stable object *)
     "M0202", None; (* Migration produces/consume non-object type *)
     "M0203", None; (* Migration expression is not a function *)
     "M0204", None; (* Migration produces field of wrong type *)
     "M0205", None; (* Migration produces unexpected field *)
-    "M0206", None; (* Migration consumes, but does not produce, a declared field *)
-    "M0207", None; (* Migration consumes, but does not produce, an un-declared field *)
     "M0208", None; (* Missing field migration*)
     "M0209", None; (* Misplaced migration expression on module/object *)
-    "M0210", None; (* Parenthetical note must be applied to a message send *)
-    "M0211", None; (* Parenthetical note has no attributes *)
-    "M0212", Some([%blob "lang_utils/error_codes/M0212.md"]); (* Unrecognised attribute in parenthetical note *)
     "M0213", None; (* Parenthetical note on shared functions is disallowed *)
     "M0214", None; (* Expected type of field in parenthetical note differs from inferred *)
-    "M0215", None; (* Field is lost in record used at supertype *)
+    "M0216", None; (* Stable variable must stable subtype *)
+    "M0219", None; (* Missing `transient` *)
+    "M0220", None; (* Missing `persistent` *)
+    "M0221", None; (* Failed to determine type for type pattern field *)
+    "M0224", None; (* Overlapping dot resolution *)
+    "M0225", None; (* A mixin cannot be used as an entry point *)
+    "M0226", None; (* Unknown mixin inclusion *)
+    "M0227", None; (* Non-actor include *)
+    "M0228", None; (* Only top-level mixins *)
+    "M0229", None; (* Non-var pattern for mixin import *)
+    "M0230", None; (* Cannot determine implicit argument *)
+    "M0231", None; (* Ambiguous implicit argument *)
+    "M0232", None; (* Cannot infer type of implicit argument *)
+    "M0233", None; (* Wrong number of arguments *)
+    "M0234", None; (* Field exists but is not a function *)
   ]
+
+(** Message codes that can be both used as warnings and errors *)
+let warning_codes = [
+  "M0005", None, "Case mismatch between import and filename";
+  "M0061", None, "Comparing abstract type to itself at supertype";
+  "M0062", None, "Comparing incompatible type at common supertype";
+  "M0074", None, "Array elements have inconsistent types";
+  "M0081", None, "If branches have inconsistent types";
+  "M0089", None, "Redundant ignore";
+  "M0101", None, "Switch with inconsistent branch types";
+  "M0128", None, "Function with system function name but wrong visibility";
+  "M0135", None, "Actor class has non-async return type";
+  "M0142", None, "An imported library should be a module or named actor class";
+  "M0145", None, "Pattern does not cover value"; (* Warn or Error *)
+  "M0146", None, "Pattern is never matched";
+  "M0154", Some([%blob "lang_utils/error_codes/M0154.md"]), "Deprecation annotation";
+  "M0155", Some([%blob "lang_utils/error_codes/M0155.md"]), "Inferred type Nat for subtraction";
+  "M0166", None, "Type intersection results in abstract type";
+  "M0167", None, "Type union results in bottom type";
+  "M0190", None, "Types inconsistent for alternative pattern variables, losing information";
+  "M0191", None, "Code requires Wasm features ... to execute";
+  "M0194", Some([%blob "lang_utils/error_codes/M0194.md"]), "Unused identifier warning";
+  "M0195", Some([%blob "lang_utils/error_codes/M0195.md"]), "warn that `system` capability is implicitly supplied";
+  "M0198", Some([%blob "lang_utils/error_codes/M0198.md"]), "Unused field pattern warning";
+  "M0199", Some([%blob "lang_utils/error_codes/M0199.md"]), "Deprecate experimental stable memory"; (* Warn or Error *)
+  "M0206", None, "Migration consumes, but does not produce, a declared field";
+  "M0207", None, "Migration consumes, but does not produce, an un-declared field";
+  "M0210", None, "Parenthetical note must be applied to a message send";
+  "M0211", None, "Parenthetical note has no attributes";
+  "M0212", Some([%blob "lang_utils/error_codes/M0212.md"]), "Unrecognised attribute in parenthetical note";
+  "M0215", None, "Field is lost in record used at supertype";
+  "M0217", None, "Redundant `persistent`";
+  "M0218", None, "Redundant `stable`";
+  "M0222", None, "Ignored `async*`";
+  "M0223", None, "Redundant type instantiation";
+  "M0235", None, "Deprecate for caffeine";
+  "M0236", None, "Suggest contextual dot notation";
+  "M0237", None, "Suggest redundant explicit arguments";
+  "M0239", None, "Avoid binding a unit `()` result";
+  ]
+
+let try_find_explanation code =
+  match List.find_opt (fun (c, _) -> String.equal c code) error_codes with
+  | None ->
+    List.find_opt (fun (c, _, _) -> String.equal c code) warning_codes
+    |> Option.map (fun (c, e, _ ) -> (c, e))
+  | o -> o

@@ -12,11 +12,11 @@ There are three primary ways to represent and handle errors values in Motoko:
 
 -   `Result` variants with a descriptive `#err value` providing more information about the error.
 
--   [`Error`](../base/Error.md) values that, in an asynchronous context, can be thrown and caught similar to exceptions and contain a numeric code and message.
+-   [`Error`](../core/Error.md) values that, in an asynchronous context, can be thrown and caught similar to exceptions and contain a numeric code and message.
 
 ## Example
 
-Consider building an API for a to-do application that wants to expose a function allowing users to mark one of their tasks’s as "Done". This simple example will accept a `TodoId` object and return an [`Int`](../base/Int.md) that represents how many seconds the to-do has been open. This example assumes that it is running in an actor, which returns an async value:
+Consider building an API for a to-do application that wants to expose a function allowing users to mark one of their tasks’s as "Done". This simple example will accept a `TodoId` object and return an [`Int`](../core/Int.md) that represents how many seconds the to-do has been open. This example assumes that it is running in an actor, which returns an async value:
 
 ``` motoko no-repl
 func markDone(id : TodoId) : async Int
@@ -87,7 +87,7 @@ Callsite:
 
 ### Pattern matching
 
-The first and most common way of working with `Option` and `Result` is to use pattern matching. If you have a value of type `?Text`, you can use the `switch` keyword to access the potential [`Text`](../base/Text.md) contents:
+The first and most common way of working with `Option` and `Result` is to use pattern matching. If you have a value of type `?Text`, you can use the `switch` keyword to access the potential [`Text`](../core/Text.md) contents:
 
 <!----
 ``` motoko no-repl file=../../examples/error-examples.mo#L3-L10
@@ -106,15 +106,15 @@ In the case of a `Result`, you can also use pattern matching with the difference
 
 ### Higher-order functions
 
-Pattern matching can become tedious and verbose, especially when dealing with multiple optional values. The [base](https://github.com/dfinity/motoko-base) library exposes a collection of higher-order functions from the `Option` and `Result` modules to improve the ergonomics of error handling.
+Pattern matching can become tedious and verbose, especially when dealing with multiple optional values. The [core](https://github.com/dfinity/motoko-core) library exposes a collection of higher-order functions from the `Option` and `Result` modules to improve the ergonomics of error handling.
 
-Sometimes you’ll want to move between `Option` and `Result`. A Hashmap lookup returns `null` on failure, but maybe the caller has more context and can turn that lookup failure into a meaningful `Result`. Other times you don’t need the additional information a `Result` provides and just want to convert all `#err` cases into `null`. For these situations [base](https://github.com/dfinity/motoko-base) provides the `fromOption` and `toOption` functions in the `Result` module.
+Sometimes you’ll want to move between `Option` and `Result`. A Hashmap lookup returns `null` on failure, but maybe the caller has more context and can turn that lookup failure into a meaningful `Result`. Other times you don’t need the additional information a `Result` provides and just want to convert all `#err` cases into `null`. For these situations [core](https://github.com/dfinity/motoko-core) provides the `fromOption` and `toOption` functions in the `Result` module.
 
 ## Asynchronous errors
 
-The last way of dealing with errors in Motoko is to use asynchronous [`Error`](../base/Error.md) handling, a restricted form of the exception handling familiar from other languages. Motoko error values can only be thrown and caught in asynchronous contexts, typically the body of a `shared` function or `async` expression. Non-`shared` functions cannot employ structured error handling. This means you can exit a shared function by `throw`ing an [`Error`](../base/Error.md) value and `try` some code calling a shared function on another actor. In this workflow, you can `catch` the failure as a result of type [`Error`](../base/Error.md), but you can’t use these error handling constructs outside of an asynchronous context.
+The last way of dealing with errors in Motoko is to use asynchronous [`Error`](../core/Error.md) handling, a restricted form of the exception handling familiar from other languages. Motoko error values can only be thrown and caught in asynchronous contexts, typically the body of a `shared` function or `async` expression. Non-`shared` functions cannot employ structured error handling. This means you can exit a shared function by `throw`ing an [`Error`](../core/Error.md) value and `try` some code calling a shared function on another actor. In this workflow, you can `catch` the failure as a result of type [`Error`](../core/Error.md), but you can’t use these error handling constructs outside of an asynchronous context.
 
-Asynchronous [`Error`](../base/Error.md)s should generally only be used to signal unexpected failures that you cannot recover from and that you don’t expect many consumers of your API to handle. If a failure should be handled by your caller, you should make it explicit in your signature by returning a `Result` instead. For completeness, here is the `markDone` example with exceptions:
+Asynchronous [`Error`](../core/Error.md)s should generally only be used to signal unexpected failures that you cannot recover from and that you don’t expect many consumers of your API to handle. If a failure should be handled by your caller, you should make it explicit in your signature by returning a `Result` instead. For completeness, here is the `markDone` example with exceptions:
 
 Definition:
 

@@ -1,4 +1,4 @@
-# Order
+# base/Order
 
 ## Type `Order`
 ``` motoko no-repl

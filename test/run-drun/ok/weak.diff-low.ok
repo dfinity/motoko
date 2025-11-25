@@ -1,0 +1,7 @@
+--- weak.run
++++ weak.run-low
+@@ -1,3 +1,3 @@
+-(weak "hello")
++weak ?"hello"
+ true
+ ?"hello"

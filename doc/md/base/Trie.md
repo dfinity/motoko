@@ -1,4 +1,4 @@
-# Trie
+# base/Trie
 Functional key-value hash map.
 
 Provides an applicative (purely functional) hash map, called a *trie*, where each operation returns a new version of the structure without mutating the original.

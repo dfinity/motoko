@@ -13,6 +13,7 @@ type control =
 type obj_sort =
    Object
  | Actor
+ | Mixin
  | Module
  | Memory          (* (codegen only): stable memory serialization format *)
 
@@ -61,6 +62,7 @@ and typ =
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
   | Named of name * typ                       (* named type *)
+  | Weak of typ                               (* weak reference *)
   | Pre                                       (* pre-type *)
 
 and scope = typ
@@ -115,6 +117,7 @@ let tag_obj_sort = function
   | Module -> 1
   | Actor -> 2
   | Memory -> 3
+  | Mixin -> 4
 
 let tag_control = function
   | Returns -> 0
@@ -138,6 +141,7 @@ let tag = function
   | Pre -> 13
   | Typ _ -> 14
   | Named _ -> 15
+  | Weak _ -> 16
 
 let compare_prim p1 p2 =
   let d = tag_prim p1 - tag_prim p2 in
@@ -312,7 +316,9 @@ module ConEnv = Env.Make(struct type t = con let compare = Cons.compare end)
 module ConSet = ConEnv.Dom
 
 
-(* Field ordering *)
+(* Field ordering
+
+   NOTE: Keep in sync with mo_frontend/typing.ml:compare_pat_field *)
 
 let compare_field f1 f2 =
   match f1,f2 with
@@ -431,6 +437,7 @@ let rec shift i n t =
   | Pre -> Pre
   | Typ c -> Typ c
   | Named (name, t) -> Named (name, shift i n t)
+  | Weak t -> Weak (shift i n t)
 
 and shift_bind i n tb =
   {tb with bound = shift i n tb.bound}
@@ -483,6 +490,7 @@ let rec subst sigma t =
                       (but can mention other (closed) type constructors).
                     *)
   | Named (name, t) -> Named (name, subst sigma t)
+  | Weak t -> Weak (subst sigma t)
 
 and subst_bind sigma tb =
   { tb with bound = subst sigma tb.bound}
@@ -513,7 +521,6 @@ let close_binds cs tbs =
   if cs = [] then tbs else
   List.map (fun tb -> { tb with bound = close cs tb.bound })  tbs
 
-
 let rec open' i ts t =
   match t with
   | Prim _ -> t
@@ -534,6 +541,7 @@ let rec open' i ts t =
   | Pre -> Pre
   | Typ c -> Typ c
   | Named (name, t) -> Named (name, open' i ts t)
+  | Weak t -> Weak (open' i ts t)
 
 and open_bind i ts tb  =
   {tb with bound = open' i ts tb.bound}
@@ -588,7 +596,6 @@ let rec promote = function
   | Named (_, t) -> promote t
   | t -> t
 
-
 (* Projections *)
 
 let is_non = function Non -> true | _ -> false
@@ -604,9 +611,11 @@ let is_pair = function Tup [_; _] -> true | _ -> false
 let is_func = function Func _ -> true | _ -> false
 let is_async = function Async _ -> true | _ -> false
 let is_fut = function Async (Fut, _, _) -> true | _ -> false
+let is_cmp = function Async (Cmp, _, _) -> true | _ -> false
 let is_mut = function Mut _ -> true | _ -> false
 let is_typ = function Typ _ -> true | _ -> false
 let is_con = function Con _ -> true | _ -> false
+let is_var = function Var _ -> true | _ -> false
 
 let invalid s = raise (Invalid_argument ("Type." ^ s))
 
@@ -675,8 +684,8 @@ let as_pair_sub t = match promote t with
   | _ -> invalid "as_pair_sub"
 let as_func_sub default_s default_arity t = match promote t with
   | Func (s, c, tbs, ts1, ts2) ->
-    s, tbs, seq ts1, codom c (fun () -> Var((List.hd tbs).var, 0)) ts2
-  | Non -> default_s, Lib.List.make default_arity {var = "X"; sort = Type; bound = Any}, Any, Non
+    s, tbs, ts1, codom c (fun () -> Var((List.hd tbs).var, 0)) ts2
+  | Non -> default_s, Lib.List.make default_arity {var = "X"; sort = Type; bound = Any}, [Any], Non
   | _ -> invalid "as_func_sub"
 let as_mono_func_sub t = match promote t with
   | Func (_, _, [], ts1, ts2) -> seq ts1, seq ts2
@@ -687,14 +696,23 @@ let as_async_sub s default_scope t = match promote t with
   | Non -> default_scope, Non (* TBR *)
   | _ -> invalid "as_async_sub"
 
+let as_weak_sub t = match promote t with
+  | Weak t -> t
+  | Non -> Non
+  | _ -> invalid "as_weak_sub"
+
 let is_immutable_obj obj_type =
   let _, fields = as_obj_sub [] obj_type in
   List.for_all (fun f -> not (is_mut f.typ)) fields
 
-
-let lookup_val_field_opt l tfs =
+let find_val_field_opt l tfs =
   let is_lab = function {typ = Typ _; _} -> false | {lab; _} -> lab = l in
   match List.find_opt is_lab tfs with
+  | Some tf -> Some tf
+  | None -> None
+
+let lookup_val_field_opt l tfs =
+  match find_val_field_opt l tfs with
   | Some tf -> Some tf.typ
   | None -> None
 
@@ -747,6 +765,7 @@ let rec span = function
   | Non -> Some 0
   | Typ _ -> Some 1
   | Named (_, t) -> span t
+  | Weak t -> span t (* TBR *)
 
 
 (* Collecting type constructors *)
@@ -761,7 +780,7 @@ let rec cons' inTyp t cs =
   | Var _ | Prim _ | Any | Non | Pre -> cs
   | Con (c, ts) ->
     List.fold_right (cons' inTyp) ts (cons_con inTyp c cs)
-  | Opt t | Mut t | Array t ->
+  | Opt t | Mut t | Array t | Weak t ->
     cons' inTyp t cs
   | Async (_, t1, t2) ->
     cons' inTyp t2 (cons' inTyp t1 cs)
@@ -780,7 +799,6 @@ let rec cons' inTyp t cs =
       cons_kind' inTyp (Cons.kind c) cs
   | Named (_ , t) ->
     cons' inTyp t cs
-
 
 and cons_con inTyp c cs =
   if ConSet.mem c cs
@@ -801,6 +819,7 @@ and cons_kind' inTyp k cs =
 
 let cons t = cons' true t ConSet.empty
 let cons_kind k = cons_kind' true k ConSet.empty
+let cons_typs ts = List.fold_left (fun acc t -> cons t |> ConSet.union acc) ConSet.empty ts
 
 (* Checking for concrete types *)
 
@@ -836,6 +855,7 @@ let concrete t =
       | Typ c -> (* assumes type defs are closed *)
         true (* so we can transmit actors with typ fields *)
       | Named (_, t) -> go t
+      | Weak t -> go t
     end
   in go t
 
@@ -852,6 +872,11 @@ let serializable allow_mut t =
       | Prim Region -> allow_mut (* stable, but not shared *)
       | Any | Non | Prim _ | Typ _ -> true
       | Async _ -> false
+      | Weak t ->
+         !Mo_config.Flags.enhanced_orthogonal_persistence &&
+         (* NB: Candid serialization doesn't preserve graph structure *)
+         (* weak references are stable if content is stable *)
+         allow_mut && go t
       | Mut t -> allow_mut && go t
       | Con (c, ts) ->
         (match Cons.kind c with
@@ -863,7 +888,7 @@ let serializable allow_mut t =
       | Obj (s, fs) ->
         (match s with
          | Actor -> true
-         | Module -> false (* TODO(1452) make modules sharable *)
+         | Module | Mixin -> false (* TODO(1452) make modules sharable *)
          | Object | Memory -> List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
@@ -882,7 +907,7 @@ let find_unshared t =
       | Var _ | Pre -> assert false
       | Prim Error -> Some t
       | Any | Non | Prim _ | Typ _ -> None
-      | Async _ | Mut _ -> Some t
+      | Async _ | Mut _ | Weak _ -> Some t
       | Con (c, ts) ->
         (match Cons.kind c with
         | Abs _ -> None
@@ -892,7 +917,7 @@ let find_unshared t =
       | Tup ts -> List.find_map go ts
       | Obj (s, fs) ->
         (match s with
-         | Actor -> None
+         | Actor | Mixin -> None
          | Module -> Some t (* TODO(1452) make modules sharable *)
          | Object ->
            List.find_map (fun f -> go f.typ) fs
@@ -930,7 +955,6 @@ let stable t = serializable true t
    TODO: haul string_of_typ before the lub/glb business, if possible *)
 let str = ref (fun _ -> failwith "")
 
-
 (* Aggregation of source fields, for use by the language server. *)
 let src_field_updates = ref []
 let src_field_map = ref (empty_srcs_tbl ())
@@ -941,18 +965,21 @@ let with_src_field_updates src_fields action =
     src_field_map := src_fields;
     action ())
 
-(* Helper to aggregate field updates with an empty list, perform some predicate,
-   commit field updates if the predicate holds, and restore the empty list. It
+(* Helper to aggregate field updates with an empty list, perform some check,
+   commit field updates if the check holds, and restore the empty list. It
    will update the actions given to it in the source fields map . *)
-let with_src_field_updates_predicate src_fields predicate =
+let with_src_field_updates_predicate_general src_fields check passes =
   Fun.protect ~finally:(fun () -> src_field_updates := []; src_field_map := empty_srcs_tbl ()) (fun () ->
     src_field_updates := [];
     src_field_map := src_fields;
-    let result = predicate () in
+    let result = check () in
     (* Do not commit updates if the relation given by the predicate failed. *)
-    if result then
+    if passes result then
       List.iter (fun f -> f ()) (List.rev !src_field_updates);
     result)
+
+let with_src_field_updates_predicate src_fields predicate =
+  with_src_field_updates_predicate_general src_fields predicate Fun.id
 
 (* Updates to the source fields of the inputs depending on the given relation.
    If you use this function, you'll probably want to ensure the entire relation
@@ -993,7 +1020,6 @@ let add_src_field_update is_rel rel eq tf1 tf2 =
     in
     src_field_updates := src_field_update :: !src_field_updates
 
-
 (* Equivalence & Subtyping *)
 
 exception PreEncountered
@@ -1002,32 +1028,116 @@ exception Undecided
 
 module SS = Set.Make (OrdPair)
 
+type compatibility = Compatible | Incompatible of explanation
+
+and explanation =
+  | IncompatibleTypes of context * typ * typ
+  | MissingTag of context * lab * typ
+  | UnexpectedTag of context * lab * typ
+  | MissingField of context * lab * typ
+  | UnexpectedField of context * lab * typ
+  | FewerItems of context * string
+  | MoreItems of context * string
+  | PromotionToAny of context * typ
+  | IncompatiblePrims of context * typ * typ
+  | IncompatibleObjSorts of context * typ * typ
+  | IncompatibleFuncSorts of context * typ * typ
+  | IncompatibleBounds of context * typ * typ
+  | IncompatibleFuncs of context * typ * typ
+  | IncompatibleAsyncSorts of context * typ * typ
+and context_item =
+  | ConsType of con
+  | NamedType of name
+  | StableVariable of lab
+  | Field of lab
+and context = context_item list
+let empty_context : context = []
+
 module RelArg :
   sig
     type arg
-    val sub : arg (* ordinary subtyping, with loss of info *)
-    val stable_sub : arg (* stable subtyping, without loss of info*)
+    val sub : context -> arg (* ordinary subtyping, with loss of info *)
+    val stable_sub : context -> arg (* stable subtyping, without loss of info*)
     val inc_depth : arg -> arg
+    val push : context_item -> arg -> arg
     val is_stable_sub : arg -> bool
     val exceeds_max_depth : arg -> bool
+    val context : arg -> context
+    val false_with : arg -> explanation -> bool
+    val explanation : arg -> explanation option
 end
 =
 struct
   let max_depth = 10_000
-  type arg = int
-  let sub = 0
-  let stable_sub = 1
+  type arg = {
+      is_stable_sub : bool;
+      depth : int;
+      context : context;
+      error : explanation option ref;
+    }
+  let sub context = { context; depth = 0; is_stable_sub = false; error = ref None }
+  let stable_sub context =  { (sub context) with is_stable_sub = true }
   let inc_depth arg =
-    let drop_bit = Int.logand arg 1 in
-    let depth = Int.shift_right arg 1 in
-    Int.logor (Int.shift_left (depth + 1) 1) drop_bit
-  let is_stable_sub arg = Int.logand arg 1 = 1
-  let exceeds_max_depth d =
-    Int.shift_right d 1 > max_depth
+    { arg with depth = arg.depth + 1 }
+  let push context_item arg =
+    { arg with context = context_item :: arg.context }
+  let is_stable_sub arg = arg.is_stable_sub
+  let exceeds_max_depth arg = arg.depth > max_depth
+  let context arg = arg.context
+  let false_with arg e = (arg.error := Some e; false)
+  let explanation arg = !(arg.error)
 end
 
-let rel_list d p rel eq xs1 xs2 =
-  try List.for_all2 (p d rel eq) xs1 xs2 with Invalid_argument _ -> false
+let incompatible_types d t1 t2 =
+  RelArg.false_with d (IncompatibleTypes (RelArg.context d, t1, t2))
+
+let missing_tag d lab t =
+  RelArg.false_with d (MissingTag (RelArg.context d, lab, t))
+
+let unexpected_tag d lab t =
+  RelArg.false_with d (UnexpectedTag (RelArg.context d, lab, t))
+
+let missing_field d lab t =
+  RelArg.false_with d (MissingField (RelArg.context d, lab, t))
+
+let unexpected_field d lab t =
+  RelArg.false_with d (UnexpectedField (RelArg.context d, lab, t))
+
+let fewer_items d desc =
+  RelArg.false_with d (FewerItems (RelArg.context d, desc))
+
+let more_items d desc =
+  RelArg.false_with d (MoreItems (RelArg.context d, desc))
+
+let promotion_to_any d t =
+  RelArg.false_with d (PromotionToAny (RelArg.context d, t))
+
+let incompatible_prims d t1 t2 =
+  RelArg.false_with d (IncompatiblePrims (RelArg.context d, t1, t2))
+
+let incompatible_obj_sorts d t1 t2 =
+  RelArg.false_with d (IncompatibleObjSorts (RelArg.context d, t1, t2))
+
+let incompatible_func_sorts d t1 t2 =
+  RelArg.false_with d (IncompatibleFuncSorts (RelArg.context d, t1, t2))
+
+let incompatible_bounds d t1 t2 =
+  RelArg.false_with d (IncompatibleBounds (RelArg.context d, t1, t2))
+
+let incompatible_funcs d t1 t2 =
+  RelArg.false_with d (IncompatibleFuncs (RelArg.context d, t1, t2))
+
+let incompatible_async_sorts d t1 t2 =
+  RelArg.false_with d (IncompatibleAsyncSorts (RelArg.context d, t1, t2))
+
+let rec rel_list item_name d p rel eq xs1 xs2 =
+  match xs1, xs2 with
+  | [], [] -> true
+  | [], _ -> fewer_items d item_name
+  | _, [] -> more_items d item_name
+  | x1::rest1, x2::rest2 ->
+    p d rel eq x1 x2 &&
+    rel_list item_name d p rel eq rest1 rest2
 
 let rec rel_typ d rel eq t1 t2 =
   let d = RelArg.inc_depth d in
@@ -1041,34 +1151,36 @@ let rec rel_typ d rel eq t1 t2 =
   | Mut t1', Mut t2' ->
     eq_typ d rel eq t1' t2'
   | Typ c1, Typ c2 ->
-    eq_con d eq c1 c2
+    eq_con d eq c1 c2 || incompatible_types d t1 t2
   | Mut _, _ | _, Mut _
   | Typ _, _ | _, Typ _ ->
-    false
+    incompatible_types d t1 t2
   | Any, Any ->
     true
   | _, Any when rel != eq ->
-    not (RelArg.is_stable_sub d)
+    not (RelArg.is_stable_sub d) || promotion_to_any d t1
   | Non, Non ->
     true
   | Non, _ when rel != eq ->
     true
-  | Named (_n, t1'), t2 ->
+  | Named (n, t1'), t2 ->
     rel_typ d rel eq t1' t2
-  | t1, Named (_n, t2') ->
-    rel_typ d rel eq t1 t2'
+  | t1, Named (n, t2') ->
+    let d' = RelArg.push (NamedType n) d in
+    rel_typ d' rel eq t1 t2'
   | Con (con1, ts1), Con (con2, ts2) ->
     (match Cons.kind con1, Cons.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ d rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
-      rel_typ d rel eq t1 (open_ ts2 t)
+      let d' = RelArg.push (ConsType con2) d in
+      rel_typ d' rel eq t1 (open_ ts2 t)
     | _ when Cons.eq con1 con2 ->
-      rel_list d eq_typ rel eq ts1 ts2
+      rel_list "type arguments" d eq_typ rel eq ts1 ts2
     | Abs (tbs, t), _ when rel != eq ->
       rel_typ d rel eq (open_ ts1 t) t2
     | _ ->
-      false
+      incompatible_types d t1 t2
     )
   | Con (con1, ts1), t2 ->
     (match Cons.kind con1, t2 with
@@ -1076,70 +1188,82 @@ let rec rel_typ d rel eq t1 t2 =
       rel_typ d rel eq (open_ ts1 t) t2
     | Abs (tbs, t), _ when rel != eq ->
       rel_typ d rel eq (open_ ts1 t) t2
-    | _ -> false
+    | _ -> incompatible_types d t1 t2
     )
   | t1, Con (con2, ts2) ->
     (match Cons.kind con2 with
-    | Def (tbs, t) -> (* TBR this may fail to terminate *)
-      rel_typ d rel eq t1 (open_ ts2 t)
-    | _ -> false
+     | Def (tbs, t) -> (* TBR this may fail to terminate *)
+       let d' = RelArg.push (ConsType con2) d in
+       rel_typ d' rel eq t1 (open_ ts2 t)
+     | _ -> incompatible_types d t1 t2
     )
   | Prim p1, Prim p2 when p1 = p2 ->
     true
   | Prim p1, Prim p2 when rel != eq ->
-    p1 = Nat && p2 = Int
+    (p1 = Nat && p2 = Int) ||
+    incompatible_prims d t1 t2
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
-    s1 = s2 &&
-    rel_fields d rel eq tfs1 tfs2
+    (s1 = s2 || incompatible_obj_sorts d t1 t2) &&
+    rel_fields t2 d rel eq tfs1 tfs2
   | Array t1', Array t2' ->
     rel_typ d rel eq t1' t2'
   | Opt t1', Opt t2' ->
     rel_typ d rel eq t1' t2'
+  | Weak t1', Weak t2' ->
+    rel_typ d rel eq t1' t2'
   | Prim Null, Opt t2' when rel != eq ->
     true
   | Variant fs1, Variant fs2 ->
-    rel_tags d rel eq fs1 fs2
+    rel_tags t2 d rel eq fs1 fs2
   | Tup ts1, Tup ts2 ->
-    rel_list d rel_typ rel eq ts1 ts2
+    rel_list "tuple arguments" d rel_typ rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
-    s1 = s2 && c1 = c2 &&
+    (s1 = s2 || incompatible_func_sorts d t1 t2) &&
+    (c1 = c2 || incompatible_bounds d t1 t2) &&
     (match rel_binds d eq eq tbs1 tbs2 with
-    | Some ts ->
-      rel_list d rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
-      rel_list d rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
-    | None -> false
+     | Some ts ->
+        rel_list "function parameters" d rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
+        rel_list "return types" d rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
+     | None -> incompatible_funcs d t1 t2
     )
   | Async (s1, t11, t12), Async (s2, t21, t22) ->
-    s1 = s2 &&
+    (s1 = s2 || incompatible_async_sorts d t1 t2) &&
     eq_typ d rel eq t11 t21 &&
     rel_typ d rel eq t12 t22
-  | _, _ -> false
+  | _, _ -> incompatible_types d t1 t2
   end
 
-and rel_fields d rel eq tfs1 tfs2 =
+and rel_fields t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
   | [], [] ->
     true
-  | _, [] when rel != eq ->
-    not (RelArg.is_stable_sub d)
+  | tf1::_, [] when rel != eq && not (RelArg.is_stable_sub d) ->
+    true
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
+      let d' = RelArg.push (Field tf2.lab) d in
       let is_rel =
-        rel_typ d rel eq tf1.typ tf2.typ &&
-        rel_fields d rel eq tfs1' tfs2'
+        rel_typ d' rel eq tf1.typ tf2.typ &&
+        rel_fields t2 d rel eq tfs1' tfs2'
       in
       add_src_field_update is_rel rel eq tf1 tf2;
       is_rel
-    | -1 when rel != eq ->
-      not (RelArg.is_stable_sub d) &&
-      rel_fields d rel eq tfs1' tfs2
-    | _ -> false
+    | -1 when rel != eq && not (RelArg.is_stable_sub d) ->
+      rel_fields t2 d rel eq tfs1' tfs2
+    | result ->
+      if result > 0 then
+        unexpected_field d tf2.lab t2
+      else
+        missing_field d tf1.lab t2
     )
-  | _, _ -> false
+  | [], tf2::_ ->
+    unexpected_field d tf2.lab t2
+  | tf1::_, [] ->
+    missing_field d tf1.lab t2
 
-and rel_tags d rel eq tfs1 tfs2 =
+and rel_tags t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
   | [], [] ->
@@ -1148,22 +1272,29 @@ and rel_tags d rel eq tfs1 tfs2 =
     true
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
-    | 0 ->
+     | 0 ->
       let is_rel =
-        rel_typ d rel eq tf1.typ tf2.typ &&
-        rel_tags d rel eq tfs1' tfs2'
+       rel_typ d rel eq tf1.typ tf2.typ &&
+       rel_tags t2 d rel eq tfs1' tfs2'
       in
       add_src_field_update is_rel rel eq tf1 tf2;
       is_rel
     | +1 when rel != eq ->
-      rel_tags d rel eq tfs1 tfs2'
-    | _ -> false
+      rel_tags t2 d rel eq tfs1 tfs2'
+    | result ->
+      if result > 0 then
+        unexpected_tag d tf2.lab t2
+      else
+        missing_tag d tf1.lab t2
     )
-  | _, _ -> false
+  | [], tf2::_ ->
+    unexpected_tag d tf2.lab t2
+  | tf1::_, [] ->
+    missing_tag d tf1.lab t2
 
 and rel_binds d rel eq tbs1 tbs2 =
   let ts = open_binds tbs2 in
-  if rel_list d (rel_bind ts) rel eq tbs2 tbs1
+  if rel_list "type parameters" d (rel_bind ts) rel eq tbs2 tbs1
   then Some ts
   else None
 
@@ -1177,8 +1308,8 @@ and eq_kind' eq k1 k2 : bool =
   match k1, k2 with
   | Def (tbs1, t1), Def (tbs2, t2)
   | Abs (tbs1, t1), Abs (tbs2, t2) ->
-    (match rel_binds RelArg.sub eq eq tbs1 tbs2 with
-    | Some ts -> eq_typ RelArg.sub eq eq (open_ ts t1) (open_ ts t2)
+    (match rel_binds (RelArg.sub []) eq eq tbs1 tbs2 with
+    | Some ts -> eq_typ (RelArg.sub []) eq eq (open_ ts t1) (open_ ts t2)
     | None -> false
     )
   | _ -> false
@@ -1198,19 +1329,28 @@ and eq_con d eq c1 c2 =
 
 let eq_binds ?(src_fields = empty_srcs_tbl ()) tbs1 tbs2 =
   with_src_field_updates_predicate src_fields (fun () ->
-    let eq = ref SS.empty in rel_binds RelArg.sub eq eq tbs1 tbs2 <> None)
+    let eq = ref SS.empty in rel_binds (RelArg.sub []) eq eq tbs1 tbs2 <> None)
 
 let eq ?(src_fields = empty_srcs_tbl ()) t1 t2 : bool =
   with_src_field_updates_predicate src_fields (fun () ->
-    let eq = ref SS.empty in eq_typ RelArg.sub eq eq t1 t2)
+    let eq = ref SS.empty in eq_typ (RelArg.sub []) eq eq t1 t2)
 
 let eq_kind ?(src_fields = empty_srcs_tbl ()) k1 k2 : bool =
   with_src_field_updates_predicate src_fields (fun () ->
     eq_kind' (ref SS.empty) k1 k2)
 
+let sub_explained ?(src_fields = empty_srcs_tbl ()) context t1 t2 =
+  with_src_field_updates_predicate_general src_fields (fun () ->
+    let d = RelArg.sub context in
+    if rel_typ d (ref SS.empty) (ref SS.empty) t1 t2
+    then Compatible else match RelArg.explanation d with
+      | Some e -> Incompatible e
+      | None -> Incompatible (IncompatibleTypes (context, t1, t2)))
+    (fun result -> result = Compatible)
+
 let sub ?(src_fields = empty_srcs_tbl ()) t1 t2 : bool =
   with_src_field_updates_predicate src_fields (fun () ->
-    rel_typ RelArg.sub (ref SS.empty) (ref SS.empty) t1 t2)
+    rel_typ (RelArg.sub []) (ref SS.empty) (ref SS.empty) t1 t2)
 
 (* Compatibility *)
 
@@ -1249,6 +1389,8 @@ let rec compatible_typ co t1 t2 =
     compatible_fields co tfs1 tfs2
   | Opt t1', Opt t2' ->
     compatible_typ co t1' t2'
+  | Weak t1', Weak t2' ->
+    compatible_typ co t1' t2' (* TBR *)
   | Prim Null, Opt _ | Opt _, Prim Null  ->
     true
   | Variant tfs1, Variant tfs2 ->
@@ -1300,6 +1442,7 @@ let rec inhabited_typ co t =
   | Pre -> assert false
   | Non -> false
   | Any | Prim _ | Array _ | Opt _ | Async _ | Func _ | Typ _ -> true
+  | Weak t' (* TBR *)
   | Mut t' -> inhabited_typ co t'
   | Tup ts -> List.for_all (inhabited_typ co) ts
   | Obj (_, tfs) -> List.for_all (inhabited_field co) tfs
@@ -1330,7 +1473,8 @@ let rec singleton_typ co t =
 
   | Non -> false
   | Prim _ | Array _ | Opt _ | Async _ | Func _ | Typ _ -> false
-  | Mut t' -> false
+  | Weak _
+  | Mut _ -> false
   | Obj (_, _) -> false
   | Variant _ -> false
   | Var _ -> false
@@ -1342,6 +1486,68 @@ and singleton_field co tf = singleton_typ co tf.typ
 
 and singleton t : bool = singleton_typ (ref S.empty) t
 
+type no_subtypes_or_supertypes =
+  | NoSubtypes
+  | NoSupertypes
+
+let rec has_no_subtypes_or_supertypes m co = function
+  | Con (c, ts) as t ->
+    (match Cons.kind c with
+    | Abs (_, bound) ->
+      (* Type parameters have no proper subtypes *)
+      m = NoSubtypes ||
+      (* And no proper supertypes when unbounded. *)
+      bound = Any
+    | Def (tbs, def) ->
+      let s = fst co in
+      S.mem t !s || begin
+        s := S.add t !s;
+        has_no_subtypes_or_supertypes m co (reduce tbs def ts)
+      end
+    )
+  | Mut _ -> true
+  | Named (_, t) -> has_no_subtypes_or_supertypes m co t
+  | Prim
+    ( Bool
+    | Nat8
+    | Nat16
+    | Nat32
+    | Nat64
+    | Int8
+    | Int16
+    | Int32
+    | Int64
+    | Float
+    | Char
+    | Text
+    | Blob
+    | Error
+    | Principal
+    | Region
+    ) -> true
+  (* Null <: ?T so Null has no proper subtypes and ?T has no proper supertypes. *)
+  | Opt t -> m = NoSupertypes && has_no_subtypes_or_supertypes m co t
+  (* Nat <: Int so Nat has no proper subtypes and Int has no proper supertypes. *)
+  | Prim Int -> m = NoSupertypes
+  | Prim (Null | Nat) -> m = NoSubtypes
+  | Array t
+  | Async (_, _, t)
+  | Weak t -> has_no_subtypes_or_supertypes m co t
+  | Tup ts -> List.for_all (has_no_subtypes_or_supertypes m co) ts
+  | Func (_, _, _, ts1, ts2) ->
+    let flip = function
+      | NoSubtypes -> NoSupertypes
+      | NoSupertypes -> NoSubtypes
+    in
+    let swap (s1, s2) = (s2, s1) in
+    (* For func inputs, flip the mode and swap the result sets. *)
+    List.for_all (has_no_subtypes_or_supertypes (flip m) (swap co)) ts1 &&
+    List.for_all (has_no_subtypes_or_supertypes       m        co ) ts2
+  | _ -> false
+
+and has_no_supertypes t = has_no_subtypes_or_supertypes NoSupertypes (ref S.empty, ref S.empty) t
+
+and has_no_subtypes t = has_no_subtypes_or_supertypes NoSubtypes (ref S.empty, ref S.empty) t
 
 (* Least upper bound and greatest lower bound *)
 
@@ -1374,12 +1580,14 @@ let rec combine rel lubs glbs t1 t2 =
       Prim (if rel == lubs then Int else Nat)
     | Opt t1', Opt t2' ->
       Opt (combine rel lubs glbs t1' t2')
+    | Weak t1', Weak t2' ->
+      Weak (combine rel lubs glbs t1' t2')
     | (Opt _ as t), (Prim Null as t')
     | (Prim Null as t'), (Opt _ as t) ->
       if rel == lubs then t else t'
     | Array t1', Array t2' ->
       (try Array (combine rel lubs glbs t1' t2')
-      with Mismatch -> if rel == lubs then Any else Non)
+       with Mismatch -> if rel == lubs then Any else Non)
     | Variant t1', Variant t2' ->
       Variant (combine_tags rel lubs glbs t1' t2')
     | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
@@ -1653,6 +1861,7 @@ let string_of_obj_sort = function
   | Object -> ""
   | Module -> "module "
   | Actor -> "actor "
+  | Mixin -> "mixin "
   | Memory -> "memory "
 
 let string_of_func_sort = function
@@ -1666,22 +1875,19 @@ let string_of_func_sort = function
 module type PrettyConfig = sig
   val show_stamps : bool
   val show_scopes : bool
+  val show_hash_suffix : bool (* TODO: remove once we pretty print stable sigs without hashes *)
   val con_sep : string
   val par_sep : string
+  val max_list : int option
 end
 
 module ShowStamps = struct
   let show_stamps = true
   let show_scopes = true
+  let show_hash_suffix = true
   let con_sep = "__" (* TODO: revert to "/" *)
   let par_sep = "_"
-end
-
-module ElideStamps = struct
-  let show_stamps = false
-  let show_scopes = true
-  let con_sep = ShowStamps.con_sep
-  let par_sep = ShowStamps.par_sep
+  let max_list = None
 end
 
 module ParseableStamps = struct
@@ -1689,11 +1895,63 @@ module ParseableStamps = struct
   let show_scopes = true (* false ok too *)
   let con_sep = "__"
   let par_sep = "_"
+  let show_hash_suffix = true
+  let max_list = None
+end
+
+module ElideStamps = struct
+  let show_stamps = false
+  let show_scopes = true
+  let show_hash_suffix = true
+  let con_sep = ShowStamps.con_sep
+  let par_sep = ShowStamps.par_sep
+  let max_list = None
+end
+
+module ElideStampsAndHashes = struct
+  include ElideStamps
+  let show_hash_suffix = false
+  let max_list = Some 10
 end
 
 module MakePretty(Cfg : PrettyConfig) = struct
 
+let remove_hash_suffix s =
+  let len = String.length s in
+  if len = 0 then s
+  else
+    (* Find the end of any trailing digits *)
+    let rec find_digit_end i =
+      if i < 0 then -1
+      else if s.[i] >= '0' && s.[i] <= '9' then find_digit_end (i - 1)
+      else i
+    in
+    let digit_end = find_digit_end (len - 1) in
+    (* Check if we found digits and they're preceded by "__" *)
+    if digit_end >= 0 && digit_end < len - 1 && digit_end >= 1 &&
+       s.[digit_end] = '_' && s.[digit_end - 1] = '_' then
+      String.sub s 0 (digit_end - 1)
+    else
+      s
+
+
 open Format
+
+(* To format a list *)
+let pp_print_list ?(pp_sep = pp_print_cut) pp_v ppf v =
+  match Cfg.max_list with
+  | None -> pp_print_list ~pp_sep pp_v ppf v
+  | Some max ->
+     let len = List.length v in
+     if len < max then
+       pp_print_list ~pp_sep pp_v ppf v
+     else
+       let pre_vs = Lib.List.take (max / 2) v in
+       let post_vs = Lib.List.drop (len - (max / 2)) v in
+       pp_print_list ~pp_sep pp_v ppf pre_vs;
+       pp_sep ppf ();
+       fprintf ppf "...@ ";
+       pp_print_list ~pp_sep pp_v ppf post_vs
 
 let pr = pp_print_string
 
@@ -1710,7 +1968,10 @@ let vs_of_cs cs =
 let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s%s%d" x Cfg.par_sep i
 
-let string_of_con c = Cons.to_string Cfg.show_stamps Cfg.con_sep c
+let string_of_con c =
+  let name = Cons.to_string Cfg.show_stamps Cfg.con_sep c in
+  if Cfg.show_hash_suffix then name
+  else remove_hash_suffix name
 
 let rec can_sugar = function
   | Func(s, Promises, tbs, ts1, ts2)
@@ -1727,7 +1988,7 @@ and can_omit n t =
     | Pre -> assert false
     | Prim _ | Any | Non -> true
     | Con (c, ts) -> List.for_all (go i ) ts
-    | Array t | Opt t | Mut t -> go i t
+    | Array t | Opt t | Mut t | Weak t -> go i t
     | Async (s, Var (_, j), t2) when j = i && i <= n -> go i t2 (* t1 is a phantom type *)
     | Async (s, t1, t2) -> go i t1 && go i t2
     | Tup ts -> List.for_all (go i ) ts
@@ -1798,6 +2059,8 @@ and pp_typ_un vs ppf t =
   match t with
   | Opt t ->
     fprintf ppf "@[<1>?%a@]"  (pp_typ_un vs) t
+  | Weak t ->
+    fprintf ppf "@[<1>weak %a@]"  (pp_typ_un vs) t
   | t ->
     pp_typ_nullary vs ppf t
 
@@ -1815,7 +2078,7 @@ and pp_typ_pre vs ppf t =
           (pp_typ' vs) t1
           (pp_typ_pre vs) t2
     else fprintf ppf "@[<2>async%s@ %a@]" (string_of_async_sort s) (pp_typ_pre vs) t2
-  | Obj ((Module | Actor | Memory) as os, fs) ->
+  | Obj ((Module | Actor | Mixin | Memory) as os, fs) ->
     pp_typ_obj vs ppf (os, fs)
   | t ->
     pp_typ_un vs ppf t
@@ -2034,7 +2297,57 @@ let strings_of_kind k : string * string * string =
 
 let string_of_typ_expand typ : string =
   Lib.Format.with_str_formatter (fun ppf ->
-    pp_typ_expand ppf) typ
+      pp_typ_expand ppf) typ
+
+let string_of_context context =
+  let rec emit_context nested context =
+    match context with
+    | [] -> "top level"
+    | (Field label)::rest -> Printf.sprintf "%s.%s" (emit_context nested rest) label
+    | (ConsType c)::rest when not nested ->
+       Printf.sprintf "%s (used by %s)" (remove_hash_suffix (Cons.name c)) (emit_context true rest)
+    | (ConsType c)::rest ->
+       Printf.sprintf "%s in %s" (remove_hash_suffix (Cons.name c)) (emit_context true rest)
+    | (NamedType name)::rest when not nested ->
+       Printf.sprintf "%s (used by %s)" name (emit_context true rest)
+    | (NamedType name)::rest ->
+       Printf.sprintf "%s in %s" name (emit_context true rest)
+    | (StableVariable name)::_ -> name
+  in
+    emit_context false context
+
+let string_of_explanation explanation =
+  let display_typ = Lib.Format.display pp_typ in
+  match explanation with
+  | IncompatibleTypes (context, t1, t2) ->
+    Format.asprintf "The type %a\n is not compatible with type %a\n of %s" display_typ t1 display_typ t2 (string_of_context context)
+  | MissingTag (context, lab, t) ->
+    Format.asprintf "Missing tag `#%s` in type %a\n of %s" lab display_typ t (string_of_context context)
+  | UnexpectedTag (context, lab, t) ->
+    Format.asprintf "Unsupported additional tag `#%s` in type %a\n of %s" lab display_typ t (string_of_context context)
+  | MissingField (context, lab, t) ->
+    Format.asprintf "Missing field `%s` in type %a\n of %s" lab display_typ t (string_of_context context)
+  | UnexpectedField (context, lab, t) ->
+    Format.asprintf "Unsupported additional field `%s` in type %a\n of %s" lab display_typ t (string_of_context context)
+  | FewerItems (context, desc) ->
+    Format.asprintf "Fewer %s in %s than expected" desc (string_of_context context)
+  | MoreItems (context, desc) ->
+    Format.asprintf "More %s in %s than expected" desc (string_of_context context)
+  | PromotionToAny (context, t) ->
+    Format.asprintf "Converting %a\n to `Any` is disallowed as it leads to data loss: %s" display_typ t (string_of_context context)
+  | IncompatiblePrims (context, t1, t2) ->
+    let context = match context with h::tl -> tl | _ -> context in
+    Format.asprintf "The type %a\n is not compatible with type %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
+  | IncompatibleObjSorts (context, t1, t2) ->
+    Format.asprintf "Incompatible object sorts: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
+  | IncompatibleFuncSorts (context, t1, t2) ->
+    Format.asprintf "Incompatible function modifiers: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
+  | IncompatibleBounds (context, t1, t2) ->
+    Format.asprintf "Incompatible type parameters: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
+  | IncompatibleFuncs (context, t1, t2) ->
+    Format.asprintf "Incompatible function types: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
+  | IncompatibleAsyncSorts (context, t1, t2) ->
+    Format.asprintf "Incompatible async sorts: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
 
 end
 
@@ -2052,6 +2365,7 @@ module type Pretty = sig
   val string_of_kind : kind -> string
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
+  val string_of_explanation : explanation -> string
 end
 
 include MakePretty(ElideStamps)
@@ -2059,9 +2373,19 @@ include MakePretty(ElideStamps)
 let _ = str := string_of_typ
 
 (* Stable signatures *)
+let stable_sub_explained ?(src_fields = empty_srcs_tbl ()) context t1 t2 =
+  with_src_field_updates_predicate_general src_fields (fun () ->
+    let d = RelArg.stable_sub context in
+    if rel_typ d (ref SS.empty) (ref SS.empty) t1 t2
+    then Compatible
+    else match RelArg.explanation d with
+      | Some e -> Incompatible e
+      | None -> Incompatible (IncompatibleTypes (context, t1, t2)))
+    (fun result -> result = Compatible)
+
 let stable_sub ?(src_fields = empty_srcs_tbl ()) t1 t2 =
   with_src_field_updates_predicate src_fields (fun () ->
-    rel_typ RelArg.stable_sub (ref SS.empty) (ref SS.empty) t1 t2)
+    rel_typ (RelArg.stable_sub []) (ref SS.empty) (ref SS.empty) t1 t2)
 
 let pre = function
   | Single tfs ->

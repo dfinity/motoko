@@ -14,7 +14,7 @@ This is superseded by [enhanced orthogonal persistence](../canister-maintenance/
 
 ## The `Region` library
 
-The [`Region`](../base/Region.md) library in package `base` allows the programmer to incrementally allocate pages of 64-bit stable memory and use those pages to incrementally read and write data in a user-defined binary format.
+The [`Region`](../core/Region.md) module in the core package allows the programmer to incrementally allocate pages of 64-bit stable memory and use those pages to incrementally read and write data in a user-defined binary format.
 
 Several pages may be allocated at once, with each page containing 64KiB. Allocation may fail due to resource limits imposed by ICP. Pages are zero-initialized.
 
@@ -28,7 +28,7 @@ Further, distinct `Region`s use distinct pages of stable memory, ensuring that t
 
 The interface to the `Region` library consists of functions for querying and growing the currently allocated set of stable memory pages, plus matching pairs of `load`, `store` operations for most of Motoko’s fixed-size scalar types.
 
-More general `loadBlob` and `storeBlob` operations are also available for reading and writing binary blobs and other types that can be encoded as [`Blob`](../base/Blob.md)s of arbitrary sizes, using Motoko supplied or user-provided encoders and decoders.
+More general `loadBlob` and `storeBlob` operations are also available for reading and writing binary blobs and other types that can be encoded as [`Blob`](../core/Blob.md)s of arbitrary sizes, using Motoko supplied or user-provided encoders and decoders.
 
 ``` motoko no-repl
 module {
@@ -64,11 +64,11 @@ module {
   loadFloat : (r : Region, offset : Nat64) -> Float;
   storeFloat : (r : Region, offset : Nat64, value : Float) -> ();
 
-  // Load `size` bytes starting from `offset` in region `r` as a [`Blob`](../base/Blob.md).
+  // Load `size` bytes starting from `offset` in region `r` as a `Blob`.
   // Traps on out-of-bounds access.
   loadBlob : (r : Region, offset : Nat64, size : Nat) -> Blob;
 
-  // Write all bytes of [`Blob`](../base/Blob.md) to region `r` beginning at `offset`.
+  // Write all bytes of `Blob` to region `r` beginning at `offset`.
   // Traps on out-of-bounds access.
   storeBlob : (r : Region, offset : Nat64, value : Blob) -> ()
 

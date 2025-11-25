@@ -59,7 +59,7 @@ For example, `v1`'s stable types:
 ``` motoko no-repl file=../../examples/count-v1.most
 ```
 
-An upgrade from `v1` to `v2`'s stable types consumes a [`Nat`](https://internetcomputer.org/docs/motoko/base/Int.md) as an [`Int`](https://internetcomputer.org/docs/motoko/base/Nat.md), which is valid because `Nat <: Int`, that is,  `Nat` is a subtype of `Int`.
+An upgrade from `v1` to `v2`'s stable types consumes a [`Nat`](https://internetcomputer.org/docs/motoko/core/Int.md) as an [`Int`](https://internetcomputer.org/docs/motoko/core/Nat.md), which is valid because `Nat <: Int`, that is,  `Nat` is a subtype of `Int`.
 
 ``` motoko no-repl file=../../examples/count-v2.most
 ```
@@ -114,7 +114,7 @@ Version `v3` with Candid interface `v3.did` and stable type interface `v3.most`:
 
 ## Incompatible upgrade
 
-Let's take a look at another example where the counter's type is again changed, this time from [`Int`](https://internetcomputer.org/docs/motoko/base/Int.md) to [`Float`](https://internetcomputer.org/docs/motoko/base/Float.md):
+Let's take a look at another example where the counter's type is again changed, this time from [`Int`](https://internetcomputer.org/docs/motoko/core/Int.md) to [`Float`](https://internetcomputer.org/docs/motoko/core/Float.md):
 
 ``` motoko no-repl file=../../examples/count-v4.mo
 ```
@@ -155,7 +155,7 @@ For this purpose, a user-instructed migration can be done in three steps:
 1. Introduce new variables of the desired types, while keeping the old declarations.
 2. Write logic to copy the state from the old variables to the new variables on upgrade.
 
-    While the previous attempt of changing state from [`Int`](https://internetcomputer.org/docs/motoko/base/Int.md) to [`Nat`](https://internetcomputer.org/docs/motoko/base/Float.md) was invalid, you now can realize the desired change as follows:
+    While the previous attempt of changing state from [`Int`](https://internetcomputer.org/docs/motoko/core/Int.md) to [`Nat`](https://internetcomputer.org/docs/motoko/core/Float.md) was invalid, you now can realize the desired change as follows:
 
     ``` motoko no-repl file=../../examples/count-v5.mo
     ```
@@ -164,31 +164,15 @@ For this purpose, a user-instructed migration can be done in three steps:
 
 3. Drop the old declarations once all data has been migrated:
 
-<<<<<<< HEAD:doc/md/old/canister-maintenance/compatibility.md
-<<<<<<< HEAD:doc/md/old/canister-maintenance/compatibility.md
-    ``` motoko no-repl file=../../examples/count-v6.mo
-=======
-=======
->>>>>>> 96e59ddfb86b8139a9b23094993b0a7d6d5e1de8:doc/md/canister-maintenance/compatibility.md
    In versions of Motoko prior to 0.14.6, you could simply remove the old variable, or keep it but change the type to `Any`, implying that the variable is no longer useful.
 
-    ``` motoko no-repl file=../examples/count-v6.mo
->>>>>>> 4e9f51511df8b6a750504a5128a369287d35836d:doc/md/canister-maintenance/compatibility.md
+    ``` motoko no-repl file=../../examples/count-v6.mo
     ```
 
    For added safety, since version 0.14.6 you can only discard data, or promote it to a lossy supertype such as `Any`, using a migration function:
 
-    ``` motoko no-repl file=../examples/count-v6b.mo
+    ``` motoko no-repl file=../../examples/count-v6b.mo
     ```
-
-<<<<<<< HEAD:doc/md/old/canister-maintenance/compatibility.md
-=======
-   For added safety, since version 0.14.6 you can only discard data, or promote it to a lossy supertype such as `Any`, using a migration function:
-
-    ``` motoko no-repl file=../examples/count-v6b.mo
-    ```
-
->>>>>>> 96e59ddfb86b8139a9b23094993b0a7d6d5e1de8:doc/md/canister-maintenance/compatibility.md
 
 ### Explicit migration using a migration function
 

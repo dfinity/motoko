@@ -1,3 +1,21 @@
+- [Nix setup](#nix-setup)
+- [Installation using Nix](#installation-using-nix)
+  - [Other tools](#other-tools)
+- [Development using Nix](#development-using-nix)
+- [Replicating CI locally](#replicating-ci-locally)
+- [Making releases](#making-releases)
+  - [1. Update Changelog](#1-update-changelog)
+  - [2. Open a release PR](#2-open-a-release-pr)
+  - [3. Wait for the release to complete, and verify it](#3-wait-for-the-release-to-complete-and-verify-it)
+  - [4. Update `motoko-core`](#4-update-motoko-core)
+  - [5. Update `motoko-base`](#5-update-motoko-base)
+  - [Downstream](#downstream)
+- [Making draft / pre-releases](#making-draft--pre-releases)
+  - [Version suffix](#version-suffix)
+- [Coverage report](#coverage-report)
+- [Profile the compiler](#profile-the-compiler)
+- [Benchmarking the RTS](#benchmarking-the-rts)
+
 ## Nix setup
 
 The Motoko build system relies on [Nix](https://nixos.org/) to manage
@@ -86,7 +104,7 @@ For more details on our CI and CI setup, see `CI.md`.
 
 ## Making releases
 
-We make frequent releases, at least weekly. The steps to make a release (say, version 0.14.1) are:
+We make frequent releases, at least weekly. The steps to make a release are:
 
 Before starting the release process, ensure you are working with the latest version of the codebase. Run the following commands:
 
@@ -111,11 +129,11 @@ If not, create and merge a separate PR to update the doc (adding any new files) 
 
 Check the recent changes from the last release:
 ```bash
-git log --first-parent $(git describe --tags --abbrev=0)..HEAD
+git log --first-parent $(git describe --abbrev=0)..HEAD
 ```
 Or, on macOS, in a browser:
 ```bash
-open "https://github.com/dfinity/motoko/compare/$(git describe --tags --abbrev=0)...master"
+open "https://github.com/dfinity/motoko/compare/$(git describe --abbrev=0)...master"
 ```
 
 Look at changes and check that everything relevant is mentioned in the changelog section,
@@ -124,7 +142,7 @@ and possibly clean it up a bit, curating the information for the target audience
 You can get the latest released version with:
 
 ```bash
-git describe --tags --abbrev=0
+git describe --abbrev=0
 ```
 
 Make sure that the very top of `Changelog.md` **exactly** matches the following format (otherwise the release extraction script will fail):
@@ -141,40 +159,65 @@ Make sure that the very top of `Changelog.md` **exactly** matches the following 
 
 ### 2. Open a release PR
 
-Define a shell variable `MOC_MINOR` with the next minor version number.
-E.g. `export MOC_MINOR=1`, or automatically (make sure it is correct!):
+Define a shell variable `NEXT_MOC_VERSION` with the next version number.
+The following command will automatically calculate a patch bump.
+Verify the version is correct. If you need a minor or major version bump, set the variable manually.
 
 ```bash
-export MOC_MINOR=$(($(git describe --tags --abbrev=0 | awk -F. '{print $3}') + 1))
-echo MOC_MINOR=$MOC_MINOR
+export LAST_MOC_VERSION=$(git describe --abbrev=0)
+export NEXT_MOC_VERSION=$(echo $LAST_MOC_VERSION | awk -F. -v OFS=. '{$3++; print}')
+echo "Last version: $LAST_MOC_VERSION"
+echo "Next version: $NEXT_MOC_VERSION"
 ```
+
+Run the following command pipeline to create the release PR:
+
+```bash
+(test -n "$NEXT_MOC_VERSION" || (echo "NEXT_MOC_VERSION is not set" && false)) && \
+git switch -c $USER/$NEXT_MOC_VERSION && \
+git add Changelog.md && \
+git commit -m "chore: Releasing $NEXT_MOC_VERSION" && \
+git push --set-upstream origin $USER/$NEXT_MOC_VERSION && \
+gh pr create --title "chore: Releasing $NEXT_MOC_VERSION" --label "release" --base master --head $USER/$NEXT_MOC_VERSION --body "" && \
+gh pr merge --squash --auto
+```
+
+<details>
+<summary>Or click here for detailed steps:</summary>
 
 Switch to a new release branch (creating it if it doesn't exist):
 
 ```bash
-git switch -c $USER/0.14.$MOC_MINOR
+git switch -c $USER/$NEXT_MOC_VERSION
 ```
 
 Commit the changes with exactly the following message:
 
 ```bash
 git add Changelog.md
-git commit -m "chore: Releasing 0.14."$MOC_MINOR
+git commit -m "chore: Releasing $NEXT_MOC_VERSION"
 ```
 
 Push the branch:
 
 ```bash
-git push --set-upstream origin $USER/0.14.$MOC_MINOR
+git push --set-upstream origin $USER/$NEXT_MOC_VERSION
 ```
 
 Create a PR from this commit:
 - Make sure the **PR title** is the same as the **commit message**.
-- Label the PR with `release` (to mark it as a release PR) and `automerge-squash`. Mergify will merge it into `master` without additional approval, but it will take some time as the title (version number) enters into the `nix` dependency tracking.
+- Label the PR with `release` (to mark it as a release PR) and enable auto-merge on it. It will get merged into `master` without additional approval, and it may take some time as the title (version number) enters into the `nix` dependency tracking.
 
 To create the PR, you can use `gh` CLI:
 ```bash
-gh pr create --title "chore: Releasing 0.14."$MOC_MINOR --label "release,automerge-squash" --base master --head $USER/0.14.$MOC_MINOR --body ""
+gh pr create --title "chore: Releasing $NEXT_MOC_VERSION" --label "release" --base master --head $USER/$NEXT_MOC_VERSION --body "" && gh pr merge --squash --auto
+```
+</details>
+
+The PR will be merged automatically once the CI passes.
+You can check the status of the PR on GitHub with
+```bash
+gh pr view --web
 ```
 
 After the PR is merged, the `release-pr.yml` workflow should automatically create a tag and push it to the remote repository starting the release process.
@@ -197,8 +240,8 @@ git show
 Push the tag:
 
 ```bash
-git tag 0.14.$MOC_MINOR -m "Motoko 0.14."$MOC_MINOR
-git push origin 0.14.$MOC_MINOR
+git tag $NEXT_MOC_VERSION -m "Motoko $NEXT_MOC_VERSION"
+git push origin $NEXT_MOC_VERSION
 ```
 
 Pushing the tag should cause GitHub Actions to create a "Release" on the GitHub
@@ -208,38 +251,67 @@ the build artifacts for this revision. In this case, restart the GitHub Action
 on GitHub's UI.
 </details>
 
-### 4. Update `motoko-base`
+### 4. Update `motoko-core`
 
-After releasing the compiler you can update `motoko-base`'s `master`
-branch to the `next-moc` branch.
+From the `main` branch, push a tag for the new `moc` version:
+
+```bash
+git checkout main
+git pull
+git tag moc-$NEXT_MOC_VERSION
+git push origin moc-$NEXT_MOC_VERSION
+```
+
+### 5. Update `motoko-base`
+
+From the `master` branch, push a tag for the new `moc` version:
+
+```bash
+git checkout master
+git pull
+git tag moc-$NEXT_MOC_VERSION
+git push origin moc-$NEXT_MOC_VERSION
+```
+
+<details>
+<summary>Click here for legacy `motoko-base` update steps.</summary>
+
+After releasing the compiler, update `motoko-base`'s `master` branch to the `next-moc` branch.
 
 * Wait ca. 5min after releasing to give the CI/CD pipeline time to upload the release artifacts
 * Change into `motoko-base` and pull the latest `next-moc`
 ```bash
 git switch next-moc; git pull
 ```
-* Create a new branch for the update
-```bash
-git switch -c $USER/update-moc-0.14.$MOC_MINOR
-```
 * Revise and update the `CHANGELOG.md`, by adding a top entry for the release
-* Update the `moc_version` env variable in `.github/workflows/{ci, package-set}.yml` and `mops.toml`
-  to the new released version:
-```bash
-perl -pi -e "s/moc_version: \"0\.14\.\\d+\"/moc_version: \"0.14.$MOC_MINOR\"/g; s/moc = \"0\.14\.\\d+\"/moc = \"0.14.$MOC_MINOR\"/g; s/version = \"0\.14\.\\d+\"/version = \"0.14.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml mops.toml
-```
-* Add the changed files and commit the changes
-```bash
-git add .github/ CHANGELOG.md mops.toml && git commit -m "Motoko 0.14."$MOC_MINOR
-```
-* Push the branch
-```bash
-git push --set-upstream origin $USER/update-moc-0.14.$MOC_MINOR
-```
 
-Make a PR off of that branch, targeting `master`, and merge it using a _normal merge_ (not
-squash merge) once CI passes. It will eventually be imported into this
-repo by a scheduled `niv-updater-action`.
+* Bump `moc` and create a PR:
+```bash
+# Create a new branch for the update
+git switch -c $USER/update-moc-$NEXT_MOC_VERSION && \
+
+# Update the `moc_version` env variable in `.github/workflows/{ci, package-set}.yml` and `mops.toml` to the new released version
+perl -pi -e "s/moc_version: \"\\d+\.\\d+\.\\d+\"/moc_version: \"$NEXT_MOC_VERSION\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml && \
+perl -pi -e "s/moc = \"\\d+\.\\d+\.\\d+\"/moc = \"$NEXT_MOC_VERSION\"/g; s/version = \"\\d+\.\\d+\.\\d+\"/version = \"$NEXT_MOC_VERSION\"/g" mops.toml && \
+
+# Add the changed files and commit the changes
+git add .github/ CHANGELOG.md mops.toml && git commit -m "Motoko $NEXT_MOC_VERSION" && \
+
+# Push the branch
+git push --set-upstream origin $USER/update-moc-$NEXT_MOC_VERSION && \
+
+# Create a PR targeting `master`
+gh pr create --title "Motoko $NEXT_MOC_VERSION" --base master --head $USER/update-moc-$NEXT_MOC_VERSION --body ""
+
+```
+* You can check the status of the PR on GitHub with
+```bash
+gh pr view --web
+```
+* Once CI passes, merge the PR using the _normal merge_ (not squash merge).
+  > **Note:** To allow merge commits, go to the repository settings and enable merge commits. Remember to **disable it after the merge**. Unfortunately, `gh` CLI cannot update this setting without admin permissions.
+
+It will eventually be imported into this repo by a scheduled `niv-updater-action`.
 
 Finally tag the base release (so the documentation interpreter can do the right thing):
 First, switch to `master`, pull the latest changes and verify we are at the right commit:
@@ -249,9 +321,11 @@ git show
 ```
 * Tag and push the release
 ```bash
-git tag moc-0.14.$MOC_MINOR
-git push origin moc-0.14.$MOC_MINOR
+git tag moc-$NEXT_MOC_VERSION
+git push origin moc-$NEXT_MOC_VERSION
 ```
+
+</details>
 
 ### Downstream
 
@@ -273,6 +347,32 @@ and then hitting the green button. This will create a PR with all necessary hash
 need to do this immediately, you can leave the release soaking a few days. Use your own jugdement w.r.t. risk, urgency etc.
 
 If you want to update the portal documentation, typically to keep in sync with a `dfx` release, follow the instructions in https://github.com/dfinity/portal/blob/master/MAINTENANCE.md.
+
+## Making draft / pre-releases
+
+To make a draft / pre-release, you can use the GitHub Actions workflow:
+https://github.com/dfinity/motoko/actions/workflows/release.yml
+
+1. Press the **"Run workflow"** button
+2. Select the branch for which you want to make the draft / pre-release
+3. Fill in the **"Version suffix"** that will be used to contruct the version name, e.g. `alpha-1` version suffix could produce a version like `0.16.3-alpha-1`
+4. Hit the green button to run the workflow and wait for it to complete.
+5. View the draft release at https://github.com/dfinity/motoko/releases once the workflow is complete.
+6. To make a pre-release:
+   1. Edit the draft release
+   2. Make sure the tag and the name of the release are the same as the generated version, e.g. `0.16.3-alpha-1`. Note that there is no need to manually push the tag, it should be created automatically when publishing the pre-release.
+   3. Scroll down to the bottom and publish the pre-release.
+7. Remember to delete the draft release after testing!
+
+### Version suffix
+
+The version is generated by concatenating the 'latest `moc` version' with the version suffix, e.g. `0.16.3-alpha-1` for the version suffix `alpha-1`.
+The 'latest `moc` version' is taken from the first matching entry in `Changelog.md` **on the selected branch**. Source code: [nix/releaseVersion.nix](nix/releaseVersion.nix).
+
+The workflow should upload the artifacts with correct names according to the generated version.
+
+The generated version (e.g. `0.16.3-alpha-1`) should be used as the name of the release and the tag.
+Artifacts should be uploaded with the correct names according to the generated version, e.g. `motoko-Darwin-arm64-0.16.3-alpha-1.tar.gz` -- This is necessary for `mops toolchain` to fetch the correct file.
 
 ## Coverage report
 

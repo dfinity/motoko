@@ -1,2 +1,4 @@
-issue2331.mo:1.9-1.18: type error [M0151], object literal is missing field bar from expected type
+issue2331.mo:1.9-1.18: type error [M0151], missing field 'bar' from expected type
   {bar : Nat}
+issue2331.mo:2.9-2.18: type error [M0151], missing fields 'bar', 'qux' from expected type
+  {bar : Nat; qux : Float}

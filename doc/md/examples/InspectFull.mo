@@ -1,4 +1,4 @@
-import Principal = "mo:base/Principal";
+import Principal = "mo:core/Principal";
 
 persistent actor {
 

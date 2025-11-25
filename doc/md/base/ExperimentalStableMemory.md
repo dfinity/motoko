@@ -1,4 +1,4 @@
-# ExperimentalStableMemory
+# base/ExperimentalStableMemory
 Byte-level access to (virtual) _stable memory_.
 
 :::warning Experimental module

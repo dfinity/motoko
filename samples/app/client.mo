@@ -3,10 +3,10 @@ import S "server";
 
 module {
 
- public actor class Client() = this {
+ public persistent actor class Client() = this {
    // TODO: these should be constructor params once we can compile them
-   var name : Text = "";
-   var server : ?S.Server  = null;
+   transient var name : Text = "";
+   transient var server : ?S.Server  = null;
 
    public func go(n : Text, s : S.Server) {
      name := n;

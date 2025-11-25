@@ -1,4 +1,4 @@
-# Buffer
+# base/Buffer
 Class `Buffer<X>` provides a mutable list of elements of type `X`.
 It wraps a resizable underlying array and is comparable to `ArrayList` or `Vector` in other languages.
 

@@ -1,0 +1,24 @@
+(unknown location): Compatibility error [M0170], the new type of stable variable `products` is not compatible with the previous version.
+ The previous type
+  var {root : Tree<Text, Product>; size : Nat}
+ is not a subtype of
+  Map<Text, OldProduct> = {root : Tree<Text, OldProduct>; size : Nat}
+ because: The type 
+  {
+    acceptanceCriteria : [Text];
+    dependencies : [Dependency];
+    description : Text;
+    githubRepos : [Text];
+    id : Text;
+    ...
+    shipDate : Time;
+    signalGroup : Text;
+    slackChannel : Text;
+    status : Status;
+    team : Team
+  }
+ is not compatible with type 
+  (Text, Nat)
+ of OldProduct (used by Tree in Map in products.root).
+ Write an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
+FALSE

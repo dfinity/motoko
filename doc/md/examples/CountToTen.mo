@@ -1,6 +1,6 @@
 import Counters "Counters";
-import Debug "mo:base/Debug";
-import Nat "mo:base/Nat";
+import Debug "mo:core/Debug";
+import Nat "mo:core/Nat";
 
 persistent actor CountToTen {
   public func countToTen() : async () {

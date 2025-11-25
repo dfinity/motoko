@@ -273,7 +273,7 @@ let replace_obj_pat pfs pats =
 
 (* Helper for transforming prims, without missing embedded typs and ids *)
 
-let map_prim t_typ t_id p =
+let map_prim t_typ t_lab p =
   match p with
   | CallPrim ts -> CallPrim (List.map t_typ ts)
   | UnPrim (ot, op) -> UnPrim (t_typ ot, op)
@@ -292,7 +292,7 @@ let map_prim t_typ t_id p =
   | EqArrayOffset
   | DerefArrayOffset
   | GetLastArrayOffset -> p
-  | BreakPrim id -> BreakPrim (t_id id)
+  | BreakPrim id -> BreakPrim (t_lab id)
   | RetPrim
   | AwaitPrim _
   | AssertPrim

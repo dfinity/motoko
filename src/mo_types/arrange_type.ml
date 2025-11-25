@@ -21,6 +21,7 @@ module Make (Cfg : Config) = struct
     | Object -> Atom "Object"
     | Actor -> Atom "Actor"
     | Module -> Atom "Module"
+    | Mixin -> Atom "Mixin"
     | Memory -> Atom "Memory"
 
   let func_sort = function
@@ -92,7 +93,8 @@ module Make (Cfg : Config) = struct
     | Non                    -> Atom "Non"
     | Pre                    -> Atom "Pre"
     | Typ c                  -> "Typ" $$ [con c]
-    | Named (n, t)            -> "Name" $$ [Atom n; typ t]
+    | Named (n, t)           -> "Name" $$ [Atom n; typ t]
+    | Weak t                 -> "Weak" $$ [ typ t]
 
   and typ_bind (tb : Type.bind) =
     tb.var $$ [typ tb.bound]
