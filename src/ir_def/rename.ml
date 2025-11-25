@@ -32,6 +32,7 @@ let lab rho l =
   | None -> l
 
 let id_bind rho i =
+  if i.[0] = '@' then (i, rho) else
   let i' = fresh_id i in
   (i', Renaming.add (Binder.Id i) i' rho)
 
