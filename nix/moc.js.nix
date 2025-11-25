@@ -19,7 +19,6 @@ let
         terser ${n}.js -o ${n}.min.js -c -m
       '';
       installPhase = ''
-        mkdir -p $out
         mkdir -p $out/bin
         cp --verbose --dereference ${n}.js $out/bin
         cp --verbose --dereference ${n}.min.js $out/bin
