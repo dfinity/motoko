@@ -25,10 +25,6 @@
       url = "github:dfinity/candid";
       flake = false;
     };
-    ic-src = {
-      url = "github:dfinity/ic";
-      flake = false;
-    };
     pocket-ic-src = {
       url = "github:dfinity/ic/master";
       flake = false;
@@ -76,7 +72,6 @@
     , esm
     , viper-server
     , candid-src
-    , ic-src
     , pocket-ic-src
     , ic-wasm-src
     , libtommath-src
@@ -93,7 +88,6 @@
         sources = {
           inherit
             candid-src
-            ic-src
             pocket-ic-src
             ic-wasm-src
             libtommath-src

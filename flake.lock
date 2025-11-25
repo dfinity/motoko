@@ -68,22 +68,6 @@
         "type": "github"
       }
     },
-    "ic-src": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1761929779,
-        "narHash": "sha256-5jqAkVDelrPBepsaODDGUCKNe2L1DGm9wSEagL4t1BU=",
-        "owner": "dfinity",
-        "repo": "ic",
-        "rev": "7a8c16764cdcfb901759ff62e64ac983633fcc17",
-        "type": "github"
-      },
-      "original": {
-        "owner": "dfinity",
-        "repo": "ic",
-        "type": "github"
-      }
-    },
     "ic-wasm-src": {
       "flake": false,
       "locked": {
@@ -241,11 +225,11 @@
     "pocket-ic-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1757573980,
-        "narHash": "sha256-yOjLoRCMsi29tEK8M1XNC8AaU1ixkHE3B5sdGSr6u6s=",
+        "lastModified": 1763769101,
+        "narHash": "sha256-/VaUL3Wu9NILofasZPTCtFVIoXmsOokiO/sTUZQJTZw=",
         "owner": "dfinity",
         "repo": "ic",
-        "rev": "861616d46ded00091fecbfe01f441b38b56b483c",
+        "rev": "f07e9896fef2c24db8d4d0bed3d3ed42f0934e2a",
         "type": "github"
       },
       "original": {
@@ -260,7 +244,6 @@
         "candid-src": "candid-src",
         "esm": "esm",
         "flake-utils": "flake-utils",
-        "ic-src": "ic-src",
         "ic-wasm-src": "ic-wasm-src",
         "libtommath-src": "libtommath-src",
         "motoko-base-src": "motoko-base-src",
@@ -283,11 +266,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1761964689,
-        "narHash": "sha256-Zo3LQQDz+64EQ9zor/WmeNTFLoZkjmhp0UY3G0D3seE=",
+        "lastModified": 1763865987,
+        "narHash": "sha256-DJpzM8Jz3B0azJcAoF+YFHr8rEbxYLJ0wy1kWZ29HOw=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "63d22578600f70d293aede6bc737efef60ebd97f",
+        "rev": "042d905c01a6eec3bcae8530dacb19cda9758a63",
         "type": "github"
       },
       "original": {
