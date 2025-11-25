@@ -4270,10 +4270,7 @@ and gather_dec env scope dec : Scope.t =
       mixin_env = scope.mixin_env;
       fld_src_env = scope.fld_src_env;
     }
-  | LetD (pat, exp, _) ->
-    (* TODO: do we need it? *)
-    let* () = open_namespace_import pat exp in
-    (match is_mixin_import env exp.it with
+  | LetD (pat, exp, _) -> (match is_mixin_import env exp.it with
     | None -> gather_pat env scope pat
     | Some (imports, args, t, decs) ->
       match pat.it with
@@ -4412,9 +4409,7 @@ and infer_dec_typdecs env dec : Scope.t =
       obj_env = T.Env.singleton id.it obj_scope
     }
   (* TODO: generalize beyond let <id> = <valpath> *)
-  | LetD ({it = VarP id; _} as pat, exp, _) ->
-    (* TODO: do we need it? *)
-    let* () = open_namespace_import pat exp in
+  | LetD ({it = VarP id; _}, exp, _) ->
      begin match is_mixin_import env exp.it with
      | Some (imports, args, t, decs) ->
         (* Format.printf "Adding mixin %s at %a\n" id.it display_typ t; *)
@@ -4516,8 +4511,6 @@ and infer_dec_valdecs env dec : Scope.t =
     let _ve = check_pat env obj_typ pat in
     Scope.{empty with val_env = singleton id obj_typ}
   | LetD (pat, exp, fail) ->
-    (* TODO: do we need it? *)
-    let* () = open_namespace_import pat exp in
      let t = infer_exp {env with pre = true; check_unused = false} exp in
      let ve' = match fail with
        | None -> check_pat_exhaustive (if is_import dec then local_error else warn) env t pat
