@@ -375,10 +375,10 @@ type load_result =
 type load_decl_result =
   (Syntax.lib list * Syntax.prog * Scope.scope * Type.typ * Scope.scope) Diag.result
 
-let resolved_import_name ri =
-  Syntax.(match ri.Source.it with
+let resolved_import_name (ri : ResolveImport.resolved_import) =
+  Syntax.(match ri.Source.it.ResolveImport.ri with
   | Unresolved -> "/* unresolved */"
-  | LibPath { package = _; path; id = _ }
+  | LibPath { package = _; path }
   | IDLPath (path, _)
   | ImportedValuePath path -> path
   | PrimPath -> "@prim")
@@ -415,8 +415,8 @@ let chase_imports_cached parsefn senv0 imports scopes_map
     | Some sscope ->
       senv := Scope.adjoin !senv sscope;
       Diag.return ()
-  and go pkg_opt ri =
-    let it = ri.Source.it in
+  and go pkg_opt (ri : ResolveImport.resolved_import) =
+    let ResolveImport.{ri = it; id} = ri.Source.it in
     let ri_name = resolved_import_name ri in
     match it with
     | Syntax.PrimPath ->
@@ -430,7 +430,7 @@ let chase_imports_cached parsefn senv0 imports scopes_map
         cache := Type.Env.add ri_name sscope !cache;
         Diag.return ()
     | Syntax.Unresolved -> assert false
-    | Syntax.(LibPath {path = f; package = lib_pkg_opt; id}) ->
+    | Syntax.(LibPath {path = f; package = lib_pkg_opt}) ->
       if Type.Env.mem f !senv.Scope.lib_env then
         Diag.return ()
       else if mem it !pending then

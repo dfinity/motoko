@@ -10,22 +10,22 @@ type typ_note = {note_typ : Type.typ; note_eff : Type.eff}
 
 let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 
-(* Identifiers *)
-
-type id = string Source.phrase
-
-(* type id_ref, see below *)
-type typ_id = (string, Type.con option) Source.annotated_phrase
-
 (* Resolved imports (filled in separately after parsing) *)
 
-type lib_path = {package : string option; path : string; id : id option}
+type lib_path = {package : string option; path : string}
 type resolved_import =
   | Unresolved
   | LibPath of lib_path
   | IDLPath of (string * string) (* filepath * bytes *)
   | ImportedValuePath of string
   | PrimPath (* the built-in prim module *)
+
+(* Identifiers *)
+
+type id = string Source.phrase
+(* type id_ref, see below *)
+type typ_id = (string, Type.con option) Source.annotated_phrase
+
 
 (* Types *)
 
@@ -321,7 +321,7 @@ let string_of_lit = function
 
 (** Used for debugging *)
 let string_of_resolved_import = function
-  | LibPath {path; package; id } -> Printf.sprintf "LibPath {path = %s, package = %s, id = %s}" path (match package with | Some p -> p | None -> "None") (match id with | Some id -> id.Source.it | None -> "<None>")
+  | LibPath {path; package } -> Printf.sprintf "LibPath {path = %s, package = %s}" path (match package with | Some p -> p | None -> "None")
   | IDLPath (path, _) -> Printf.sprintf "IDLPath (%s, _)" path
   | ImportedValuePath path -> Printf.sprintf "ImportedValuePath %s" path
   | PrimPath -> "PrimPath"

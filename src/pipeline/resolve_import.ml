@@ -18,7 +18,12 @@ type filepath = string
 type url = string
 type blob = string
 
-type resolved_imports = Syntax.resolved_import Source.phrase list
+type resolved_import' = {
+  ri : Syntax.resolved_import;
+  id : Syntax.id option;
+}
+type resolved_import = resolved_import' Source.phrase
+type resolved_imports = resolved_import list
 
 (* This returns a map from Syntax.resolved_import
    to the location of the first import of that library
@@ -137,45 +142,45 @@ let resolve_lib_import at full_path append_extension : (string, Diag.message) re
   then Ok full_path
   else Error (err_file_does_not_exist' at full_path)
 
-let add_lib_import msgs imported ri_ref at lib_path =
+let add_lib_import msgs imported ri_ref at id lib_path =
   match resolve_lib_import at lib_path.path append_mo_extension with
   | Ok full_path -> begin
       let ri = LibPath {lib_path with path = full_path} in
       ri_ref := ri;
-      imported := RIM.add ri at !imported
+      imported := RIM.add ri (at, id) !imported
     end
   | Error err ->
     Diag.add_msg msgs err
 
-let add_idl_import msgs imported ri_ref at full_path bytes =
+let add_idl_import msgs imported ri_ref at id full_path bytes =
   if Sys.file_exists full_path
   then begin
     ri_ref := IDLPath (full_path, bytes);
-    imported := RIM.add (IDLPath (full_path, bytes)) at !imported
+    imported := RIM.add (IDLPath (full_path, bytes)) (at, id) !imported
   end else
     err_file_does_not_exist msgs at full_path
 
-let add_value_import msgs imported ri_ref at path =
+let add_value_import msgs imported ri_ref at id path =
   if !Mo_config.Flags.blob_import_placeholders then begin
     (* When placeholders are enabled, skip file existence check *)
     let ri = ImportedValuePath path in
     ri_ref := ri;
-    imported := RIM.add ri at !imported
+    imported := RIM.add ri (at, id) !imported
   end else begin
     let add_no_extension _file_exists f = f in
     match resolve_lib_import at path add_no_extension with
     | Ok full_path -> begin
         let ri = ImportedValuePath full_path in
         ri_ref := ri;
-        imported := RIM.add ri at !imported
+        imported := RIM.add ri (at, id) !imported
       end
     | Error err ->
       Diag.add_msg msgs err
   end
 
-let add_prim_import imported ri_ref at =
+let add_prim_import imported ri_ref at id =
   ri_ref := PrimPath;
-  imported := RIM.add PrimPath at !imported
+  imported := RIM.add PrimPath (at, id) !imported
 
 let in_base base f =
   if base = "."
@@ -187,18 +192,18 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
     | None -> err_actor_import_without_idl_path msgs at
     | Some actor_base ->
       let full_path = in_base actor_base (Url.idl_basename_of_blob bytes) in
-      add_idl_import msgs imported ri_ref at full_path bytes
+      add_idl_import msgs imported ri_ref at id full_path bytes
   in
   match Url.parse f with
   | Ok (Url.Relative path) ->
     (* TODO support importing local .did file *)
-    add_lib_import msgs imported ri_ref at
-      { path = in_base base path; package = None; id }
+    add_lib_import msgs imported ri_ref at id
+      { path = in_base base path; package = None }
   | Ok (Url.Package (pkg,path)) ->
     begin match M.find_opt pkg packages with
     | Some pkg_path ->
-      add_lib_import msgs imported ri_ref at
-        { path = in_base pkg_path path; package = Some pkg; id }
+      add_lib_import msgs imported ri_ref at id
+        { path = in_base pkg_path path; package = Some pkg }
     | None -> err_package_not_defined msgs at pkg
     end
   | Ok (Url.Ic bytes) ->
@@ -212,9 +217,9 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
     | None -> err_alias_not_defined msgs at alias
     end
   | Ok (Url.FileValue path) ->
-    add_value_import msgs imported ri_ref at (in_base base path)
+    add_value_import msgs imported ri_ref at id (in_base base path)
   | Ok Url.Prim ->
-    add_prim_import imported ri_ref at
+    add_prim_import imported ri_ref at id
   | Error msg ->
     err_unrecognized_url msgs at f msg
 
@@ -307,7 +312,7 @@ let package_imports base packages =
     else
       let files = list_files url in
       List.map (fun path ->
-          LibPath {package = Some package; path = path; id = None}
+          LibPath {package = Some package; path = path}
         ) files::acc)
     packages []
   in
@@ -330,7 +335,7 @@ let resolve
     let imported =
       ref (if flags.include_all_libs
            then (* outside any package, add all available package libraries *)
-             (List.fold_right (fun ri rim -> RIM.add ri Source.no_region rim)
+             (List.fold_right (fun ri rim -> RIM.add ri (Source.no_region, None) rim)
                (package_imports base packages) RIM.empty)
            else
              (* consider only the explicitly imported package libraries *)
@@ -338,7 +343,7 @@ let resolve
 
     in
     List.iter (resolve_import_string msgs base actor_idl_path aliases packages imported)(prog_imports p);
-    Some (List.map (fun (rim, at) -> rim @@ at) (RIM.bindings !imported))
+    Some (List.map (fun (ri, (at, id)) -> {ri; id} @@ at) (RIM.bindings !imported))
   )
 
 
