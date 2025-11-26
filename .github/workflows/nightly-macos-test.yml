@@ -3,7 +3,7 @@ on:
   schedule:
     - cron: '0 0 * * *'  # Run at midnight UTC every day
   # To test this workflow: Go to Actions -> nightly-macos-test -> Run workflow
-  # Or using the CLI: gh workflow run nightly-macos-test --ref <branch>
+  # Or using the CLI: gh workflow run nightly-macos-test [--ref <branch>]
   workflow_dispatch:  # Allow manual triggering
 
 jobs:
