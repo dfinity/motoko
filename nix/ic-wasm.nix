@@ -13,4 +13,6 @@ pkgs: with pkgs.llvmPackages_19; pkgs.rustPlatform-stable.buildRustPackage rec {
     -isystem ${libcxx.dev}/include/c++/v1
     -isystem ${clang}/resource-root/include
   '';
+  CXX_x86_64-apple-darwin = CXX_aarch64-apple-darwin;
+  CXXFLAGS_x86_64-apple-darwin = CXXFLAGS_aarch64-apple-darwin;
 }
