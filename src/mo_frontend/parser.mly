@@ -964,6 +964,10 @@ pat_opt :
 pat_arg :
   | i=implicit x=id COLON t=typ
     { AnnotP(VarP x @! x.at, (NamedT(i, t) @! at $sloc)) @! at $sloc }
+  | i=implicit x=id COLON t=typ EQ p=pat
+    { AnnotP(p, (NamedT(i, NamedT(x, t) @! at $sloc) @! at $sloc)) @! at $sloc }
+  | i=implicit w=id_wild COLON t=typ EQ p=pat
+    { AnnotP(p, (NamedT(i, NamedT(w, t) @! at $sloc) @! at $sloc)) @! at $sloc }
   | p = pat_bin { p }
 
 pat_args :

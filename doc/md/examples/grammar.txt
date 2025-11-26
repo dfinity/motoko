@@ -343,6 +343,8 @@
 
 <pat_arg> ::= 
     <implicit> <id> ':' <typ>
+    <implicit> <id> ':' <typ> '=' <pat>
+    <implicit> <id_wild> ':' <typ> '=' <pat>
     <pat_bin>
 
 <pat_args> ::= 

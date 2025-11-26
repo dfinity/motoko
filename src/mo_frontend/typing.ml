@@ -1461,7 +1461,7 @@ let resolve_hole env at hole_sort typ =
   in
   let (eligible_ids, explicit_ids) =
     T.Env.to_seq env.vals |>
-      Seq.filter_map find_candidate_id |>
+      Seq.filter_map find_candidate_id |> (* TODO: this is inefficient when searching for a specific label*)
       List.of_seq |>
       List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
   in
