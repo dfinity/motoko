@@ -1,4 +1,4 @@
-pkgs: pkgs.rustPlatform-stable.buildRustPackage rec {
+pkgs: with pkgs.llvmPackages_19; pkgs.rustPlatform-stable.buildRustPackage rec {
   pname = "ic-wasm";
   version = builtins.substring 0 7 src.rev;
   src = pkgs.sources.ic-wasm-src;
@@ -8,9 +8,9 @@ pkgs: pkgs.rustPlatform-stable.buildRustPackage rec {
   doCheck = false;
 
   # use the unwrapped clang with appropriate include paths
-  CXX_aarch64-apple-darwin = "${pkgs.llvmPackages_19.clang-unwrapped}/bin/clang++";
+  CXX_aarch64-apple-darwin = "${clang-unwrapped}/bin/clang++";
   CXXFLAGS_aarch64-apple-darwin = ''
-    -isystem ${pkgs.llvmPackages_19.libcxx.dev}/include/c++/v1
-    -isystem ${pkgs.llvmPackages_19.clang}/resource-root/include
+    -isystem ${libcxx.dev}/include/c++/v1
+    -isystem ${clang}/resource-root/include
   '';
 }
