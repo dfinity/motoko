@@ -91,7 +91,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
-      - uses: nixbuild/nixbuild-action@v22
+      - uses: nixbuild/nixbuild-action@v24
         with:
           nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
           generate_summary_for: 'workflow'
@@ -117,7 +117,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
       - if: ${{ startsWith(matrix.os, 'ubuntu-') }}
-        uses: nixbuild/nixbuild-action@v22
+        uses: nixbuild/nixbuild-action@v24
         with:
           nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
           generate_summary_for: 'workflow'

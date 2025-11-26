@@ -40,7 +40,7 @@ runs:
     - uses: nixbuild/nix-quick-install-action@v34
 
     - if: startsWith(inputs.os, 'ubuntu-')
-      uses: nixbuild/nixbuild-action@v22
+      uses: nixbuild/nixbuild-action@v24
       with:
         nixbuild_token: ${{ inputs.nixbuild-token }}
         generate_summary_for: 'workflow'
