@@ -1,5 +1,12 @@
 no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not contained in expected type
   module {
+    type BlobIterator =
+      {
+        isBlobLive : (b : Blob) -> Bool;
+        nextDeadBlob : () -> Blob;
+        pruneDeadBlobs : (confirmedDeadBlobs : [Blob]) -> ();
+        size : () -> Nat
+      };
     type ErrorCode =
       {
         #call_error : {err_code : Nat32};
@@ -11,9 +18,18 @@ no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not 
         #system_transient;
         #system_unknown
       };
+    type __List =
+      {
+        index : Nat;
+        var next : ?__List;
+        originalBlob : Blob;
+        value : ?__WeakRef
+      };
+    type __WeakRef = {ref : weak Blob};
     Array_init : <T>(len : Nat, x : T) -> [var T];
     Array_tabulate : <T>(len : Nat, gen : Nat -> T) -> [T];
     Array_tabulateVar : <T>(len : Nat, gen : Nat -> T) -> [var T];
+    BlobIterator : (hash : [var __List]) -> BlobIterator;
     Ret : <T>() -> T;
     Types :
       module {
@@ -39,6 +55,7 @@ no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not 
         type Region = Region;
         type Text = Text
       };
+    __getDedupTable : () -> ?[var __List];
     abs : (x : Int) -> Nat;
     allocWeakRef : <T>(obj : T) -> weak T;
     arccos : (f : Float) -> Float;
@@ -143,6 +160,7 @@ no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not 
     getCandidLimits :
       <system>() -> {bias : Nat32; denominator : Nat32; numerator : Nat32};
     getCertificate : () -> ?Blob;
+    getDeadBlobs : () -> ?[Blob];
     getSelfPrincipal : <system>() -> Principal;
     hashBlob : (b : Blob) -> Nat32;
     idlHash : (x : Text) -> Nat32;
@@ -177,6 +195,7 @@ no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not 
     isController : (p : Principal) -> Bool;
     isLive : (weak_ref : weak Any) -> Bool;
     isReplicatedExecution : () -> Bool;
+    isStorageBlobLive : (b : Blob) -> Bool;
     log : (f : Float) -> Float;
     nat16ToInt16 : (n : Nat16) -> Int16;
     nat16ToNat : (n : Nat16) -> Nat;
@@ -208,6 +227,7 @@ no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not 
     popcntNat8 : (w : Nat8) -> Nat8;
     principalOfActor : (act : actor {}) -> Principal;
     principalOfBlob : (act : Blob) -> Principal;
+    pruneConfirmedDeadBlobs : (confirmedDeadBlobs : [Blob]) -> ();
     regionGrow : (r : Region, pages : Nat64) -> Nat64;
     regionId : (r : Region) -> Nat;
     regionLoadBlob : (r : Region, offset : Nat64, size : Nat) -> Blob;

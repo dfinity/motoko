@@ -319,6 +319,7 @@ func natToText(_n : Nat) : Text = "";
 
 let ar = [1, 2, 3];
 let varAr : [var Nat] = [var 1, 2, 3];
+let varArInt : [var Int] = [var 1, 2, 3];
 let iter : Iter<Nat> = { next = func() : ?Nat = null };
 let iterText : Iter<Text> = { next = func() : ?Text = null };
 let iterChar : Iter<Char> = { next = func() : ?Char = null };
@@ -339,7 +340,7 @@ let optionSome : ?Nat = ?1;
 let _ = Array.tabulate(4, func i = i * 2);
 let _ = Array.find(ar, func x = x > 8);
 let _ = Array.findIndex(['A', 'B', 'C'], func x = x == 'C');
-let _ = Array.forEach(ar, func _ {});
+Array.forEach(ar, func _ {});
 let _ = Array.map(ar, func x = x * 2);
 let _ = Array.mapToMutable<Nat, Int>(ar, func x = x * 2);
 let _ = Array.filter(ar, func x = x % 2 == 0);
@@ -356,12 +357,13 @@ let va2 : [var Int] = VarArray.tabulate(4, func i = i * 2);
 let _ = check(va1, va2);
 let _ = VarArray.find(varAr, func x = x > 8);
 let _ = VarArray.findIndex([var 'A', 'B', 'C'], func x = x == 'C');
-let _ = VarArray.forEach(varAr, func(x) {});
+VarArray.forEach(varAr, func(x) {});
 let va3 = VarArray.map<Nat, Int>(varAr, func x = x * 2);
 let va4 : [var Int] = VarArray.map(varAr, func x = x * 2);
 let _ = check(va3, va4);
+let _ = VarArray.map(varArInt, func x = x * 2);
 let _ = VarArray.mapToImmutable(varAr, func x = x * 2);
-let _ = VarArray.mapInPlace(varAr, func x = x * 3);
+VarArray.mapInPlace(varAr, func x = x * 3);
 let _ = VarArray.filter(varAr, func x = x % 2 == 0);
 let va5 = VarArray.mapEntries<Nat, Int>(varAr, func(x, i) = i * x);
 let va6 : [var Int] = VarArray.mapEntries(varAr, func(x, i) = i * x);
@@ -374,7 +376,7 @@ let _ = VarArray.all(varAr, func x = x > 0);
 let _ = VarArray.any(varAr, func x = x > 3);
 
 // Iter module explicit type instantiation tests
-let _ = Iter.forEach(iter, func _ {});
+Iter.forEach(iter, func _ {});
 let _ = Iter.map(iter, func x = x * 2);
 let _ = Iter.filter(iter, func x = x % 2 == 0);
 let _ = Iter.filterMap(iter, func x = if (x % 2 == 0) ?x else null);
@@ -405,7 +407,7 @@ let _ = List.findLastIndex(list, func i = i % 2 == 0);
 let _ = List.all(list, func x = x > 1);
 
 // pure List module explicit type instantiation tests
-let _ = PureList.forEach(pureList, func n = ());
+PureList.forEach(pureList, func n = ());
 let _ = PureList.filter(pureList, func n = n != 1);
 let _ = PureList.map(pureList, func n = n * 2);
 let _ = PureList.partition(pureList, func n = n != 1);
@@ -418,7 +420,7 @@ let _ = PureList.tabulate(3, func n = n * 2);
 // Queue module explicit type instantiation tests
 let _ = Queue.all(queue, func x = x % 2 == 0);
 let _ = Queue.any(queue, func x = x > 2);
-let _ = Queue.forEach(queue, func _ {});
+Queue.forEach(queue, func _ {});
 let q1 = Queue.map<Nat, Int>(queue, func x = x * 2);
 let q2 : Queue<Int> = Queue.map(queue, func x = x * 2);
 let _ = check(q1, q2);
@@ -427,7 +429,7 @@ let _ = Queue.filter(queue, func x = x % 2 == 0);
 // pure Queue module explicit type instantiation tests
 let _ = PureQueue.all(pureQueue, func n = n > 1);
 let _ = PureQueue.any(pureQueue, func n = n > 1);
-let _ = PureQueue.forEach(pureQueue, func _ {});
+PureQueue.forEach(pureQueue, func _ {});
 let _ = PureQueue.filter(pureQueue, func n = n != 1);
 let _ = PureQueue.map(pureQueue, func n = n * 2);
 let _ = PureQueue.filterMap(pureQueue, func n = if (n % 2 == 0) ?n else null);
@@ -438,7 +440,7 @@ let st2 : Stack<Int> = Stack.tabulate(3, func i = 2 * i);
 let _ = check(st1, st2);
 let _ = Stack.all(stack, func n = n % 2 == 0);
 let _ = Stack.any(stack, func n = n == 2);
-let _ = Stack.forEach(stack, func _ {});
+Stack.forEach(stack, func _ {});
 let st3 = Stack.map<Nat, Int>(stack, func n = 2 * n);
 let st4 : Stack<Int> = Stack.map(stack, func n = 2 * n);
 let _ = check(st3, st4);
@@ -449,7 +451,7 @@ let _ = check(st5, st6);
 
 // Set module explicit type instantiation tests
 let _ = Set.retainAll(set, natCompare, func n = n % 2 == 0);
-let _ = Set.forEach(set, func _ {});
+Set.forEach(set, func _ {});
 let _ = Set.filter(set, natCompare, func n = n % 2 == 0);
 let s1 = Set.map<Nat, Text>(set, func n = natToText(n));
 let s1i = Set.map(set, func n = natToText(n));
@@ -475,7 +477,7 @@ let _ = Set.all(set, func n = n < 10);
 let _ = Set.any(set, func n = n > 5);
 
 // pure Set module explicit type instantiation tests
-let _ = PureSet.forEach(pureSet, func _ {});
+PureSet.forEach(pureSet, func _ {});
 let _ = PureSet.filter(pureSet, natCompare, func n = n % 2 == 0);
 let ps1 = PureSet.map<Nat, Text>(pureSet, func n = natToText(n));
 let ps2 = PureSet.map(pureSet, func n = natToText(n));
@@ -495,7 +497,7 @@ let _ = PureSet.all(pureSet, func n = n < 10);
 let _ = PureSet.any(pureSet, func n = n > 5);
 
 // Map module explicit type instantiation tests
-let _ = Map.forEach(mapInstance, func(key, value) {});
+Map.forEach(mapInstance, func(key, value) {});
 let _ = Map.filter(mapInstance, natCompare, func(key, value) = key % 2 == 0);
 let m1 = Map.map<Nat, Text, Text>(mapInstance, func(key, value) = natToText(key));
 let m1i = Map.map(mapInstance, func(key, value) = natToText(key));
@@ -509,7 +511,7 @@ let _ = Map.fromIter([(0, "0")].values(), natCompare);
 // pure Map module explicit type instantiation tests
 let _ = PureMap.all(pureMap, func(k, v) = v == natToText(k));
 let _ = PureMap.any(pureMap, func(k, v) = k >= 0);
-let _ = PureMap.forEach(pureMap, func(key, value) {});
+PureMap.forEach(pureMap, func(key, value) {});
 let pm1 = PureMap.map<Nat, Text, Text>(pureMap, func(key, value) = natToText(key));
 let pm2 = PureMap.map(pureMap, func(key, value) = natToText(key));
 let _ = check(pm1, pm2);
@@ -525,8 +527,8 @@ let _ = PureMap.toText(pureMap, natToText, func t = t);
 // Result module explicit type instantiation tests
 let _ = Result.mapOk(resultOk, func x = x * 2);
 let _ = Result.mapErr(resultErr, func x = x # "!");
-let _ = Result.forOk(resultOk, func x {});
-let _ = Result.forErr(resultErr, func x {});
+Result.forOk(resultOk, func x {});
+Result.forErr(resultErr, func x {});
 
 // Option module explicit type instantiation tests
 let _ = Option.map(optionSome, func x = x + 1);
@@ -544,6 +546,26 @@ module Issue5418 {
     );
   };
 };
+
+module Return {
+  public func test1() {
+    let ar = Array.tabulate<Bool>(3, func i {
+      if (i == 0) return false;
+      true;
+    });
+    assert ar == [];
+  };
+  public func test2() {
+    let ar = Array.tabulate(3, func i {
+      if (i == 0) return false;
+      true;
+    });
+    assert ar == [];
+  };
+};
+Return.test1();
+Return.test2();
+
 //SKIP comp
 //SKIP run-ir
 //SKIP run-low

@@ -13,7 +13,7 @@ The basic idea is to generalise the typing rule for the dot operator. Given the 
 
 If e does not have object type, or it is an object with no field `x`, then the field is searched for in the environment.
 
-The search looks for a module that (1) has a (possibly parameterized) type member named `Self` that (can be instantiated such that it) is a supertype of `e`'s type, and (2) has a value member `x` with a function type `x : (t_arg, ...) -> t_res` where `t_arg` (can be instantiated such that it) is a supertype of `e`'s type. Notably these two instantiations do _not_ need to be the same, so a module can export functions with more specialized arguments than its `Self` type.
+The search looks for a module with a value member `x` with a function type `x : (self : t_arg, ...) -> t_res` where `t_arg` (can be instantiated such that it) is a supertype of `e`'s type. Notably the first parameter of the function needs to be named "self".
 
 In case there are multiple modules in the context satisfying these two conditions, we report an ambiguity error. This is to avoid "spooky action at a distance" when reordering definitions/imports.
 

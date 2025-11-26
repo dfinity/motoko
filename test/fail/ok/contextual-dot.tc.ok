@@ -1,18 +1,5 @@
 contextual-dot.mo:6.13-6.18: type error [M0072], field first does not exist in type:
-  {
-    get : Nat -> Nat;
-    keys : () -> {next : () -> ?Nat};
-    size : () -> Nat;
-    vals : () -> {next : () -> ?Nat};
-    values : () -> {next : () -> ?Nat}
-  }
+  [Nat]
 Hint: Did you mean to import lib/Array.mo?
 contextual-dot.mo:10.13-10.17: type error [M0072], field last does not exist in type:
-  {
-    get : Nat -> Nat;
-    keys : () -> {next : () -> ?Nat};
-    size : () -> Nat;
-    vals : () -> {next : () -> ?Nat};
-    values : () -> {next : () -> ?Nat}
-  }
-Hint: If you're trying to use a contextual call you need to import the corresponding module.
+  [Nat]

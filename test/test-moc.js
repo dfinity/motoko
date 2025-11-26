@@ -245,3 +245,12 @@ assert(Motoko.parseMotokoTypedWithScopeCache(/*enable_recovery=*/false, ["bad.mo
 // TODO: This requires avoid dropping 'code' field in all checks though all pipeline e.g. infer_prog
 // assert(Motoko.parseMotokoTypedWithScopeCache(/*enable_recovery=*/true, ["bad.mo"], new Map()).code != null);
 
+// `blob:` import placeholders
+Motoko.setBlobImportPlaceholders(true);
+Motoko.saveFile("blob.mo", 'import MyBlob "blob:file:path/to/blob.txt"; MyBlob.size();');
+assert(Motoko.parseMotoko(/*enable_recovery=*/true, "blob.mo").code != null);
+assert.deepStrictEqual(Motoko.run([], "blob.mo"), {
+  stdout: "",
+  stderr: "blob.mo:1.1-1.43: execution error, blob import placeholder\n",
+  result: { error: {} },
+});

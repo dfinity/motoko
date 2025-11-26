@@ -26,6 +26,7 @@ sig
   val group : ('a -> 'a -> bool) -> 'a list -> 'a list list
   val take : int -> 'a list -> 'a list (* raises Failure *)
   val drop : int -> 'a list -> 'a list (* raises Failure *)
+  val replicate : 'a -> int -> 'a list
   val split_at : int -> 'a list -> ('a list * 'a list)
   val mapi2 : (int -> 'a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list
 

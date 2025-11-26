@@ -38,8 +38,7 @@ let check_modes ms =
 let check_label lab : M.lab =
   match lab.it with
   | Named name -> Idllib.Escape.escape name
-  | Id id -> Idllib.Escape.escape_num id
-  | Unnamed id -> Idllib.Escape.escape_num id
+  | Id id | Unnamed id -> Idllib.Escape.escape_num id
 
 let is_tuple fs =
   List.length fs > 1 &&

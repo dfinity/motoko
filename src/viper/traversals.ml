@@ -13,7 +13,7 @@ type visitor =
 let rec over_exp (v : visitor) (exp : exp) : exp =
   v.visit_exp (match exp.it with
   | HoleE (s, e) -> { exp with it = HoleE (s, ref (over_exp v !e)) }
-  | ImportE _ | PrimE _ | VarE _ | LitE _ | ActorUrlE _ -> exp
+  | ImportE _ | ImplicitLibE _ | PrimE _ | VarE _ | LitE _ | ActorUrlE _ -> exp
   | UnE (x, y, exp1) -> { exp with it = UnE (x, y, over_exp v exp1) }
   | ShowE (x, exp1) -> { exp with it = ShowE (x, over_exp v exp1) }
   | ToCandidE exps ->  { exp with it = ToCandidE (List.map (over_exp v) exps) }

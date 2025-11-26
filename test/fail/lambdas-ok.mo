@@ -18,7 +18,7 @@ let _ = mapMono(ar, func x = x + 1);
 let _ = mapMonoTuple(ar, (func x = x + 1, func x = x + 1));
 let _ = filter(ar, func x = x > 1);
 let _ = filterTuple(ar, (func x = x > 1, func x = x > 1));
-let _ = forEach(ar, func x = ());
+forEach(ar, func x = ());
 
 // Infer I=Nat from ar, then infer O from the body
 let _ = map(ar, func x = x + 1); // O=Nat
@@ -63,9 +63,9 @@ module ClosedBody1 {
   func f2<A, B>(_ : A, _ : A -> Int) {};
   // It should defer the func, solve A=Nat in the 1st round, but (1 : Int) should be checked and leave nothing to solve in the 2nd round
   func _main() {
-    let _ = f1(1, func _ = 1);
-    let _ = f2(1, func _ = 1); // extra unused type variable B
-  }
+    f1(1, func _ = 1);
+    f2(1, func _ = 1); // extra unused type variable B
+  };
 };
 
 module ClosedBody2 {
@@ -75,7 +75,7 @@ module ClosedBody2 {
   func _main() {
     let _ = f1(1, func _ : Int = 1);
     let _ = f2(1, func _ : Int = 1); // extra unused type variable C
-  }
+  };
 };
 
 module MustSolveComplex {
@@ -87,10 +87,10 @@ module MustSolveComplex {
   func f2<A, B, O>(_ : Arg<A, B>, _ : (In1<A>, In2<B>) -> O) : O = fail();
   func _main() {
     let a = { var x = [(#v1(1), 0xf)] };
-    let _ = f1(a, func (x, y) = (x[0], switch y { case (#v2(y)) y }));
-    let _ = f2(a, func p = (p.0[0], switch (p.1) { case (#v2(y)) y }));
-  }
-}
+    let _ = f1(a, func(x, y) = (x[0], switch y { case (#v2(y)) y }));
+    let _ = f2(a, func p = (p.0 [0], switch (p.1) { case (#v2(y)) y }));
+  };
+};
 //SKIP comp
 //SKIP run
 //SKIP run-drun

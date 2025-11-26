@@ -7,7 +7,7 @@ let
       buildInputs = commonBuildInputs pkgs ++ [
         pkgs.ocamlPackages.js_of_ocaml
         pkgs.ocamlPackages.js_of_ocaml-ppx
-        pkgs.nodejs_20
+        pkgs.nodejs
         pkgs.nodePackages.terser
       ];
       buildPhase = ''
@@ -19,7 +19,6 @@ let
         terser ${n}.js -o ${n}.min.js -c -m
       '';
       installPhase = ''
-        mkdir -p $out
         mkdir -p $out/bin
         cp --verbose --dereference ${n}.js $out/bin
         cp --verbose --dereference ${n}.min.js $out/bin

@@ -10,6 +10,8 @@
     // // We do not need simd but this flag enables `core::arch:wasm64`.
     // // See https://github.com/rust-lang/rust/issues/90599
     simd_wasm64,
+    unsafe_extern_blocks,
+    arbitrary_self_types_pointers,
     stmt_expr_attributes
 )]
 #![allow(internal_features)]
@@ -67,14 +69,14 @@ mod visitor;
 use motoko_rts_macros::*;
 
 #[ic_mem_fn(ic_only)]
-unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
-    text::text_of_str(mem, "0.1")
+fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
+    unsafe { text::text_of_str(mem, "0.1") }
 }
 
 #[non_incremental_gc]
 #[ic_mem_fn(ic_only)]
-unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<usize>) -> types::Value {
-    mem.alloc_words(n)
+fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<usize>) -> types::Value {
+    unsafe { mem.alloc_words(n) }
 }
 
 #[incremental_gc]
@@ -87,7 +89,7 @@ extern "C" {
     fn rts_trap(msg: *const u8, len: u32) -> !;
 }
 
-pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {
+pub(crate) fn trap_with_prefix(prefix: &str, msg: &str) -> ! {
     // Rust currently doesn't support stack-allocated dynamically-sized arrays or alloca, so we
     // have a max bound to the message size here.
     //
@@ -116,14 +118,14 @@ pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {
     }
 
     assert!(b_idx <= u32::MAX as usize);
-    rts_trap(c_str.as_ptr(), b_idx as u32);
+    unsafe { rts_trap(c_str.as_ptr(), b_idx as u32) }
 }
 
-pub(crate) unsafe fn idl_trap_with(msg: &str) -> ! {
-    trap_with_prefix("IDL error: ", msg);
+pub(crate) fn idl_trap_with(msg: &str) -> ! {
+    trap_with_prefix("IDL error: ", msg)
 }
 
-pub(crate) unsafe fn rts_trap_with(msg: &str) -> ! {
+pub(crate) fn rts_trap_with(msg: &str) -> ! {
     trap_with_prefix("RTS error: ", msg)
 }
 

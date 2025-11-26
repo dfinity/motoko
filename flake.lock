@@ -3,11 +3,11 @@
     "candid-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1758026892,
-        "narHash": "sha256-XeHOOdV0oEHtlJ8DSoTVBoHqjMABE671H2CFmiR2F5w=",
+        "lastModified": 1762175579,
+        "narHash": "sha256-ChlkmnamNG6LfpxEW6GwES6xigYwFgdBgzoNLrq0zJ4=",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "0152b45673fc1c0214e293f3dcf71aa590261750",
+        "rev": "bc49504faf55fce75793a6501e61e7ace680d922",
         "type": "github"
       },
       "original": {
@@ -68,30 +68,14 @@
         "type": "github"
       }
     },
-    "ic-src": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1755350517,
-        "narHash": "sha256-i0QngtC8mVTzp5xNV3/GIbgfB8Vkd7gfg0L78AHf1oI=",
-        "owner": "dfinity",
-        "repo": "ic",
-        "rev": "b6cf1a858dfa1634e763eff203a709afbd1d8bb0",
-        "type": "github"
-      },
-      "original": {
-        "owner": "dfinity",
-        "repo": "ic",
-        "type": "github"
-      }
-    },
     "ic-wasm-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1758911192,
-        "narHash": "sha256-iY416FZAMR5nF+AykW8Vy8eQXbfeRJNVZlrl2IKEbEU=",
+        "lastModified": 1763575621,
+        "narHash": "sha256-gxfjS/X9EkVEEqDGCWWJQtNXuJk8Kc94o+hVfC5sw5Y=",
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "b381a37c0ec976a0012ef8491ec1d91d5e8b9a38",
+        "rev": "65a9462fd63503182c7c5dd44f92839a21047e71",
         "type": "github"
       },
       "original": {
@@ -120,11 +104,11 @@
     "motoko-base-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1757712160,
-        "narHash": "sha256-gS3T/REhM5IhkMhrV3D4ljOyfm4DK3+d9wYB98kYei4=",
+        "lastModified": 1759588547,
+        "narHash": "sha256-p7Z+cy9F0abuCWh4hvUpoOROhIPiYJfAO3f4hTXMKow=",
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "df67035eb1d4a116ce684f1dcdad892c91273886",
+        "rev": "15f79638ab493b985f9a0c45d62460781a728d33",
         "type": "github"
       },
       "original": {
@@ -137,11 +121,11 @@
     "motoko-core-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1757933340,
-        "narHash": "sha256-PmakNvgwM4IKq70v54qfGXNovwM49CQzFZ3eCz0+sUg=",
+        "lastModified": 1763395090,
+        "narHash": "sha256-ePEOG9yxZ/xfJCMavfwC10gDAuaFzfCycps50ibx0dU=",
         "owner": "dfinity",
         "repo": "motoko-core",
-        "rev": "034557bc2b6c88b21a59cece340a2ecff0e65de7",
+        "rev": "a47436dd8188dfcdfa788f0424ed4cb02d70bcfe",
         "type": "github"
       },
       "original": {
@@ -192,16 +176,16 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1751274312,
-        "narHash": "sha256-/bVBlRpECLVzjV19t5KMdMFWSwKLtb5RyXdjz3LJT+g=",
+        "lastModified": 1763948260,
+        "narHash": "sha256-dY9qLD0H0zOUgU3vWacPY6Qc421BeQAfm8kBuBtPVE0=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "50ab793786d9de88ee30ec4e4c24fb4236fc2674",
+        "rev": "1c8ba8d3f7634acac4a2094eef7c32ad9106532c",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
-        "ref": "nixos-24.11",
+        "ref": "nixos-25.05",
         "repo": "nixpkgs",
         "type": "github"
       }
@@ -241,11 +225,11 @@
     "pocket-ic-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1757573980,
-        "narHash": "sha256-yOjLoRCMsi29tEK8M1XNC8AaU1ixkHE3B5sdGSr6u6s=",
+        "lastModified": 1763769101,
+        "narHash": "sha256-/VaUL3Wu9NILofasZPTCtFVIoXmsOokiO/sTUZQJTZw=",
         "owner": "dfinity",
         "repo": "ic",
-        "rev": "861616d46ded00091fecbfe01f441b38b56b483c",
+        "rev": "f07e9896fef2c24db8d4d0bed3d3ed42f0934e2a",
         "type": "github"
       },
       "original": {
@@ -260,7 +244,6 @@
         "candid-src": "candid-src",
         "esm": "esm",
         "flake-utils": "flake-utils",
-        "ic-src": "ic-src",
         "ic-wasm-src": "ic-wasm-src",
         "libtommath-src": "libtommath-src",
         "motoko-base-src": "motoko-base-src",
@@ -283,11 +266,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1755311859,
-        "narHash": "sha256-NspGtm0ZpihxlFD628pvh5ZEhL/Q6/Z9XBpe3n6ZtEw=",
+        "lastModified": 1764038373,
+        "narHash": "sha256-M6w2wNBRelcavoDAyFL2iO4NeWknD40ASkH1S3C0YGM=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "07619500e5937cc4669f24fec355d18a8fec0165",
+        "rev": "ab3536fe850211a96673c6ffb2cb88aab8071cc9",
         "type": "github"
       },
       "original": {

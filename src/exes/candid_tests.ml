@@ -1,10 +1,10 @@
-(* This programs run the candid test suite at
+(* This program runs the Candid test suite at
    https://github.com/dfinity/candid/tree/master/test
 
 *)
 open Idllib
 open Source
-open Idllib.Syntax
+open Syntax
 open Mo_idl
 open Printf
 open Mo_types
@@ -21,6 +21,7 @@ let _WASMTIME_OPTIONS_ = "-C cache=n -W nan-canonicalization,memory64,multi-memo
 let test_dir = ref ""
 let pattern = ref ""
 let expect_fail_pats = ref []
+let diagnose = ref false
 
 let print_banner () =
   printf "%s\n" banner;
@@ -35,6 +36,7 @@ let argspec = Arg.align
 [
   "-i", Arg.Set_string test_dir, " candid test directory";
   "-p", Arg.Set_string pattern, " test selector (substring/regex)";
+  "--diag", Arg.Unit (fun () -> diagnose := true), " dump generated Motoko code for the tests to stderr";
   "--expect-fail", Arg.String (fun s -> expect_fail_pats := s :: !expect_fail_pats), " tests expected to fail";
   "--version", Arg.Unit print_banner, " show version";
 ]
@@ -49,7 +51,7 @@ let write_file f s =
   close_out oc_
 
 let print_type = function
-  | [t] -> "(" ^ Pretty.string_of_typ t ^ ")" (* add parens to make this unary *)
+  | [t] -> Pretty.string_of_typ t |> Idl_to_mo_value.parens (* add parens to make this unary *)
   | ts -> Pretty.string_of_typ (Type.Tup ts)
 
 type expected_behaviour = ShouldPass | ShouldTrap
@@ -65,18 +67,18 @@ let mo_of_test tenv test : (string * expected_behaviour, string) result =
     | TextualInput x ->
       match Pipeline.parse_values x with
       | Error msgs -> raise (TextualParseError (x, msgs))
-      | Ok (vals, _) -> "(" ^ Idl_to_mo_value.args vals ts ^ " : " ^ print_type ts ^ ")"
+      | Ok (vals, _) -> Idl_to_mo_value.(args vals ts ^ " : " ^ print_type ts |> parens)
   in
-  let equal e1 e2     = "assert (" ^ e1 ^ " == " ^ e2 ^ ")\n" in
-  let not_equal e1 e2 = "assert (" ^ e1 ^ " != " ^ e2 ^ ")\n" in
+  let equal e1 e2     = "assert " ^ e1 ^ " == " ^ e2 ^ "\n" in
+  let not_equal e1 e2 = "assert " ^ e1 ^ " != " ^ e2 ^ "\n" in
   let ignore ts e =
     let open Type in
     if sub (seq ts) unit then e (* avoid warning about redundant ignore *)
-    else "ignore (" ^ e ^ ")\n" in
+    else "ignore " ^ e ^ "\n" in
 
   try
     let defs =
-      "import _Prim \"mo:⛔\";" ^
+      "import _Prim \"mo:⛔\";\n" ^
       String.concat "" (List.map (fun (n,candid_typ) ->
         let mo_typ = Idl_to_mo.check_typ tenv candid_typ in
         "type " ^ n ^ " = " ^ Pretty.string_of_typ mo_typ ^ ";\n"
@@ -249,12 +251,12 @@ let () =
           match mo_of_test tenv test with
           | Error why -> Ignored why
           | Ok (src, must_not_trap) ->
-            (* Printf.printf "\n%s" src *)
+            if !diagnose then Printf.eprintf "## %s\n\n``` Motoko\n%s```\n" testname src;
             Unix.putenv "MOC_UNLOCK_PRIM" "yesplease";
             write_file "tmp.mo" src;
-            match run_cmd "moc -Werror -wasi-system-api tmp.mo -o tmp.wasm" with
-            | ((Fail | Timeout), stdout, stderr) -> CantCompile (stdout, stderr, src)
-            | (Ok, _, _) ->
+            match run_cmd "moc -A M0215 -Werror -wasi-system-api tmp.mo -o tmp.wasm" with
+            | (Fail | Timeout), stdout, stderr -> CantCompile (stdout, stderr, src)
+            | Ok, _, _ ->
               match must_not_trap, run_cmd ("timeout 10s wasmtime "^ _WASMTIME_OPTIONS_ ^" tmp.wasm") with
               | ShouldPass, (Ok, _, _) -> WantedPass
               | ShouldTrap, (Fail, _, _) -> WantedTrap

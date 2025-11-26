@@ -1,1 +1,1 @@
-M0224.mo:15.10-15.14: type error [M0224], overlapping resolution for `getX` in scope from these modules: A, B
+M0224.mo:22.10-22.15: type error [M0224], overlapping resolution for `getX1` in scope from these modules: B, C

@@ -1,7 +1,7 @@
 [package]
 name = "wasm-profiler"
 version = "0.1.1"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 parity-wasm = { version = "0.45.0", features = ["std", "sign_ext", "bulk"] }

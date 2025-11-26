@@ -34,12 +34,9 @@ variance.mo:82.11-82.18: type error [M0096], expression of type
   {get : () -> ?Nat; put : (i : Nat) -> ()}
 cannot produce expected type
   {get : () -> ?Any; put : (i : Any) -> ()}
-variance.mo:84.15-84.20: type error [M0098], cannot implicitly instantiate function of type
+variance.mo:84.15-84.20: type error [M0098], cannot apply function of type
   <A>() -> Inv<A>
 to argument of type
   ()
-because implicit instantiation of type parameter A is under-constrained with
-  None  <:  A  <:  Any
-where
-  None  =/=  Any
-so that explicit type instantiation is required
+because there is no "best" choice for type parameter `A`.
+Hint: Add explicit type instantiation, e.g. <Any>

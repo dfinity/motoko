@@ -99,7 +99,7 @@ let rec exp msgs e : f = match e.it with
     group msgs (add_self self_id_opt s (dec_fields msgs dfs))
   (* The rest remaining cases just collect the uses of subexpressions: *)
   | LitE _
-  | PrimE _ | ImportE _ -> M.empty
+  | PrimE _ | ImportE _ | ImplicitLibE _ -> M.empty
   | ObjE (bases, efs)   -> exps msgs bases ++ exp_fields msgs efs
   | TupE es
   | ArrayE (_, es)
