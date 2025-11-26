@@ -98,7 +98,7 @@ jobs:
       - name: Build platform-specific release files
         shell: bash
         run: |
-          release_files="$(nixbuildcopy.sh '.#"release-files-${{ matrix.os }}"')"
+          release_files="$(${{ github.workspace }}/nixbuildcopy.sh '.#"release-files-${{ matrix.os }}"')"
           echo "UPLOAD_PATH=$release_files" >> $GITHUB_ENV
 
       - name: Upload Release Artifacts
@@ -111,7 +111,7 @@ jobs:
         shell: bash
         run: |
           uname -s -m
-          moc="$(nixbuildcopy.sh .#release.moc)"
+          moc="$(${{ github.workspace }}/nixbuildcopy.sh .#release.moc)"
           "$moc/bin/moc" --version
           file "$moc/bin/moc"
           ldd "$moc/bin/moc" || true

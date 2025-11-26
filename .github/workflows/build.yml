@@ -28,7 +28,7 @@ jobs:
       shell: bash
       run: |
         cachix watch-exec ic-hs-test -- \
-          nixbuild.sh -L \
+          ${{ github.workspace }}/nixbuild.sh -L \
             .#release.moc \
             .#release.mo-doc \
             .#js.moc \
@@ -36,7 +36,7 @@ jobs:
 
         echo "## checks"
         uname -s -m
-        moc="$(nixbuildcopy.sh .#release.moc)"
+        moc="$(${{ github.workspace }}/nixbuildcopy.sh .#release.moc)"
         "$moc/bin/moc" --version
         file "$moc/bin/moc"
         ldd "$moc/bin/moc" || true

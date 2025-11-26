@@ -98,7 +98,7 @@ jobs:
       - name: Fetch report
         shell: bash
         run: |
-          report_site="$(nixbuildcopy.sh .#report-site)"
+          report_site="$(${{ github.workspace }}/nixbuildcopy.sh .#report-site)"
           cp -rL "$report_site" report-site-copy
       - name: Push report to GitHub pages
         uses: JamesIves/github-pages-deploy-action@v4
@@ -128,7 +128,7 @@ jobs:
       - name: nix-build
         shell: bash
         run: |
-          moc="$(nixbuildcopy.sh .#release.moc)"
+          moc="$(${{ github.workspace }}/nixbuildcopy.sh .#release.moc)"
           echo "UPLOAD_PATH=$moc" >> $GITHUB_ENV
       - name: upload artifacts
         uses: actions/upload-artifact@v5
