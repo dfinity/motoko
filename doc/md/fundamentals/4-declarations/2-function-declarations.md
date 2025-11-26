@@ -98,7 +98,7 @@ assert echoTwice("Hello") == "Hello!!";
 
 ## Shared functions in actors
 
-In actors, functions can be marked as `shared` to allow [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) [inter-canister](https://internetcomputer.org/docs/motoko/fundamentals/messaging) communication.
+In actors, functions can be marked as `shared` to allow [asynchronous](../../fundamentals/2-actors/1-actors-async.md#async--await) [inter-canister](https://internetcomputer.org/docs/references/async-code) communication.
 
 ```motoko no-repl
 actor Counter {

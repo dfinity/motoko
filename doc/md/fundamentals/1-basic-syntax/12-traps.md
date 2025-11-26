@@ -17,5 +17,5 @@ let n = 10;
 assert n % 2 == 0; // Succeeds
 ```
 
-Assertions help catch logic errors early, but should not be used for regular [error handling](https://internetcomputer.org/docs/motoko/fundamentals/error-handling).
+Assertions help catch logic errors early, but should not be used for regular [error handling](../../fundamentals/9-error-handling.md).
 

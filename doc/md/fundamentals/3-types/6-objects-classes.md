@@ -9,7 +9,7 @@ sidebar_position: 6
 In Motoko, an object is a collection of named fields that hold values. These values can be plain data or functions.  Each field can be either **mutable** or **immutable** depending on whether it's declared with `var` or not.
 
 A simple object containing just fields of data is like a record in a database.
-Motoko's light-weight [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) syntax makes it easy to construct such objects.
+Motoko's light-weight [record](../../fundamentals/3-types/5-records.md) syntax makes it easy to construct such objects.
 
 When fields contain function values, Motoko objects can represent traditional objects with methods, familiar from object-oriented programming (OOP).  From an OOP perspective, an object is an abstraction, defined by the behavior of its methods. Methods are typically used to modify or observe some encapsulated (i.e. hidden) state of an object.
 
@@ -34,7 +34,7 @@ object Account {
 
 ## Classes
 
-An object declaration just declares a single object. To declare a function that generates objects of a similar type, Motoko offer classes. A class acts as a blueprint for creating multiple objects with independent [state](https://internetcomputer.org/docs/motoko/fundamentals/state).
+An object declaration just declares a single object. To declare a function that generates objects of a similar type, Motoko offer classes. A class acts as a blueprint for creating multiple objects with independent [state](../../fundamentals/2-actors/2-state.md).
 
 ```motoko
 class Account(initialBalance : Nat) {
@@ -189,5 +189,5 @@ withdrawFromAccount(_premiumAccount);
 // withdrawFromAccount(_basicAccount);    // type error: (missing withdraw)
 ```
 
-[Learn more about subtyping](https://internetcomputer.org/docs/motoko/fundamentals/types/subtyping).
+[Learn more about subtyping](../../fundamentals/3-types/14-subtyping.md).
 

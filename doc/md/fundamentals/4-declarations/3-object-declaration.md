@@ -8,7 +8,7 @@ In Motoko, records and objects are both used to group related values using named
 
 While records expressions are ideal for lightweight data representation, objects expressions are more verbose. Object expressions can define full objects in the sense of object-oriented programming where an object is a collection of named fields and methods acting on private state. In Motoko, the private declarations define the encapsulated state, while the public definitions define the object's visible members.
 
-Record and object both use the `var` keyword to define [mutable](https://internetcomputer.org/docs/motoko/fundamentals/declarations/variable-declarations) and declarations. Both records and objects support `and` and `with` for merging and updating object fields to create new records and objects.
+Record and object both use the `var` keyword to define [mutable](../../fundamentals/4-declarations/1-variable-declarations.md) and declarations. Both records and objects support `and` and `with` for merging and updating object fields to create new records and objects.
 
 **Record expressions** are used to construct simple data structures that consist of named fields holding values. The fields can be mutable or immutable. The fields of a record cannot refer to each other by name and are mainly used to store plain data, like the records in a database.
 

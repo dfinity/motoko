@@ -6,7 +6,7 @@ sidebar_position: 4
 
 A tuple is a fixed-size, ordered collection of values, where each element can have a different type. Tuples provide a way to group values by position, without the overhead of defining a record of named fields.
 
-A tuple is grouped together in parentheses (`value1`, `value2`, `value3`). The type of a tuple is determined by types of its elements, such as ([`Text`](https://internetcomputer.org/docs/motoko/core/Text), [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat), [`Bool`](https://internetcomputer.org/docs/motoko/core/Bool)). The values inside a tuple are evaluated in order from left to right. Tuples are immutable and their components cannot be modified after creation (unlike record fields, which can be declared mutable).
+A tuple is grouped together in parentheses (`value1`, `value2`, `value3`). The type of a tuple is determined by types of its elements, such as ([`Text`](../../core/Text.md), [`Nat`](../../core/Nat.md), [`Bool`](../../core/Bool.md)). The values inside a tuple are evaluated in order from left to right. Tuples are immutable and their components cannot be modified after creation (unlike record fields, which can be declared mutable).
 
 A tuple with zero elements is called the **unit value**, written as `()`. Since it carries no other data, it represents a trivial or token value. It's type is the **unit type**, also written `()`.
 
@@ -18,7 +18,7 @@ Unit values are typically used as placeholder arguments or return values for fun
 let ghost = ("Motoko", 25);
 ```
 
-The tuple's type is automatically inferred as `(Text, Nat)`, since `"Motoko"` is of type [`Text`](https://internetcomputer.org/docs/motoko/core/Text) and `25` is of type [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat).
+The tuple's type is automatically inferred as `(Text, Nat)`, since `"Motoko"` is of type [`Text`](../../core/Text.md) and `25` is of type [`Nat`](../../core/Nat.md).
 
 ```motoko
 let ghost : (Text, Nat) = ("Motoko", 25);
@@ -59,7 +59,7 @@ Tuples can be stored in arrays or other data structures. Tuples can be construct
 let users : [(Text, Nat)] = [("Motoko", 25), ("Ghost", 30)];
 ```
 
-This structure efficiently represents a collection of key-value pairs without requiring a dedicated [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) type.
+This structure efficiently represents a collection of key-value pairs without requiring a dedicated [record](../../fundamentals/3-types/5-records.md) type.
 
 ## Pattern matching on tuples
 
@@ -71,7 +71,7 @@ let users : [(Text, Nat)] = [("Motoko", 25), ("Ghost", 30)];
 let (firstUserName, _) = users[0] // "Motoko"
 ```
 
-The array `users` contains tuples, where each tuple represents a user with a [`Text`](https://internetcomputer.org/docs/motoko/core/Text) name and a [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) age.
+The array `users` contains tuples, where each tuple represents a user with a [`Text`](../../core/Text.md) name and a [`Nat`](../../core/Nat.md) age.
 Accessing `users[0]` retrieves the first tuple in the array.
 A `let` pattern can then be used to extract just the name, ignoring the age by using the wildcard pattern (`_`).
 

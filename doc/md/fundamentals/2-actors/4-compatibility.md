@@ -55,7 +55,7 @@ For example, `v1`'s stable types:
 ``` motoko no-repl file=../../examples/count-v1.most
 ```
 
-An upgrade from `v1` to `v2`'s stable types consumes a [`Nat`](https://internetcomputer.org/docs/motoko/core/Int.md) as an [`Int`](https://internetcomputer.org/docs/motoko/core/Nat.md), which is valid because `Nat <: Int`, that is,  `Nat` is a subtype of `Int`.
+An upgrade from `v1` to `v2`'s stable types consumes a [`Nat`](../../core/Nat.md) as an [`Int`](../../core/Nat.md), which is valid because `Nat <: Int`, that is,  `Nat` is a subtype of `Int`.
 
 ``` motoko no-repl file=../../examples/count-v2.most
 ```
@@ -110,7 +110,7 @@ Version `v3` with Candid interface `v3.did` and stable type interface `v3.most`:
 
 ## Incompatible upgrade
 
-Let's take a look at another example where the counter's type is again changed, this time from [`Int`](https://internetcomputer.org/docs/motoko/core/Int.md) to [`Float`](https://internetcomputer.org/docs/motoko/core/Float.md):
+Let's take a look at another example where the counter's type is again changed, this time from [`Int`](../../core/Int.md) to [`Float`](../../core/Float.md):
 
 ``` motoko no-repl file=../../examples/count-v4.mo
 ```
@@ -151,7 +151,7 @@ For this purpose, a user-instructed migration can be done in three steps:
 1. Introduce new variables of the desired types, while keeping the old declarations.
 2. Write logic to copy the state from the old variables to the new variables on upgrade.
 
-    While the previous attempt of changing state from [`Int`](https://internetcomputer.org/docs/motoko/core/Int.md) to [`Nat`](https://internetcomputer.org/docs/motoko/core/Float.md) was invalid, you now can realize the desired change as follows:
+    While the previous attempt of changing state from [`Int`](../../core/Int.md) to [`Nat`](../../core/Nat.md) was invalid, you now can realize the desired change as follows:
 
 ``` motoko no-repl file=../../examples/count-v5.mo
 ```
@@ -269,10 +269,10 @@ cannot be consumed at new type
   var Float
 ```
 
-With [enhanced orthogonal persistence](/docs/motoko/fundamentals/actors/orthogonal-persistence/enhanced), compatibility errors of stable variables are always detected in the runtime system and if failing, the upgrade is safely rolled back.
+With [enhanced orthogonal persistence](../../fundamentals/2-actors/6-orthogonal-persistence/enhanced.md), compatibility errors of stable variables are always detected in the runtime system and if failing, the upgrade is safely rolled back.
 
 :::danger
-With [classical orthogonal persistence](/docs/motoko/fundamentals/actors/orthogonal-persistence/classical), however, an upgrade attempt from `v2.wasm` to `v3.wasm` is unpredictable and may lead to partial or complete data loss if the `dfx` warning is ignored.
+With [classical orthogonal persistence](../../fundamentals/2-actors/6-orthogonal-persistence/classical.md), however, an upgrade attempt from `v2.wasm` to `v3.wasm` is unpredictable and may lead to partial or complete data loss if the `dfx` warning is ignored.
 :::
 
 ## Adding record fields

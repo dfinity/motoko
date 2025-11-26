@@ -8,7 +8,7 @@ Advanced type features enable more flexible and expressive type definitions, inc
 
 ## Structural equality
 
-Structural equality determines whether two values are equal based on their contents. This applies to immutable data structures, such as [records](https://internetcomputer.org/docs/motoko/fundamentals/types/records) and [variants](https://internetcomputer.org/docs/motoko/fundamentals/types/variants), but does not apply to mutable structures for safety reasons.
+Structural equality determines whether two values are equal based on their contents. This applies to immutable data structures, such as [records](../../fundamentals/3-types/5-records.md) and [variants](../../fundamentals/3-types/7-variants.md), but does not apply to mutable structures for safety reasons.
 
 ```motoko
 type Point = { x : Int; y : Int };
@@ -34,7 +34,7 @@ p1 == p2;  // true (structural equality at type `Point`)
 
 ## Generic types
 
-Generic types are used to define type parameters that work with multiple data types, commonly used in [functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions), [classes](https://internetcomputer.org/docs/motoko/fundamentals/types/objects-classes), and data structures.
+Generic types are used to define type parameters that work with multiple data types, commonly used in [functions](../../fundamentals/3-types/3-functions.md), [classes](../../fundamentals/3-types/6-objects-classes.md), and data structures.
 
 ```motoko
 // Generic function
@@ -180,7 +180,7 @@ let ghost = { name = "Motoko"; age = 30 };
 printName(ghost);  // Allowed since 'ghost' has a 'name' field.
 ```
 
-In the example above, `T <: { name : Text }` requires that any type used for `T` must be a subtype of the [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) `{ name : Text }`, that is, it must have at least a `name` field of type [`Text`](https://internetcomputer.org/docs/motoko/core/Text). Extra fields are permitted, but the `name` field is mandatory.
+In the example above, `T <: { name : Text }` requires that any type used for `T` must be a subtype of the [record](../../fundamentals/3-types/5-records.md) `{ name : Text }`, that is, it must have at least a `name` field of type [`Text`](../../core/Text.md). Extra fields are permitted, but the `name` field is mandatory.
 
 Type bounds are not limited to records.
 In general, the notation `T <: A` in a parameter declaration mandates that any type provided for type parameter `T` must be a subtype of the specified type `A`.
@@ -193,7 +193,7 @@ func max<T <: Int>(x : T, y : T) : T {
 max<Int>(-5, -10);  // returns -5  : Int
 ```
 
-Here, `T <: Int` constrains `T` to be a subtype of [`Int`](https://internetcomputer.org/docs/motoko/core/Int), ensuring that arithmetic operations are valid.
+Here, `T <: Int` constrains `T` to be a subtype of [`Int`](../../core/Int.md), ensuring that arithmetic operations are valid.
 
 But the function can also be used to return the maximum of two `Nat`s and still produce a `Nat` (not an `Int`).
 

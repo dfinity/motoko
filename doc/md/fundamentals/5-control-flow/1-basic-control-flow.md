@@ -14,7 +14,7 @@ However, certain constructs can alter the flow of control, such as exiting a blo
 | `return` | Exits a function and returns a value. |
 | `if` | Executes a block if the condition is `true`. |
 | `if/else` | Executes different blocks based on a condition. |
-| `switch` | [Pattern matching](https://internetcomputer.org/docs/motoko/fundamentals/pattern-matching) for variants, options, results, etc. |
+| `switch` | [Pattern matching](../../fundamentals/8-pattern-matching.md) for variants, options, results, etc. |
 | `let-else` | Destructure a pattern and handle the failure case inline. |
 | `option block` | Evaluates an expression and wraps the result in an option type, allowing scoped handling of `null` values. |
 | `label/break` | Allows exiting loops early. |
@@ -134,7 +134,7 @@ let o4 = addOpt(null, null);  // null
 
 Instead of having to switch on the options `n` and `m` in a verbose manner the use of the postfix operator `!` makes it easy to unwrap their values but exit the block with `null` when either is `null`.
 
-A more interesting example of option blocks can be found at the end of the section on [switch](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/switch).
+A more interesting example of option blocks can be found at the end of the section on [switch](../../fundamentals/5-control-flow/5-switch.md).
 
 ## `label` and `break`
 
@@ -264,7 +264,7 @@ You can alway exit a labelled `loop`, `loop-while`, `while` or `for` loop or usi
 
 ## Function calls
 
-A function call executes a function by passing arguments and receiving a result. In Motoko, function calls can be synchronous (executing immediately within the same [canister](https://internetcomputer.org/docs/building-apps/essentials/canisters)) or [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) (message passing between canisters). Asynchronous calls use `async`/`await` and are essential for inter-canister communication.
+A function call executes a function by passing arguments and receiving a result. In Motoko, function calls can be synchronous (executing immediately within the same [canister](https://internetcomputer.org/docs/building-apps/essentials/canisters)) or [asynchronous](../../fundamentals/2-actors/1-actors-async.md#async--await) (message passing between canisters). Asynchronous calls use `async`/`await` and are essential for inter-canister communication.
 
 ```motoko no-repl
 persistent actor {

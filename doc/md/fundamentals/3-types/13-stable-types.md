@@ -4,7 +4,7 @@ sidebar_position: 13
 
 # Stable types
 
-**Stable types** include all [shared types](https://internetcomputer.org/docs/motoko/fundamentals/types/shared-types) and represent the kinds of values that can be stored in the `stable` declarations of a Motoko actor.
+**Stable types** include all [shared types](../../fundamentals/3-types/2-shared-types.md) and represent the kinds of values that can be stored in the `stable` declarations of a Motoko actor.
 Storing a value in a `stable` declaration ensures that it persists across canister upgrades. This enables state preservation without the need for an external file system or database.
 
 The set of stable types defines the kinds of values that can be transferred from an actor to its future upgraded versions.
@@ -30,7 +30,7 @@ While all shared types are stable, the reverse is not true. Some stable types ca
 
 | Type                                                                                         | Stable | Shared |
 |----------------------------------------------------------------------------------------------|--------|--------|
-| Primitive types ([`Nat`](https://internetcomputer.org/docs/motoko/core/Nat), [`Text`](https://internetcomputer.org/docs/motoko/core/Text), [`Bool`](https://internetcomputer.org/docs/motoko/core/Bool), etc.) | Yes    | Yes    |
+| Primitive types ([`Nat`](../../core/Nat.md), [`Text`](../../core/Text.md), [`Bool`](../../core/Bool.md), etc.) | Yes    | Yes    |
 | Immutable arrays (`[T]`)                                                                     | Yes*   | Yes**  |
 | Mutable arrays (`[var T]`)                                                                   | Yes*   | No     |
 | Records with immutable fields                                                                | Yes    | Yes    |
@@ -55,7 +55,7 @@ Non-shared functions and futures (`async T`) and computations (`async* T`) depen
 
 ### Primitive types
 
-Most [primitive types](https://internetcomputer.org/docs/motoko/fundamentals/types/primitive-types) in Motoko are stable.
+Most [primitive types](../../fundamentals/3-types/1-primitive-types.md) in Motoko are stable.
 
 ```motoko no-repl
 persistent actor {
@@ -83,7 +83,7 @@ persistent actor {
 
 ### Records with mutable or immutable fields
 
-[Records](https://internetcomputer.org/docs/motoko/fundamentals/types/records) that contain only stable types remain stable, regardless of whether their fields are mutable or immutable.
+[Records](../../fundamentals/3-types/5-records.md) that contain only stable types remain stable, regardless of whether their fields are mutable or immutable.
 
 ```motoko no-repl
 persistent actor {
@@ -104,7 +104,7 @@ persistent actor {
 
 ### Variants with stable type tags
 
-[Variants](https://internetcomputer.org/docs/motoko/fundamentals/types/variants) are stable when their tags contain only stable types.
+[Variants](../../fundamentals/3-types/7-variants.md) are stable when their tags contain only stable types.
 
 ```motoko no-repl
 persistent actor {
@@ -122,7 +122,7 @@ persistent actor {
 
 ### Option types
 
-[Option](https://internetcomputer.org/docs/motoko/fundamentals/types/options) types are stable when they contain stable types.
+[Option](../../fundamentals/3-types/10-options.md) types are stable when they contain stable types.
 
 ```motoko no-repl
 persistent actor {
@@ -134,7 +134,7 @@ persistent actor {
 
 ### Regions
 
-The [`Region`](https://internetcomputer.org/docs/motoko/core/Region) type, which provides low-level memory management, is stable.
+The [`Region`](../../core/Region.md) type, which provides low-level memory management, is stable.
 
 ```motoko no-repl
 persistent actor {
@@ -145,7 +145,7 @@ persistent actor {
 
 ### Actor references
 
-References to [actors](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) are stable, allowing stable canister-to-canister interactions.
+References to [actors](../../fundamentals/2-actors/1-actors-async.md) are stable, allowing stable canister-to-canister interactions.
 
 ```motoko no-repl
 persistent actor {

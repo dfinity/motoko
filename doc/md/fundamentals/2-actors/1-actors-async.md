@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Actors & async data
 
-The actor programming model was designed to solve concurrency issues by encapsulating [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and computation within independent units called **actors**.
+The actor programming model was designed to solve concurrency issues by encapsulating [state](../../fundamentals/2-actors/2-state.md) and computation within independent units called **actors**.
 
 The actor model is built on four key principles:
 
@@ -103,7 +103,7 @@ The only thing the caller can do with this future is wait for it to be completed
 
 To access the result of an `async` value, the receiver of the future uses an `await` expression.
 
-For example, to use the result of `Counter.read()` above, we can first bind the future to an identifier `a`, and then `await a` to retrieve the underlying [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat), `n`:
+For example, to use the result of `Counter.read()` above, we can first bind the future to an identifier `a`, and then `await a` to retrieve the underlying [`Nat`](../../core/Nat.md), `n`:
 
 ``` motoko no-repl
 let a : async Nat = Counter.read();
@@ -216,7 +216,7 @@ In other languages without these features, developers often need to use advanced
 
 To demonstrate how asynchronous actors work, consider the following example.
 
-Customers place orders at a pizza restaurant, but the chef can only make one pizza at a time. Orders are taken **[asynchronously](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await)**, meaning customers do not have to wait for previous orders to be completed before placing their own. However, each pizza is prepared sequentially. This is representative of an asynchronous actor.
+Customers place orders at a pizza restaurant, but the chef can only make one pizza at a time. Orders are taken **[asynchronously](../../fundamentals/2-actors/1-actors-async.md#async--await)**, meaning customers do not have to wait for previous orders to be completed before placing their own. However, each pizza is prepared sequentially. This is representative of an asynchronous actor.
 <!-- TODO(FUTURE): It would be cleaner to use a Deque or Queue pushing new order to the end and popping the next order to make from the front. -->
 ```motoko no-repl
 import Array "mo:core/Array";

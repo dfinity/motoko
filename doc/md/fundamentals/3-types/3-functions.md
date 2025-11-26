@@ -29,12 +29,12 @@ Motoko provides different types of functions based on where in the program they 
 | Keyword  | Function  |
 |-------------|--------------|
 | `shared`    | Used to enable async communication between actors. Exposes the caller’s identity. |
-| `async`     | Runs the function [asynchronously](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) and returns its result in a future. |
-| `query`     | Optimized for reading data but cannot modify [state](https://internetcomputer.org/docs/motoko/fundamentals/state). |
+| `async`     | Runs the function [asynchronously](../../fundamentals/2-actors/1-actors-async.md#async--await) and returns its result in a future. |
+| `query`     | Optimized for reading data but cannot modify [state](../../fundamentals/2-actors/2-state.md). |
 
 ## Function comparison
 
-| Function type                | Mutates [state](https://internetcomputer.org/docs/motoko/fundamentals/state) | Calls updates | Calls queries | Asynchronous | External calls |
+| Function type                | Mutates [state](../../fundamentals/2-actors/2-state.md) | Calls updates | Calls queries | Asynchronous | External calls |
 |------------------------------|---------------|------------------|------------------|---------------|---------------|
 | Local   (synchronous)                 |  Yes            | No              | No             | No    | No            |
 | Local   (asynchronous)                | Yes            | Yes              | Yes              | Yes   |  No            |
@@ -44,7 +44,7 @@ Motoko provides different types of functions based on where in the program they 
 
 ## Local functions
 
-Local functions run within the canister's [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async). They cannot call other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters). Local functions are cheap to call and execute synchronously.
+Local functions run within the canister's [actor](../../fundamentals/2-actors/1-actors-async.md). They cannot call other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters). Local functions are cheap to call and execute synchronously.
 
 ```motoko
 persistent actor CommonDivisor{
@@ -173,7 +173,7 @@ The second call increments the balance from `50` to `100`, returning `100`.
 
 Since `Account.deposit` is asynchronous, its results are returned in futures of type `async Nat`. Calling `await` on each future extracts the results of the calls when they become available (so `b1` is `50` and `b2` is `100`).
 
-**Example use case**: Transactions, user [state](https://internetcomputer.org/docs/motoko/fundamentals/state) updates, or anything that modifies persistent data.
+**Example use case**: Transactions, user [state](../../fundamentals/2-actors/2-state.md) updates, or anything that modifies persistent data.
 
 ### One-way functions
 
@@ -204,7 +204,7 @@ Again, the shared keyword is optional. Note that `Account.credit(100` just retur
 
 ## Query functions
 
-[Query](https://internetcomputer.org/docs/building-apps/interact-with-canisters/query-calls) functions are designed for retrieving data. They cannot permanently update [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and execute faster than [update](https://internetcomputer.org/docs/building-apps/interact-with-canisters/update-calls) functions because they do not go through consensus. Query functions are identified with the `query` keyword. Any function without the `query` keyword is an [update](https://internetcomputer.org/docs/building-apps/interact-with-canisters/update-calls) function.
+[Query](https://internetcomputer.org/docs/building-apps/interact-with-canisters/query-calls) functions are designed for retrieving data. They cannot permanently update [state](../../fundamentals/2-actors/2-state.md) and execute faster than [update](https://internetcomputer.org/docs/building-apps/interact-with-canisters/update-calls) functions because they do not go through consensus. Query functions are identified with the `query` keyword. Any function without the `query` keyword is an [update](https://internetcomputer.org/docs/building-apps/interact-with-canisters/update-calls) function.
 
 ```motoko no-repl
   public query func greet(name : Text) : async Text {
@@ -236,7 +236,7 @@ persistent actor Account {
 
 The `getBalance` function has function type `shared query () -> async Nat`.
 
-**Example use case:** Fetching data quickly without modifying the canister [state](https://internetcomputer.org/docs/motoko/fundamentals/state).
+**Example use case:** Fetching data quickly without modifying the canister [state](../../fundamentals/2-actors/2-state.md).
 
 ### Composite queries
 
@@ -305,7 +305,7 @@ Functions can accept multiple arguments and return multiple results by enclosing
 
 ### Using a record as an argument
 
-Multiple values can be passed as a single argument by encapsulating them within a [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) type.
+Multiple values can be passed as a single argument by encapsulating them within a [record](../../fundamentals/3-types/5-records.md) type.
 
 ```motoko no-repl
   func userName(user: { name : Text; age : Nat }) : Text {
