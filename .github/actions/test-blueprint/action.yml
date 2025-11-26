@@ -45,17 +45,16 @@ runs:
         nixbuild_token: ${{ inputs.nixbuild-token }}
         generate_summary_for: 'workflow'
 
+    - uses: cachix/cachix-action@v16
+      with:
+        name: ic-hs-test
+        authToken: ${{ inputs.cachix-auth-token }}
+
     - if: startsWith(inputs.os, 'ubuntu-')
       name: "Run ${{ inputs.test-name }}"
       shell: bash
       run: |
         ${{ github.workspace }}/nixbuild.sh '.#${{ inputs.test-target }}'
-
-    - if: startsWith(inputs.os, 'macos-')
-      uses: cachix/cachix-action@v16
-      with:
-        name: ic-hs-test
-        authToken: ${{ inputs.cachix-auth-token }}
 
     - if: startsWith(inputs.os, 'macos-')
       run: nix profile install .#nix-build-uncached
