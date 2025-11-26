@@ -6,6 +6,11 @@ pkgs: pkgs.rustPlatform-stable.buildRustPackage rec {
     lockFile = "${src}/Cargo.lock";
   };
   doCheck = false;
+
+  # use the unwrapped clang with appropriate include paths
   CXX_aarch64-apple-darwin = "${pkgs.llvmPackages_19.clang-unwrapped}/bin/clang++";
-  CXXFLAGS_aarch64-apple-darwin = "-isystem ${pkgs.llvmPackages_19.libcxx.dev}/include/c++/v1 -isystem ${pkgs.llvmPackages_19.clang}/resource-root/include";
+  CXXFLAGS_aarch64-apple-darwin = ''
+    -isystem ${pkgs.llvmPackages_19.libcxx.dev}/include/c++/v1
+    -isystem ${pkgs.llvmPackages_19.clang}/resource-root/include
+  '';
 }
