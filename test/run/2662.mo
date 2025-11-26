@@ -1,4 +1,4 @@
-import user "circular/user";
-import article "circular/article";
+import U "circular/user";
+import A "circular/article";
 actor{
 };
