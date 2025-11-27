@@ -5,7 +5,7 @@ actor LabelBreakContinue {
     let simple_label = label simple : Int break simple(42);
     assert:system simple_label == 42;
 
-    let implicit_leave = label implicit : Int 42;
+    let implicit_leave = label implicit_ : Int 42;
     assert:system implicit_leave == 42;
 
     let block_label_early_expr = label block : (Int, Int) {

@@ -117,6 +117,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (T T_LABEL) -> simple_token "label"
   | X (T T_IN) -> simple_token "in"
   | X (T T_IMPORT) -> simple_token "import"
+  | X (T T_IMPLICIT) -> simple_token "implicit"
   | X (T T_IGNORE) -> simple_token "ignore"
   | X (T T_IF) -> simple_token "if"
   | X (T T_ID) -> simple_token "<id>"
