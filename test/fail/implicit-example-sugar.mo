@@ -1,3 +1,4 @@
+// test legacy syntax works too
 import {debugPrint} "mo:prim";
 
 module Nat {
@@ -26,10 +27,9 @@ module Array {
 module Pair {
 
   public func toText<T,U>(
-    p : (T, U),
     implicit toTextT : (toText : T -> Text),
     implicit toTextU : (toText : U -> Text),
-    )
+    p : (T, U))
     : Text {
       "(" # toTextT(p.0) # "," # toTextU(p.1) # ")"
     };
@@ -39,17 +39,24 @@ module Pair {
 
 func test () {
 
-  Array.toText([1,2,3], Nat.toText) // explicit arguments
-  |> debugPrint _;
+  debugPrint(Array.toText([1,2,3], Nat.toText)); // explicit arguments
+  debugPrint(Array.toText([1,2,3])); // implicit arguments
 
-  Array.toText([1,2,3]) // implicit arguments
-  |> debugPrint _;
+  debugPrint(Pair.toText(Nat.toText, Nat.toText, (1,2)));
+  let p = (0,1);
+  debugPrint(let _ = Pair.toText((1,2))); // implicit arguments
+  debugPrint(let _ = Pair.toText((1,2))); // implicit arguments
 
-  Pair.toText((1,2), Nat.toText, Nat.toText) // explicit arguments
-  |> debugPrint _;
+  // higher-order test
+  type F =
+    <T, U>(implicit toText : T -> Text,
+           implicit toText : U -> Text,
+           p : (T, U))
+    -> Text;
 
-  Pair.toText((1,2))
-  |> debugPrint _ ; // implicit arguments
+  func _apply(f : F, p : (Nat, Int)) : Text {
+     f(p);
+  };
 
 };
 

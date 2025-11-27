@@ -54,7 +54,6 @@ let funcT (sort, tbs, t1, t2) =
   | Type.Shared _, _ -> FuncT (sort, ensure_scope_bind "" tbs, t1, t2)
   | _ -> FuncT(sort, tbs, t1, t2)
 
-
 let dup_var x = VarE (x.it @~ x.at) @? x.at
 
 let name_exp e =
@@ -223,7 +222,7 @@ and objblock eo s id ty dec_fields =
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token AWAIT AWAITSTAR AWAITQUEST ASYNC ASYNCSTAR BREAK CASE CATCH CONTINUE DO LABEL DEBUG
-%token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW FINALLY WITH
+%token IF IGNORE IN IMPLICIT ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW FINALLY WITH
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
@@ -372,6 +371,9 @@ seplist_er(X, E, SEP) :
 %inline id :
   | id=ID { id @@ at $sloc }
 
+%inline implicit :
+  | IMPLICIT { "implicit" @@ at $sloc }
+
 %inline id_wild :
   | UNDERSCORE { "_" @@ at $sloc }
 
@@ -461,7 +463,6 @@ typ_un :
   | WEAK t=typ_un
     { WeakT(t) @! at $sloc }
 
-
 typ_pre :
   | t=typ_un
     { t }
@@ -477,8 +478,7 @@ typ_pre :
       in ObjT(s, tfs') @! at $sloc }
 
 typ_nobin :
-  | t=typ_pre
-    { t }
+  | t=typ_pre { t }
   | s=func_sort_opt tps=typ_params_opt t1=typ_un ARROW t2=typ_nobin
     { funcT(s, tps, t1, t2) @! at $sloc }
 
@@ -491,8 +491,11 @@ typ :
     { OrT(t1, t2) @! at $sloc }
 
 typ_item :
+  | i=implicit COLON t = typ { Some i, t }
   | i=id COLON t=typ { Some i, t }
   | i=id_wild COLON t=typ { Some i, t }
+  | imp=implicit i=id COLON t=typ { Some i, (NamedT (imp, t) @! at $sloc) }
+  | imp=implicit i=id_wild COLON t=typ { Some i, (NamedT (imp, t) @! at $sloc) }
   | t=typ { None, t }
 
 typ_args :
@@ -958,8 +961,23 @@ pat_opt :
   | (* empty *)
     { fun sloc -> WildP @! sloc }
 
+pat_arg :
+  | i=implicit x=id COLON t=typ
+    { AnnotP(VarP x @! x.at, (NamedT(i, t) @! at $sloc)) @! at $sloc }
+  | p = pat_bin { p }
+
+pat_args :
+  | UNDERSCORE
+    { WildP @! at $sloc }
+  | x=id
+    { VarP(x) @! at $sloc }
+  | l=lit
+    { LitP(ref l) @! at $sloc }
+  | LPAR ps=seplist(pat_arg, COMMA) RPAR
+    { (match ps with [p] -> ParP(p) | _ -> TupP(ps)) @! at $sloc }
+
 func_pat :
-  | xf=id_opt ts=typ_params_opt p=pat_plain { (xf, ts, p) }
+  | xf=id_opt ts=typ_params_opt p=pat_args { (xf, ts, p) }
 
 (* Declarations *)
 
