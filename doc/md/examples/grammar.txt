@@ -7,12 +7,6 @@
     X
     X SEP <list(X, SEP)>
 
-<list_er(X, E, SEP)> ::= 
-    <empty>
-    X
-    E
-    X SEP <list_er(X, E, SEP)>
-
 <id_wild> ::= 
     '_'
 
@@ -175,10 +169,7 @@
 <exp_obj> ::= 
     '{' <list(<exp_field>, ';')> '}'
     '{' <exp_post> 'and' <exp_post> ('and' <exp_post>)* '}'
-    '{' <exp_post> ('and' <exp_post>)* <with_exp_fields> '}'
-
-<with_exp_fields> ::= 
-    'with' <list1(<exp_field>, ';')>
+    '{' <exp_post> ('and' <exp_post>)* 'with' <list1(<exp_field>, ';')> '}'
 
 <exp_plain> ::= 
     <lit>
@@ -273,12 +264,7 @@
     <exp>
 
 <block> ::= 
-    '{' <list_er(<dec>, <block_dec_error>, ';')> '}'
-
-<block_dec_error> ::= 
-    <id> '=' <exp>
-    <id> '=' <exp> ';' <list(<exp_field>, ';')>
-    <id> <with_exp_fields>
+    '{' <list(<dec>, ';')> '}'
 
 <case> ::= 
     'case' <pat_nullary> <exp_nest>
