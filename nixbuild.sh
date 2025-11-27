@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -e
 
 NIX_ARGS=()
 
@@ -14,4 +14,4 @@ if [[ "$(uname)" == "Linux" ]]; then
     )
 fi
 
-nix build "${NIX_ARGS[@]}" $@
+nix build "${NIX_ARGS[@]}" "$@"
