@@ -1870,14 +1870,6 @@ let string_of_func_sort = function
   | Shared Query -> "shared query "
   | Shared Composite -> "shared composite query " (* TBR *)
 
-let normalize_for_pp t = match t with
-  | Con (c, _) ->
-    (match normalize t with
-    (* Legacy: Ignore printing the namespace for prim types with the same name *)
-    | Prim p when string_of_prim p = Cons.name c -> Prim p
-    | _ -> t)
-  | _ -> t
-
 (* PrettyPrinter configurations *)
 
 module type PrettyConfig = sig
@@ -1976,11 +1968,18 @@ let vs_of_cs cs =
 let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s%s%d" x Cfg.par_sep i
 
+let is_prim_con_same_name c = match Cons.kind c with
+  | Def ([], t) ->
+    (match normalize t with
+    (* Legacy: Ignore printing the namespace for prim types with the same name *)
+    | Prim p -> string_of_prim p = Cons.name c
+    | _ -> false)
+  | _ -> false
+
 let string_of_con c =
   let base_name = Cons.to_string Cfg.show_stamps Cfg.con_sep c in
-  let name =
-    if Cfg.show_hash_suffix then base_name else remove_hash_suffix base_name
-  in
+  let name = if Cfg.show_hash_suffix then base_name else remove_hash_suffix base_name in
+  if Cfg.show_stamps || is_prim_con_same_name c then name else
   match Cons.namespace c with
   | [] -> name
   | namespace -> String.concat "." (namespace @ [name])
@@ -2038,7 +2037,7 @@ and pp_typ_item vs ppf t =
   | typ -> pp_typ' vs ppf t
 
 and pp_typ_nullary vs ppf t =
-  match normalize_for_pp t with
+  match t with
   | Named (n, t) ->
     fprintf ppf "@[<1>(%s : %a)@]" n (pp_typ' vs) t
   | Tup ts ->
