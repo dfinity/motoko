@@ -491,11 +491,29 @@ typ :
     { OrT(t1, t2) @! at $sloc }
 
 typ_item :
-  | i=implicit COLON t = typ { Some i, t }
+  | i=implicit COLON t = typ
+    { None,
+      let name_opt, t1 =
+	match t.it with
+	| NamedT(x, t1) ->
+	   {x with it = Some x.it},
+	   t1
+	| _ ->
+	   {i with it = None},
+	   t
+      in
+      ImplicitT (name_opt, t1) @! at $sloc }
   | i=id COLON t=typ { Some i, t }
-  | i=id_wild COLON t=typ { Some i, t }
-  | imp=implicit i=id COLON t=typ { Some i, (NamedT (imp, t) @! at $sloc) }
-  | imp=implicit i=id_wild COLON t=typ { Some i, (NamedT (imp, t) @! at $sloc) }
+  | i=id_wild COLON t=typ
+    { None,
+      (ImplicitT ({i with it = None}, t)) @! at $sloc }
+  | implicit i=id COLON t=typ
+    { None,
+      ImplicitT ({i with it = Some i.it}, t) @! at $sloc
+    }
+  | implicit i=id_wild COLON t=typ
+    { None,
+      ImplicitT ({i with it = None}, t) @! at $sloc }
   | t=typ { None, t }
 
 typ_args :
@@ -962,12 +980,22 @@ pat_opt :
     { fun sloc -> WildP @! sloc }
 
 pat_arg :
-  | i=implicit x=id COLON t=typ
-    { AnnotP(VarP x @! x.at, (NamedT(i, t) @! at $sloc)) @! at $sloc }
-  | i=implicit x=id COLON t=typ EQ p=pat
-    { AnnotP(p, (NamedT(i, NamedT(x, t) @! at $sloc) @! at $sloc)) @! at $sloc }
-  | i=implicit w=id_wild COLON t=typ EQ p=pat
-    { AnnotP(p, (NamedT(i, NamedT(w, t) @! at $sloc) @! at $sloc)) @! at $sloc }
+  | implicit x=id COLON t=typ
+    { let name_opt, t1 =
+	match t.it with
+	| NamedT(y, t1) -> (* legacy override *)
+	   {y with it = Some y.it},
+	   t1
+	| _ ->
+	   {x with it = Some x.it},
+	   t
+      in
+      AnnotP(VarP x @! x.at, (ImplicitT(name_opt, t1) @! at $sloc)) @! at $sloc
+    }
+  | implicit x=id COLON t=typ EQ p=pat
+    { AnnotP(p, (ImplicitT({x with it = Some x.it} , t) @! at $sloc)) @! at $sloc }
+  | implicit w=id_wild COLON t=typ EQ p=pat
+    { AnnotP(p, (ImplicitT({w with it = None}, t) @! at $sloc)) @! at $sloc }
   | p = pat_bin { p }
 
 pat_args :
