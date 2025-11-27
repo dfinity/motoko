@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # Class declarations
 
-A class in Motoko serves as a blueprint for creating [objects](../../fundamentals/4-declarations/3-object-declaration.md) that encapsulate both [state](../../fundamentals/2-actors/2-state.md) and behavior. It defines fields to hold data and methods to operate on that data. Unlike records and plain objects, classes support constructors, allowing developers to initialize each instance with unique values at creation time.
+A class in Motoko serves as a blueprint for creating [objects](../4-declarations/3-object-declaration.md) that encapsulate both [state](../2-actors/2-state.md) and behavior. It defines fields to hold data and methods to operate on that data. Unlike records and plain objects, classes support constructors, allowing developers to initialize each instance with unique values at creation time.
 
 Classes in Motoko are not the same as classes in other object oriented programming languages, but they serve the same purpose. Motoko also doesn’t have a `this` or `self` keyword because you can simply call other methods directly by name or name the entire object using an identifier of your choice.
 

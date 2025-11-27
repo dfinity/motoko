@@ -4,7 +4,7 @@ sidebar_position: 8
 
 # Immutable arrays
 
-Immutable arrays are fixed-size, read-only data structures that allow efficiently storing elements of the same type. Unlike [mutable arrays](../../fundamentals/3-types/9-mutable-arrays.md), they cannot be modified after creation, ensuring data integrity and predictable behavior.
+Immutable arrays are fixed-size, read-only data structures that allow efficiently storing elements of the same type. Unlike [mutable arrays](../3-types/9-mutable-arrays.md), they cannot be modified after creation, ensuring data integrity and predictable behavior.
 
 ## When to use immutable arrays
 
@@ -30,7 +30,7 @@ The size of an array `a` is available as `a.size()`, a `Nat`.
 
 Array elements are zero-indexed, allowing indices `0` up to `a.size() - 1`.
 
-Attempting to access an array's index that does not exist will cause a [trap](../../fundamentals/1-basic-syntax/12-traps.md). Attempting to modify an immutable array will result in an error `expected mutable assignment target(M0073)`.
+Attempting to access an array's index that does not exist will cause a [trap](../1-basic-syntax/12-traps.md). Attempting to modify an immutable array will result in an error `expected mutable assignment target(M0073)`.
 
 ```motoko
 import Debug "mo:core/Debug";
@@ -148,7 +148,7 @@ transformArray();
 
 To demonstrate nested immutable arrays, consider the following:
 
-A chessboard is a fixed `8×8` grid. Using immutable arrays to represent the initial [state](../../fundamentals/2-actors/2-state.md) of the board ensures that the setup remains unchanged, preventing accidental modifications. This is useful because the starting position of pieces in chess is fixed, and any changes should be intentional, such as when making a move. Immutable arrays provide stability and help maintain the integrity of the initial board [state](../../fundamentals/2-actors/2-state.md).
+A chessboard is a fixed `8×8` grid. Using immutable arrays to represent the initial [state](../2-actors/2-state.md) of the board ensures that the setup remains unchanged, preventing accidental modifications. This is useful because the starting position of pieces in chess is fixed, and any changes should be intentional, such as when making a move. Immutable arrays provide stability and help maintain the integrity of the initial board [state](../2-actors/2-state.md).
 
 ```motoko no-repl
 import Array "mo:core/Array";

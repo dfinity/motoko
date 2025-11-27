@@ -4,7 +4,7 @@ sidebar_position: 9
 
 # Mutable arrays
 
-Mutable arrays allow direct modification of elements, making them suitable for scenarios where data needs to be updated frequently. Unlike [immutable arrays](../../fundamentals/3-types/8-immutable-arrays.md), which require creating a new array to reflect changes, mutable arrays support in place modifications, improving performance in some cases.
+Mutable arrays allow direct modification of elements, making them suitable for scenarios where data needs to be updated frequently. Unlike [immutable arrays](../3-types/8-immutable-arrays.md), which require creating a new array to reflect changes, mutable arrays support in place modifications, improving performance in some cases.
 
 ## Creating a mutable array
 
@@ -107,7 +107,7 @@ mutableArray;
 
 ## Accessing and modifying elements
 
-Mutable array elements can be read and modified using indexed access. Attempting to access an index that does not exist will result in a [trap](../../fundamentals/1-basic-syntax/12-traps.md).
+Mutable array elements can be read and modified using indexed access. Attempting to access an index that does not exist will result in a [trap](../1-basic-syntax/12-traps.md).
 
 ```motoko
 let numbers : [var Nat] = [var 10, 20, 30];
@@ -119,7 +119,7 @@ debug_show(numbers[0]);  // 100
 
 The size of an array `a` is available as `a.size()`, a `Nat`.  Array elements are zero-indexed, allowing indices `0` up to `a.size() - 1`.
 
-Attempting to access an array's index that does not exist will cause a [trap](../../fundamentals/1-basic-syntax/12-traps.md).
+Attempting to access an array's index that does not exist will cause a [trap](../1-basic-syntax/12-traps.md).
 
 ```motoko no-repl
 let numbers : [var Nat] = [var 10, 20, 30];
@@ -157,7 +157,7 @@ for (i in arr.keys()) {
 
 ## Converting a mutable array to an immutable array
 
-You can convert a mutable array into an immutable array using `Array.freeze`, ensuring that the contents cannot be modified after conversion. Since mutable arrays are not [sharable](../../fundamentals/3-types/2-shared-types.md), freezing them is useful when passing data across [functions](../../fundamentals/3-types/3-functions.md) or [actors](../../fundamentals/2-actors/1-actors-async.md) to ensure immutability.
+You can convert a mutable array into an immutable array using `Array.freeze`, ensuring that the contents cannot be modified after conversion. Since mutable arrays are not [sharable](../3-types/2-shared-types.md), freezing them is useful when passing data across [functions](../3-types/3-functions.md) or [actors](../2-actors/1-actors-async.md) to ensure immutability.
 
 ```motoko no-repl
 import Array "mo:core/Array";

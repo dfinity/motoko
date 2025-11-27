@@ -31,7 +31,7 @@ In Motoko, expressions of type `()` play the role of statements in other languag
 
 ## Basic usage
 
-Expression declarations are commonly used for functions or operations that produce side effects, such as printing or modifying [state](../../fundamentals/2-actors/2-state.md).
+Expression declarations are commonly used for functions or operations that produce side effects, such as printing or modifying [state](../2-actors/2-state.md).
 
 ```motoko no-repl
 Debug.print("Hello, Motoko!");

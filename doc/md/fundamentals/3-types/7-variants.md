@@ -4,7 +4,7 @@ sidebar_position: 7
 
 # Variants
 
-Variant type describe values that take on one of several forms, each labeled with a distinct  tag. Unlike [records](../../fundamentals/3-types/5-records.md), where all fields exist at once, a value of a variant type holds exactly one of the type's possible values. This makes variants useful for representing mutually exclusive alternatives such as states, enumerations, categories and even trees.
+Variant type describe values that take on one of several forms, each labeled with a distinct  tag. Unlike [records](../3-types/5-records.md), where all fields exist at once, a value of a variant type holds exactly one of the type's possible values. This makes variants useful for representing mutually exclusive alternatives such as states, enumerations, categories and even trees.
 
 ## Defining a variant
 
@@ -29,7 +29,7 @@ let bannedUser = #Banned("Violation of rules");
 
 ## Accessing a variant's value
 
-To work with a variant, use a [`switch`](../../fundamentals/5-control-flow/5-switch.md) expression to match each possible case.
+To work with a variant, use a [`switch`](../5-control-flow/5-switch.md) expression to match each possible case.
 
 ```motoko no-repl
 import Debug "mo:core/Debug";
@@ -59,7 +59,7 @@ A traffic light cycles between three distinct states:
 - Yellow: Vehicles should prepare to stop.
 - Green: Vehicles may proceed.
 
-Since the traffic light can only be in one of these states at a time, a variant is well-suited to model it. There is no invalid [state](../../fundamentals/2-actors/2-state.md), as every possible value is explicitly defined. The transitions are controlled and predictable.
+Since the traffic light can only be in one of these states at a time, a variant is well-suited to model it. There is no invalid [state](../2-actors/2-state.md), as every possible value is explicitly defined. The transitions are controlled and predictable.
 
 ### Defining the traffic light state
 
@@ -73,7 +73,7 @@ type TrafficLight = {
 
 ### Transitioning between states
 
-A function can define how the traffic light cycles from one [state](../../fundamentals/2-actors/2-state.md) to the next.
+A function can define how the traffic light cycles from one [state](../2-actors/2-state.md) to the next.
 
 ```motoko no-repl
 func nextState(light : TrafficLight) : TrafficLight {
@@ -183,7 +183,7 @@ traverseInOrder(tree);
 
 ### Using generic types
 
-Currently, the example tree only supports [`Nat`](../../core/Nat.md) values. To allow it to store any type of data, a [generic type](../../fundamentals/3-types/12-advanced-types.md#generic-types) can be used. A generic type allows a data structure to work with multiple types by using a placeholder type `T`, which is replaced with a specific type when used.
+Currently, the example tree only supports [`Nat`](../../core/Nat.md) values. To allow it to store any type of data, a [generic type](../3-types/12-advanced-types.md#generic-types) can be used. A generic type allows a data structure to work with multiple types by using a placeholder type `T`, which is replaced with a specific type when used.
 
 ```motoko no-repl
 type Tree<T> = {

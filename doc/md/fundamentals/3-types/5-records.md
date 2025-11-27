@@ -5,7 +5,7 @@ sidebar_position: 5
 # Records
 
 Records allow you to group related values using named fields, with each field potentially having a different type.
-Unlike [tuples](../../fundamentals/3-types/4-tuples.md), which use positional access, records provide field-based access, improving readability and maintainability.
+Unlike [tuples](../3-types/4-tuples.md), which use positional access, records provide field-based access, improving readability and maintainability.
 
 Records also support **mutable fields**, declared using the `var` keyword.
 In contrast, all fields in a tuple are always **immutable**.
@@ -120,7 +120,7 @@ let individual : Individual = {
 
 ## Pattern matching on records
 
-Records can be destructured using [`switch`](../../fundamentals/5-control-flow/5-switch.md), allowing selective extraction of fields. This approach makes accessing deeply nested fields more explicit and readable.
+Records can be destructured using [`switch`](../5-control-flow/5-switch.md), allowing selective extraction of fields. This approach makes accessing deeply nested fields more explicit and readable.
 
 ```motoko
 type Address = {

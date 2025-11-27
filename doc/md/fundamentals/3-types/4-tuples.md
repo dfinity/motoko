@@ -59,7 +59,7 @@ Tuples can be stored in arrays or other data structures. Tuples can be construct
 let users : [(Text, Nat)] = [("Motoko", 25), ("Ghost", 30)];
 ```
 
-This structure efficiently represents a collection of key-value pairs without requiring a dedicated [record](../../fundamentals/3-types/5-records.md) type.
+This structure efficiently represents a collection of key-value pairs without requiring a dedicated [record](../3-types/5-records.md) type.
 
 ## Pattern matching on tuples
 

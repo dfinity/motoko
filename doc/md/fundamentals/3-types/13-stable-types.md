@@ -4,7 +4,7 @@ sidebar_position: 13
 
 # Stable types
 
-**Stable types** include all [shared types](../../fundamentals/3-types/2-shared-types.md) and represent the kinds of values that can be stored in the `stable` declarations of a Motoko actor.
+**Stable types** include all [shared types](../3-types/2-shared-types.md) and represent the kinds of values that can be stored in the `stable` declarations of a Motoko actor.
 Storing a value in a `stable` declaration ensures that it persists across canister upgrades. This enables state preservation without the need for an external file system or database.
 
 The set of stable types defines the kinds of values that can be transferred from an actor to its future upgraded versions.
@@ -55,7 +55,7 @@ Non-shared functions and futures (`async T`) and computations (`async* T`) depen
 
 ### Primitive types
 
-Most [primitive types](../../fundamentals/3-types/1-primitive-types.md) in Motoko are stable.
+Most [primitive types](../3-types/1-primitive-types.md) in Motoko are stable.
 
 ```motoko no-repl
 persistent actor {
@@ -83,7 +83,7 @@ persistent actor {
 
 ### Records with mutable or immutable fields
 
-[Records](../../fundamentals/3-types/5-records.md) that contain only stable types remain stable, regardless of whether their fields are mutable or immutable.
+[Records](../3-types/5-records.md) that contain only stable types remain stable, regardless of whether their fields are mutable or immutable.
 
 ```motoko no-repl
 persistent actor {
@@ -104,7 +104,7 @@ persistent actor {
 
 ### Variants with stable type tags
 
-[Variants](../../fundamentals/3-types/7-variants.md) are stable when their tags contain only stable types.
+[Variants](../3-types/7-variants.md) are stable when their tags contain only stable types.
 
 ```motoko no-repl
 persistent actor {
@@ -122,7 +122,7 @@ persistent actor {
 
 ### Option types
 
-[Option](../../fundamentals/3-types/10-options.md) types are stable when they contain stable types.
+[Option](../3-types/10-options.md) types are stable when they contain stable types.
 
 ```motoko no-repl
 persistent actor {
@@ -145,7 +145,7 @@ persistent actor {
 
 ### Actor references
 
-References to [actors](../../fundamentals/2-actors/1-actors-async.md) are stable, allowing stable canister-to-canister interactions.
+References to [actors](../2-actors/1-actors-async.md) are stable, allowing stable canister-to-canister interactions.
 
 ```motoko no-repl
 persistent actor {

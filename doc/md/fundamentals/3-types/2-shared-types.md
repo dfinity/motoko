@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Shared types
 
-All Motoko types are divided into sets. The smallest is the set of shared types. Shared types are part of the larger set of [stable types](../../fundamentals/3-types/13-stable-types.md).  
+All Motoko types are divided into sets. The smallest is the set of shared types. Shared types are part of the larger set of [stable types](../3-types/13-stable-types.md).  
 
 A shared type's value can be easily exchanged with other actors. To prevent issues associated with sharing mutable state across actors, **all shared types are immutable**. This immutability allows values to be transmitted safely by copying data, avoiding the complexity and risks of sharing stateful or mutable objects.
 
@@ -29,7 +29,7 @@ Shareability is essential for several reasons:
 
 ### Primitive types
 
-Most [primitive types](../../fundamentals/3-types/1-primitive-types.md) are shared by default.
+Most [primitive types](../3-types/1-primitive-types.md) are shared by default.
 
 ```motoko no-repl
 // Numbers, text, and booleans are shared
@@ -40,7 +40,7 @@ let flag : Bool = true;
 
 ### Immutable collections
 
-Collections that cannot be modified after creation are shared, including [immutable arrays](../../fundamentals/3-types/8-immutable-arrays.md) and [tuples](../../fundamentals/3-types/4-tuples.md).
+Collections that cannot be modified after creation are shared, including [immutable arrays](../3-types/8-immutable-arrays.md) and [tuples](../3-types/4-tuples.md).
 
 ```motoko no-repl
 // Immutable arrays are shared
@@ -52,7 +52,7 @@ let person : (Text, Nat) = ("Motoko", 25);
 
 ### Records with immutable fields
 
-Objects with immutable fields containing shared types are shared, including [records](../../fundamentals/3-types/5-records.md).
+Objects with immutable fields containing shared types are shared, including [records](../3-types/5-records.md).
 
 ```motoko no-repl
 // Records with immutable fields are shared
@@ -65,7 +65,7 @@ let user = {
 
 ### Variants with shared type tags
 
-[Variant types](../../fundamentals/3-types/7-variants.md) are shared when their tags contain shared types.
+[Variant types](../3-types/7-variants.md) are shared when their tags contain shared types.
 
 ```motoko no-repl
 // Variant types with shared tags are shared
@@ -80,7 +80,7 @@ let failure : Result = #error("Operation failed");
 
 ### Option types
 
-[Option types](../../fundamentals/3-types/10-options.md) are shared when they contain shared types.
+[Option types](../3-types/10-options.md) are shared when they contain shared types.
 
 ```motoko no-repl
 // Option types with shared inner types are shared
@@ -102,7 +102,7 @@ type CounterActor = actor {
 
 ### Shared functions
 
-[Function types](../../fundamentals/3-types/3-functions.md) marked as `shared` are sharable.
+[Function types](../3-types/3-functions.md) marked as `shared` are sharable.
 
 ```motoko no-repl
 // Shared function types are shared

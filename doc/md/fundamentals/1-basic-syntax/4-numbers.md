@@ -47,7 +47,7 @@ let trappingNat8 : Nat8 = 255+1; // trap: arithmetic overflow
 
 [`Int`](../../core/Int.md) represents all integers, both positive and negative (e.g., -2, -1, 0, 1, 2).
 
-For scenarios requiring fixed-size integers, Motoko offers bounded variants with specific bit-widths ([`Int8`](../../core/Int8.md), [`Int16`](../../core/Int16.md), [`Int32`](../../core/Int32.md), [`Int64`](../../core/Int64.md)). These types can overflow if their limits are exceeded, resulting in a [runtime error](../../fundamentals/9-error-handling.md).
+For scenarios requiring fixed-size integers, Motoko offers bounded variants with specific bit-widths ([`Int8`](../../core/Int8.md), [`Int16`](../../core/Int16.md), [`Int32`](../../core/Int32.md), [`Int64`](../../core/Int64.md)). These types can overflow if their limits are exceeded, resulting in a [runtime error](../9-error-handling.md).
 
 ```motoko no-repl
 let a : Int = -42;
@@ -70,7 +70,7 @@ let bigNumber : Int = 999_999_999_999_999;
 - [`Int32`](../../core/Int32.md) (32-bit signed integer)
 - [`Int64`](../../core/Int64.md) (64-bit signed integer)
 
-Arithmetic on bounded integers can overflow if their limits are exceeded, resulting in a [runtime error](../../fundamentals/9-error-handling.md).
+Arithmetic on bounded integers can overflow if their limits are exceeded, resulting in a [runtime error](../9-error-handling.md).
 
 ```motoko no-repl
 let trappingInt8 : Int8 = 127+1; // trap: arithmetic overflow

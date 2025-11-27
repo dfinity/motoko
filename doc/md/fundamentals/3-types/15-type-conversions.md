@@ -162,7 +162,7 @@ assert arrayOfNatToText([1, 2, 3]) == "1 2 3";
 
 ### `Array` of tuples to an object
 
-Motoko lacks support for dynamic objects, so an array of tuples is converted into a [record](../../fundamentals/3-types/5-records.md) or a structured representation.
+Motoko lacks support for dynamic objects, so an array of tuples is converted into a [record](../3-types/5-records.md) or a structured representation.
 
 ```motoko no-repl
 import HashMap "mo:core/HashMap";
@@ -181,7 +181,7 @@ persistent actor MapConverter {
 arrayToMap([("Motoko", 4), ("Ghost", 21)]);
 ```
 
-To convert an array of tuples `[(Text, Nat)]` into a custom [record](../../fundamentals/3-types/5-records.md) type, such as `User`, `Array.map` is used to transform each tuple into a structured [record](../../fundamentals/3-types/5-records.md).
+To convert an array of tuples `[(Text, Nat)]` into a custom [record](../3-types/5-records.md) type, such as `User`, `Array.map` is used to transform each tuple into a structured [record](../3-types/5-records.md).
 
 ```motoko no-repl
 import Array "mo:core/Array";

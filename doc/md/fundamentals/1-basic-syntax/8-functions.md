@@ -7,7 +7,7 @@ hide_table_of_contents: true
 
 Functions in Motoko can have various attributes, the most fundamental being whether they are public or private. Public functions can be called by users or other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters), while private functions are only accessible within the program that defines them.
 
-The most basic Motoko [function declaration](../../fundamentals/4-declarations/2-function-declarations.md) is:
+The most basic Motoko [function declaration](../4-declarations/2-function-declarations.md) is:
 
 ```motoko no-repl
 func exampleFunction() : () {};
@@ -48,7 +48,7 @@ Shared functions come in several forms:
 - `shared composite query` functions, which behave like queries but can also call other queries.
 All shared function, unlike ordinary functions, provide access to the identity of their caller, for applications like access control.
 
-[Learn more about function types](../../fundamentals/3-types/3-functions.md).
+[Learn more about function types](../3-types/3-functions.md).
 
 :::
 
