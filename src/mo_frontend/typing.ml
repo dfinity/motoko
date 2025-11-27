@@ -1388,7 +1388,7 @@ let is_val_module (n, ((t, _, _, _) : val_info)) =
 
 let module_exp in_libs env module_name =
   if not in_libs then
-    VarE {it = module_name; at = no_region; note = Const}
+    VarE {it = module_name; at = no_region; note = (Const, None)}
   else
     ImplicitLibE module_name
 
@@ -1441,7 +1441,7 @@ let resolve_hole env at hole_sort typ =
     if is_matching_typ t
     then
       let path =
-        { it = VarE {it = id; at = no_region; note = Const};
+        { it = VarE {it = id; at = no_region; note = (Const, None)};
           at = Source.no_region;
           note = empty_typ_note }
       in
@@ -1626,7 +1626,7 @@ let check_can_dot env ctx_dot (exp : Syntax.exp) tys es at =
              | DotE ({ it = VarE {it = mod_id0; _};_ },
                      { it = id0; _},
                     _),
-               DotE ({ it = VarE {it = mod_id1; note = Const; _};_ },
+               DotE ({ it = VarE {it = mod_id1; note = (Const, _); _};_ },
                      { it = id1; _},
                      _)  when mod_id0 = mod_id1 && id0 = id1 ->
                 warn env at "M0236" "You can use the dot notation `%s.%s(...)` here"
@@ -1690,11 +1690,32 @@ and infer_exp'' env exp : T.typ =
       if !Flags.compiled then
         error env id.at "M0056" "variable %s is in scope but not available in compiled code" id.it
       else t
-    | Some (t, _, _, Available) -> id.note <- (if T.is_mut t then Var else Const); t
+    | Some (t, _, _, Available) -> id.note <- (if T.is_mut t then (Var, None) else (Const, None)); t
     | None ->
-      error env id.at "M0057" "unbound variable %s%a%s" id.it
-        display_vals env.vals
-        (Suggest.suggest_id "variable" id.it (T.Env.keys env.vals))
+      let candidate_libs =
+        if Option.is_some(!Flags.implicit_package) then
+          T.Env.to_seq env.libs |>
+            Seq.filter (fun (name, typ) ->
+              name <> "@prim" &&
+                let lib_id = Filename.basename name |> Filename.chop_extension in
+                lib_id = id.it) |>
+            List.of_seq
+        else []
+      in
+      match candidate_libs with
+      | [(name, typ)] ->
+        id.note <-
+          (Const, Some { it = ImplicitLibE name; at = exp.at; note = {note_typ = typ; note_eff = T.Triv} });
+        typ
+      | c1::c2::cs ->
+        let import_suggestions = List.map (fun (name, ty) -> Suggest.module_name_as_url name) candidate_libs in
+        error env id.at "M0057" "unbound variable %s%a%s" id.it
+          display_vals env.vals
+          (Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " import_suggestions))
+      | [] ->
+        error env id.at "M0057" "unbound variable %s%a%s" id.it
+          display_vals env.vals
+          (Suggest.suggest_id "variable" id.it (T.Env.keys env.vals))
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
@@ -2551,22 +2572,38 @@ and check_inferred env0 env t t' exp =
 
 and check_exp_field env (ef : exp_field) fts =
   let { mut; id; exp } = ef.it in
+  let update_srcs src =
+    if !Mo_config.Flags.typechecker_combine_srcs then
+      let r1 = src.T.track_region in
+      let r2 = id.at in
+      let srcs =
+        Region_set.union
+          (Field_sources.get_srcs env.srcs r1)
+          (Field_sources.get_srcs env.srcs r2)
+      in
+      Field_sources.Srcs_tbl.replace env.srcs r1 srcs;
+      Field_sources.Srcs_tbl.replace env.srcs r2 srcs
+  in
   let ft_opt = List.find_opt (fun ft -> ft.T.lab = id.it) fts in
   match ft_opt with
-  | Some { T.typ = T.Mut t; _ } ->
+  | Some { T.lab = _; typ = T.Mut t; src } ->
     if mut.it <> Syntax.Var then
       error env ef.at "M0149" "expected mutable 'var' field %s of type%a\nbut found immutable field (insert 'var'?)"
         id.it
         display_typ t;
+    update_srcs src;
     check_exp env t exp
-  | Some { T.typ = t; _ } ->
+  | Some { T.lab = _; typ = t; src } ->
     if mut.it = Syntax.Var then
       error env ef.at "M0150" "expected immutable field %s of type%a\nbut found mutable 'var' field (delete 'var'?)"
         id.it
         display_typ t;
+    update_srcs src;
     check_exp env t exp
   | None ->
-    ignore (infer_exp env exp)
+    if !Mo_config.Flags.typechecker_combine_srcs then
+      Field_sources.add_src env.srcs id.at;
+    ignore (infer_exp env exp);
 
 (** Performs the first step of checking that the given [FuncE (_, shared_pat, [], pat, typ_opt, _, exp)] expression has type [T.Func (s, c, [], ts1, ts2)].
   Used to prepare the new env for checking the [exp] (body of the function).
@@ -2737,13 +2774,13 @@ and check_explicit_arguments env saturated_arity implicits_arity arg_typs syntax
                 | Ok {path;_} ->
                    match path.it, arg.it with
                    | VarE {it = id0; _},
-                     VarE {it = id1; note = Const; _}
+                     VarE {it = id1; note = (Const, _); _}
                         when id0 = id1 ->
                       (id1, arg) :: acc
                    | DotE ({ it = VarE {it = mod_id0; _};_ },
                            { it = id0; _},
                            _),
-                     DotE ({ it = VarE {it = mod_id1; note = Const; _};_ },
+                     DotE ({ it = VarE {it = mod_id1; note = (Const, _); _};_ },
                            { it = id1; _},
                            _) when mod_id0 = mod_id1 && id0 = id1 ->
                       (mod_id1 ^ "." ^ id1, arg) :: acc
@@ -2881,7 +2918,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
   - Substitute and proceed with the remaining sub-expressions to get the full instantiation.
   *)
   let infer_subargs_for_bimatch_or_defer env exp target_type =
-    let subs, deferred, to_fix, must_solve = ref extra_subtype_problems, ref [], ref [], ref [] in
+    let subs, deferred, to_fix, must_solve = ref [], ref [], ref [], ref [] in
     let rec decompose exp target_type =
       match exp.it, T.normalize target_type with
       | TupE exps, T.Tup ts when List.length exps = List.length ts ->
@@ -2935,10 +2972,13 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
 
   (* Incorporate the return type into the subtyping constraints *)
   let ret_typ_opt, subs =
+    let subs = List.rev subs in
     match t_expect_opt with
     | None -> Some t_ret, subs
     | Some expected_ret -> None, (t_ret, Bi_match.name_ret_typ expected_ret) :: subs
   in
+  (* Make sure the order of constraints is: receiver, expected return type and arguments starting from the first one *)
+  let subs = extra_subtype_problems @ subs in
 
   try
     (* i.e. exists minimal ts .

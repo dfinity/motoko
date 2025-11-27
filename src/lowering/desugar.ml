@@ -56,7 +56,12 @@ and exp e =
 
 and exp' at note = function
   | S.HoleE (_, e) -> (exp !e).it
-  | S.VarE i -> I.VarE ((match i.note with Var -> I.Var | Const -> I.Const), i.it)
+  | S.VarE i ->
+    (match i.note with
+     | (mut, None) ->
+       I.VarE ((match mut with Var -> I.Var | Const -> I.Const), i.it)
+     | (_, Some e) -> (* auto-import *)
+       (exp e).it)
   | S.ActorUrlE e ->
     I.(PrimE (ActorOfIdBlob note.Note.typ, [url e at]))
   | S.LitE l -> I.LitE (lit !l)

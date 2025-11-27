@@ -68,30 +68,14 @@
         "type": "github"
       }
     },
-    "ic-src": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1761929779,
-        "narHash": "sha256-5jqAkVDelrPBepsaODDGUCKNe2L1DGm9wSEagL4t1BU=",
-        "owner": "dfinity",
-        "repo": "ic",
-        "rev": "7a8c16764cdcfb901759ff62e64ac983633fcc17",
-        "type": "github"
-      },
-      "original": {
-        "owner": "dfinity",
-        "repo": "ic",
-        "type": "github"
-      }
-    },
     "ic-wasm-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1761153084,
-        "narHash": "sha256-9vwXW4NTJzdwQUPk5+vHp0uWFJr6o3/Pj/wZ26gTyfM=",
+        "lastModified": 1763575621,
+        "narHash": "sha256-gxfjS/X9EkVEEqDGCWWJQtNXuJk8Kc94o+hVfC5sw5Y=",
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "10f1b5965c8c4b7fd1532734b60dcb2a2fcb2673",
+        "rev": "65a9462fd63503182c7c5dd44f92839a21047e71",
         "type": "github"
       },
       "original": {
@@ -137,11 +121,11 @@
     "motoko-core-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1762964552,
-        "narHash": "sha256-jo1h+yzgGtL23jO8ICmJJDoxI83ozJfN+jRFJ29iKzE=",
+        "lastModified": 1763395090,
+        "narHash": "sha256-ePEOG9yxZ/xfJCMavfwC10gDAuaFzfCycps50ibx0dU=",
         "owner": "dfinity",
         "repo": "motoko-core",
-        "rev": "3047c4b91c68e169dbd94a572cf47c6d83a06673",
+        "rev": "a47436dd8188dfcdfa788f0424ed4cb02d70bcfe",
         "type": "github"
       },
       "original": {
@@ -192,16 +176,16 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1751274312,
-        "narHash": "sha256-/bVBlRpECLVzjV19t5KMdMFWSwKLtb5RyXdjz3LJT+g=",
+        "lastModified": 1763948260,
+        "narHash": "sha256-dY9qLD0H0zOUgU3vWacPY6Qc421BeQAfm8kBuBtPVE0=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "50ab793786d9de88ee30ec4e4c24fb4236fc2674",
+        "rev": "1c8ba8d3f7634acac4a2094eef7c32ad9106532c",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
-        "ref": "nixos-24.11",
+        "ref": "nixos-25.05",
         "repo": "nixpkgs",
         "type": "github"
       }
@@ -241,11 +225,11 @@
     "pocket-ic-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1757573980,
-        "narHash": "sha256-yOjLoRCMsi29tEK8M1XNC8AaU1ixkHE3B5sdGSr6u6s=",
+        "lastModified": 1763769101,
+        "narHash": "sha256-/VaUL3Wu9NILofasZPTCtFVIoXmsOokiO/sTUZQJTZw=",
         "owner": "dfinity",
         "repo": "ic",
-        "rev": "861616d46ded00091fecbfe01f441b38b56b483c",
+        "rev": "f07e9896fef2c24db8d4d0bed3d3ed42f0934e2a",
         "type": "github"
       },
       "original": {
@@ -260,7 +244,6 @@
         "candid-src": "candid-src",
         "esm": "esm",
         "flake-utils": "flake-utils",
-        "ic-src": "ic-src",
         "ic-wasm-src": "ic-wasm-src",
         "libtommath-src": "libtommath-src",
         "motoko-base-src": "motoko-base-src",
@@ -283,11 +266,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1761964689,
-        "narHash": "sha256-Zo3LQQDz+64EQ9zor/WmeNTFLoZkjmhp0UY3G0D3seE=",
+        "lastModified": 1764038373,
+        "narHash": "sha256-M6w2wNBRelcavoDAyFL2iO4NeWknD40ASkH1S3C0YGM=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "63d22578600f70d293aede6bc737efef60ebd97f",
+        "rev": "ab3536fe850211a96673c6ffb2cb88aab8071cc9",
         "type": "github"
       },
       "original": {

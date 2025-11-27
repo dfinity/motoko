@@ -18,7 +18,8 @@ wrong-call-args.mo:39.5-39.31: type error [M0098], cannot apply function `.add` 
   <K, V>(key : K, value : V) -> ()
 to argument of type
   ((self : Text, t2 : Text) -> Order, Text)
-because there is no consistent choice for type parameter `K`.
+because there is no way to satisfy subtyping
+  (self : Text, t2 : Text) -> Order  <:  Text  (for argument `key`) 
 wrong-call-args.mo:45.5-45.17: type error [M0098], cannot apply function of type
   <K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K) ->
     ?V
@@ -41,7 +42,8 @@ wrong-call-args.mo:55.5-55.36: type error [M0098], cannot apply function of type
 to argument of type
   ({var root : Node<Text, Text>; var size_ : Nat},
    (self : Text, t2 : Text) -> Order, Text)
-because there is no consistent choice for type parameter `K`.
+because there is no way to satisfy subtyping
+  (self : Text, t2 : Text) -> Order  <:  Text  (for argument `key`) 
 wrong-call-args.mo:82.3-82.11: warning [M0239], Avoid binding a unit `()` result; remove `let` and keep the expression
 wrong-call-args.mo:107.8-107.9: type error [M0050], literal of type
   Nat

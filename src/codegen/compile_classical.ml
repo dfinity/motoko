@@ -761,11 +761,16 @@ let compile_op_const op i =
     G.i (Binary (Wasm.Values.I32 op))
 let compile_add_const = compile_op_const I32Op.Add
 let compile_sub_const = compile_op_const I32Op.Sub
-let compile_mul_const = compile_op_const I32Op.Mul (* TODO: use shift: compile_mul_const 2l *)
 let compile_divU_const = compile_op_const I32Op.DivU
 let compile_shrU_const = compile_op_const I32Op.ShrU
 let compile_shrS_const = compile_op_const I32Op.ShrS
 let compile_shl_const = compile_op_const I32Op.Shl
+let compile_mul_const = function
+  | 0l -> G.i Drop ^^ compile_unboxed_zero
+  | 1l -> G.nop
+  | n when n > 0l && Numerics.Nat32.(of_int32 n |> popcnt |> to_int32) = 1l
+    -> compile_shl_const Numerics.Nat32.(of_int32 n |> ctz |> to_int32)
+  | n -> compile_op_const I32Op.Mul n
 let compile_rotl_const = compile_op_const I32Op.Rotl
 let compile_rotr_const = compile_op_const I32Op.Rotr
 let compile_bitand_const = compile_op_const I32Op.And
@@ -783,7 +788,6 @@ let compile_op64_const op i =
     G.i (Binary (Wasm.Values.I64 op))
 let compile_add64_const = compile_op64_const I64Op.Add
 let compile_sub64_const = compile_op64_const I64Op.Sub
-let compile_mul64_const = compile_op64_const I64Op.Mul (* TODO: use shift: compile_mul_const 2l *)
 let _compile_divU64_const = compile_op64_const I64Op.DivU
 let compile_shrU64_const = function
   | 0L -> G.nop | n -> compile_op64_const I64Op.ShrU n
@@ -791,6 +795,12 @@ let compile_shrS64_const = function
   | 0L -> G.nop | n -> compile_op64_const I64Op.ShrS n
 let compile_shl64_const = function
   | 0L -> G.nop | n -> compile_op64_const I64Op.Shl n
+let compile_mul64_const = function
+  | 0L -> G.i Drop ^^ compile_const_64 0L
+  | 1L -> G.nop
+  | n when n > 0L && Numerics.Nat64.(of_int64 n |> popcnt |> to_int64) = 1L
+    -> compile_shl64_const Numerics.Nat64.(of_int64 n |> ctz |> to_int64)
+  | n -> compile_op64_const I64Op.Mul n
 let compile_bitand64_const = compile_op64_const I64Op.And
 let _compile_bitor64_const = function
   | 0L -> G.nop | n -> compile_op64_const I64Op.Or n
@@ -2866,7 +2876,7 @@ module TaggedSmallWord = struct
         begin
           G.loop0 begin
             (* Are we done? *)
-            get_exp ^^ compile_unboxed_const 1l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
+            get_exp ^^ compile_unboxed_one ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
             G.if0 G.nop (* done *)
             begin
               (* Check low bit of exp to see if we need to multiply *)
@@ -3043,10 +3053,10 @@ module ReadBuf = struct
     G.i (Compare (Wasm.Values.I32 I64Op.Eq))
 
   let read_byte env get_buf =
-    check_space env get_buf (compile_unboxed_const 1l) ^^
+    check_space env get_buf compile_unboxed_one ^^
     get_ptr get_buf ^^
     G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
-    advance get_buf (compile_unboxed_const 1l)
+    advance get_buf compile_unboxed_one
 
   let read_word16 env get_buf =
     check_space env get_buf (compile_unboxed_const 2l) ^^
@@ -5151,7 +5161,7 @@ module IC = struct
             G.i (Store {ty = I32Type; align = 2; offset = 8L; sz = None}) ^^
 
             get_iovec_ptr ^^
-            compile_unboxed_const 1l ^^
+            compile_unboxed_one ^^
             G.i (Store {ty = I32Type; align = 2; offset = 12L; sz = None}) ^^
 
             get_iovec_ptr ^^
@@ -5162,16 +5172,16 @@ module IC = struct
                https://github.com/bytecodealliance/wasmtime/issues/629
             *)
 
-            compile_unboxed_const 1l (* stdout *) ^^
+            compile_unboxed_one (* stdout *) ^^
             get_iovec_ptr ^^
-            compile_unboxed_const 1l (* one string segment (2 doesn't work) *) ^^
+            compile_unboxed_one (* one string segment (2 doesn't work) *) ^^
             get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
             E.call_import env "wasi_snapshot_preview1" "fd_write" ^^
             G.i Drop ^^
 
-            compile_unboxed_const 1l (* stdout *) ^^
+            compile_unboxed_one (* stdout *) ^^
             get_iovec_ptr ^^ compile_add_const 8l ^^
-            compile_unboxed_const 1l (* one string segment *) ^^
+            compile_unboxed_one (* one string segment *) ^^
             get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
             E.call_import env "wasi_snapshot_preview1" "fd_write" ^^
             G.i Drop)
@@ -6681,7 +6691,7 @@ module BumpStream : Stream = struct
   let write_byte _env get_data_buf code =
     get_data_buf ^^ code ^^
     G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = Some Wasm.Types.Pack8}) ^^
-    compile_unboxed_const 1l ^^ advance_data_buf get_data_buf
+    compile_unboxed_one ^^ advance_data_buf get_data_buf
 
   let write_blob env get_data_buf get_x =
     let set_len, get_len = new_local env "len" in
@@ -7222,11 +7232,11 @@ module MakeSerialization (Strm : Stream) = struct
       begin match t with
       | Prim Nat -> inc_data_size (get_x ^^ BigNum.compile_data_size_unsigned env)
       | Prim Int -> inc_data_size (get_x ^^ BigNum.compile_data_size_signed env)
-      | Prim (Int8|Nat8) -> inc_data_size (compile_unboxed_const 1l)
+      | Prim (Int8|Nat8) -> inc_data_size compile_unboxed_one
       | Prim (Int16|Nat16) -> inc_data_size (compile_unboxed_const 2l)
       | Prim (Int32|Nat32|Char) -> inc_data_size (compile_unboxed_const 4l)
       | Prim (Int64|Nat64|Float) -> inc_data_size (compile_unboxed_const 8l)
-      | Prim Bool -> inc_data_size (compile_unboxed_const 1l)
+      | Prim Bool -> inc_data_size compile_unboxed_one
       | Prim Null -> G.nop
       | Any -> G.nop
       | Tup [] -> G.nop (* e(()) = null *)
@@ -7260,7 +7270,7 @@ module MakeSerialization (Strm : Stream) = struct
         size_word env get_len ^^
         inc_data_size get_len
       | Opt t ->
-        inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
+        inc_data_size compile_unboxed_one ^^ (* one byte tag *)
         get_x ^^ Opt.is_some env ^^
         G.if0 (get_x ^^ Opt.project env ^^ size env t) G.nop
       | Variant vs ->
@@ -7275,11 +7285,11 @@ module MakeSerialization (Strm : Stream) = struct
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "buffer_size: unexpected variant" )
       | Func _ ->
-        inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
+        inc_data_size compile_unboxed_one ^^ (* one byte tag *)
         get_x ^^ Arr.load_field env 0l ^^ size env (Obj (Actor, [])) ^^
         get_x ^^ Arr.load_field env 1l ^^ size env (Prim Text)
       | Obj (Actor, _) | Prim Principal ->
-        inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
+        inc_data_size compile_unboxed_one ^^ (* one byte tag *)
         get_x ^^ size env blob
       | Non ->
         E.trap_with env "buffer_size called on value of type None"
@@ -7343,7 +7353,7 @@ module MakeSerialization (Strm : Stream) = struct
         end
         begin
           (* This is a reference *)
-          write_byte env get_data_buf (compile_unboxed_const 1l) ^^
+          write_byte env get_data_buf compile_unboxed_one ^^
           (* Sanity Checks *)
           get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
           E.then_trap_with env "unvisited mutable data in serialize_go (MutBox)" ^^
@@ -7427,7 +7437,7 @@ module MakeSerialization (Strm : Stream) = struct
         get_x ^^
         Opt.is_some env ^^
         G.if0
-          (write_byte env get_data_buf (compile_unboxed_const 1l) ^^ get_x ^^ Opt.project env ^^ write env t)
+          (write_byte env get_data_buf compile_unboxed_one ^^ get_x ^^ Opt.project env ^^ write env t)
           (write_byte env get_data_buf (compile_unboxed_const 0l))
       | Variant vs ->
         List.fold_right (fun (i, {lab = l; typ = t; _}) continue ->
@@ -7445,11 +7455,11 @@ module MakeSerialization (Strm : Stream) = struct
       | Prim Text ->
         write_text env get_data_buf get_x
       | Func _ ->
-        write_byte env get_data_buf (compile_unboxed_const 1l) ^^
+        write_byte env get_data_buf compile_unboxed_one ^^
         get_x ^^ Arr.load_field env 0l ^^ write env (Obj (Actor, [])) ^^
         get_x ^^ Arr.load_field env 1l ^^ write env (Prim Text)
       | Obj (Actor, _) | Prim Principal ->
-        write_byte env get_data_buf (compile_unboxed_const 1l) ^^
+        write_byte env get_data_buf compile_unboxed_one ^^
         get_x ^^ write env blob
       | Non ->
         E.trap_with env "serializing value of type None"
@@ -7561,7 +7571,7 @@ module MakeSerialization (Strm : Stream) = struct
       let get_typtbl_size = Registers.get_typtbl_size env in
 
       (* Decrement and check idl quota *)
-      compile_unboxed_const 1l ^^
+      compile_unboxed_one ^^
       compile_const_64 1L ^^
       Registers.idl_limit_check env ^^
 
@@ -7592,7 +7602,7 @@ module MakeSerialization (Strm : Stream) = struct
             ) ^^
           Stack.set_local env StackArgs.depth ^^
           (if can_recover
-             then compile_unboxed_const 1l
+             then compile_unboxed_one
              else Stack.get_prev_local env 2l) ^^
           Stack.set_local env StackArgs.can_recover ^^
           deserialize_go env t)
@@ -7611,7 +7621,7 @@ module MakeSerialization (Strm : Stream) = struct
          as Stack.with_words is used to allocate scratch space.
       *)
       let (set_failed, get_failed) = new_local env "failed" in
-      let set_failure = compile_unboxed_const 1l ^^ set_failed in
+      let set_failure = compile_unboxed_one ^^ set_failed in
       let when_failed f = get_failed ^^ G.if0 f G.nop in
 
       (* This looks at a value and if it is coercion_error_value, sets the failure flag.
