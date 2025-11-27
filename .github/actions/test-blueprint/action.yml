@@ -30,7 +30,7 @@ inputs:
   cachix-auth-token:
     required: true
     description: "Cachix authentication token"
-  nixbuild-token:
+  nixbuild_token:
     required: false
     description: "Nixbuild.net authentication token"
 
@@ -42,7 +42,7 @@ runs:
     - if: startsWith(inputs.os, 'ubuntu-')
       uses: nixbuild/nixbuild-action@v24
       with:
-        nixbuild_token: ${{ inputs.nixbuild-token }}
+        nixbuild_token: ${{ inputs.nixbuild_token }}
         generate_summary_for: 'workflow'
 
     - uses: cachix/cachix-action@v16

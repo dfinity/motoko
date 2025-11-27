@@ -21,7 +21,7 @@ jobs:
           test-target: common-tests
           test-name: ${{ matrix.os }}-common-tests
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          nixbuild-token: ${{ secrets.NIXBUILD_TOKEN }}
+          nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
 
   gc-tests:
     strategy:
@@ -39,7 +39,7 @@ jobs:
           test-target: gc-tests
           test-name: ${{ matrix.os }}-gc-tests
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          nixbuild-token: ${{ secrets.NIXBUILD_TOKEN }}
+          nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
 
   tests:
     strategy:
@@ -63,7 +63,7 @@ jobs:
           test-target: ${{ matrix.build_type }}-systems-go
           test-name: ${{ matrix.os }}-${{ matrix.build_type }}-tests
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          nixbuild-token: ${{ secrets.NIXBUILD_TOKEN }}
+          nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
 
       - name: Create GitHub App Token
         uses: actions/create-github-app-token@v2
