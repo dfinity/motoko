@@ -11,10 +11,12 @@ same ref.
 *)
 
 type scope = string
+type namespace = string list
 
 type 'a con = {name : string;
                stamp : int * scope option;
                hash: int; (* hash of name, stamp *)
+               namespace: namespace;
                kind : 'a ref}
 
 type 'a t = 'a con
@@ -25,14 +27,21 @@ module Stamps = Env.Make (struct
   let compare = Stdlib.compare
 end)
 
-type stamps = {stamps : int Stamps.t; scope : scope option}
+type stamps = {stamps : int Stamps.t; scope : scope option; namespace: namespace}
 
-let stamps : stamps ref = ref {stamps = Stamps.empty; scope = None}
+let stamps : stamps ref = ref {stamps = Stamps.empty; scope = None; namespace = []}
 
 let session ?scope f =
   let original = !stamps in
   stamps := {!stamps with scope};
   Fun.protect ~finally:(fun _ -> stamps := original) f
+
+let open_namespace name f =
+  let original_namespace = !stamps.namespace in
+  stamps := {!stamps with namespace = original_namespace @ [name]};
+  Fun.protect
+    ~finally:(fun _ -> stamps := {!stamps with namespace = original_namespace})
+    f
 
 let fresh_stamp name =
   let scope = !stamps.scope in
@@ -44,7 +53,7 @@ let hash name stamp = Hashtbl.hash (name, stamp)
 
 let fresh name k =
   let stamp = fresh_stamp name in
-  {name; stamp;
+  {name; stamp; namespace = !stamps.namespace;
    hash = hash name stamp;
    kind = ref k}
 let clone c k =
@@ -52,6 +61,7 @@ let clone c k =
   let stamp = fresh_stamp c.name in
   {name;
    stamp;
+   namespace = c.namespace;
    hash = hash name stamp;
    kind = ref k}
 
@@ -59,6 +69,7 @@ let kind c = !(c.kind)
 let unsafe_set_kind c k = c.kind := k
 
 let name c = c.name
+let namespace (c : 'a con) = c.namespace
 
 let to_string show_stamps sep c =
   if not show_stamps || c.stamp = (0, Some "prelude")

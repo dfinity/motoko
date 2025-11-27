@@ -10,7 +10,12 @@ type actor_idl_path = string option
 type package_urls = string Flags.M.t
 type actor_aliases = string Flags.M.t
 
-type resolved_imports = Syntax.resolved_import Source.phrase list
+type resolved_import' = {
+  ri : Syntax.resolved_import;
+  id : Syntax.id option;
+}
+type resolved_import = resolved_import' Source.phrase
+type resolved_imports = resolved_import list
 
 val collect_imports : Syntax.prog -> string -> ((string * string option) list) Diag.result
 
