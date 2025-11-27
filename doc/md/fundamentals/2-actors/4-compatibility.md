@@ -12,7 +12,7 @@ When upgrading a canister, it is important to verify that the upgrade can procee
 -   Breaking clients due to a Candid interface change.
 
 `dfx` checks these properties statically before attempting the upgrade.
-Moreover, with [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md), Motoko rejects incompatible changes of stable declarations.
+Moreover, with [enhanced orthogonal persistence](./6-orthogonal-persistence/enhanced.md), Motoko rejects incompatible changes of stable declarations.
 
 ## Upgrade example
 
@@ -121,7 +121,7 @@ This version is neither compatible to stable type declarations, nor to the Candi
 - The change in the return type of `read` is also not safe.
   If the change were accepted, then existing clients of the `read` method, that still expect to receive integers, would suddenly start receiving incompatible floats.
 
-With [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md), Motoko actively rejects any upgrades that require type-incompatible state changes.
+With [enhanced orthogonal persistence](./6-orthogonal-persistence/enhanced.md), Motoko actively rejects any upgrades that require type-incompatible state changes.
 
 This is to guarantee that the stable state is always kept safe.
 
@@ -134,7 +134,7 @@ In addition to Motoko's runtime check, `dfx` raises a warning message for these 
 Motoko tolerates Candid interface changes, since these are more likely to be intentional, breaking changes.
 
 :::danger
-Versions of Motoko using [classical orthogonal persistence](orthogonal-persistence/classical.md) will drop the state and reinitialize the counter with `0.0`, if the `dfx` warning is ignored.
+Versions of Motoko using [classical orthogonal persistence](./6-orthogonal-persistence/classical.md) will drop the state and reinitialize the counter with `0.0`, if the `dfx` warning is ignored.
 
 For this reason, users should always heed any compatibility warnings issued by `dfx`.
 :::
@@ -269,10 +269,10 @@ cannot be consumed at new type
   var Float
 ```
 
-With [enhanced orthogonal persistence](../../fundamentals/2-actors/6-orthogonal-persistence/enhanced.md), compatibility errors of stable variables are always detected in the runtime system and if failing, the upgrade is safely rolled back.
+With [enhanced orthogonal persistence](./6-orthogonal-persistence/enhanced.md), compatibility errors of stable variables are always detected in the runtime system and if failing, the upgrade is safely rolled back.
 
 :::danger
-With [classical orthogonal persistence](../../fundamentals/2-actors/6-orthogonal-persistence/classical.md), however, an upgrade attempt from `v2.wasm` to `v3.wasm` is unpredictable and may lead to partial or complete data loss if the `dfx` warning is ignored.
+With [classical orthogonal persistence](./6-orthogonal-persistence/classical.md), however, an upgrade attempt from `v2.wasm` to `v3.wasm` is unpredictable and may lead to partial or complete data loss if the `dfx` warning is ignored.
 :::
 
 ## Adding record fields
@@ -304,8 +304,8 @@ cannot be consumed at new type
 
 Do you want to proceed? yes/No
 ```
-It is recommended not to continue, as you will lose the state in older versions of Motoko that use [classical orthogonal persistence](orthogonal-persistence/classical.md).
-Upgrading with [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md) will trap and roll back, keeping the old state.
+It is recommended not to continue, as you will lose the state in older versions of Motoko that use [classical orthogonal persistence](./6-orthogonal-persistence/classical.md).
+Upgrading with [enhanced orthogonal persistence](./6-orthogonal-persistence/enhanced.md) will trap and roll back, keeping the old state.
 
 Adding a new record field to the type of existing stable variable is not supported. The reason is simple: the upgrade would need to supply values for the new field out of thin air. In this example, the upgrade would need to conjure up some value for the `description` field of every existing `card` in `map`. Moreover, allowing adding optional fields is also a problem, as a record can be shared from various variables with different static types, some of them already declaring the added field or adding a same-named optional field with a potentially different type (and/or different semantics).
 
