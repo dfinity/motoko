@@ -94,7 +94,6 @@ jobs:
       - uses: cachix/cachix-action@v16
         with:
           name: ic-hs-test
-          authToken: ${{ inputs.cachix-auth-token }}
       - uses: nixbuild/nixbuild-action@v24
         with:
           nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
