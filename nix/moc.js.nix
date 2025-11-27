@@ -15,7 +15,7 @@ let
       '' + pkgs.lib.optionalString (rts != null) ''
         ./rts/gen.sh ${rts}/rts/
       '' + ''
-        make DUNE_OPTS="--profile=release" ${n}.js
+        make ${n}.js
         terser ${n}.js -o ${n}.min.js -c -m
       '';
       installPhase = ''
