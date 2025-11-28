@@ -94,6 +94,12 @@ module Make (Cfg : Config) = struct
     | Pre                    -> Atom "Pre"
     | Typ c                  -> "Typ" $$ [con c]
     | Named (n, t)           -> "Name" $$ [Atom n; typ t]
+    | Implicit (no, t)          ->
+      (match no with
+       | None ->
+         "Implicit" $$ [Atom "_"; typ t]
+       | Some n->
+         "Implicit" $$ [Atom n; typ t])
     | Weak t                 -> "Weak" $$ [ typ t]
 
   and typ_bind (tb : Type.bind) =
