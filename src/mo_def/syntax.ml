@@ -66,7 +66,7 @@ and typ' =
 and scope = typ
 and typ_field = typ_field' Source.phrase
 and typ_field' =
-  | ValF of id * typ * mut
+  | ValF of id * id option * typ * mut
   | TypF of typ_id * typ_bind list * typ
 
 and typ_tag = typ_tag' Source.phrase
