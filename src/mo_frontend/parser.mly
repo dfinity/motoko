@@ -493,20 +493,11 @@ typ :
 typ_item :
   | i=implicit COLON t = typ
     { None,
-      let name_opt, t1 =
-	match t.it with
-	| NamedT(x, t1) ->
-	   {x with it = Some x.it},
-	   t1
-	| _ ->
-	   {i with it = None},
-	   t
-      in
-      ImplicitT (name_opt, t1) @! at $sloc }
+      NamedT(i, t) @! at $sloc }
   | i=id COLON t=typ { Some i, t }
   | i=id_wild COLON t=typ
     { None,
-      (ImplicitT ({i with it = None}, t)) @! at $sloc }
+      NamedT(i, t) @! at $sloc }
   | implicit i=id COLON t=typ
     { None,
       ImplicitT ({i with it = Some i.it}, t) @! at $sloc
@@ -982,11 +973,11 @@ pat_opt :
 pat_arg :
   | implicit x=id COLON t=typ
     { let name_opt, t1 =
-	match t.it with
+(*	match t.it with
 	| NamedT(y, t1) -> (* legacy override *)
 	   {y with it = Some y.it},
 	   t1
-	| _ ->
+	| _ ->*)
 	   {x with it = Some x.it},
 	   t
       in

@@ -3216,13 +3216,24 @@ and infer_pat' name_types env pat : T.typ * Scope.val_env =
   | AnnotP ({it = VarP id; _} as pat1, typ) when name_types ->
     let t = check_typ env ~allow_implicit:true typ in
     (match t with
+    (* legacy *)
+    | T.Named ("implicit", T.Named (id', t1)) ->
+      T.Implicit((if id' = "_" then None else Some id'), t1), check_pat env t1 pat1
+    | T.Named ("implicit", t1)->
+      T.Implicit(Some id.it, t1), check_pat env t1 pat1
+    (* dedicated *)
     | T.Implicit _ ->
       t, check_pat env t pat1
     | _ ->
       T.Named (id.it, t), check_pat env t pat1)
-  | AnnotP (pat1, typ) ->
+  | AnnotP (pat1, typ) -> (* TBR *)
     let t = check_typ env ~allow_implicit:name_types typ in
-    t, check_pat env t pat1
+    (match t with
+     (* legacy *)
+     | T.Named ("implicit", T.Named (id', t1)) ->
+       T.Implicit((if id' = "_" then None else Some id'), t1), check_pat env t1 pat1
+     | _ ->
+       t, check_pat env t pat1)
   | ParP pat1 ->
     infer_pat name_types env pat1
 
