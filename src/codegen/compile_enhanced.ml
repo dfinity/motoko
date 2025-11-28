@@ -1155,7 +1155,7 @@ module RTS = struct
     E.add_func_import env "rts" "get_upgrade_instructions" [] [I64Type];
     E.add_func_import env "rts" "memcmp" [I64Type; I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I64Type];
-    E.add_func_import env "rts" "parse_idl_header" [I32Type; I64Type; I64Type; I64Type; I64Type] [];
+    E.add_func_import env "rts" "parse_idl_header" [I32Type; I64Type; I64Type; I64Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "idl_alloc_typtbl" [I64Type; I64Type; I64Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "idl_sub_buf_words" [I64Type; I64Type] [I64Type];
     E.add_func_import env "rts" "idl_sub_buf_init" [I64Type; I64Type; I64Type] [];
@@ -8785,7 +8785,9 @@ module Serialization = struct
       ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
 
       (* Go! *)
-      Bool.lit extended ^^ Bool.to_rts_int32 ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
+      let tydesc, _, _ = type_desc env Candid ts in
+      let tydesc_len = Int64.of_int (String.length tydesc * 2 + 3000000) in
+      Bool.(lit extended ^^ to_rts_int32) ^^ get_data_buf ^^ compile_unboxed_const tydesc_len ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
       E.call_import env "rts" "parse_idl_header" ^^
 
       (* Allocate global type type, if necessary for subtype checks *)

@@ -443,8 +443,14 @@ let prim trap =
   | "setCandidLimits" ->
       fun _ v k -> k unit
   | "getCandidLimits" ->
-      fun _ v k -> k (Tup [
-        Nat32 Numerics.Nat32.zero; Nat32 Numerics.Nat32.zero; Nat32 Numerics.Nat32.zero])
+      fun _ v k -> k (Tup Numerics.Nat32.[
+        Nat32 zero; Nat32 zero; Nat32 zero])
+
+  | "setCandidTypeLimits" ->
+      fun _ v k -> k unit
+  | "getCandidTypeLimits" ->
+      fun _ v k -> k (Tup Numerics.Nat32.[
+        Nat32 zero; Nat32 zero])
 
   | "alloc_weak_ref" ->
      fun _ v k ->
