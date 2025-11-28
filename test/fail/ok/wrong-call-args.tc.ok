@@ -1,15 +1,11 @@
-wrong-call-args.mo:26.5-26.13: type error [M0098], cannot apply function of type
-  <K>Nat -> ()
-to argument of type
+wrong-call-args.mo:26.9-26.12: type error [M0096], expression of type
   (Nat, (self : Text, t2 : Text) -> Order)
-because there is no way to satisfy subtyping
-  (Nat, (self : Text, t2 : Text) -> Order)  <:  Nat
-wrong-call-args.mo:29.5-29.12: type error [M0098], cannot apply function of type
-  <K>Nat -> ()
-to argument of type
+cannot produce expected type
+  Nat
+wrong-call-args.mo:29.9-29.12: type error [M0096], expression of type
   (Nat, (self : Text, t2 : Text) -> Order)
-because there is no way to satisfy subtyping
-  (Nat, (self : Text, t2 : Text) -> Order)  <:  Nat
+cannot produce expected type
+  Nat
 wrong-call-args.mo:35.12-35.14: type error [M0233], wrong number of arguments: expected 1 but got 0
 Expected 1 argument of type:
   (key : Text)
@@ -29,12 +25,10 @@ wrong-call-args.mo:48.27-48.39: type error [M0096], expression of type
   (self : Text, t2 : Text) -> Order
 cannot produce expected type
   ()
-wrong-call-args.mo:51.5-51.28: type error [M0098], cannot apply function of type
-  <K, V>() -> Map<K, V>
-to argument of type
+wrong-call-args.mo:51.15-51.27: type error [M0096], expression of type
   (self : Text, t2 : Text) -> Order
-because there is no way to satisfy subtyping
-  (self : Text, t2 : Text) -> Order  <:  ()
+cannot produce expected type
+  ()
 wrong-call-args.mo:55.18-55.30: type error [M0096], expression of type
   (self : Text, t2 : Text) -> Order
 cannot produce expected type

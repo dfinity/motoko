@@ -532,12 +532,12 @@ let solve ctx (ts1, ts2, ats) must_solve =
     let env = env |> ConEnv.filter (fun c t -> not (eq Any t || eq Non t)) in
     let t1 = subst env t1 in
     let t2 = subst env t2 in
-    let reason = match t2 with
-    | Named ("@ret", t2) ->
-      if is_closed ctx t1 then Some { actual = t1; expected = t2; at } else None
-    | Named (_, t2) ->
-      if is_closed ctx t2 then Some { actual = t1; expected = t2; at } else None
-    | t2 -> None
+    let reason =
+      if is_closed ctx t1 && is_closed ctx t2 then
+        let t2 = match t2 with | Named (_, t2) -> t2 | _ -> t2 in
+        Some { actual = t1; expected = t2; at }
+      else
+        None
     in
     let rel = match t2 with
     | Named ("@ret", t2) ->
