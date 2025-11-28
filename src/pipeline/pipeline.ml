@@ -286,11 +286,11 @@ let stable_compatible pre post : unit Diag.result =
   let* p1 = parse_stab_sig_from_file pre in
   let* p2 = parse_stab_sig_from_file post in
   let* s1 =
-    Cons.session ~scope:p1.Source.note.Syntax.filename (fun () ->
+    Cons.session ~scope:"Old" (fun () ->
       Typing.check_stab_sig initial_stat_env0 p1)
   in
   let* s2 =
-    Cons.session ~scope:p2.Source.note.Syntax.filename (fun () ->
+    Cons.session (fun () ->
       Typing.check_stab_sig initial_stat_env0 p2)
   in
   Stability.match_stab_sig s1 s2
