@@ -1,4 +1,4 @@
-import { debugPrint; performanceCounter } = "mo:⛔";
+import { debugPrint; performanceCounter; getCandidTypeLimits } = "mo:⛔";
 
 // various sizes
 import msg256x1 = "blob:file:messages/msg256x1.bin";
@@ -15,6 +15,8 @@ actor Decoding {
   type Nested512 = H2<H2<Nat8>>;
   type Nested768 = H2<H2<H2<Nat8>>>;
   type Nested1024 = H2<H2<H2<H2<Nat8>>>>;
+
+  debugPrint(debug_show getCandidTypeLimits<system>());
 
   func measure<T>(f : () -> ?T) {
       let p0 = performanceCounter(0);
