@@ -2,6 +2,10 @@
 
 * motoko (`moc`)
 
+  * Shorter, simpler error messages for generic functions (#5650).
+    The compiler now tries to point to the first problematic expression in the function call, rather than the entire function call with type inference details.
+    Simple errors only mention closed types; verbose errors with unsolved type variables are only shown when necessary.
+
   * Improved error messages for context dot: only the receiver type variables are solved, remaining type variables stay unsolved, not solved to `Any` or `Non` (#5634).
 
   * Fixed the type instantiation hint to have the correct arity (#5634).
