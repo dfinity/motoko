@@ -14,21 +14,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v6
-    - uses: nixbuild/nix-quick-install-action@v34
-    - if: ${{ startsWith(matrix.os, 'ubuntu-') }}
-      uses: nixbuild/nixbuild-action@v24
-      with:
-        nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
-        generate_summary_for: 'workflow'
+    - uses: cachix/install-nix-action@v31
     - uses: cachix/cachix-action@v16
       with:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - name: nix-build
-      shell: bash
       run: |
         cachix watch-exec ic-hs-test -- \
-          ${{ github.workspace }}/nixbuild.sh -L \
+          nix build --max-jobs auto -L \
             .#release.moc \
             .#release.mo-doc \
             .#js.moc \
@@ -36,7 +30,7 @@ jobs:
 
         echo "## checks"
         uname -s -m
-        moc="$(${{ github.workspace }}/nixbuildcopy.sh .#release.moc)"
+        moc="$(nix build --max-jobs auto .#release.moc --print-out-paths)"
         "$moc/bin/moc" --version
         file "$moc/bin/moc"
         ldd "$moc/bin/moc" || true
