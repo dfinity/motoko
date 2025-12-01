@@ -17,8 +17,6 @@ actor Decoding {
   type Nested1024 = H2<H2<H2<H2<Nat8>>>>;
 
   debugPrint(debug_show getCandidTypeLimits<system>());
-  setCandidTypeLimits<system>{bias = 300; scaler = 1};
-  debugPrint(debug_show getCandidTypeLimits<system>());
 
   func measure<T>(f : () -> ?T) {
       let p0 = performanceCounter(0);
