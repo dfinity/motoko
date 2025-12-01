@@ -8801,14 +8801,14 @@ module Serialization = struct
       (* Go! *)
       let tydesc, _, _ = type_desc env Candid ts in
       let tydesc_len = Int64.of_int (String.length tydesc) in
-      let tydesc_tolerance =
+      let tydesc_tolerance =Printf.printf "tydesc_len: %d\n" (String.length tydesc);
         compile_unboxed_const tydesc_len ^^
         Registers.get_type_scaler env ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
         Registers.get_type_bias env ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) in
       Bool.(lit extended ^^ to_rts_int32) ^^ get_data_buf ^^ tydesc_tolerance ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
       E.call_import env "rts" "parse_idl_header" ^^
 
-      (* Allocate global type type, if necessary for subtype checks *)
+      (* Allocate global type table, if necessary for subtype checks *)
       (if extended then
          G.nop
        else begin
@@ -12718,6 +12718,15 @@ and compile_prim_invocation (env : E.t) ae p es at =
     Serialization.Registers.get_value_bias env ^^
     TaggedSmallWord.msb_adjust Type.Nat32 ^^
     TaggedSmallWord.tag env Type.Nat32
+
+  | OtherPrim "setCandidTypeLimits", [e1; e2] ->
+    SR.unit,
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e1 ^^
+    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
+    Serialization.Registers.set_type_scaler env ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e2 ^^
+    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
+    Serialization.Registers.set_type_bias env
 
   | OtherPrim "getCandidTypeLimits", [] ->
     SR.UnboxedTuple 2,
