@@ -2724,10 +2724,8 @@ and infer_callee env exp =
   | _ ->
      infer_exp_promote env exp, None
 and as_implicit = function
-  | T.Implicit(Some arg_name, t) ->
-    Some arg_name
-  | T.Implicit (None, t) ->
-    Some "_"
+  | T.Implicit(id_opt, t) ->
+    Some id_opt
   | _ -> None
 
 (** With implicits we can either fully specify all implicit arguments or none
@@ -2740,8 +2738,11 @@ and arity_with_implicits t_args =
   saturated_arity, implicits_arity
 
 and insert_holes at ts es =
-  let mk_hole pos hole_id =
-    let hole_sort = if hole_id = "_" then Anon pos else Named hole_id in
+  let mk_hole pos id_opt =
+    let hole_sort = match id_opt with
+      | Some id -> Named id
+      | None -> Anon pos
+    in
     {it = HoleE (hole_sort, ref {it = PrimE "hole"; at; note=empty_typ_note });
       at;
       note = empty_typ_note }
@@ -2770,8 +2771,12 @@ and check_explicit_arguments env saturated_arity implicits_arity arg_typs syntax
              pos + 1,
              match as_implicit typ with
              | None -> acc
-             | Some name ->
-                match resolve_hole env arg.at (match name with "_" -> Anon pos | id -> Named id) typ with
+             | Some id_opt ->
+                let hole_sort = match id_opt with
+                  | Some id -> Named id
+                  | None -> Anon pos
+                in
+                match resolve_hole env arg.at hole_sort typ with
                 | Error _ -> acc
                 | Ok {path;_} ->
                    match path.it, arg.it with
