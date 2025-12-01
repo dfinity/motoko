@@ -1968,10 +1968,21 @@ let vs_of_cs cs =
 let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s%s%d" x Cfg.par_sep i
 
+let is_prim_con_same_name c = match Cons.kind c with
+  | Def ([], t) ->
+    (match normalize t with
+    (* Legacy: Ignore printing the namespace for prim types with the same name *)
+    | Prim p -> string_of_prim p = Cons.name c
+    | _ -> false)
+  | _ -> false
+
 let string_of_con c =
-  let name = Cons.to_string Cfg.show_stamps Cfg.con_sep c in
-  if Cfg.show_hash_suffix then name
-  else remove_hash_suffix name
+  let base_name = Cons.to_string Cfg.show_stamps Cfg.con_sep c in
+  let name = if Cfg.show_hash_suffix then base_name else remove_hash_suffix base_name in
+  if Cfg.show_stamps || is_prim_con_same_name c then name else
+  match Cons.namespace c with
+  | [] -> name
+  | namespace -> String.concat "." (namespace @ [name])
 
 let rec can_sugar = function
   | Func(s, Promises, tbs, ts1, ts2)

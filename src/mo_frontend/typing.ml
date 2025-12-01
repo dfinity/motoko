@@ -359,6 +359,20 @@ let adjoin env scope =
     mixins = T.Env.adjoin env.mixins scope.Scope.mixin_env;
   }
 
+let open_namespace_import (pat : pat) (exp : exp) k =
+  match pat.it, exp.it with
+  | VarP id, ImportE _ ->
+    let name = id.it in
+    Cons.open_namespace name k
+    | _ -> k ()
+
+let open_namespace_id id k =
+  match id with
+  | Some id -> Cons.open_namespace id.it k
+  | None -> k ()
+
+let (let*) f x = f x 
+
 let adjoin_vals env ve = {env with vals = T.Env.adjoin env.vals (available ve)}
 let adjoin_typs env te ce =
   { env with
@@ -4237,6 +4251,7 @@ and gather_dec env scope dec : Scope.t =
       | {it = AwaitE (_, { it = AsyncE (_, _, _, { it = ObjBlockE (_, ({ it = Type.Actor; _} as obj_sort), _, dec_fields); at; _ }) ; _  }); _ }),
        _
     ) ->
+    let* () = Cons.open_namespace id.it in
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let open Scope in
     if T.Env.mem id.it scope.val_env then
@@ -4382,6 +4397,7 @@ and infer_dec_typdecs env dec : Scope.t =
       | {it = AwaitE (_, { it = AsyncE (_, _, _, { it = ObjBlockE (_exp_opt, ({ it = Type.Actor; _} as obj_sort), _t, dec_fields); at; _ }) ; _ }); _ }),
         _
     ) ->
+    let* () = Cons.open_namespace id.it in
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) dec_fields in
     let scope = T.Env.find id.it env.objs in
     let env' = adjoin env scope in
@@ -4483,6 +4499,7 @@ and infer_dec_valdecs env dec : Scope.t =
       | {it = AwaitE (_, { it = AsyncE (_, _, _, { it = ObjBlockE (_exp_opt, ({ it = Type.Actor; _} as obj_sort), _t, dec_fields); at; _ }) ; _ }); _ }),
         _
     ) ->
+    let* () = Cons.open_namespace id.it in
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let obj_scope = T.Env.find id.it env.objs in
     let obj_scope' =
@@ -4599,11 +4616,12 @@ let check_actors ?(viper_mode=false) ?(check_actors=false) scope progs : unit Di
         ) progs
     )
 
-let check_lib scope pkg_opt lib : Scope.t Diag.result =
+let check_lib scope pkg_opt id lib : Scope.t Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt
         (fun lib ->
+          let* () = open_namespace_id id in
           let env = { (env_of_scope msgs scope) with errors_only = pkg_opt <> None } in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in

@@ -221,12 +221,12 @@ let check_progs ?(viper_mode=false) senv progs : (Scope.t list * Scope.t) Diag.r
   in
   go senv [] progs
 
-let check_lib senv pkg_opt lib : Scope.scope Diag.result =
+let check_lib senv pkg_opt id lib : Scope.scope Diag.result =
   let filename = lib.Source.note.Syntax.filename in
   Cons.session ~scope:filename (fun () ->
     phase "Checking" (Filename.basename filename);
     let open Diag.Syntax in
-    let* sscope = Typing.check_lib senv pkg_opt lib in
+    let* sscope = Typing.check_lib senv pkg_opt id lib in
     phase "Definedness" (Filename.basename filename);
     let* () = Definedness.check_lib lib in
     Diag.return sscope)
@@ -344,7 +344,7 @@ let check_prim () : Syntax.lib * stat_env =
       at = no_region;
       note = { filename = "@prim"; trivia = Trivia.empty_triv_table }
     } in
-    match check_lib senv0 None lib with
+    match check_lib senv0 None None lib with
     | Error es -> prim_error "checking" es
     | Ok (sscope, _ws) ->
       let senv1 = Scope.adjoin senv0 sscope in
@@ -375,8 +375,8 @@ type load_result =
 type load_decl_result =
   (Syntax.lib list * Syntax.prog * Scope.scope * Type.typ * Scope.scope) Diag.result
 
-let resolved_import_name ri =
-  Syntax.(match ri.Source.it with
+let resolved_import_name (ri : ResolveImport.resolved_import) =
+  Syntax.(match ri.Source.it.ResolveImport.ri with
   | Unresolved -> "/* unresolved */"
   | LibPath { package = _; path }
   | IDLPath (path, _)
@@ -415,8 +415,8 @@ let chase_imports_cached parsefn senv0 imports scopes_map
     | Some sscope ->
       senv := Scope.adjoin !senv sscope;
       Diag.return ()
-  and go pkg_opt ri =
-    let it = ri.Source.it in
+  and go pkg_opt (ri : ResolveImport.resolved_import) =
+    let ResolveImport.{ri = it; id} = ri.Source.it in
     let ri_name = resolved_import_name ri in
     match it with
     | Syntax.PrimPath ->
@@ -447,7 +447,7 @@ let chase_imports_cached parsefn senv0 imports scopes_map
         let* more_imports = ResolveImport.resolve (resolve_flags cur_pkg_opt) prog base in
         let* () = go_set cur_pkg_opt more_imports in
         let lib = lib_of_prog f prog in
-        let* sscope = check_lib !senv cur_pkg_opt lib in
+        let* sscope = check_lib !senv cur_pkg_opt id lib in
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
         cache := Type.Env.add ri_name sscope !cache;

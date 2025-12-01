@@ -39,7 +39,7 @@ type compile_result =
 val compile_files : Flags.compile_mode -> bool -> string list -> compile_result
 
 val resolve_flags : (* package_opt *) string option -> ResolveImport.flags
-val resolved_import_name : Syntax.resolved_import Source.phrase -> string
+val resolved_import_name : ResolveImport.resolved_import -> string
 
 (* For use in the language server *)
 
