@@ -8801,7 +8801,7 @@ module Serialization = struct
       (* Go! *)
       let tydesc, _, _ = type_desc env Candid ts in
       let tydesc_len = Int64.of_int (String.length tydesc) in
-      let tydesc_tolerance =Printf.printf "tydesc_len: %d\n" (String.length tydesc);
+      let tydesc_tolerance =
         compile_unboxed_const tydesc_len ^^
         Registers.get_type_scaler env ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
         Registers.get_type_bias env ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) in
