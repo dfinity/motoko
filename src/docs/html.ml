@@ -186,10 +186,13 @@ and html_of_typ_field : env -> Syntax.typ_field -> t =
 
 and html_of_typ_item : env -> Syntax.typ_item -> t =
  fun env (oid, t) ->
-  Option.fold ~none:empty
-    ~some:(fun id -> parameter id.Source.it ++ string " : ")
-    oid
-  ++ html_of_type env t
+  match (oid, t.Source.it) with
+  | None, Syntax.ImplicitT (oid, t) -> html_of_implicit env oid t
+  | _ ->
+      Option.fold ~none:empty
+        ~some:(fun id -> parameter id.Source.it ++ string " : ")
+        oid
+      ++ html_of_type env t
 
 and html_of_implicit : env -> Syntax.id_opt -> Syntax.typ -> t =
  fun env id_opt t ->

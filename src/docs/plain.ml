@@ -207,8 +207,11 @@ and plain_of_typ_field :
 and plain_of_typ_item : Buffer.t -> render_functions -> Syntax.typ_item -> unit
     =
  fun buf rf (oid, t) ->
-  Option.iter (fun id -> bprintf buf "%s : " id.it) oid;
-  plain_of_typ buf rf t
+  match (oid, t.Source.it) with
+  | None, Syntax.ImplicitT (oid, t) -> plain_of_implicit buf rf oid t
+  | _ ->
+      Option.iter (fun id -> bprintf buf "%s : " id.it) oid;
+      plain_of_typ buf rf t
 
 and plain_of_implicit :
     Buffer.t -> render_functions -> Syntax.id_opt -> Syntax.typ -> unit =
