@@ -973,11 +973,12 @@ pat_opt :
 pat_arg :
   | implicit x=id COLON t=typ
     { let name_opt, t1 =
-(*	match t.it with
+      (* disallow or adjust in typing.ml *)
+      match t.it with
 	| NamedT(y, t1) -> (* legacy override *)
 	   {y with it = Some y.it},
 	   t1
-	| _ ->*)
+	| _ ->
 	   {x with it = Some x.it},
 	   t
       in
