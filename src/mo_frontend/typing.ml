@@ -1066,7 +1066,7 @@ let is_explicit_lit l =
 
 let rec is_explicit_pat p =
   match p.it with
-  | WildP | VarP _ -> false
+  | WildP | VarP _ | GivenP _ -> false
   | LitP l | SignP (_, l) -> is_explicit_lit !l
   | OptP p1 | TagP (_, p1) | ParP p1 -> is_explicit_pat p1
   | TupP ps -> List.for_all is_explicit_pat ps
@@ -1313,6 +1313,7 @@ and combine_pat_srcs env t pat : unit =
   match pat.it with
   | WildP -> ()
   | VarP id -> combine_id_srcs env t id
+  | GivenP id -> combine_id_srcs env t id.id
   | LitP _ -> ()
   | SignP _ -> ()
   | TupP pats ->
@@ -3192,7 +3193,7 @@ and infer_pat' name_types env pat : T.typ * Scope.val_env =
   match pat.it with
   | WildP ->
     error env pat.at "M0102" "cannot infer type of wildcard"
-  | VarP _ ->
+  | VarP _ | GivenP _ ->
     error env pat.at "M0103" "cannot infer type of variable"
   | LitP lit ->
     T.Prim (infer_lit env lit pat.at), T.Env.empty
@@ -3310,6 +3311,8 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
     T.Env.empty
   | VarP id ->
     T.Env.singleton id.it (None, t, id.at, val_kind)
+  | GivenP { id; implicit } ->
+    T.Env.singleton id.it (Some implicit.it, t, id.at, val_kind)
   | LitP lit ->
     if not env.pre then begin
       let t' = if eq env pat.at t T.nat then T.int else t in  (* account for Nat <: Int *)
@@ -3590,7 +3593,7 @@ and vis_dec src dec xs : visibility_env =
 and vis_pat src pat xs : visibility_env =
   match pat.it with
   | WildP | LitP _ | SignP _ -> xs
-  | VarP id -> vis_val_id src id xs
+  | VarP id | GivenP { id; _} -> vis_val_id src id xs
   | TupP pats -> List.fold_right (vis_pat src) pats xs
   | ObjP pfs -> List.fold_right (vis_pat_field src) pfs xs
   | AltP (pat1, _)
@@ -4288,7 +4291,7 @@ and gather_dec env scope dec : Scope.t =
       | VarP id -> Scope.adjoin scope (Scope.mixin id.it (imports, args, t, decs))
       | _ -> error env pat.at "M0229" "mixins may only be imported by binding to a name"
   )
-  | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
+  | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id None Scope.Declaration)
   | TypD (id, binds, _) | ClassD (_, _, _, id, binds, _, _, _, _) ->
     let open Scope in
     if T.Env.mem id.it scope.typ_env then
@@ -4348,7 +4351,8 @@ and gather_pat env (scope : Scope.t) pat : Scope.t =
 and gather_pat_aux env val_kind scope pat : Scope.t =
   match pat.it with
   | WildP | LitP _ | SignP _ -> scope
-  | VarP id -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id val_kind)
+  | VarP id -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id None val_kind)
+  | GivenP { id; implicit } -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id (Some implicit.it) val_kind)
   | TupP pats -> List.fold_left (gather_pat env) scope pats
   | ObjP pfs -> List.fold_left (gather_pat_field env) scope pfs
   | TagP (_, pat1) | AltP (pat1, _) | OptP pat1
@@ -4360,11 +4364,10 @@ and gather_pat_field env scope pf : Scope.t =
   | ValPF (id, pat) -> gather_pat_aux env val_kind scope pat
   | TypPF id -> gather_typ_id env scope id
 
-and gather_id env ve id val_kind : Scope.val_env =
+and gather_id env ve id implicit val_kind : Scope.val_env =
   if T.Env.mem id.it ve then
     error_duplicate env "" id;
-  (* TODO *)
-  T.Env.add id.it (None, T.Pre, id.at, val_kind) ve
+  T.Env.add id.it (implicit, T.Pre, id.at, val_kind) ve
 
 and gather_typ_id env scope id : Scope.t =
   let open Scope in
@@ -4429,13 +4432,17 @@ and infer_dec_typdecs env dec : Scope.t =
     (match infer_val_path env exp with
      | None -> Scope.empty
      | Some t ->
-       let open Scope in
-       (* TODO *)
        match T.promote t with
-       | T.Obj (_, _) as t' -> { Scope.empty with val_env = singleton id None t' }
-       | _ -> { Scope.empty with val_env = singleton id None T.Pre }
-    )
-           end
+       | T.Obj (_, _) as t' -> Scope.{ empty with val_env = singleton id None t' }
+       | _ -> Scope.{ empty with val_env = singleton id None T.Pre }
+    ) end
+  | LetD ({it = GivenP { id; implicit }; _}, exp, _) ->
+    (match infer_val_path env exp with
+     | None -> Scope.empty
+     | Some t ->
+       match T.promote t with
+       | T.Obj (_, _) as t' -> Scope.{ empty with val_env = singleton id (Some implicit.it) t' }
+       | _ -> Scope.{ empty with val_env = singleton id (Some implicit.it) T.Pre })
   | LetD (pat, exp, _) ->
        begin match infer_val_path env exp with
        | Some t ->

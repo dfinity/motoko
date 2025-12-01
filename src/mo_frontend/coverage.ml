@@ -192,7 +192,7 @@ let skip_pat at sets =
 let rec match_pat ctxt desc pat t sets =
   T.span t = Some 0 && skip_pat pat.at sets ||
   match pat.it with
-  | WildP | VarP _ ->
+  | WildP | VarP _ | GivenP _ ->
     if T.inhabited t then
       succeed ctxt desc sets
     else

@@ -107,6 +107,7 @@ type pat = (pat', Type.typ) Source.annotated_phrase
 and pat' =
   | WildP                                      (* wildcard *)
   | VarP of id                                 (* variable *)
+  | GivenP of given                            (* implicit *)
   | LitP of lit ref                            (* literal *)
   | SignP of unop * lit ref                    (* signed literal *)
   | TupP of pat list                           (* tuple *)
@@ -119,6 +120,8 @@ and pat' =
 (*
   | AsP of pat * pat                           (* conjunctive *)
 *)
+
+and given = { implicit : id; id : id }
 
 and pat_field = pat_field' Source.phrase
 and pat_field' =

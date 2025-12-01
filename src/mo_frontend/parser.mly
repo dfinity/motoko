@@ -888,6 +888,8 @@ pat_plain :
     { WildP @! at $sloc }
   | x=id
     { VarP(x) @! at $sloc }
+  | x=id WITH y=id
+    { GivenP { id = x; implicit = y } @! at $sloc }
   | l=lit
     { LitP(ref l) @! at $sloc }
   | LPAR ps=seplist(pat_bin, COMMA) RPAR
