@@ -972,17 +972,7 @@ pat_opt :
 
 pat_arg :
   | implicit x=id COLON t=typ
-    { let name_opt, t1 =
-      (* disallow or adjust in typing.ml *)
-      match t.it with
-	| NamedT(y, t1) -> (* legacy override *)
-	   {y with it = Some y.it},
-	   t1
-	| _ ->
-	   {x with it = Some x.it},
-	   t
-      in
-      AnnotP(VarP x @! x.at, (ImplicitT(name_opt, t1) @! at $sloc)) @! at $sloc
+    { AnnotP(VarP x @! x.at, (ImplicitT({x with it = Some x.it}, t) @! at $sloc)) @! at $sloc
     }
   | implicit x=id COLON t=typ EQ p=pat
     { AnnotP(p, (ImplicitT({x with it = Some x.it} , t) @! at $sloc)) @! at $sloc }

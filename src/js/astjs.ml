@@ -145,8 +145,8 @@ module Make (Cfg : Config) = struct
     | Typ c -> to_js_object "Typ" [| Type.string_of_con c |> js_string |]
     | Named (n, t) -> to_js_object "Name" [| js_string n; typ_js t |]
     | Implicit (no, t) ->
-      let n = match no with Some n -> n | None -> "_" in
-      to_js_object "Implicit" [| js_string n ; typ_js t |]
+        let n = match no with Some n -> n | None -> "_" in
+        to_js_object "Implicit" [| js_string n ; typ_js t |]
     | Weak t -> to_js_object "Weak" [| typ_js t |]
 
   and field_js { Type.lab; typ = t; src = s } =
@@ -493,10 +493,10 @@ module Make (Cfg : Config) = struct
         to_js_object "OrT" [| syntax_typ_js t1; syntax_typ_js t2 |]
     | ParT t -> to_js_object "ParT" [| syntax_typ_js t |]
     | NamedT (id, t) ->
-      to_js_object "NamedT" [| js_string id.it; syntax_typ_js t |]
+        to_js_object "NamedT" [| js_string id.it; syntax_typ_js t |]
     | ImplicitT (no, t) ->
-      let n = match no.it with Some n -> n | None -> "_" in
-      to_js_object "ImplicitT" [| js_string n ;  syntax_typ_js t |]
+        let n = match no.it with Some n -> n | None -> "_" in
+        to_js_object "ImplicitT" [| js_string n; syntax_typ_js t |]
     | WeakT t -> to_js_object "WeakT" [| syntax_typ_js t |]
 
   and typ_field_js tf =
