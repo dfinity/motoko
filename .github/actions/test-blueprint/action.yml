@@ -30,27 +30,38 @@ inputs:
   cachix-auth-token:
     required: true
     description: "Cachix authentication token"
+  nixbuild_token:
+    required: false
+    description: "Nixbuild.net authentication token"
 
 runs:
   using: "composite"
   steps:
-    - name: Free Disk Space (Ubuntu)
-      if: inputs.os == 'ubuntu-latest' || inputs.os == 'ubuntu-24.04-arm'
-      uses: jlumbroso/free-disk-space@main
-      with:
-        swap-storage: false
+    - uses: nixbuild/nix-quick-install-action@v34
 
-    - uses: cachix/install-nix-action@v31
+    - if: startsWith(inputs.os, 'ubuntu-')
+      uses: nixbuild/nixbuild-action@v24
+      with:
+        nixbuild_token: ${{ inputs.nixbuild_token }}
+        generate_summary_for: 'workflow'
 
     - uses: cachix/cachix-action@v16
       with:
         name: ic-hs-test
         authToken: ${{ inputs.cachix-auth-token }}
 
-    - run: nix profile install .#nix-build-uncached
+    - if: startsWith(inputs.os, 'ubuntu-')
+      name: "Run ${{ inputs.test-name }}"
+      shell: bash
+      run: |
+        ${{ github.workspace }}/nixbuild.sh '.#${{ inputs.test-target }}'
+
+    - if: startsWith(inputs.os, 'macos-')
+      run: nix profile install .#nix-build-uncached
       shell: bash
 
-    - name: "Run ${{ inputs.test-name }}"
+    - if: startsWith(inputs.os, 'macos-')
+      name: "Run ${{ inputs.test-name }}"
       run: |
         cachix watch-exec ic-hs-test -- \
         nix-build-uncached --max-jobs auto \

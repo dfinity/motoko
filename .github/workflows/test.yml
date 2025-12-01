@@ -8,7 +8,7 @@ jobs:
   common-tests:
     strategy:
       matrix:
-        os: [ ubuntu-24-large, arm64-linux-16 ]
+        os: [ ubuntu-latest, ubuntu-24.04-arm ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -21,11 +21,12 @@ jobs:
           test-target: common-tests
           test-name: ${{ matrix.os }}-common-tests
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
 
   gc-tests:
     strategy:
       matrix:
-        os: [ ubuntu-24-large, arm64-linux-16 ]
+        os: [ ubuntu-latest, ubuntu-24.04-arm ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -38,11 +39,12 @@ jobs:
           test-target: gc-tests
           test-name: ${{ matrix.os }}-gc-tests
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
 
   tests:
     strategy:
       matrix:
-        os: [ ubuntu-24-large, arm64-linux-16 ]
+        os: [ ubuntu-latest, ubuntu-24.04-arm ]
         build_type: [ release, debug ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
@@ -61,6 +63,7 @@ jobs:
           test-target: ${{ matrix.build_type }}-systems-go
           test-name: ${{ matrix.os }}-${{ matrix.build_type }}-tests
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
 
       - name: Create GitHub App Token
         uses: actions/create-github-app-token@v2
@@ -87,14 +90,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: cachix/install-nix-action@v31
+      - uses: nixbuild/nix-quick-install-action@v34
       - uses: cachix/cachix-action@v16
         with:
           name: ic-hs-test
+      - uses: nixbuild/nixbuild-action@v24
+        with:
+          nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
+          generate_summary_for: 'workflow'
       - name: Fetch report
-        run: nix build .#report-site -o report-site
-      - name: Resolve symlinks
-        run: cp -rL report-site report-site-copy
+        shell: bash
+        run: |
+          report_site="$(${{ github.workspace }}/nixbuildcopy.sh .#report-site)"
+          cp -rL "$report_site" report-site-copy
       - name: Push report to GitHub pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
@@ -110,16 +118,21 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
-      - uses: cachix/install-nix-action@v31
-      - uses: cachix/cachix-action@v16
+      - uses: nixbuild/nix-quick-install-action@v34
+      - if: ${{ startsWith(matrix.os, 'ubuntu-') }}
+        uses: nixbuild/nixbuild-action@v24
+        with:
+          nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
+          generate_summary_for: 'workflow'
+      - if: ${{ startsWith(matrix.os, 'macos-') }}
+        uses: cachix/cachix-action@v16
         with:
           name: ic-hs-test
       - name: nix-build
+        shell: bash
         run: |
-          nix build .#release.moc
-      # upload-artifact doesn't work for symlink dir
-      # https://github.com/actions/upload-artifact/issues/92
-      - run: echo "UPLOAD_PATH=$(readlink -f result)" >> $GITHUB_ENV
+          moc="$(${{ github.workspace }}/nixbuildcopy.sh .#release.moc)"
+          echo "UPLOAD_PATH=$moc" >> $GITHUB_ENV
       - name: upload artifacts
         uses: actions/upload-artifact@v5
         with:

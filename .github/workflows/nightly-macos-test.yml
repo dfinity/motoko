@@ -2,8 +2,10 @@ name: "nightly-macos-test"
 on:
   schedule:
     - cron: '0 0 * * *'  # Run at midnight UTC every day
+  # To test this workflow: Go to Actions -> nightly-macos-test -> Run workflow
+  # Or using the CLI: gh workflow run nightly-macos-test [--ref <branch>]
   workflow_dispatch:  # Allow manual triggering
-  
+
 jobs:
   common-tests:
     runs-on: macos-latest
@@ -60,6 +62,7 @@ jobs:
           test-target: moc
           test-name: fetch-moc
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
       - name: Build `moc`
         run: |
           nix build .#moc --print-out-paths
@@ -90,7 +93,7 @@ jobs:
 
   create-issue:
     needs: [common-tests, gc-tests, systems-go-tests, motoko-core-tests]
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    if: ${{ always() && contains(needs.*.result, 'failure') && github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest # No need to run on macOS, the ubuntu runner should be cheaper to run.
     steps:
       - name: Create Issue
