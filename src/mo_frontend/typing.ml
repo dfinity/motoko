@@ -2728,12 +2728,6 @@ and as_implicit = function
     Some arg_name
   | T.Implicit (None, t) ->
     Some "_"
-  | T.Named (_inf_arg_name, (T.Implicit (Some arg_name, t))) ->
-    (* override inferred arg_name *)
-     Some arg_name
-  | T.Named (_inf_arg_name, (T.Implicit (None, t))) ->
-    (* override inferred arg_name *)
-     Some "_"
   | _ -> None
 
 (** With implicits we can either fully specify all implicit arguments or none
