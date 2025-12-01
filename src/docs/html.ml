@@ -107,9 +107,9 @@ let rec html_of_type : env -> Syntax.typ -> t =
   | Syntax.PrimT typ -> html_type typ
   | Syntax.ParT typ -> string "(" ++ html_of_type env typ ++ string ")"
   | Syntax.NamedT (id, t) ->
-     string "(" ++ html_of_typ_item env (Some id, t) ++ string ")"
+      string "(" ++ html_of_typ_item env (Some id, t) ++ string ")"
   | Syntax.ImplicitT (id_opt, t) ->
-     string "(" ++ html_of_implicit env id_opt t ++ string ")"
+      string "(" ++ html_of_implicit env id_opt t ++ string ")"
   | Syntax.OptT typ -> string "?" ++ html_of_type env typ
   | Syntax.WeakT typ -> string "weak" ++ html_of_type env typ
   | Syntax.TupT typ_list ->
@@ -193,9 +193,10 @@ and html_of_typ_item : env -> Syntax.typ_item -> t =
 
 and html_of_implicit : env -> Syntax.id_opt -> Syntax.typ -> t =
  fun env id_opt t ->
-  let desc = match id_opt.Source.it with Some id -> parameter id | None -> string "_" in
-  string "implicit " ++ desc ++ string " : "
-  ++ html_of_type env t
+  let desc =
+    match id_opt.Source.it with Some id -> parameter id | None -> string "_"
+  in
+  string "implicit " ++ desc ++ string " : " ++ html_of_type env t
 
 let html_of_type_doc : env -> Extract.type_doc -> Xref.t -> t =
  fun env type_doc xref ->
