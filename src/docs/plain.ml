@@ -153,8 +153,7 @@ let rec plain_of_typ : Buffer.t -> render_functions -> Syntax.typ -> unit =
       bprintf buf "(";
       plain_of_typ_item buf rf (Some id, typ);
       bprintf buf ")"
-  | Syntax.ImplicitT (id_opt, typ) ->
-      plain_of_implicit buf rf id_opt typ;
+  | Syntax.ImplicitT (id_opt, typ) -> plain_of_implicit buf rf id_opt typ
   | Syntax.FuncT (func_sort, typ_binders, arg, res) ->
       plain_of_func_sort buf func_sort;
       plain_of_typ_binders buf rf typ_binders;
