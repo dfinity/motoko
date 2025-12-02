@@ -93,8 +93,8 @@ ignore mkZero<{ x : Nat }>();
 
 // tricky case: if we have two implicit arguments of the same name we currently need to add a second type annotation
 func c <T, U>(p1 : (T, U), p2 : (T, U),
-   implicit cT : (c : (T, T) -> Order),
-   implicit cU : (c : (U, U) -> Order))
+   implicit c : (T, T) -> Order = cT,
+   implicit c : (U, U) -> Order = cU)
    : Order {
    switch (cT(p1.0, p2.0)) {
      case (#equal) { cU(p1.1, p2.1) };

@@ -62,6 +62,7 @@ and typ =
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
   | Named of name * typ                       (* named type *)
+  | Implicit of name option * typ             (* implicit argument *)
   | Weak of typ                               (* weak reference *)
   | Pre                                       (* pre-type *)
 
@@ -141,7 +142,8 @@ let tag = function
   | Pre -> 13
   | Typ _ -> 14
   | Named _ -> 15
-  | Weak _ -> 16
+  | Implicit _ -> 16
+  | Weak _ -> 17
 
 let compare_prim p1 p2 =
   let d = tag_prim p1 - tag_prim p2 in
@@ -234,6 +236,11 @@ let rec compare_typ (t1 : typ) (t2 : typ) =
     (match String.compare n1 n2 with
      | 0 -> compare_typ t1 t2
      | ord -> ord)
+  | Implicit (o1, t1), Implicit (o2, t2) ->
+    (match Option.compare String.compare o1 o2 with
+     | 0 -> compare_typ t1 t2
+     | ord -> ord)
+
   | _ -> Int.compare (tag t1) (tag t2)
 
 and compare_tb tb1 tb2 =
@@ -437,6 +444,7 @@ let rec shift i n t =
   | Pre -> Pre
   | Typ c -> Typ c
   | Named (name, t) -> Named (name, shift i n t)
+  | Implicit (name_opt, t) -> Implicit (name_opt, shift i n t)
   | Weak t -> Weak (shift i n t)
 
 and shift_bind i n tb =
@@ -490,6 +498,7 @@ let rec subst sigma t =
                       (but can mention other (closed) type constructors).
                     *)
   | Named (name, t) -> Named (name, subst sigma t)
+  | Implicit (name_opt, t) -> Implicit (name_opt, subst sigma t)
   | Weak t -> Weak (subst sigma t)
 
 and subst_bind sigma tb =
@@ -541,6 +550,7 @@ let rec open' i ts t =
   | Pre -> Pre
   | Typ c -> Typ c
   | Named (name, t) -> Named (name, open' i ts t)
+  | Implicit (name_opt, t) -> Implicit (name_opt, open' i ts t)
   | Weak t -> Weak (open' i ts t)
 
 and open_bind i ts tb  =
@@ -586,14 +596,16 @@ let rec normalize = function
     | _ -> t
     )
   | Mut t -> Mut (normalize t)
-  | Named (_, t) -> normalize t
+  | Named (_, t)
+  | Implicit (_, t) -> normalize t
   | t -> t
 
 let rec promote = function
   | Con (con, ts) ->
     let Def (tbs, t) | Abs (tbs, t) = Cons.kind con
     in promote (reduce tbs t ts)
-  | Named (_, t) -> promote t
+  | Named (_, t)
+  | Implicit (_, t) -> promote t
   | t -> t
 
 (* Projections *)
@@ -764,7 +776,8 @@ let rec span = function
   | Mut t -> span t
   | Non -> Some 0
   | Typ _ -> Some 1
-  | Named (_, t) -> span t
+  | Named (_, t)
+  | Implicit (_, t) -> span t
   | Weak t -> span t (* TBR *)
 
 
@@ -797,8 +810,11 @@ let rec cons' inTyp t cs =
     else
       (* don't add c unless mentioned in Cons.kind c *)
       cons_kind' inTyp (Cons.kind c) cs
-  | Named (_ , t) ->
+  | Named (_ , t)
+  | Implicit (_ , t) ->
     cons' inTyp t cs
+
+
 
 and cons_con inTyp c cs =
   if ConSet.mem c cs
@@ -854,7 +870,8 @@ let concrete t =
         List.for_all go (List.map (open_ ts) ts2)
       | Typ c -> (* assumes type defs are closed *)
         true (* so we can transmit actors with typ fields *)
-      | Named (_, t) -> go t
+      | Named (_, t)
+      | Implicit (_, t)
       | Weak t -> go t
     end
   in go t
@@ -892,7 +909,8 @@ let serializable allow_mut t =
          | Object | Memory -> List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
-      | Named (n, t) -> go t
+      | Named (_, t)
+      | Implicit (_, t) -> go t
     end
   in go t
 
@@ -927,7 +945,8 @@ let find_unshared t =
         if is_shared_sort s
         then None
         else Some t
-      | Named (n, t) -> go t
+      | Named (_, t)
+      | Implicit (_, t) -> go t
     end
   in go t
 
@@ -1048,6 +1067,7 @@ and explanation =
 and context_item =
   | ConsType of con
   | NamedType of name
+  | ImplicitType of name option
   | StableVariable of lab
   | Field of lab
 and context = context_item list
@@ -1167,6 +1187,11 @@ let rec rel_typ d rel eq t1 t2 =
     rel_typ d rel eq t1' t2
   | t1, Named (n, t2') ->
     let d' = RelArg.push (NamedType n) d in
+    rel_typ d' rel eq t1 t2'
+  | Implicit (no, t1'), t2 ->
+    rel_typ d rel eq t1' t2
+  | t1, Implicit (no, t2') ->
+    let d' = RelArg.push (ImplicitType no) d in
     rel_typ d' rel eq t1 t2'
   | Con (con1, ts1), Con (con2, ts2) ->
     (match Cons.kind con1, Cons.kind con2 with
@@ -1403,6 +1428,8 @@ let rec compatible_typ co t1 t2 =
     true
   | Named _, _
   | _, Named _ -> assert false
+  | Implicit _, _
+  | _, Implicit _ -> assert false
   | _, _ ->
     false
   end
@@ -1454,7 +1481,8 @@ let rec inhabited_typ co t =
       inhabited_typ co (open_ ts t')
     | Abs (tbs, t') ->
       inhabited_typ co t')
-  | Named _ -> assert false
+  | Named _
+  | Implicit _ -> assert false (* TBR *)
   end
 
 and inhabited_field co tf = inhabited_typ co tf.typ
@@ -1479,7 +1507,8 @@ let rec singleton_typ co t =
   | Variant _ -> false
   | Var _ -> false
   | Con _ -> false
-  | Named _ -> assert false
+  | Named _
+  | Implicit _ -> assert false
   end
 
 and singleton_field co tf = singleton_typ co tf.typ
@@ -1646,6 +1675,15 @@ let rec combine rel lubs glbs t1 t2 =
         combine rel lubs glbs t1' t2'
     | Named (_, t), t'
     | t, Named (_, t') ->
+      combine rel lubs glbs t t'
+    | Implicit (o1, t1'), Implicit (o2, t2') ->
+      (* TODO: could consider subtyping on o1 o2 *)
+      if o1 = o2 then
+        Implicit (o1, combine rel lubs glbs t1' t2')
+      else
+        combine rel lubs glbs t1' t2'
+    | Implicit (_, t), t'
+    | t, Implicit (_, t') ->
       combine rel lubs glbs t t'
     | _, _ ->
       if rel == lubs then Any else Non
@@ -1999,7 +2037,8 @@ and can_omit n t =
       List.for_all (go i') ts1 &&
       List.for_all (go i') ts2
     | Typ c -> true (* assumes type defs are closed *)
-    | Named (n, t) -> go i t
+    | Named (_, t)
+    | Implicit (_, t) -> go i t
   in go n t
 
 let rec pp_typ_obj vs ppf o =
@@ -2021,16 +2060,18 @@ and pp_typ_variant vs ppf fs =
 
 and pp_typ_item vs ppf t =
   match t with
-  | Named (n, Named ("implicit" as imp, t)) ->
-    fprintf ppf "@[<1>%s %s : %a@]" imp n  (pp_typ' vs) t
+  | Implicit(no, t1) ->
+    let n = match no with Some n -> n | _ -> "_" in
+    fprintf ppf "@[<1>implicit %s : %a@]" n (pp_typ' vs) t1
   | Named (n, t) ->
     fprintf ppf "@[<1>%s : %a@]" n (pp_typ' vs) t
   | typ -> pp_typ' vs ppf t
 
 and pp_typ_nullary vs ppf t =
   match t with
-  | Named (n, Named ("implicit" as imp, t)) ->
-    fprintf ppf "@[<1>(%s %s : %a)@]" imp n  (pp_typ' vs) t
+  | Implicit(no, t1) ->
+    let n = match no with Some n -> n | _ -> "_" in
+    fprintf ppf "@[<1>(implicit %s : %a)@]" n (pp_typ' vs) t1
   | Named (n, t) ->
     fprintf ppf "@[<1>(%s : %a)@]" n (pp_typ' vs) t
   | Tup ts ->
@@ -2318,6 +2359,12 @@ let string_of_context context =
        Printf.sprintf "%s (used by %s)" name (emit_context true rest)
     | (NamedType name)::rest ->
        Printf.sprintf "%s in %s" name (emit_context true rest)
+    | (ImplicitType name_opt)::rest when not nested ->
+       let name = match name_opt with None -> "_" | Some n -> n in
+       Printf.sprintf "%s (used by implicit %s)" name (emit_context true rest)
+    | (ImplicitType name_opt)::rest ->
+       let name = match name_opt with None -> "_" | Some n -> n in
+       Printf.sprintf "implicit %s in %s" name (emit_context true rest)
     | (StableVariable name)::_ -> name
   in
     emit_context false context
