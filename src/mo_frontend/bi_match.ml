@@ -28,16 +28,20 @@ let display_typ = Lib.Format.display pp_typ
 
 (* Bi-Matching *)
 
+type reason =
+  { actual : typ; expected : typ; at : Source.region }
+
 exception Bimatch of {
   message : string;
   hint : string option;
+  reason : reason option;
 }
 
-let bimatch ?(hint=None) message =
-  Bimatch { message; hint }
+let bimatch ?(hint=None) ?(reason=None) message =
+  Bimatch { message; hint; reason }
 
-let error ?(hint=None) message =
-  raise (bimatch ~hint message)
+let error ?(hint=None) ?(reason=None) message =
+  raise (bimatch ~hint ~reason message)
 
 (* add a dummy name to recognize the return type *)
 let name_ret_typ typ = Named ("@ret", typ)
@@ -229,14 +233,14 @@ let update binop c t ce =
 let bi_match_typs ctx =
   let flexible c = ConSet.mem c ctx.var_set in
 
-  let rec bi_match_list_result p rel eq inst any xs1 xs2 =
-    match (xs1, xs2) with
-    | x1::xs1', x2::xs2' ->
+  let rec bi_match_list_result p rel eq inst any xs1 xs2 ats =
+    match xs1, xs2, ats with
+    | x1::xs1', x2::xs2', at::ats' ->
       (match p rel eq inst any x1 x2 with
-      | Some inst -> bi_match_list_result p rel eq inst any xs1' xs2'
-      | None -> Result.Error (inst, (x1, x2)))
-    | [], [] -> Ok inst
-    | _, _ -> assert false
+      | Some inst -> bi_match_list_result p rel eq inst any xs1' xs2' ats'
+      | None -> Result.Error (inst, (x1, x2, at)))
+    | [], [], [] -> Ok inst
+    | _, _, _ -> assert false
   in
 
   let rec bi_match_list p rel eq inst any xs1 xs2 =
@@ -470,7 +474,7 @@ let solve_bounds on_error ctx to_defer l u =
     Unused type variables can be deferred to the next round.
     [deferred_typs] are types to appear in the constraints of the next round. Used to determine which type variables to defer.
  *)
-let solve ctx (ts1, ts2) must_solve =
+let solve ctx (ts1, ts2, ats) must_solve =
   if debug then Debug.print_solve ctx (ts1, ts2) must_solve;
 
   (* Defer solving type variables that can be solved later. More constraints appear in the next round, let them influence as many variables as possible *)
@@ -490,7 +494,7 @@ let solve ctx (ts1, ts2) must_solve =
     to_defer, not (ConSet.disjoint used to_defer)
   in
   match
-    bi_match_typs ctx (ref SS.empty) (ref SS.empty) ctx.bounds ConSet.empty ts1 ts2
+    bi_match_typs ctx (ref SS.empty) (ref SS.empty) ctx.bounds ConSet.empty ts1 ts2 ats
   with
   | Ok (l, u) ->
     let env, var_set = solve_bounds raise ctx to_defer l u in
@@ -522,7 +526,7 @@ let solve ctx (ts1, ts2) must_solve =
         "bug: inferred bad instantiation\n  <%s>\nplease report this error message and, for now, supply an explicit instantiation instead"
         instantiation)
     end
-  | Error ((l, u), (t1, t2)) ->
+  | Error ((l, u), (t1, t2, at)) ->
     let env, _unsolved = solve_bounds ignore ctx ConSet.empty l u in
     (* Preprocess the substitution for better error messages. Drop variables solved to Any/Non.
       1. Unconstrained variables are solved to Any/Non, don't substitute them, the error was not there.
@@ -530,22 +534,27 @@ let solve ctx (ts1, ts2) must_solve =
         However, it usually indicates an error. Don't solve these variables.
     *)
     let env = env |> ConEnv.filter (fun c t -> not (eq Any t || eq Non t)) in
-    let pretty_sub (t1,t2) =
-      let t1 = subst env t1 in
-      let t2 = subst env t2 in
-      match t2 with
-      | Named ("@ret", t2) ->
-        Format.asprintf "%a  (for the expected return type) " display_rel (t1, "<:", t2)
-      | Implicit(no, t2) ->
-        let n = match no with Some n -> n | _ -> "_" in
-        Format.asprintf "%a  (for `implicit` argument `%s`) " display_rel (t1, "<:", t2) n
-      | Named (n, t2) ->
-        Format.asprintf "%a  (for argument `%s`) " display_rel (t1, "<:", t2) n
-      | t2 ->
-        Format.asprintf "%a" display_rel (t1, "<:", t2)
+    let t1 = subst env t1 in
+    let t2 = subst env t2 in
+    let reason =
+      if is_closed ctx t1 && is_closed ctx t2 then
+        let t2 = match t2 with | Named (_, t2) -> t2 | _ -> t2 in
+        Some { actual = t1; expected = t2; at }
+      else
+        None
     in
-    error (Format.asprintf "there is no way to satisfy subtyping%s"
-      (pretty_sub (t1, t2)))
+    let rel = match t2 with
+    | Named ("@ret", t2) ->
+      Format.asprintf "%a  (for the expected return type) " display_rel (t1, "<:", t2)
+    | Named (n, t2) ->
+      Format.asprintf "%a  (for argument `%s`) " display_rel (t1, "<:", t2) n
+    | Implicit(no, t2) ->
+      let n = match no with Some n -> n | _ -> "_" in
+      Format.asprintf "%a  (for `implicit` argument `%s`) " display_rel (t1, "<:", t2) n
+    | t2 ->
+      Format.asprintf "%a" display_rel (t1, "<:", t2)
+    in
+    error ~reason (Format.asprintf "there is no way to satisfy subtyping%s" rel)
 
 let bi_match_subs scope_opt tbs ret_typ =
   (* Create a fresh constructor for each type parameter.
@@ -594,9 +603,10 @@ let bi_match_subs scope_opt tbs ret_typ =
   let ctx = { var_set; var_env; bounds = (l, u); variances; ret_typ; all_vars = cs; current_env = ConEnv.empty; to_verify = ([], [])} in
   fun subs ~must_solve ->
     let must_solve = List.map (open_ ts) must_solve in
-    let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
-    let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
-    let env, remaining = solve ctx (ts1, ts2) must_solve in
+    let ts1 = List.map (fun (t1, _, _) -> open_ ts t1) subs in
+    let ts2 = List.map (fun (_, t2, _) -> open_ ts t2) subs in
+    let ats = List.map (fun (_, _, at) -> at) subs in
+    let env, remaining = solve ctx (ts1, ts2, ats) must_solve in
     List.map (subst env) ts, remaining
 
 let finalize ts1 ctx subs =
@@ -605,7 +615,7 @@ let finalize ts1 ctx subs =
     ts1, ConEnv.empty
   end else begin
     (* Solve the 2nd round of sub-type problems *)
-    let env, remaining = solve ctx (List.split subs) [] in
+    let env, remaining = solve ctx (Lib.List.split3 subs) [] in
 
     (* The 2nd round should not leave any remaining type variables *)
     assert (is_ctx_empty remaining);
