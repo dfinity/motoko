@@ -851,11 +851,12 @@ and check_typ' env ?(allow_implicit=false) typ : T.typ =
   | NamedT (name, typ1) ->
     if not env.pre && name.it = "implicit" && not allow_implicit then
       local_error env typ.at "M0240" "misplaced `implicit`";
-    T.Named (name.it, check_typ env ~allow_implicit typ1)
+    let allow_implicit = allow_implicit && name.it <> "implicit" in
+    T.Named (name.it, check_typ env ~allow_implicit:allow_implicit typ1)
   | ImplicitT (name_opt, typ1) ->
     if not env.pre && not allow_implicit then
       local_error env typ.at "M0240" "misplaced `implicit`";
-    T.Implicit (name_opt.it, check_typ env ~allow_implicit typ1)
+    T.Implicit (name_opt.it, check_typ env ~allow_implicit:false typ1)
   | WeakT typ ->
     T.Weak (check_typ env typ)
 
