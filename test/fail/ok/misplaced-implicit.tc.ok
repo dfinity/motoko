@@ -4,6 +4,6 @@ misplaced-implicit.mo:5.3-5.28: type error [M0096], expression of type
   (implicit x : Nat)
 cannot produce expected type
   ()
-misplaced-implicit.mo:10.16-10.30: type error [M0240], misplaced `implicit`
-misplaced-implicit.mo:14.12-14.26: type error [M0240], misplaced `implicit`
-misplaced-implicit.mo:19.18-19.32: type error [M0240], misplaced `implicit`
+misplaced-implicit.mo:10.15-10.31: type error [M0240], misplaced `implicit`
+misplaced-implicit.mo:14.11-14.27: type error [M0240], misplaced `implicit`
+misplaced-implicit.mo:19.17-19.33: type error [M0240], misplaced `implicit`

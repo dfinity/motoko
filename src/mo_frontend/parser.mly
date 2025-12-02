@@ -492,12 +492,11 @@ typ :
 
 typ_item :
   | i=implicit COLON t = typ
-    { None,
-      NamedT(i, t) @! at $sloc }
-  | i=id COLON t=typ { Some i, t }
+    { Some i, t }
+  | i=id COLON t=typ
+    { Some i, t }
   | i=id_wild COLON t=typ
-    { None,
-      NamedT(i, t) @! at $sloc }
+    { Some i, t }
   | implicit i=id COLON t=typ
     { None,
       ImplicitT ({i with it = Some i.it}, t) @! at $sloc
