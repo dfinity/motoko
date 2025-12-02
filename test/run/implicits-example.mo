@@ -27,8 +27,8 @@ module Pair {
 
   public func toText<T,U>(
     p : (T, U),
-    implicit toTextT : (toText : T -> Text),
-    implicit toTextU : (toText : U -> Text),
+    implicit toText : T -> Text = toTextT,
+    implicit toText : U -> Text = toTextU
     )
     : Text {
       "(" # toTextT(p.0) # "," # toTextU(p.1) # ")"

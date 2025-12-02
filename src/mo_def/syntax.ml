@@ -26,6 +26,8 @@ type id = string Source.phrase
 (* type id_ref, see below *)
 type typ_id = (string, Type.con option) Source.annotated_phrase
 
+(* Implicit ids *)
+type id_opt = string option Source.phrase
 
 (* Types *)
 
@@ -61,6 +63,7 @@ and typ' =
   | OrT of typ * typ                               (* union *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
   | NamedT of id * typ                             (* parenthesized single element named "tuple" *)
+  | ImplicitT of id_opt * typ                      (* implicit argument typ *)
   | WeakT of typ                                   (* weak reference *)
 
 and scope = typ

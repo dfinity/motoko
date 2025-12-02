@@ -736,19 +736,11 @@ let rec check_typ env ?(allow_implicit=false) (typ : typ) : T.typ =
   typ.note <- t;
   t
 
-and check_implicit env allow_implicit id =
-  if not env.pre && id.it = "implicit" && not allow_implicit then
-    local_error env id.at "M0240" "misplaced `implicit`"
-
 and check_typ_item allow_implicit env typ_item =
   match typ_item with
-  | (None, {it = NamedT (id, typ); _}) ->
-     check_implicit env allow_implicit id;
-     T.Named (id.it, check_typ env ~allow_implicit typ)
   | (None, typ) ->
-     check_typ env typ
+     check_typ env ~allow_implicit typ
   | (Some id, typ) ->
-     check_implicit env allow_implicit id;
      T.Named (id.it, check_typ env ~allow_implicit typ)
 
 and check_typ' env ?(allow_implicit=false) typ : T.typ =
@@ -856,9 +848,15 @@ and check_typ' env ?(allow_implicit=false) typ : T.typ =
     t
   | ParT typ ->
     check_typ env ~allow_implicit typ
-  | NamedT (name, typ) ->
-    check_implicit env allow_implicit name;
-    T.Named (name.it, check_typ env ~allow_implicit typ)
+  | NamedT (name, typ1) ->
+    if not env.pre && name.it = "implicit" && not allow_implicit then
+      local_error env typ.at "M0240" "misplaced `implicit`";
+    let allow_implicit = allow_implicit && name.it <> "implicit" in
+    T.Named (name.it, check_typ env ~allow_implicit:allow_implicit typ1)
+  | ImplicitT (name_opt, typ1) ->
+    if not env.pre && not allow_implicit then
+      local_error env typ.at "M0240" "misplaced `implicit`";
+    T.Implicit (name_opt.it, check_typ env ~allow_implicit:false typ1)
   | WeakT typ ->
     T.Weak (check_typ env typ)
 
@@ -2727,16 +2725,8 @@ and infer_callee env exp =
   | _ ->
      infer_exp_promote env exp, None
 and as_implicit = function
-  | T.Named ("implicit", T.Named (arg_name, t)) ->
-    Some arg_name
-  | T.Named ("implicit", t) ->
-    Some "_"
-  | T.Named (_inf_arg_name, (T.Named ("implicit", T.Named (arg_name, t)))) ->
-    (* override inferred arg_name *)
-    Some arg_name
-  | T.Named (inf_arg_name, (T.Named ("implicit", t))) ->
-    (* non-overriden, use inferred arg_name *)
-    Some inf_arg_name
+  | T.Implicit(id_opt, t) ->
+    Some id_opt
   | _ -> None
 
 (** With implicits we can either fully specify all implicit arguments or none
@@ -2749,8 +2739,11 @@ and arity_with_implicits t_args =
   saturated_arity, implicits_arity
 
 and insert_holes at ts es =
-  let mk_hole pos hole_id =
-    let hole_sort = if hole_id = "_" then Anon pos else Named hole_id in
+  let mk_hole pos id_opt =
+    let hole_sort = match id_opt with
+      | Some id -> Named id
+      | None -> Anon pos
+    in
     {it = HoleE (hole_sort, ref {it = PrimE "hole"; at; note=empty_typ_note });
       at;
       note = empty_typ_note }
@@ -2779,8 +2772,12 @@ and check_explicit_arguments env saturated_arity implicits_arity arg_typs syntax
              pos + 1,
              match as_implicit typ with
              | None -> acc
-             | Some name ->
-                match resolve_hole env arg.at (match name with "_" -> Anon pos | id -> Named id) typ with
+             | Some id_opt ->
+                let hole_sort = match id_opt with
+                  | Some id -> Named id
+                  | None -> Anon pos
+                in
+                match resolve_hole env arg.at hole_sort typ with
                 | Error _ -> acc
                 | Ok {path;_} ->
                    match path.it, arg.it with
@@ -3220,10 +3217,25 @@ and infer_pat' name_types env pat : T.typ * Scope.val_env =
     t, T.Env.merge (fun _ -> Lib.Option.map2 (T.lub ~src_fields:env.srcs)) ve1 ve2*)
   | AnnotP ({it = VarP id; _} as pat1, typ) when name_types ->
     let t = check_typ env ~allow_implicit:true typ in
-    T.Named (id.it, t), check_pat env t pat1
-  | AnnotP (pat1, typ) ->
+    (match t with
+    (* legacy *)
+    | T.Named ("implicit", T.Named (id', t1)) ->
+      T.Implicit((if id' = "_" then None else Some id'), t1), check_pat env t1 pat1
+    | T.Named ("implicit", t1)->
+      T.Implicit(Some id.it, t1), check_pat env t1 pat1
+    (* dedicated *)
+    | T.Implicit _ ->
+      t, check_pat env t pat1
+    | _ ->
+      T.Named (id.it, t), check_pat env t pat1)
+  | AnnotP (pat1, typ) -> (* TBR *)
     let t = check_typ env ~allow_implicit:name_types typ in
-    t, check_pat env t pat1
+    (match t with
+     (* legacy *)
+     | T.Named ("implicit", T.Named (id', t1)) ->
+       T.Implicit((if id' = "_" then None else Some id'), t1), check_pat env t1 pat1
+     | _ ->
+       t, check_pat env t pat1)
   | ParP pat1 ->
     infer_pat name_types env pat1
 
