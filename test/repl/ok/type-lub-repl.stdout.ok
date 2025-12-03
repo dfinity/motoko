@@ -25,5 +25,5 @@ Motoko compiler (source XXX)
 > 25 : Int
 > 42 : Int
 >   <func> : (c : C, d : D) -> [C]
-> [async (?4), async (?(-42))] : [async<$> ?Int]
+> [async (?4), async (?(-42))] : [async<$top-level> ?Int]
 > 
