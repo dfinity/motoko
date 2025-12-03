@@ -870,24 +870,25 @@ let paths p t =
     begin
       seen := S.add t !seen;
       match t with
-      | Var _ | Pre -> ()
-      | Prim _ | Any | Non -> ()
-      | Con (c, ts) ->
-        (match Cons.kind c with
-        | Abs _ -> () (* TBR *)
-        | Def (_, t) -> go p (open_ ts t) (* TBR this may fail to terminate *)
-        )
-      | Array t | Opt t | Mut t -> ()
-      | Async (s, t1, t2) -> ()
-      | Tup ts -> ()
-      | Obj (_, fs) ->
-         List.iter (fun f -> go (f.lab::p) f.typ) fs
-      | Variant fs -> ()
-      | Func (s, c, tbs, ts1, ts2) -> ()
       | Typ c ->
         cm := ConEnv.add c (String.concat "." (List.rev p)) (!cm)
       | Named (_, t) -> go p t
-      | Weak t -> ()
+      | Obj (_, fs) ->
+        List.iter (fun f -> go (f.lab::p) f.typ) fs
+      | Con (c, ts) ->
+        (match Cons.kind c with
+        | Abs (_, t) -> go p (open_ ts t)
+        | Def (_, t) -> go p (open_ ts t)
+        )
+      (* explicit match in case we add a constructor later *)
+      | Var _ | Pre
+      | Prim _ | Any | Non
+      | Array _ | Opt _ | Mut _
+      | Async _
+      | Tup _
+      | Variant _
+      | Func _
+      | Weak _ -> ()
     end
   in
   go p t;
