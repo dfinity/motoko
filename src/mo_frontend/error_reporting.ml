@@ -65,6 +65,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_MULASSIGN -> MULASSIGN
       | T_MODULE -> MODULE
       | T_INCLUDE -> INCLUDE
+      | T_IMPLICIT -> IMPLICIT
       | T_MIXIN -> MIXIN
       | T_MODOP -> MODOP
       | T_MODASSIGN -> MODASSIGN

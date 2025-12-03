@@ -148,7 +148,7 @@ and exp_field msgs ef : f = exp msgs ef.it.exp
 
 and pat msgs p : fd = match p.it with
   | WildP         -> (M.empty, S.empty)
-  | VarP id | GivenP { id;_ } -> (M.empty, S.singleton id.it)
+  | VarP id | ImplicitP { id;_ } -> (M.empty, S.singleton id.it)
   | TupP ps       -> pats msgs ps
   | ObjP pfs      -> pat_fields msgs pfs
   | AnnotP (p, _)

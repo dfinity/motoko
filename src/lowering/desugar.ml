@@ -1045,7 +1045,7 @@ and pat p = phrase pat' p
 
 and pat' = function
   | S.VarP v -> I.VarP v.it
-  | S.GivenP { id; _ } -> I.VarP id.it
+  | S.ImplicitP { id; _ } -> I.VarP id.it
   | S.WildP -> I.WildP
   | S.LitP l -> I.LitP (lit !l)
   | S.SignP (o, l) -> I.LitP (lit (apply_sign o (!l)))

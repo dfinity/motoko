@@ -228,7 +228,7 @@ and objblock eo s id ty dec_fields =
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
 %token AND OR NOT
-%token IMPORT INCLUDE MODULE MIXIN
+%token IMPORT IMPLICIT INCLUDE MODULE MIXIN
 %token DEBUG_SHOW
 %token TO_CANDID FROM_CANDID
 %token ASSERT
@@ -367,6 +367,9 @@ seplist1(X, SEP) :
 %inline id :
   | id=ID { id @@ at $sloc }
 
+%inline implicit :
+  | IMPLICIT { "implicit" @@ at $sloc }
+
 %inline id_wild :
   | UNDERSCORE { "_" @@ at $sloc }
 
@@ -487,6 +490,7 @@ typ :
 
 typ_item :
   | i=id COLON t=typ { Some i, t }
+  | i=implicit COLON t=typ { Some i, t }
   | i=id_wild COLON t=typ { Some i, t }
   | t=typ { None, t }
 
@@ -888,8 +892,11 @@ pat_plain :
     { WildP @! at $sloc }
   | x=id
     { VarP(x) @! at $sloc }
-  | x=id WITH y=id
-    { GivenP { id = x; implicit = y } @! at $sloc }
+  | implicit x=id
+    { ImplicitP { implicit = x; id = x; } @! at $sloc }
+    (* TODO *)
+  | implicit LPAR x=id RPAR y=id
+    { ImplicitP { implicit = x; id = y; } @! at $sloc }
   | l=lit
     { LitP(ref l) @! at $sloc }
   | LPAR ps=seplist(pat_bin, COMMA) RPAR

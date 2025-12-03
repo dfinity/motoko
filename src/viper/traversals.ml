@@ -62,7 +62,7 @@ and over_inst (v : visitor) (i : inst) : inst = v.visit_inst i
 
 and over_pat (v : visitor) (p : pat) : pat =
   v.visit_pat (match p.it with
-  | WildP | VarP _ | LitP _ | SignP _ -> p
+  | WildP | VarP _ | ImplicitP _ | LitP _ | SignP _ -> p
   | TupP ps -> { p with it = TupP (List.map (over_pat v) ps) }
   | ObjP pfs -> { p with it = ObjP (List.map (over_pat_field v) pfs) }
   | OptP p1 -> { p with it = OptP (over_pat v p1) }

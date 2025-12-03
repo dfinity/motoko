@@ -66,6 +66,7 @@ type token =
   | NOT
   | IMPORT
   | INCLUDE
+  | IMPLICIT
   | MIXIN
   | MODULE
   | DEBUG_SHOW
@@ -203,6 +204,7 @@ let to_parser_token :
   | NOT -> Ok Parser.NOT
   | IMPORT -> Ok Parser.IMPORT
   | INCLUDE -> Ok Parser.INCLUDE
+  | IMPLICIT -> Ok Parser.IMPLICIT
   | MIXIN -> Ok Parser.MIXIN
   | MODULE -> Ok Parser.MODULE
   | DEBUG_SHOW -> Ok Parser.DEBUG_SHOW
@@ -338,6 +340,7 @@ let string_of_parser_token = function
   | Parser.NOT -> "NOT"
   | Parser.IMPORT -> "IMPORT"
   | Parser.INCLUDE -> "INCLUDE"
+  | Parser.IMPLICIT -> "IMPLICIT"
   | Parser.MIXIN -> "MIXIN"
   | Parser.MODULE -> "MODULE"
   | Parser.DEBUG_SHOW -> "DEBUG_SHOW"

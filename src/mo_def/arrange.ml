@@ -168,6 +168,7 @@ module Make (Cfg : Config) = struct
   and pat p = source p.at (annot_typ p.note (match p.it with
     | WildP           -> Atom "WildP"
     | VarP x          -> "VarP"       $$ [id x]
+    | ImplicitP x     -> "ImplicitP"  $$ [id x.implicit; id x.id]
     | TupP ps         -> "TupP"       $$ List.map pat ps
     | ObjP ps         -> "ObjP"       $$ List.map pat_field ps
     | AnnotP (p, t)   -> "AnnotP"     $$ [pat p; typ t]

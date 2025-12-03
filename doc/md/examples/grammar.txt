@@ -294,6 +294,7 @@
 <pat_plain> ::= 
     '_'
     <id>
+    IMPLICIT <id> <id>
     <lit>
     '(' <list(<pat_bin>, ',')> ')'
 

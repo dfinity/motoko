@@ -1066,7 +1066,7 @@ let is_explicit_lit l =
 
 let rec is_explicit_pat p =
   match p.it with
-  | WildP | VarP _ | GivenP _ -> false
+  | WildP | VarP _ | ImplicitP _ -> false
   | LitP l | SignP (_, l) -> is_explicit_lit !l
   | OptP p1 | TagP (_, p1) | ParP p1 -> is_explicit_pat p1
   | TupP ps -> List.for_all is_explicit_pat ps
@@ -1313,7 +1313,7 @@ and combine_pat_srcs env t pat : unit =
   match pat.it with
   | WildP -> ()
   | VarP id -> combine_id_srcs env t id
-  | GivenP id -> combine_id_srcs env t id.id
+  | ImplicitP id -> combine_id_srcs env t id.id
   | LitP _ -> ()
   | SignP _ -> ()
   | TupP pats ->
@@ -3193,7 +3193,7 @@ and infer_pat' name_types env pat : T.typ * Scope.val_env =
   match pat.it with
   | WildP ->
     error env pat.at "M0102" "cannot infer type of wildcard"
-  | VarP _ | GivenP _ ->
+  | VarP _ | ImplicitP _ ->
     error env pat.at "M0103" "cannot infer type of variable"
   | LitP lit ->
     T.Prim (infer_lit env lit pat.at), T.Env.empty
@@ -3311,7 +3311,7 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
     T.Env.empty
   | VarP id ->
     T.Env.singleton id.it (None, t, id.at, val_kind)
-  | GivenP { id; implicit } ->
+  | ImplicitP { id; implicit } ->
     T.Env.singleton id.it (Some implicit.it, t, id.at, val_kind)
   | LitP lit ->
     if not env.pre then begin
@@ -3593,7 +3593,7 @@ and vis_dec src dec xs : visibility_env =
 and vis_pat src pat xs : visibility_env =
   match pat.it with
   | WildP | LitP _ | SignP _ -> xs
-  | VarP id | GivenP { id; _} -> vis_val_id src id xs
+  | VarP id | ImplicitP { id; _ } -> vis_val_id src id xs
   | TupP pats -> List.fold_right (vis_pat src) pats xs
   | ObjP pfs -> List.fold_right (vis_pat_field src) pfs xs
   | AltP (pat1, _)
@@ -4352,7 +4352,7 @@ and gather_pat_aux env val_kind scope pat : Scope.t =
   match pat.it with
   | WildP | LitP _ | SignP _ -> scope
   | VarP id -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id None val_kind)
-  | GivenP { id; implicit } -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id (Some implicit.it) val_kind)
+  | ImplicitP { id; implicit } -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id (Some implicit.it) val_kind)
   | TupP pats -> List.fold_left (gather_pat env) scope pats
   | ObjP pfs -> List.fold_left (gather_pat_field env) scope pfs
   | TagP (_, pat1) | AltP (pat1, _) | OptP pat1
@@ -4436,7 +4436,7 @@ and infer_dec_typdecs env dec : Scope.t =
        | T.Obj (_, _) as t' -> Scope.{ empty with val_env = singleton id None t' }
        | _ -> Scope.{ empty with val_env = singleton id None T.Pre }
     ) end
-  | LetD ({it = GivenP { id; implicit }; _}, exp, _) ->
+  | LetD ({it = ImplicitP { id; implicit }; _}, exp, _) ->
     (match infer_val_path env exp with
      | None -> Scope.empty
      | Some t ->
