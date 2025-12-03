@@ -128,6 +128,14 @@ let kind_of_field_pattern pf = match pf.it with
   | ValPF(id, { it = VarP pat_id; _ }) when id = pat_id -> Scope.FieldReference
   | _ -> Scope.Declaration
 
+let con_map env =
+  let m = ref T.ConEnv.empty in
+  T.Env.iter (fun id (typ, _, _, _) ->
+      m := T.ConEnv.adjoin (!m) (T.paths [id] typ))
+    env.vals;
+  T.Env.iter (fun id c -> m := T.ConEnv.add c (id) !m) env.typs;
+  !m
+
 (* Error bookkeeping *)
 
 exception Recover
@@ -227,17 +235,21 @@ let type_info at text : Diag.message =
   Diag.info_message at "type" text
 
 let error env at code fmt =
+  T.set_con_map (con_map env);
   Format.kasprintf
     (fun s -> Diag.add_msg env.msgs (type_error at code s); raise Recover) fmt
 
 let local_error env at code fmt =
+  T.set_con_map (con_map env);
   Format.kasprintf (fun s -> Diag.add_msg env.msgs (type_error at code s)) fmt
 
 let warn env at code fmt =
+  T.set_con_map (con_map env);
   Format.kasprintf (fun s ->
     if not env.errors_only then Diag.add_msg env.msgs (type_warning at code s)) fmt
 
 let info env at fmt =
+  T.set_con_map (con_map env);
   Format.kasprintf (fun s ->
     if not env.errors_only then Diag.add_msg env.msgs (type_info at s)) fmt
 
