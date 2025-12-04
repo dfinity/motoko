@@ -34,13 +34,15 @@ type prim =
   | Principal
   | Region
 
+type 'a tbl = (string, 'a) Hashtbl.t
+
 type t = typ
 
 and typ =
   | Var of var * int                          (* variable *)
   | Con of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
-  | Obj of obj_sort * field list              (* object *)
+  | Obj of obj_sort * fields                  (* object *)
   | Variant of field list                     (* variant *)
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
@@ -57,11 +59,17 @@ and typ =
 
 and scope = typ
 
+and fields = {
+    vals : field tbl;
+    typs : typ_field tbl;
+}
+
 and bind_sort = Scope | Type
 and bind = {var : var; sort: bind_sort; bound : typ}
 
 and src = {depr : string option; track_region : Source.region; region : Source.region}
 and field = {lab : lab; typ : typ; src : src}
+and typ_field = {lab : lab; typ : con; src : src}
 
 and con = kind Cons.t
 and kind =
@@ -69,6 +77,11 @@ and kind =
   | Abs of bind list * typ
 
 val empty_src : src
+
+(* Object types *)
+
+val val_fields : fields -> field list
+val typ_fields : fields -> typ_field list
 
 (* Syntactic orderings *)
 
