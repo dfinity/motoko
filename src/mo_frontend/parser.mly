@@ -98,11 +98,14 @@ let rec normalize_let p e =
     | ParP p' -> normalize_let p' e
     | _ -> (p, e)
 
-let let_or_exp named x e' at =
+let let_or_exp named x implicit e' at =
   if named
-  then LetD(VarP x @! x.at, e' @? at, None) @? at
+  then match implicit with
+    | None -> LetD(VarP x @! x.at, e' @? at, None) @? at
        (* If you change the above regions,
           modify is_sugared_func_or_module to match *)
+    | Some(implicit) ->
+      LetD(ImplicitP { id = x; implicit } @! x.at, e' @? at, None) @? at
   else ExpD(e' @? at) @? at
 
 let is_sugared_func_or_module dec = match dec.it with
@@ -894,7 +897,6 @@ pat_plain :
     { VarP(x) @! at $sloc }
   | implicit x=id
     { ImplicitP { implicit = x; id = x; } @! at $sloc }
-    (* TODO *)
   | implicit LPAR x=id RPAR y=id
     { ImplicitP { implicit = x; id = y; } @! at $sloc }
   | l=lit
@@ -952,10 +954,11 @@ pat_opt :
     { fun sloc -> WildP @! sloc }
 
 func_pat :
-  | xf=id_opt ts=typ_params_opt p=pat_plain { (xf, ts, p) }
+  | xf=id_opt ts=typ_params_opt p=pat_plain { (xf, None, ts, p) }
+  | implicit x=id ts=typ_params_opt p=pat_plain { ((fun _ _ -> true, x), Some(x), ts, p) }
+  | implicit LPAR x=id RPAR y=id ts=typ_params_opt p=pat_plain { ((fun _ _ -> true, y), Some(x), ts, p) }
 
 (* Declarations *)
-
 dec_var :
   | VAR x=id t=annot_opt EQ e=exp(ob)
     { VarD(x, annot_exp e t) @? at $sloc }
@@ -971,10 +974,10 @@ dec_nonvar :
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
-      let xf, tps, p = xf_tps_p in
+      let xf, i, tps, p = xf_tps_p in
       let named, x = xf "func" $sloc in
       let is_sugar, e = desugar_func_body sp x t fb in
-      let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
+      let_or_exp named x i (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
   | eo=parenthetical_opt mk_d=obj_or_class_dec  { mk_d eo }
   | MIXIN p=pat_plain dfs=obj_body {
      let dfs = List.map (share_dec_field (Stable @@ no_region)) dfs in
@@ -1001,12 +1004,12 @@ obj_or_class_dec :
              @? at $sloc) @? at $sloc
         else objblock eo { s with note = persistent } None t efs @? at $sloc
       in
-      let_or_exp named x e.it e.at }
+      let_or_exp named x None e.it e.at }
   | sp=shared_pat_opt ds=obj_sort_opt CLASS
       xf_tps_p=func_pat t=annot_opt  cb=class_body
     { fun eo ->
       let (persistent, s) = ds in
-      let xf, tps, p = xf_tps_p in
+      let xf, _, tps, p = xf_tps_p in
       let (_, id) = xf "class" $sloc in
       let cid = id.it @= id.at in
       let x, dfs = cb in

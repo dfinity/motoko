@@ -7,6 +7,9 @@
     X
     X SEP <list(X, SEP)>
 
+<implicit> ::= 
+    IMPLICIT
+
 <id_wild> ::= 
     '_'
 
@@ -70,6 +73,7 @@
 
 <typ_item> ::= 
     <id> ':' <typ>
+    <implicit> ':' <typ>
     <id_wild> ':' <typ>
     <typ>
 
@@ -294,7 +298,8 @@
 <pat_plain> ::= 
     '_'
     <id>
-    IMPLICIT <id> <id>
+    <implicit> <id>
+    <implicit> '(' <id> ')' <id>
     <lit>
     '(' <list(<pat_bin>, ',')> ')'
 
@@ -324,6 +329,8 @@
 
 <func_pat> ::= 
     <id>? <typ_params_opt> <pat_plain>
+    <implicit> <id> <typ_params_opt> <pat_plain>
+    <implicit> '(' <id> ')' <id> <typ_params_opt> <pat_plain>
 
 <dec_var> ::= 
     'var' <id> (':' <typ>)? '=' <exp>

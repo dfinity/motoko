@@ -16,13 +16,10 @@ two();
 assert addOne() == 1;
 
 module DumbHash {
-  func hashNat_(_ : Nat) : Nat { 1 };
-  func hashInt_(_ : Int) : Nat { 2 };
-  func hashText_(_ : Text) : Nat { 3 };
-
-  public let implicit(hashFn) hashNat : Nat -> Nat = hashNat_;
-  public let implicit(hashFn) hashInt : Int -> Nat = hashInt_;
-  public let implicit(hashFn) hashText : Text -> Nat = hashText_;
+  public func implicit(hashFn) hashNat(_ : Nat) : Nat { 1 };
+  public func implicit(hashFn) hashInt(_ : Int) : Nat { 2 };
+  public func implicit(hashFn) hashText(_ : Text) : Nat { 3 };
+  public func implicit hashFn(_ : Char) : Nat { 4 };
 };
 
 func hash<T>(self : T, hashFn : (implicit : T -> Nat)) : Nat {
@@ -32,3 +29,4 @@ func hash<T>(self : T, hashFn : (implicit : T -> Nat)) : Nat {
 assert hash(42) == 1;
 assert hash(-2) == 2;
 assert hash("Hello") == 3;
+assert hash('H') == 4;
