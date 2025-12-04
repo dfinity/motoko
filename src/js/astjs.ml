@@ -146,7 +146,7 @@ module Make (Cfg : Config) = struct
     | Named (n, t) -> to_js_object "Name" [| js_string n; typ_js t |]
     | Weak t -> to_js_object "Weak" [| typ_js t |]
 
-  and field_js { Type.lab; typ = t; src = s } =
+  and field_js { Type.lab; typ = t; src = s; _ } =
     to_js_object lab (typ_js t :: src s |> Array.of_list)
 
   and src ({ Type.depr; track_region; region = r } : Type.src) :
@@ -500,7 +500,7 @@ module Make (Cfg : Config) = struct
   and typ_field'_js =
     let open Syntax in
     function
-    | ValF (lab, t, m) ->
+    | ValF (lab, _, t, m) ->
         to_js_object "ValF" [| id lab; syntax_typ_js t; mut_js m |]
     | TypF (lab, tbs, t) ->
         to_js_object "TypF"
@@ -578,6 +578,7 @@ module Make (Cfg : Config) = struct
     function
     | WildP -> js_string "WildP"
     | VarP x -> to_js_object "VarP" [| id x |]
+    | ImplicitP { id = x; _ } -> to_js_object "VarP" [| id x |]
     | TupP ps -> to_js_object "TupP" (List.map pat_js ps |> Array.of_list)
     | ObjP ps -> to_js_object "ObjP" (List.map pat_field_js ps |> Array.of_list)
     | AnnotP (p, t) -> to_js_object "AnnotP" [| pat_js p; syntax_typ_js t |]
