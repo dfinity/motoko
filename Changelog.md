@@ -72,6 +72,8 @@
     `/// @deprecated M0235`.
     (allowed by default, warn with `-W 0235`).
 
+  * Add privileged primitive for setting Candid type table cutoff (#5642).
+
   * Experimental support for `implicit` argument declarations (#5517).
 
   * Experimental support for Mixins (#5459).
