@@ -89,6 +89,7 @@ let html_of_obj_sort : 'note Syntax.sort -> t =
     | Object -> empty
     | Actor -> keyword "actor "
     | Module -> keyword "module "
+    | Mixin -> keyword "mixin "
     | Memory -> keyword "memory ")
 
 let rec html_of_type : env -> Syntax.typ -> t =

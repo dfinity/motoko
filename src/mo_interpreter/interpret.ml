@@ -443,27 +443,38 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   last_env := env;
   Profiler.bump_region exp.at ;
   match exp.it with
+  | HoleE (_, e) -> interpret_exp_mut env (!e) k
   | PrimE s ->
     k (V.Func (CC.call_conv_of_typ exp.note.note_typ,
        Prim.prim { Prim.trap = trap exp.at "%s" } s
     ))
   | VarE id ->
-    begin match Lib.Promise.value_opt (find id.it env.vals) with
-    | Some v -> k v
-    | None -> trap exp.at "accessing identifier before its definition"
-    end
+    (match id.note with
+    | (_, None) ->
+      begin match Lib.Promise.value_opt (find id.it env.vals) with
+      | Some v -> k v
+      | None -> trap exp.at "accessing identifier before its definition"
+      end
+    | (_, Some exp) ->
+    interpret_exp_mut env exp k)
   | ImportE (f, ri) ->
     (match !ri with
     | Unresolved -> assert false
     | LibPath {path; _} ->
       k (find path env.libs)
     | ImportedValuePath path ->
-      let contents = Lib.FilePath.contents path in
-      assert T.(exp.note.note_typ = Prim Blob);
-      k (V.Blob contents)
+      if !Mo_config.Flags.blob_import_placeholders then
+        trap exp.at "blob import placeholder"
+      else begin
+        let contents = Lib.FilePath.contents path in
+        assert T.(exp.note.note_typ = Prim Blob);
+        k (V.Blob contents)
+      end
     | IDLPath _ -> trap exp.at "actor import"
     | PrimPath -> k (find "@prim" env.libs)
     )
+  | ImplicitLibE lib ->
+    k (find lib env.libs)
   | LitE lit ->
     k (interpret_lit env lit)
   | ActorUrlE url ->
@@ -605,7 +616,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | T.Shared _ -> make_message env name exp.note.note_typ v
       | T.Local -> v
     in k v'
-  | CallE (par, exp1, typs, exp2) ->
+  | CallE (par, exp1, typs, (_, exp2)) ->
+    let exp2 = !exp2 in
     interpret_par env par
       (fun v ->
         ignore (V.as_obj v);
@@ -1000,7 +1012,11 @@ and interpret_block env decs ro (k : V.value V.cont) =
 and declare_dec dec : val_env =
   match dec.it with
   | ExpD _
-  | TypD _ -> V.Env.empty
+  | TypD _
+  | MixinD (_) -> V.Env.empty
+  | IncludeD _ ->
+     (* TODO support mixins in the interpreter *)
+    assert false
   | LetD (pat, _, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
   | ClassD (_eo, _, _, id, _, _, _, _, _) -> declare_id {id with note = ()}
@@ -1033,6 +1049,15 @@ and interpret_dec env dec (k : V.value V.cont) =
     )
   | TypD _ ->
     k V.unit
+  | MixinD _ -> k V.unit
+  | IncludeD (_, _arg, _note) ->
+     (* TODO
+        - evaluate arg and bind it against note.pat
+        - define note.imports from mixin as local lets
+        - declare/eval note.decs
+        - Do we need to recreate the renaming pass?
+      *)
+     trap dec.at "Mixins are not yet supported in the interpreter"
   | ClassD (_eo, shared_pat, obj_sort, id, _typbinds, pat, _typ_opt, id', dec_fields) ->
     (* NB: we ignore the migration expression _eo *)
     let f = interpret_func env id.it shared_pat pat (fun env' k' ->

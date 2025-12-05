@@ -1,3 +1,4 @@
+stable-sig-more.mo:51.9-51.13: warning [M0239], Avoid binding a unit `()` result; remove `let` and keep the expression
 stable-sig-more.mo:5.13-5.15: warning [M0194], unused identifier x0 (delete or rename to wildcard `_` or `_x0`)
 stable-sig-more.mo:8.13-8.15: warning [M0194], unused identifier x1 (delete or rename to wildcard `_` or `_x1`)
 stable-sig-more.mo:11.13-11.15: warning [M0194], unused identifier x2 (delete or rename to wildcard `_` or `_x2`)

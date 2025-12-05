@@ -8,6 +8,8 @@ module E = Syntax
 module I = Idllib.Syntax
 module Set = Idllib.Resolve_import.Set
 
+module Scope = Mo_frontend.Scope
+
 (* use a functor to allocate temporary shared state *)
 module MakeState() = struct
 
@@ -133,7 +135,8 @@ module MakeState() = struct
        I.RecordT (fields fs)
     | Obj (Actor, fs) -> I.ServT (meths fs)
     | Obj (Module, _)
-    | Obj (Memory, _) -> assert false
+    | Obj (Memory, _)
+    | Obj (Mixin, _) -> assert false
     | Variant fs ->
        I.VariantT (fields fs)
     | Func (Shared s, c, tbs, ts1, ts2) ->
@@ -223,7 +226,7 @@ module MakeState() = struct
     let open E in
     let { body = cub; _ } = (CompUnit.comp_unit_of_prog false prog).it in
     match cub.it with
-    | ProgU _ | ModuleU _ -> None
+    | ProgU _ | ModuleU _ | MixinU _ -> None
     | ActorU _ -> Some (typ cub.note.note_typ)
     | ActorClassU _ ->
        (match normalize cub.note.note_typ with

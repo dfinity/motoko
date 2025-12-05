@@ -1,38 +1,30 @@
-pretty_scoped.mo:2.1-2.38: type error [M0098], cannot implicitly instantiate function of type
+pretty_scoped.mo:2.1-2.42: type error [M0098], cannot apply function of type
   <A>(g : A -> async ()) -> ()
 to argument of type
-  ()
-to produce result of type
-  ()
-because no instantiation of A makes
-  ()  <:  (g : A -> async ())
-pretty_scoped.mo:4.1-4.45: type error [M0098], cannot implicitly instantiate function of type
+  Nat
+because there is no way to satisfy subtyping
+  Nat  <:  A -> async ()  (for argument `g`) 
+pretty_scoped.mo:4.1-4.50: type error [M0098], cannot apply function of type
   <A, B>(g : (A, B) -> async ()) -> ()
 to argument of type
-  ()
-to produce result of type
-  ()
-because no instantiation of A, B makes
-  ()  <:  (g : (A, B) -> async ())
-pretty_scoped.mo:6.1-6.50: type error [M0098], cannot implicitly instantiate function of type
+  Nat
+because there is no way to satisfy subtyping
+  Nat  <:  (A, B) -> async ()  (for argument `g`) 
+pretty_scoped.mo:6.1-6.56: type error [M0098], cannot apply function of type
   <A, B, C>(g : (A, B, C) -> async ()) -> ()
 to argument of type
-  ()
-to produce result of type
-  ()
-because no instantiation of A, B, C makes
-  ()  <:  (g : (A, B, C) -> async ())
-pretty_scoped.mo:8.1-8.55: type error [M0098], cannot implicitly instantiate function of type
+  Nat
+because there is no way to satisfy subtyping
+  Nat  <:  (A, B, C) -> async ()  (for argument `g`) 
+pretty_scoped.mo:8.1-8.62: type error [M0098], cannot apply function of type
   <A, B, C>(g : <D>(A, B, C, D) -> async ()) -> ()
 to argument of type
-  ()
-to produce result of type
-  ()
-because no instantiation of A, B, C makes
-  ()  <:  (g : <D>(A, B, C, D) -> async ())
-pretty_scoped.mo:10.1-10.69: type error [M0098], cannot implicitly instantiate function of type
+  Nat
+because there is no way to satisfy subtyping
+  Nat  <:  <D>(A, B, C, D) -> async ()  (for argument `g`) 
+pretty_scoped.mo:10.1-10.78: type error [M0098], cannot apply function of type
   <A, B, C>(g : <D <: C, E <: D>(A, B, C, D, E) -> async ()) -> ()
 to argument of type
-  ()
-because no instantiation of A, B, C makes
-  ()  <:  (g : <D <: C, E <: D>(A, B, C, D, E) -> async ())
+  Nat
+because there is no way to satisfy subtyping
+  Nat  <:  <D <: C, E <: D>(A, B, C, D, E) -> async ()  (for argument `g`) 

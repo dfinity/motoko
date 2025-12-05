@@ -80,9 +80,10 @@ let delayed_vars : f -> S.t =
 
 let rec exp msgs e : f = match e.it with
   (* Eager uses are either first-class uses of a variable: *)
+  | HoleE (s, e) -> exp msgs (!e)
   | VarE i              -> M.singleton i.it Eager
   (* Or anything that is occurring in a call (as this may call a closure): *)
-  | CallE (par_opt, e1, _ts, e2) -> eagerify (Option.to_list par_opt @ [e1; e2] |> exps msgs)
+  | CallE (par_opt, e1, _ts, (_, e2)) -> eagerify (Option.to_list par_opt @ [e1; !e2] |> exps msgs)
   (* And break, return, throw can be thought of as calling a continuation: *)
   | BreakE (_, e)
   | RetE e
@@ -98,7 +99,7 @@ let rec exp msgs e : f = match e.it with
     group msgs (add_self self_id_opt s (dec_fields msgs dfs))
   (* The rest remaining cases just collect the uses of subexpressions: *)
   | LitE _
-  | PrimE _ | ImportE _ -> M.empty
+  | PrimE _ | ImportE _ | ImplicitLibE _ -> M.empty
   | ObjE (bases, efs)   -> exps msgs bases ++ exp_fields msgs efs
   | TupE es
   | ArrayE (_, es)
@@ -196,6 +197,10 @@ and dec msgs d = match d.it with
      delayify (
       group msgs (add_self (Some i')  s (dec_fields msgs dfs)) /// pat msgs p /// shared_pat msgs csp
     )
+  | MixinD (p, ds) ->
+     (group msgs (dec_fields msgs ds) /// pat msgs p, S.empty)
+  | IncludeD (_, e, _) ->
+     (exp msgs e, S.empty)
 
 (* The self binding, if any, is treated as defined at the very beginning or end of the group,
    depending on sort and shadowing  *)

@@ -1,6 +1,7 @@
 open Mo_def
 open Mo_config
 open Mo_types
+open Mo_frontend
 
 module ResolveImport = Resolve_import
 
@@ -37,7 +38,7 @@ type compile_result =
 
 val compile_files : Flags.compile_mode -> bool -> string list -> compile_result
 
-val resolve_flags : unit -> ResolveImport.flags
+val resolve_flags : (* package_opt *) string option -> ResolveImport.flags
 val resolved_import_name : Syntax.resolved_import Source.phrase -> string
 
 (* For use in the language server *)

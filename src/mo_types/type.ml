@@ -13,6 +13,7 @@ type control =
 type obj_sort =
    Object
  | Actor
+ | Mixin
  | Module
  | Memory          (* (codegen only): stable memory serialization format *)
 
@@ -116,6 +117,7 @@ let tag_obj_sort = function
   | Module -> 1
   | Actor -> 2
   | Memory -> 3
+  | Mixin -> 4
 
 let tag_control = function
   | Returns -> 0
@@ -682,8 +684,8 @@ let as_pair_sub t = match promote t with
   | _ -> invalid "as_pair_sub"
 let as_func_sub default_s default_arity t = match promote t with
   | Func (s, c, tbs, ts1, ts2) ->
-    s, tbs, seq ts1, codom c (fun () -> Var((List.hd tbs).var, 0)) ts2
-  | Non -> default_s, Lib.List.make default_arity {var = "X"; sort = Type; bound = Any}, Any, Non
+    s, tbs, ts1, codom c (fun () -> Var((List.hd tbs).var, 0)) ts2
+  | Non -> default_s, Lib.List.make default_arity {var = "X"; sort = Type; bound = Any}, [Any], Non
   | _ -> invalid "as_func_sub"
 let as_mono_func_sub t = match promote t with
   | Func (_, _, [], ts1, ts2) -> seq ts1, seq ts2
@@ -703,10 +705,14 @@ let is_immutable_obj obj_type =
   let _, fields = as_obj_sub [] obj_type in
   List.for_all (fun f -> not (is_mut f.typ)) fields
 
-
-let lookup_val_field_opt l tfs =
+let find_val_field_opt l tfs =
   let is_lab = function {typ = Typ _; _} -> false | {lab; _} -> lab = l in
   match List.find_opt is_lab tfs with
+  | Some tf -> Some tf
+  | None -> None
+
+let lookup_val_field_opt l tfs =
+  match find_val_field_opt l tfs with
   | Some tf -> Some tf.typ
   | None -> None
 
@@ -882,7 +888,7 @@ let serializable allow_mut t =
       | Obj (s, fs) ->
         (match s with
          | Actor -> true
-         | Module -> false (* TODO(1452) make modules sharable *)
+         | Module | Mixin -> false (* TODO(1452) make modules sharable *)
          | Object | Memory -> List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
@@ -911,7 +917,7 @@ let find_unshared t =
       | Tup ts -> List.find_map go ts
       | Obj (s, fs) ->
         (match s with
-         | Actor -> None
+         | Actor | Mixin -> None
          | Module -> Some t (* TODO(1452) make modules sharable *)
          | Object ->
            List.find_map (fun f -> go f.typ) fs
@@ -1480,22 +1486,27 @@ and singleton_field co tf = singleton_typ co tf.typ
 
 and singleton t : bool = singleton_typ (ref S.empty) t
 
-(** A type is isolated if it has no proper supertypes nor proper subtypes (ignoring top [Any] and bottom [Non]). *)
-let rec isolated_typ co = function
+type no_subtypes_or_supertypes =
+  | NoSubtypes
+  | NoSupertypes
+
+let rec has_no_subtypes_or_supertypes m co = function
   | Con (c, ts) as t ->
     (match Cons.kind c with
     | Abs (_, bound) ->
-      (* Type parameters are isolated when unbounded. *)
+      (* Type parameters have no proper subtypes *)
+      m = NoSubtypes ||
+      (* And no proper supertypes when unbounded. *)
       bound = Any
     | Def (tbs, def) ->
-      (* Cyclic definitions are isolated until proven otherwise. *)
-      S.mem t !co || begin
-        co := S.add t !co;
-        isolated_typ co (reduce tbs def ts)
+      let s = fst co in
+      S.mem t !s || begin
+        s := S.add t !s;
+        has_no_subtypes_or_supertypes m co (reduce tbs def ts)
       end
     )
   | Mut _ -> true
-  | Named (_, t) -> isolated_typ co t
+  | Named (_, t) -> has_no_subtypes_or_supertypes m co t
   | Prim
     ( Bool
     | Nat8
@@ -1513,18 +1524,30 @@ let rec isolated_typ co = function
     | Error
     | Principal
     | Region
-    (* All except Nat, Int, Null as they have proper super/subtypes: Nat <: Int, ?T <: Null *)
     ) -> true
+  (* Null <: ?T so Null has no proper subtypes and ?T has no proper supertypes. *)
+  | Opt t -> m = NoSupertypes && has_no_subtypes_or_supertypes m co t
+  (* Nat <: Int so Nat has no proper subtypes and Int has no proper supertypes. *)
+  | Prim Int -> m = NoSupertypes
+  | Prim (Null | Nat) -> m = NoSubtypes
   | Array t
   | Async (_, _, t)
-  | Weak t -> isolated_typ co t
-  | Tup ts -> List.for_all (isolated_typ co) ts
+  | Weak t -> has_no_subtypes_or_supertypes m co t
+  | Tup ts -> List.for_all (has_no_subtypes_or_supertypes m co) ts
   | Func (_, _, _, ts1, ts2) ->
-    List.for_all (isolated_typ co) ts1 &&
-    List.for_all (isolated_typ co) ts2
+    let flip = function
+      | NoSubtypes -> NoSupertypes
+      | NoSupertypes -> NoSubtypes
+    in
+    let swap (s1, s2) = (s2, s1) in
+    (* For func inputs, flip the mode and swap the result sets. *)
+    List.for_all (has_no_subtypes_or_supertypes (flip m) (swap co)) ts1 &&
+    List.for_all (has_no_subtypes_or_supertypes       m        co ) ts2
   | _ -> false
 
-and isolated t = isolated_typ (ref S.empty) t
+and has_no_supertypes t = has_no_subtypes_or_supertypes NoSupertypes (ref S.empty, ref S.empty) t
+
+and has_no_subtypes t = has_no_subtypes_or_supertypes NoSubtypes (ref S.empty, ref S.empty) t
 
 (* Least upper bound and greatest lower bound *)
 
@@ -1838,6 +1861,7 @@ let string_of_obj_sort = function
   | Object -> ""
   | Module -> "module "
   | Actor -> "actor "
+  | Mixin -> "mixin "
   | Memory -> "memory "
 
 let string_of_func_sort = function
@@ -1866,21 +1890,21 @@ module ShowStamps = struct
   let max_list = None
 end
 
-module ElideStamps = struct
-  let show_stamps = false
-  let show_scopes = true
-  let show_hash_suffix = true
-  let con_sep = ShowStamps.con_sep
-  let par_sep = ShowStamps.par_sep
-  let max_list = None
-end
-
 module ParseableStamps = struct
   let show_stamps = true
   let show_scopes = true (* false ok too *)
   let con_sep = "__"
   let par_sep = "_"
   let show_hash_suffix = true
+  let max_list = None
+end
+
+module ElideStamps = struct
+  let show_stamps = false
+  let show_scopes = true
+  let show_hash_suffix = true
+  let con_sep = ShowStamps.con_sep
+  let par_sep = ShowStamps.par_sep
   let max_list = None
 end
 
@@ -2054,7 +2078,7 @@ and pp_typ_pre vs ppf t =
           (pp_typ' vs) t1
           (pp_typ_pre vs) t2
     else fprintf ppf "@[<2>async%s@ %a@]" (string_of_async_sort s) (pp_typ_pre vs) t2
-  | Obj ((Module | Actor | Memory) as os, fs) ->
+  | Obj ((Module | Actor | Mixin | Memory) as os, fs) ->
     pp_typ_obj vs ppf (os, fs)
   | t ->
     pp_typ_un vs ppf t

@@ -19,8 +19,8 @@ module S = Set.Make(String)
 type avl = Available | Unavailable
 
 type lab_env = T.typ T.Env.t
-type ret_env = T.typ option
-type val_env  = (T.typ * Source.region * Scope.val_kind * avl) T.Env.t
+type val_info = T.typ * Source.region * Scope.val_kind * avl
+type val_env  = val_info T.Env.t
 
 (* separate maps for values and types; entries only for _public_ elements *)
 type visibility_src = {depr : string option; id_region : Source.region; field_region : Source.region}
@@ -42,6 +42,11 @@ type env =
     typs : Scope.typ_env;
     cons : Scope.con_env;
     objs : Scope.obj_env;
+    (* NOTE: This is a bit of a hack, as the map here is going to end
+       up holding entries with file paths _and_ imported names.
+       Might be cleaner to split it up into two maps.
+     *)
+    mixins : Scope.mixin_env;
     labs : lab_env;
     rets : ret_env;
     async : C.async_cap;
@@ -60,15 +65,20 @@ type env =
     errors_only : bool;
     srcs : Field_sources.t;
   }
+and ret_env =
+  | NoRet
+  | Ret of T.typ
+  | BimatchRet of (env -> exp -> unit)
 
 let env_of_scope ?(viper_mode=false) msgs scope =
   { vals = available scope.Scope.val_env;
     libs = scope.Scope.lib_env;
+    mixins = scope.Scope.mixin_env;
     typs = scope.Scope.typ_env;
     cons = scope.Scope.con_env;
     objs = T.Env.empty;
     labs = T.Env.empty;
-    rets = None;
+    rets = NoRet;
     async = Async_cap.NullCap;
     in_actor = false;
     in_prog = true;
@@ -126,17 +136,46 @@ let recover_with (x : 'a) (f : 'b -> 'a) (y : 'b) = try f y with Recover -> x
 let recover_opt f y = recover_with None (fun y -> Some (f y)) y
 let recover f y = recover_with () f y
 
+let quote s = "`"^s^"`"
+
 let display_lab = Lib.Format.display T.pp_lab
 
 let display_typ = Lib.Format.display T.pp_typ
 
 let display_typ_expand = Lib.Format.display T.pp_typ_expand
 
-let display_obj fmt (s, fs) =
-  if !Flags.ai_errors || (List.length fs) < 16 then
-    Format.fprintf fmt "type:%a" display_typ (T.Obj(s, fs))
+let display_many display p xs =
+  List.iter (display p) xs
+
+let plural_typs types = if List.length types = 1 then "" else "s"
+
+let display_expected_arg_types fmt types =
+  if types = [] then
+    Format.fprintf fmt "Expected no arguments"
   else
-    Format.fprintf fmt "%s." (String.trim(T.string_of_obj_sort s))
+    Format.fprintf fmt "Expected %d argument%s of type:%a" (List.length types) (plural_typs types) (display_many display_typ_expand) types
+
+let display_given_arg_types fmt types =
+  if types = [] then
+    Format.fprintf fmt "But got no arguments"
+  else
+    Format.fprintf fmt "But got %d argument%s of type:%a" (List.length types) (plural_typs types) (display_many display_typ_expand) types
+
+let display_obj fmt typ =
+  match T.normalize typ with
+  | T.Obj(s, fs) ->
+     if !Flags.ai_errors || (List.length fs) < 16 then
+       Format.fprintf fmt "type:%a" display_typ_expand typ
+     else
+       Format.fprintf fmt "%s."
+         T.(match s with
+          | Actor -> "actor"
+          | Module -> "module"
+          | Object -> "object"
+          (* these should not occur, but let's be forgiving*)
+          | Mixin -> "mixin"
+          | Memory -> "memory")
+  | _ -> Format.fprintf fmt "type:%a" display_typ typ
 
 let display_vals fmt vals =
   if !Flags.ai_errors then
@@ -204,6 +243,8 @@ let info env at fmt =
 
 let check_deprecation env at desc id depr =
   match depr with
+  | Some ("M0235" as code) ->
+    warn env at code "%s %s is deprecated for caffeine" desc id
   | Some ("M0199" as code) ->
     if !(env.reported_stable_memory) then ()
     else begin
@@ -315,6 +356,7 @@ let adjoin env scope =
     typs = T.Env.adjoin env.typs scope.Scope.typ_env;
     cons = T.ConSet.union env.cons scope.Scope.con_env;
     objs = T.Env.adjoin env.objs scope.Scope.obj_env;
+    mixins = T.Env.adjoin env.mixins scope.Scope.mixin_env;
   }
 
 let adjoin_vals env ve = {env with vals = T.Env.adjoin env.vals (available ve)}
@@ -420,6 +462,14 @@ let check_closed env id k at =
 
 (* Imports *)
 
+let is_mixin_import env = function
+  | ImportE (_, ri) ->
+     (match !ri with
+     | LibPath {path; _} ->
+        T.Env.find_opt path env.mixins
+     | _ -> None)
+  | _ -> None
+
 let check_import env at f ri =
   let full_path = match !ri with
     | Unresolved -> error env at "M0020" "unresolved import %s" f
@@ -431,7 +481,10 @@ let check_import env at f ri =
   | Some T.Pre ->
     error env at "M0021" "cannot infer type of forward import %s" f
   | Some t -> t
-  | None -> error env at "M0022" "imported file %s not loaded" full_path
+  | None ->
+    match T.Env.find_opt full_path env.mixins with
+    | Some (_, _, _, t) -> t
+    | None -> error env at "M0022" "imported file %s not loaded" full_path
 
 
 (* Paths *)
@@ -470,7 +523,7 @@ and check_obj_path' env path : T.typ =
     | exception Invalid_argument _ ->
       error env id.at "M0028" "field %s does not exist in %a%s"
         id.it
-        display_obj (s, fs)
+        display_obj (T.Obj(s, fs))
         (Suggest.suggest_id "field" id.it
           (List.filter_map
             (function
@@ -501,7 +554,8 @@ and check_typ_path' env path : T.con =
         c
       | exception Invalid_argument _ ->
         error env id.at "M0030" "type field %s does not exist in %a%s"
-          id.it display_obj (s, fs)
+          id.it
+          display_obj (T.Obj(s, fs))
           (Suggest.suggest_id "type field" id.it
              (List.filter_map
                (function { T.lab; T.typ=T.Typ _;_ } -> Some lab
@@ -1025,6 +1079,7 @@ and is_explicit_pat_field pf =
 
 let rec is_explicit_exp e =
   match e.it with
+  | HoleE _ -> false (* tbr *)
   | PrimE _ | ActorUrlE _
   | TagE _
   | BreakE _ | RetE _ | ThrowE _ ->
@@ -1033,7 +1088,7 @@ let rec is_explicit_exp e =
   | RelE _ | NotE _ | AndE _ | OrE _ | ImpliesE _ | OldE _ | ShowE _ | ToCandidE _ | FromCandidE _
   | AssignE _ | IgnoreE _ | AssertE _ | DebugE _
   | WhileE _ | ForE _
-  | AnnotE _ | ImportE _ ->
+  | AnnotE _ | ImportE _ | ImplicitLibE _ ->
     true
   | LitE l -> is_explicit_lit !l
   | UnE (_, _, e1) | OptE e1 | DoOptE e1
@@ -1066,6 +1121,10 @@ and is_explicit_dec d =
   | ClassD (_, _, _, _, _, p, _, _, dfs) ->
     is_explicit_pat p &&
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
+  | MixinD (p, dfs) ->
+    is_explicit_pat p &&
+    List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
+  | IncludeD (_, e, _) -> is_explicit_exp e
 
 
 (* Literals *)
@@ -1281,10 +1340,196 @@ and combine_pat_srcs env t pat : unit =
   | AnnotP (pat1, _typ) -> combine_pat_srcs env t pat1
   | ParP pat1 -> combine_pat_srcs env t pat1
 
+
+type hole_candidate =
+  { path: exp;
+    desc: string;
+    typ : T.typ;
+    module_name_opt: string option;
+    id : T.lab;
+    region : Source.region;
+  }
+
+let suggestion_of_candidate candidate =
+  Option.fold ~none:candidate.desc ~some:Suggest.module_name_as_url candidate.module_name_opt
+
+let disambiguate_resolutions (rel : 'candidate -> 'candidate -> bool) (candidates : 'candidate list) =
+  let add_candidate (frontiers : 'candidate list) (c : 'candidate) =
+    let rec go (fs : 'candidate list) = match fs with
+      | [] -> [c]
+      | f::fs' ->
+         if rel c f then
+           if rel f c then
+             (* c = f, so we keep both *)
+             f :: go fs'
+           else
+             (* c <: f, so f absorbs c *)
+             fs
+         else if rel f c then
+           (* f <: c, so c absorbs f *)
+           go fs'
+         else
+           (* no relation at all, so we keep both *)
+           f :: go fs'
+    in
+    go frontiers
+  in
+  match List.fold_left add_candidate [] candidates with
+  | [dom] -> Some dom
+  | _ -> None
+
+let is_lib_module (n, t) =
+  match T.normalize t with
+  | T.Obj (T.Module, fs) -> Some (n, (t, fs))
+  | _ -> None
+
+let is_val_module (n, ((t, _, _, _) : val_info)) =
+  is_lib_module (n, t)
+
+let module_exp in_libs env module_name =
+  if not in_libs then
+    VarE {it = module_name; at = no_region; note = (Const, None)}
+  else
+    ImplicitLibE module_name
+
+(** Searches for hole resolutions for [name] on a given [hole_sort] and [typ].
+    Returns [Ok(candidate)] when a single resolution is
+    found, [Error(file_paths)] when no resolution was found, but a
+    matching module could be imported, and reports an ambiguity error
+    when finding multiple resolutions.
+ *)
+
+type hole_error =
+  | HoleSuggestions of (env -> string list * string list * (env -> unit))
+  | HoleAmbiguous of (env -> unit)
+
+let resolve_hole env at hole_sort typ =
+  let is_matching_lab lab =
+    match hole_sort with
+    | Named lab1 -> lab = lab1
+    | Anon _ -> true
+  in
+
+  let is_matching_typ typ1 = T.sub typ1 typ
+  in
+  let has_matching_field_typ = function
+    | T.{ lab; typ = Typ c; _ } -> None
+    | T.{ lab; typ = Mut t; _ } -> None
+    | T.{ lab = lab1; typ = typ1; src } ->
+       if is_matching_typ typ1
+       then Some (lab1, typ1, src.T.region)
+       else None
+  in
+  let find_candidate_fields in_libs (module_name, (_, fs)) =
+    List.filter_map has_matching_field_typ fs |>
+      List.map (fun (lab, typ, region)->
+          let path =
+            { it = DotE(
+                { it = module_exp in_libs env module_name;
+                  at = Source.no_region;
+                  note = empty_typ_note
+                },
+                { it = lab; at = no_region; note = () },
+                ref None);
+              at = Source.no_region;
+              note = empty_typ_note; }
+          in
+          ({ path; desc = quote (module_name^"."^ lab); typ; module_name_opt = Some module_name; id=lab; region } : hole_candidate))
+  in
+  let find_candidate_id = function
+    (id, (t, region, _, _)) ->
+    if is_matching_typ t
+    then
+      let path =
+        { it = VarE {it = id; at = no_region; note = (Const, None)};
+          at = Source.no_region;
+          note = empty_typ_note }
+      in
+      Some { path; desc = quote id; typ = t; module_name_opt = None; id; region }
+    else None
+  in
+  let (eligible_ids, explicit_ids) =
+    T.Env.to_seq env.vals |>
+      Seq.filter_map find_candidate_id |>
+      List.of_seq |>
+      List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
+  in
+  let candidates in_libs xs f =
+    T.Env.to_seq xs |>
+      Seq.filter_map f |>
+      Seq.map (find_candidate_fields in_libs) |>
+      List.of_seq |>
+      List.flatten |>
+      List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
+  in
+  let eligible_terms, explicit_terms  =
+    match eligible_ids with
+    | [id] -> ([id], []) (* first look in local env, otherwise consider module entries *)
+    | _ ->
+       let (eligible_fields, explicit_fields) = candidates false env.vals is_val_module in
+       (eligible_ids @ eligible_fields,
+        explicit_ids @ explicit_fields)
+  in
+  let renaming_hints env =
+    List.iter (fun candidate ->
+      if (candidate.region.left.file = at.left.file) then
+        let call_region = Source.string_of_region at in
+        let call_src = match Source.read_region at with Some s -> ": " ^ s | None -> "." in
+        match hole_sort with
+        | Anon _ -> ()
+        | Named id ->
+          let mod_desc, mid =
+            match candidate.path.it with
+            | DotE({ it = VarE {it = mid;_ }; _ }, _, _) ->
+              ("the existing", mid)
+            | VarE _ | _ ->
+              let mid = match Lib.String.chop_prefix id candidate.id with
+                | Some suffix when not (T.Env.mem suffix env.vals) ->
+                   suffix
+                | _ -> "<M>"
+              in
+              ("a new", mid)
+          in
+            info env candidate.region
+             "Consider renaming `%s` to `%s.%s` in %s module `%s`. Then it can serve as an implicit argument `%s` in this call:\n%s%s"
+             candidate.desc mid id mod_desc mid id call_region call_src)
+      explicit_terms
+  in
+  (* All candidates are subtypes of the required type. The "greatest" of these types is the "closest" to the required type.
+     If we can uniquely identify a single candidate that is the supertype of all other candidates we pick it. *)
+  let disambiguate_holes = disambiguate_resolutions (fun (c1 : hole_candidate) c2 -> T.sub c1.typ c2.typ) in
+  match eligible_terms with
+  | [term] -> Ok term
+  | [] ->
+    let (lib_terms, _) = candidates true env.libs is_lib_module in
+    (match if Option.is_some !Flags.implicit_package then disambiguate_holes lib_terms else None with
+    | Some term -> Ok term
+    | None ->
+      Error (HoleSuggestions (fun env ->
+        (List.map suggestion_of_candidate lib_terms,
+         List.map (fun candidate -> candidate.desc) explicit_terms,
+         renaming_hints))))
+  | terms -> begin
+     match disambiguate_holes terms with
+     | Some term -> Ok term
+     | None -> Error (HoleAmbiguous (fun env ->
+       let terms = List.map (fun term -> term.desc) terms in
+       error env at "M0231" "ambiguous implicit argument %s of type%a.\nThe ambiguous implicit candidates are: %s%s."
+         (match hole_sort with Named n -> "named " ^ quote n | Anon i -> "at argument position " ^ Int.to_string i)
+         display_typ typ
+         (String.concat ", " terms)
+         (if explicit_terms = [] then ""
+          else
+            ".\nThe other explicit candidates are: "^
+              (String.concat ", " (List.map (fun oc -> oc.desc) explicit_terms)))))
+     end
+
 type ctx_dot_candidate =
   { module_name : T.lab;
+    path : exp;
+    arg_ty : T.typ;
     func_ty : T.typ;
-    module_ty : T.typ;
+    inst : T.typ list;
   }
 
 (** Searches for contextual resolutions for [name] on a given
@@ -1293,54 +1538,104 @@ type ctx_dot_candidate =
     matching module could be imported, and reports an ambiguity error
     when finding multiple resolutions.
  *)
-let contextual_dot env name receiver_ty =
-  (* Does an instantiation for [tbs] exist that makes [t1] <: [t2]? *)
-  let permissive_sub t1 (tbs, t2) =
-    try
-      let (s, c) = Bi_match.bi_match_subs None tbs None [t1, t2] [] in
-      ignore (Bi_match.finalize s c []);
-      true
-    with _ ->
-      false in
-  let is_module (n, (t, _, _, _)) = match t with
-    | T.Obj (T.Module, fs) -> Some (n, (t, fs))
+
+(* Does an instantiation for [tbs] exist that makes [t1] <: [t2]? *)
+let permissive_sub t1 (tbs, t2) =
+  try
+    (* Solve only tvars from the receiver, let the unused tvars be unsolved *)
+    let (inst, c) = Bi_match.bi_match_subs None tbs None [t1, t2, no_region] ~must_solve:[t2] in
+    (* Call finalize to verify the instantiation (sanity checks), optional step. *)
+    ignore (Bi_match.finalize inst c []);
+    Some inst
+  with _ ->
+    None
+
+type 'a context_dot_error =
+  | DotSuggestions of (env -> string list)
+  | DotAmbiguous of (env -> 'a)
+
+let contextual_dot env name receiver_ty : (ctx_dot_candidate, 'a context_dot_error) Result.t =
+  let is_matching_func field =
+    if not (String.equal field.T.lab name.it) then None
+    else match T.normalize field.T.typ with
+    | T.Func (_, _, tbs, T.Named("self", first_arg)::_, _) as typ ->
+      (match permissive_sub receiver_ty (tbs, first_arg) with
+        | Some inst -> Some (T.open_ inst first_arg, typ, inst)
+        | _ -> None)
     | _ -> None in
-  let has_matching_self tf = match tf with
-    | T.{ lab = "Self"; typ = T.Typ con; _ } ->
-       (match Cons.kind con with
-       | T.Def(tbs, t') -> permissive_sub receiver_ty (tbs, t')
-       | _ -> false)
-    | _ -> false in
-  let has_matching_self_type (_, (_, fs)) = List.exists has_matching_self fs in
-  let is_matching_func = function
-    | T.{ lab; typ = T.Func (_, _, tbs, first_arg::_, _) as typ; _ } when lab = name.it ->
-      if permissive_sub receiver_ty (tbs, first_arg) then Some typ else None
-    | _ -> None in
-  let find_candidate (module_name, (module_ty, fs)) =
+  let find_candidate in_libs (module_name, (module_ty, fs)) =
     List.find_map is_matching_func fs |>
-      Option.map (fun func_ty -> { module_name; func_ty; module_ty }) in
-  let eligible_funcs =
-    T.Env.to_seq env.vals |>
-      Seq.filter_map is_module |>
-      Seq.filter has_matching_self_type |>
-      Seq.filter_map find_candidate |>
+      Option.map (fun (arg_ty, func_ty, inst) ->
+        let path = {
+          it = DotE({
+              it = module_exp in_libs env module_name;
+              at = name.at;
+              note = empty_typ_note
+            }, name, ref None);
+          at = name.at;
+          note = empty_typ_note }
+        in
+        { module_name; path; func_ty; arg_ty; inst }) in
+  let candidates in_libs xs f =
+    T.Env.to_seq xs |>
+      Seq.filter_map f |>
+      Seq.filter_map (find_candidate in_libs) |>
       List.of_seq in
-  match eligible_funcs with
-  | [oc] -> Ok oc
+  (* All candidate functions accept supertypes of the required type as their first arguments.
+     The "smallest" of these types is the closest to the required type. *)
+  let disambiguate_candidates = disambiguate_resolutions (fun c1 c2 -> T.sub c2.arg_ty c1.arg_ty) in
+  match candidates false env.vals is_val_module with
+  | [c] -> Ok c
   | [] ->
-     let lib_candidates =
-       T.Env.to_seq env.libs |>
-         Seq.filter_map (fun (n, t) ->
-             match t with
-             | T.Obj (T.Module, fs) -> Some (n, (t, fs))
-             | _ -> None) |>
-         Seq.filter has_matching_self_type |>
-         Seq.filter_map find_candidate |>
-         List.of_seq in
-     Error (List.map (fun candidate -> candidate.module_name) lib_candidates)
-  | ocs ->
-     let candidates = List.map (fun oc -> oc.module_name) ocs in
-     error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
+    (match candidates true env.libs is_lib_module with
+    | [c] when Option.is_some !Flags.implicit_package -> Ok c
+    | lib_candidates ->
+      match if Option.is_some !Flags.implicit_package then disambiguate_candidates lib_candidates else None with
+      | Some c -> Ok c
+      | None ->  Error (DotSuggestions (fun env -> List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)))
+  | cs -> match disambiguate_candidates cs with
+    | Some c -> Ok c
+    | None -> Error (DotAmbiguous (fun env ->
+       let modules =  (List.map (fun c -> c.module_name) cs) in
+       error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " modules)))
+
+let check_can_dot env ctx_dot (exp : Syntax.exp) tys es at =
+  if not env.pre then
+  if Flags.get_warning_level "M0236" <> Flags.Allow then
+  match ctx_dot with
+  | Some _ -> () (* already dotted *)
+  | None ->
+    match exp.it, tys, es with
+    | (DotE(obj_exp, id, _), receiver_ty :: tys, e::es) ->
+      begin
+        if (id.it = "equal" || Lib.String.chop_prefix "compare" id.it <> None) && List.length tys = 1 then ()
+        else
+          let quote e =
+            if e.at.left.line <> e.at.right.line then "..." else
+            match Source.read_region e.at with
+            | None -> "..."
+            | Some s ->
+               match e.it with
+               | VarE _ | CallE _ | DotE _ -> s
+               | e -> "("^s^")"
+          in
+          match contextual_dot env id receiver_ty with
+          | Error _ -> ()
+          | Ok {path;_} ->
+            (match path.it, exp.it with
+             | DotE ({ it = VarE {it = mod_id0; _};_ },
+                     { it = id0; _},
+                    _),
+               DotE ({ it = VarE {it = mod_id1; note = (Const, _); _};_ },
+                     { it = id1; _},
+                     _)  when mod_id0 = mod_id1 && id0 = id1 ->
+                warn env at "M0236" "You can use the dot notation `%s.%s(...)` here"
+                  (quote e)
+                  id.it
+             | _ -> ())
+      end
+    | _, _, _ -> ()
+
 
 let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
@@ -1349,13 +1644,17 @@ and infer_exp_mut env exp : T.typ =
   infer_exp' Fun.id env exp
 
 and infer_exp_promote env exp : T.typ =
+  snd (infer_exp_and_promote env exp)
+
+and infer_exp_and_promote env exp : T.typ * T.typ =
   let t = infer_exp env exp in
   let t' = T.promote t in
   if t' = T.Pre then
     error env exp.at "M0053"
       "cannot infer type of expression while trying to infer surrounding class type,\nbecause its type is a forward reference to type%a"
       display_typ_expand t;
-  t'
+  t, t'
+
 
 and infer_exp_wrapper inf f env exp : T.typ =
   assert (exp.note.note_typ = T.Pre);
@@ -1377,6 +1676,9 @@ and infer_exp'' env exp : T.typ =
   let in_actor = env.in_actor in
   let env = {env with in_actor = false; in_prog = false; context = exp.it::env.context} in
   match exp.it with
+  | HoleE (_, e) ->
+    (* TODO: this should probably be an assert, not an error *)
+    error env exp.at "M0232" "cannot infer type of implicit argument"
   | PrimE _ ->
     error env exp.at "M0054" "cannot infer type of primitive"
   | VarE id ->
@@ -1388,11 +1690,32 @@ and infer_exp'' env exp : T.typ =
       if !Flags.compiled then
         error env id.at "M0056" "variable %s is in scope but not available in compiled code" id.it
       else t
-    | Some (t, _, _, Available) -> id.note <- (if T.is_mut t then Var else Const); t
+    | Some (t, _, _, Available) -> id.note <- (if T.is_mut t then (Var, None) else (Const, None)); t
     | None ->
-      error env id.at "M0057" "unbound variable %s%a%s" id.it
-        display_vals env.vals
-        (Suggest.suggest_id "variable" id.it (T.Env.keys env.vals))
+      let candidate_libs =
+        if Option.is_some(!Flags.implicit_package) then
+          T.Env.to_seq env.libs |>
+            Seq.filter (fun (name, typ) ->
+              name <> "@prim" &&
+                let lib_id = Filename.basename name |> Filename.chop_extension in
+                lib_id = id.it) |>
+            List.of_seq
+        else []
+      in
+      match candidate_libs with
+      | [(name, typ)] ->
+        id.note <-
+          (Const, Some { it = ImplicitLibE name; at = exp.at; note = {note_typ = typ; note_eff = T.Triv} });
+        typ
+      | c1::c2::cs ->
+        let import_suggestions = List.map (fun (name, ty) -> Suggest.module_name_as_url name) candidate_libs in
+        error env id.at "M0057" "unbound variable %s%a%s" id.it
+          display_vals env.vals
+          (Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " import_suggestions))
+      | [] ->
+        error env id.at "M0057" "unbound variable %s%a%s" id.it
+          display_vals env.vals
+          (Suggest.suggest_id "variable" id.it (T.Env.keys env.vals))
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
@@ -1539,9 +1862,10 @@ and infer_exp'' env exp : T.typ =
   | ObjE (exp_bases, exp_fields) ->
     infer_check_bases_fields env [] exp.at exp_bases exp_fields
   | DotE (exp1, id, _) ->
-    (match try_infer_dot_exp env exp.at exp1 id with
+    (match try_infer_dot_exp env exp.at exp1 id ("", (fun dot_typ -> true))  with
     | Ok t -> t
-    | Error (_, e) ->
+    | Error (_, mk_e) ->
+      let e = mk_e() in
       Diag.add_msg env.msgs e;
       raise Recover)
   | AssignE (exp1, exp2) ->
@@ -1610,7 +1934,7 @@ and infer_exp'' env exp : T.typ =
       let env'' =
         { env' with
           labs = T.Env.empty;
-          rets = Some codom;
+          rets = Ret codom;
           (* async = None; *) }
       in
       let initial_usage = enter_scope env'' in
@@ -1700,7 +2024,7 @@ and infer_exp'' env exp : T.typ =
       check_ErrorCap env "try" exp.at;
       if cases <> [] then
         coverage_cases "try handler" env cases T.catch exp.at;
-      Option.iter (check_exp_strong { env with async = C.NullCap; rets = None; labs = T.Env.empty } T.unit) exp2_opt
+      Option.iter (check_exp_strong { env with async = C.NullCap; rets = NoRet; labs = T.Env.empty } T.unit) exp2_opt
     end;
     T.lub ~src_fields:env.srcs t1 t2
   | WhileE (exp1, exp2) ->
@@ -1762,11 +2086,13 @@ and infer_exp'' env exp : T.typ =
   | RetE exp1 ->
     if not env.pre then begin
       match env.rets with
-      | Some T.Pre ->
+      | Ret T.Pre ->
         local_error env exp.at "M0084" "cannot infer return type"
-      | Some t ->
+      | Ret t ->
         check_exp_strong env t exp1
-      | None ->
+      | BimatchRet k ->
+        k env exp1
+      | NoRet ->
         local_error env exp.at "M0085" "misplaced return"
     end;
     T.Non
@@ -1786,7 +2112,7 @@ and infer_exp'' env exp : T.typ =
     let env' =
       {(adjoin_typs env ce_scope cs) with
         labs = T.Env.empty;
-        rets = Some T.Pre;
+        rets = Ret T.Pre;
         async = next_cap c;
         scopes = T.ConEnv.add c exp.at env.scopes } in
     let t = infer_exp env' exp1 in
@@ -1844,6 +2170,10 @@ and infer_exp'' env exp : T.typ =
     T.unit
   | ImportE (f, ri) ->
     check_import env exp.at f ri
+  | ImplicitLibE lib ->
+    match T.Env.find_opt lib env.libs with
+    | Some t -> t
+    | None -> failwith "ImplicitLibE not found in env.libs"
 
 and infer_bin_exp env exp1 exp2 =
   match is_explicit_exp exp1, is_explicit_exp exp2 with
@@ -1863,38 +2193,57 @@ and infer_bin_exp env exp1 exp2 =
 (* Returns `Ok` when finding an object with a matching field or
    `Error` with the type of the receiver as well as the error message
    to report. This is used to delay the reporting for contextual dot resulution *)
-and try_infer_dot_exp env at exp id =
-  let t1 = infer_exp_promote env exp in
+and try_infer_dot_exp env at exp id (desc, pred) =
+  let t0, t1 = infer_exp_and_promote env exp in
   let fields =
     try Ok(T.as_obj_sub [id.it] t1) with Invalid_argument _ ->
     try Ok(array_obj (T.as_array_sub t1)) with Invalid_argument _ ->
     try Ok(blob_obj (T.as_prim_sub T.Blob t1)) with Invalid_argument _ ->
     try Ok(text_obj (T.as_prim_sub T.Text t1)) with Invalid_argument _ ->
-      Error(t1, type_error exp.at "M0070" (Format.asprintf
-              "expected object type, but expression produces type%a"
-              display_typ_expand t1))
+      Error(t1, fun () ->
+        type_error exp.at "M0070"
+          (Format.asprintf
+             "expected object type, but expression produces type%a"
+             display_typ_expand t0))
   in
   match fields with
   | Error e -> Error e
   | Ok((s, tfs)) -> begin
+    let suggest () =
+      Suggest.suggest_id "field" id.it
+        (List.filter_map
+           (function
+              { T.typ=T.Typ _;_} -> None
+            | {T.lab;_} -> Some lab) tfs)
+    in
     match T.lookup_val_field id.it tfs with
     | T.Pre ->
       error env at "M0071"
         "cannot infer type of forward field reference %s"
         id.it
-    | t ->
+    | t when pred t ->
       if not env.pre then
         check_deprecation env at "field" id.it (T.lookup_val_deprecation id.it tfs);
       Ok(t)
+    | t (* when not (pred t) *) ->
+      Error(t1, fun () ->
+        type_error id.at "M0234"
+          (Format.asprintf "field %s does exist in %a\nbut is not %s.\n%s"
+             id.it
+             display_obj t0
+             desc
+             (suggest ())))
     | exception Invalid_argument _ ->
-      Error(t1, type_error id.at "M0072" (Format.asprintf "field %s does not exist in %a%s"
-          id.it
-          display_obj (s, tfs)
-          (Suggest.suggest_id "field" id.it
-             (List.filter_map
-                (function
-                   { T.typ=T.Typ _;_} -> None
-                 | {T.lab;_} -> Some lab) tfs))))
+      Error(t1, fun () ->
+        type_error id.at "M0072"
+          (Format.asprintf "field %s does not exist in %a%s"
+             id.it
+             display_obj t0
+             (Suggest.suggest_id "field" id.it
+                (List.filter_map
+                   (function
+                      { T.typ=T.Typ _;_} -> None
+                    | {T.lab;_} -> Some lab) tfs))))
     end
 
 and infer_exp_field env rf =
@@ -1909,14 +2258,14 @@ and infer_check_bases_fields env (check_fields : T.field list) exp_at exp_bases 
   check_ids env "object" "field"
     (map (fun (ef : exp_field) -> ef.it.id) exp_fields);
 
-  let infer_or_check rf =
-    let { mut; id; exp } = rf.it in
-    match List.find_opt (fun ft -> ft.T.lab = id.it) check_fields with
-    | Some exp_field ->
-      check_exp_field env rf [exp_field];
-      exp_field
-    | _ -> infer_exp_field env rf in
-
+  let infer_or_check (exp_field : exp_field) =
+    let id = exp_field.it.id.it in
+    match T.find_val_field_opt id check_fields with
+    | Some ft ->
+      check_exp_field env exp_field [ft];
+      ft
+    | _ -> infer_exp_field env exp_field
+  in
   let fts = map infer_or_check exp_fields in
   let bases = map (fun b -> infer_exp_promote env b, b) exp_bases in
   let homonymous_fields ft1 ft2 = T.compare_field ft1 ft2 = 0 in
@@ -2004,6 +2353,44 @@ and check_exp env t exp =
 and check_exp' env0 t exp : T.typ =
   let env = {env0 with in_prog = false; in_actor = false; context = exp.it :: env0.context } in
   match exp.it, t with
+  | HoleE (s, e), t ->
+    let desc = function
+      | Named id -> "`"^id^"`"
+      | Anon idx -> "at position " ^ (Int.to_string idx)
+    in
+    begin match resolve_hole env exp.at s t with
+    | Ok {path; _} ->
+      e := path;
+      check_exp env t path;
+      t
+    | Error (HoleAmbiguous mk_error) ->
+      mk_error env;
+      t
+    | Error (HoleSuggestions mk_suggestions) ->
+      let (import_suggestions, explicit_suggestions, renaming_hints) = mk_suggestions env in
+      (* TODO: move this logic into mk_suggestions *)
+      if not env.pre then begin
+        let import_sug =
+          if import_suggestions = [] then
+            let desc = match s with Named id -> " named " ^ quote id | _ -> "" in
+            Format.sprintf
+             "\nHint: If you're trying to omit an implicit argument%s you need to have a matching declaration%s in scope."
+             desc desc
+          else Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " import_suggestions)
+        in
+        let explicit_sug =
+          if explicit_suggestions = [] then ""
+          else Format.sprintf "\nHint: Did you mean to explicitly use %s?" (String.concat " or " explicit_suggestions)
+        in
+        renaming_hints env;
+        local_error env exp.at "M0230" "Cannot determine implicit argument %s of type%a%s%s"
+          (desc s)
+          display_typ t
+          import_sug
+          explicit_sug
+      end;
+      t
+  end
   | PrimE s, T.Func _ ->
     t
   | LitE lit, _ ->
@@ -2047,22 +2434,24 @@ and check_exp' env0 t exp : T.typ =
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;
     t
-  | ObjE ([], exp_fields) as e, T.Obj(T.Object, fts) -> (* TODO: infer bases? Default does a decent job. *)
-    check_ids env "object" "field"
-      (List.map (fun (ef : exp_field) -> ef.it.id) exp_fields);
-    List.iter (fun ef -> check_exp_field env ef fts) exp_fields;
-    if List.for_all (fun ft ->
-      if not (List.exists (fun (ef : exp_field) -> ft.T.lab = ef.it.id.it) exp_fields)
-      then begin
-      local_error env exp.at "M0151"
-        "object literal is missing field %s from expected type%a"
-        ft.T.lab
-        display_typ_expand t;
-        false
-      end else true
-    ) fts
-    then detect_lost_fields env t e;
-    t
+  | ObjE (exp_bases, exp_fields), T.Obj(T.Object, fts) ->
+    let t' = infer_check_bases_fields env fts exp.at exp_bases exp_fields in
+    let fts' = match T.promote t' with
+      | T.Obj(T.Object, fts') -> fts'
+      | _ -> []
+    in
+    let missing_val_field_labs = fts
+      |> List.filter T.(fun ft -> not (is_typ ft.T.typ) && Option.is_none (lookup_val_field_opt ft.lab fts'))
+      |> List.map (fun ft -> Printf.sprintf "'%s'" ft.T.lab)
+    in
+    begin match missing_val_field_labs with
+    | [] -> check_inferred env0 env t t' exp
+    | fts ->
+      (* Future work: Replace this error with a general subtyping error once better explanations are available. *)
+      let s = if List.length fts = 1 then "" else "s" in
+      local_error env exp.at "M0151" "missing field%s %s from expected type%a" s (String.concat ", " fts) display_typ_expand t;
+      t'
+    end
   | OptE exp1, _ when T.is_opt t ->
     check_exp env (T.as_opt t) exp1;
     t
@@ -2111,7 +2500,7 @@ and check_exp' env0 t exp : T.typ =
     let env' =
       {(adjoin_typs env ce_scope cs) with
         labs = T.Env.empty;
-        rets = Some t';
+        rets = Ret t';
         async = next_cap c;
         scopes = T.ConEnv.add c exp.at env.scopes;
       } in
@@ -2138,7 +2527,7 @@ and check_exp' env0 t exp : T.typ =
     if cases <> []
     then coverage_cases "try handler" env cases T.catch exp.at;
     if not env.pre then
-      Option.iter (check_exp_strong { env with async = C.NullCap; rets = None; labs = T.Env.empty; } T.unit) exp2_opt;
+      Option.iter (check_exp_strong { env with async = C.NullCap; rets = NoRet; labs = T.Env.empty } T.unit) exp2_opt;
     t
   (* TODO: allow shared with one scope par *)
   | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
@@ -2163,39 +2552,58 @@ and check_exp' env0 t exp : T.typ =
     let {T.typ; _} = List.find (fun T.{lab; typ;_} -> lab = id.it) fs in
     check_exp env typ exp1;
     t
-  | ImportE _, t ->
+  | (ImportE _ | ImplicitLibE _), t ->
     t
-  | e, _ ->
+  | _, _ ->
     let t' = infer_exp env0 exp in
-    if not (sub env exp.at t' t) then
-    begin
-      local_error env0 exp.at "M0096"
-        "expression of type%a\ncannot produce expected type%a%s"
-        display_typ_expand t'
-        display_typ_expand t
-        (Suggest.suggest_conversion env.libs env.vals t' t)
-    end
-    else detect_lost_fields env t e;
-    t'
+    check_inferred env0 env t t' exp
+
+and check_inferred env0 env t t' exp = 
+  if not (sub env exp.at t' t) then
+  begin
+    local_error env0 exp.at "M0096"
+      "expression of type%a\ncannot produce expected type%a%s"
+      display_typ_expand t'
+      display_typ_expand t
+      (Suggest.suggest_conversion env.libs env.vals t' t)
+  end
+  else detect_lost_fields env t exp.it;
+  t'
 
 and check_exp_field env (ef : exp_field) fts =
   let { mut; id; exp } = ef.it in
+  let update_srcs src =
+    if !Mo_config.Flags.typechecker_combine_srcs then
+      let r1 = src.T.track_region in
+      let r2 = id.at in
+      let srcs =
+        Region_set.union
+          (Field_sources.get_srcs env.srcs r1)
+          (Field_sources.get_srcs env.srcs r2)
+      in
+      Field_sources.Srcs_tbl.replace env.srcs r1 srcs;
+      Field_sources.Srcs_tbl.replace env.srcs r2 srcs
+  in
   let ft_opt = List.find_opt (fun ft -> ft.T.lab = id.it) fts in
   match ft_opt with
-  | Some { T.typ = T.Mut t; _ } ->
+  | Some { T.lab = _; typ = T.Mut t; src } ->
     if mut.it <> Syntax.Var then
       error env ef.at "M0149" "expected mutable 'var' field %s of type%a\nbut found immutable field (insert 'var'?)"
         id.it
         display_typ t;
+    update_srcs src;
     check_exp env t exp
-  | Some { T.typ = t; _ } ->
+  | Some { T.lab = _; typ = t; src } ->
     if mut.it = Syntax.Var then
       error env ef.at "M0150" "expected immutable field %s of type%a\nbut found mutable 'var' field (delete 'var'?)"
         id.it
         display_typ t;
+    update_srcs src;
     check_exp env t exp
   | None ->
-    ignore (infer_exp env exp)
+    if !Mo_config.Flags.typechecker_combine_srcs then
+      Field_sources.add_src env.srcs id.at;
+    ignore (infer_exp env exp);
 
 (** Performs the first step of checking that the given [FuncE (_, shared_pat, [], pat, typ_opt, _, exp)] expression has type [T.Func (s, c, [], ts1, ts2)].
   Used to prepare the new env for checking the [exp] (body of the function).
@@ -2224,7 +2632,7 @@ and check_func_step in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2
   let env' =
     { env with
       labs = T.Env.empty;
-      rets = Some exp_typ;
+      rets = Ret exp_typ;
       async = C.NullCap; }
   in
   (adjoin_vals env' ve2), exp_typ, codom
@@ -2270,40 +2678,123 @@ and detect_lost_fields env t = function
   | _ -> ()
 
 and infer_callee env exp =
+  let is_func_typ typ = T.(
+    match promote typ with
+    | Func _ | Non -> true
+    | _ -> false)
+  in
   match exp.it with
   | DotE(exp1, id, note) -> begin
-    match try_infer_dot_exp env exp.at exp1 id with
-    | Ok t -> infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
-    | Error (t1, e) ->
+    match try_infer_dot_exp env exp.at exp1 id ("a function", is_func_typ) with
+    | Ok t ->
+      infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
+    | Error (t1, mk_e) ->
       match contextual_dot env id t1 with
-      | Error [] ->
-         let sug = "\nHint: If you're trying to use a contextual call you need to import the corresponding module." in
-         Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
-      | Error suggestions ->
-         let sug = Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
-         Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
-      | Ok { module_name; module_ty; func_ty } ->
-         if not env.pre then
-         use_identifier env module_name;
-         note := Some {
-           it = DotE({
-               it = VarE { it = module_name; at = no_region; note = Const };
-               at = id.at;
-               note = { note_eff = T.Triv; note_typ = module_ty }
-             }, id, ref None);
-           at = id.at;
-           note = { note_eff = T.Triv; note_typ = func_ty }
-         };
-         func_ty, Some (exp1, t1)
+      | Error (DotSuggestions mk_suggestions) ->
+        (* TODO: move this logic into mk_suggestions *)
+        let suggestions = mk_suggestions env in
+        let e = mk_e () in
+        let e1 =
+          if suggestions = []
+          then e
+          else Diag.{e with text =
+            e.text ^
+            Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions)}
+        in
+        Diag.add_msg env.msgs e1; raise Recover
+      | Error (DotAmbiguous mk_error) ->
+        mk_error env
+      | Ok { module_name; path; func_ty; inst; _ } ->
+        note := Some path;
+        if not env.pre then begin
+          check_exp env func_ty path;
+          let note_eff = A.infer_effect_exp exp in
+          exp.note <- {note_typ = exp.note.note_typ; note_eff}
+        end;
+        func_ty, Some (exp1, t1, id.it, inst)
      end
   | _ ->
      infer_exp_promote env exp, None
+and as_implicit = function
+  | T.Named ("implicit", T.Named (arg_name, t)) ->
+    Some arg_name
+  | T.Named ("implicit", t) ->
+    Some "_"
+  | T.Named (_inf_arg_name, (T.Named ("implicit", T.Named (arg_name, t)))) ->
+    (* override inferred arg_name *)
+    Some arg_name
+  | T.Named (inf_arg_name, (T.Named ("implicit", t))) ->
+    (* non-overriden, use inferred arg_name *)
+    Some inf_arg_name
+  | _ -> None
 
+(** With implicits we can either fully specify all implicit arguments or none
+  Saturated arity is the number of expected arguments when all arguments are fully specified
+  Implicits arity is the number of non-implicit arguments, when all implicit arguments are omitted
+  *)
+and arity_with_implicits t_args =
+  let saturated_arity = List.length t_args in
+  let implicits_arity = List.to_seq t_args |> Seq.filter (fun t -> Option.is_none (as_implicit t)) |> Seq.length in
+  saturated_arity, implicits_arity
 
-and infer_call env exp1 inst exp2 at t_expect_opt =
+and insert_holes at ts es =
+  let mk_hole pos hole_id =
+    let hole_sort = if hole_id = "" then Anon pos else Named hole_id in
+    {it = HoleE (hole_sort, ref {it = PrimE "hole"; at; note=empty_typ_note });
+      at;
+      note = empty_typ_note }
+  in
+  let rec go n ts es =
+    match ts with
+    | [] -> es
+    | t :: ts1 ->
+      match as_implicit t with
+      | Some arg_name ->
+        mk_hole n arg_name :: go (n + 1) ts1 es
+      | None ->
+        match es with
+        | e :: es1 -> e :: go (n + 1) ts1 es1
+        | [] -> []
+  in
+  match go 0 ts es with
+  | [arg] -> arg.it
+  | args -> TupE args
+
+and check_explicit_arguments env saturated_arity implicits_arity arg_typs syntax_args =
+    if Flags.get_warning_level "M0237" <> Flags.Allow then
+      if List.length syntax_args = saturated_arity && implicits_arity < saturated_arity then
+        let _, explicit_implicits = List.fold_right2
+          (fun typ arg (pos, acc) ->
+             pos + 1,
+             match as_implicit typ with
+             | None -> acc
+             | Some name ->
+                match resolve_hole env arg.at (match name with "_" -> Anon pos | id -> Named id) typ with
+                | Error _ -> acc
+                | Ok {path;_} ->
+                   match path.it, arg.it with
+                   | VarE {it = id0; _},
+                     VarE {it = id1; note = (Const, _); _}
+                        when id0 = id1 ->
+                      (id1, arg) :: acc
+                   | DotE ({ it = VarE {it = mod_id0; _};_ },
+                           { it = id0; _},
+                           _),
+                     DotE ({ it = VarE {it = mod_id1; note = (Const, _); _};_ },
+                           { it = id1; _},
+                           _) when mod_id0 = mod_id1 && id0 = id1 ->
+                      (mod_id1 ^ "." ^ id1, arg) :: acc
+                   | _ -> acc)
+          arg_typs syntax_args (0, [])
+        in
+        if (List.length explicit_implicits) = saturated_arity - implicits_arity then
+          List.iter (fun (name, exp) -> warn env exp.at "M0237" "The `%s` argument can be inferred and omitted here (the function parameter is `implicit`)." name)  explicit_implicits
+
+and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
+  let exp2 = !ref_exp2 in
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
   let (t1, ctx_dot) = infer_callee env exp1 in
-  let sort, tbs, t_arg, t_ret =
+  let sort, tbs, t_args, t_ret =
     try T.as_func_sub T.Local n t1
     with Invalid_argument _ ->
       local_error env exp1.at "M0097"
@@ -2314,15 +2805,43 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           "this looks like an unintended function call, perhaps a missing ';'?";
       T.as_func_sub T.Local n T.Non
   in
-  let t_arg, extra_subtype_problems = match ctx_dot with
-    | None -> t_arg, []
-    | Some(e, t) -> begin
-      match T.normalize t_arg with
-      | T.Tup([t'; t2]) -> t2, [(t, t')]
-      | T.Tup(t'::ts) -> T.Tup(ts), [(t, t')]
-      | t' -> T.unit, [(t, t')]
+  (* Syntactic arguments:
+    - exp1(e1 .. en) => [e1 .. en]
+    - exp1((e1 .. en)) => [(e1 .. en)] (single argument! parenthesized)
+   *)
+  let syntax_args = match exp2.it with
+    | TupE es when not parenthesized -> es
+    | _ -> [exp2]
+  in
+  let t_args, extra_subtype_problems = match ctx_dot with
+    | None ->
+      t_args, []
+    | Some(e, t, _id, _inst) -> begin
+      match t_args with
+      | t'::ts -> ts, [(t, t', e.at)]
+      | [] -> assert false
     end
   in
+  let saturated_arity, implicits_arity = arity_with_implicits t_args in
+  let is_correct_arity =
+    let n = List.length syntax_args in
+    n = saturated_arity || n = implicits_arity
+  in
+  let needs_holes = List.length syntax_args = implicits_arity in (* Implicit arguments are holes *)
+  let exp2 =
+    if needs_holes
+    then { exp2 with it = insert_holes at t_args syntax_args}
+    else exp2
+  in
+  (* Elaboration for contextual dot and implicits relies on the syntactic shape of the arguments,
+    so we need to require the exact arity *)
+  let require_exact_arity = needs_holes || Option.is_some ctx_dot in
+  let t_arg =
+    if require_exact_arity && not is_correct_arity
+    then wrong_call_args env tbs ctx_dot exp2.at t_args implicits_arity syntax_args
+    else T.seq t_args
+  in
+  if not env.pre then ref_exp2 := exp2; (* TODO: is this good enough *)
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
     | [], (None | Some (_, []))  (* no inference required *)
@@ -2336,11 +2855,11 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
       if not env.pre then check_exp_strong env t_arg' exp2
       else if typs <> [] && Flags.is_warning_enabled "M0223" &&
         is_redundant_instantiation ts env (fun env' ->
-          infer_call_instantiation env' t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
+          infer_call_instantiation env' t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
             warn env inst.at "M0223" "redundant type instantiation";
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
-      infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
+      infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
   inst.note <- ts;
   if not env.pre then begin
@@ -2354,17 +2873,41 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           "shared function call result contains abstract type%a"
           display_typ_expand t_ret';
     end;
-    match T.(is_shared_sort sort || is_async t_ret'), inst.it, tbs with
+    begin match T.(is_shared_sort sort || is_async t_ret'), inst.it, tbs with
     | false, Some (true, _), ([] | T.{ sort = Type; _ } :: _) ->
        local_error env inst.at "M0196" "unexpected `system` capability (try deleting it)"
     | false, (None | Some (false, _)), T.{ sort = Scope; _ } :: _ ->
        warn env at "M0195" "this function call implicitly requires `system` capability and may perform undesired actions (please review the call and provide a type instantiation `<system%s>` to suppress this warning)" (if List.length tbs = 1 then "" else ", ...")
     | _ -> ()
+    end;
+    check_can_dot env ctx_dot exp1 (List.map (T.open_ ts) t_args) syntax_args at;
+    check_explicit_arguments env saturated_arity implicits_arity (List.map (T.open_ ts) t_args) syntax_args;
   end;
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
 
-and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems =
+and wrong_call_args env tbs ctx_dot at t_args implicits_arity syntax_args =
+  let inst = 
+    match ctx_dot with
+    | Some (_, _, _, inst) -> inst
+    | None -> T.open_binds tbs
+  in
+  let subst t = if inst = [] then t else T.open_ inst t in
+  let given_types = List.map (infer_exp env) syntax_args in
+  let expected_types =
+    t_args
+    |> List.filter (fun t -> as_implicit t = None)
+    |> List.map subst
+  in
+  error env at "M0233"
+    "wrong number of arguments: expected %d but got %d\n%a\n%a"
+    implicits_arity
+    (List.length syntax_args)
+    display_expected_arg_types expected_types
+    display_given_arg_types given_types
+
+and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems =
+
   (*
   Partial Argument Inference:
   We need to infer the type of the argument and find the best instantiation for the call expression.
@@ -2375,7 +2918,7 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
   - Substitute and proceed with the remaining sub-expressions to get the full instantiation.
   *)
   let infer_subargs_for_bimatch_or_defer env exp target_type =
-    let subs, deferred, to_fix, must_solve = ref extra_subtype_problems, ref [], ref [], ref [] in
+    let subs, deferred, to_fix, must_solve = ref [], ref [], ref [], ref [] in
     let rec decompose exp target_type =
       match exp.it, T.normalize target_type with
       | TupE exps, T.Tup ts when List.length exps = List.length ts ->
@@ -2393,11 +2936,15 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
           | T.Func (_, _, _, ts1, _) -> ts1 @ !must_solve
           | _ -> normalized_target :: !must_solve);
         target_type
+      | HoleE _, normalized_target ->
+        deferred := (exp, target_type) :: !deferred;
+        must_solve := normalized_target :: !must_solve;
+        target_type
       (* Future work: more cases to defer? *)
       | _ ->
         (* Infer and add a subtype problem for bi_match *)
         let t = infer_exp env exp in
-        subs := (t, target_type) :: !subs;
+        subs := (t, target_type, exp.at) :: !subs;
         t
     in
     let t2 = decompose exp target_type in
@@ -2410,7 +2957,11 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
   if Bi_match.debug then debug_print_infer_defer_split exp2 t_arg t2 subs deferred;
 
   (* In case of an early error, we need to replace Type.Var with Type.Con for a better error message *)
-  let err_ts = ref None in
+  let err_ts = ref
+      (match ctx_dot with
+      | Some (_, _, _, ts) -> Some ts
+      | _ -> None)
+  in
   let err_subst t =
     let ts = match !err_ts with
       | None -> T.open_binds tbs
@@ -2420,23 +2971,30 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
   in
 
   (* Incorporate the return type into the subtyping constraints *)
-  let ret_typ_opt, subs = 
+  let ret_typ_opt, subs =
+    let subs = List.rev subs in
     match t_expect_opt with
     | None -> Some t_ret, subs
-    | Some expected_ret -> None, (t_ret, expected_ret) :: subs
+    | Some expected_ret -> None, (t_ret, Bi_match.name_ret_typ expected_ret, at) :: subs
   in
+  (* Make sure the order of constraints is: receiver, expected return type and arguments starting from the first one *)
+  let subs = extra_subtype_problems @ subs in
 
   try
     (* i.e. exists minimal ts .
             t2 <: open_ ts t_arg /\
             t_expect_opt == Some t -> open ts_ t_ret <: t *)
-    let (ts, remaining) = Bi_match.bi_match_subs (scope_of_env env) tbs ret_typ_opt subs must_solve in
+    let (ts, remaining) = Bi_match.bi_match_subs (scope_of_env env) tbs ret_typ_opt subs ~must_solve in
 
     (* A partial solution for a better error message in case of an error *)
     err_ts := Some ts;
 
     (* Prepare subtyping constraints for the 2nd round *)
     let subs = ref [] in
+    let infer_body body_typ env body =
+      let actual_t = infer_exp env body in
+      subs := (actual_t, body_typ, body.at) :: !subs
+    in
     deferred |> List.iter (fun (exp, typ) ->
       (* Substitute fixed type variables *)
       let typ = T.open_ ts typ in
@@ -2447,54 +3005,101 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
         (* Check the function input type and prepare for inferring the body *)
         let env', body_typ, codom = check_func_step false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
         (* [codom] comes from [ts2] which might contain unsolved type variables. *)
-        let closed = Bi_match.is_closed remaining codom in
-        if not env.pre && (closed || body_typ <> codom) then begin
-          (* Closed [codom] implies closed [body_typ].
-            * [body_typ] is closed when it comes from [typ_opt] (which is when it is different from [codom])
-            *)
+        let closed_codom = Bi_match.is_closed remaining codom in
+        (* Closed [codom] implies closed [body_typ]. [body_typ] is closed when it comes from [typ_opt] *)
+        let closed_body_typ = closed_codom || Option.is_some typ_opt in
+        let env' = if closed_body_typ then env' else { env' with rets = BimatchRet (infer_body body_typ) } in
+        if closed_body_typ && not env.pre then begin
           assert (Bi_match.is_closed remaining body_typ);
-          (* Since [body_typ] is closed, no need to infer *)
           check_exp env' body_typ body;
         end;
 
         (* When [codom] is open, we need to solve it *)
-        if not closed then
+        if not closed_codom then
           if body_typ <> codom then
             (* [body_typ] is closed, body is already checked above, we just need to solve the subtype problem *)
-            subs := (body_typ, codom) :: !subs
+            subs := (body_typ, codom, body.at) :: !subs
           else begin
             (* We just have open [codom], we need to infer the body *)
-            let actual_t = infer_exp env' body in
-            subs := (actual_t, body_typ) :: !subs;
-          end
+            infer_body body_typ env' body;
+        end
+      | HoleE _, typ ->
+         if not env.pre then begin
+           (* Check that all type variables in the type are fixed, fail otherwise *)
+           Bi_match.fail_when_types_are_not_closed remaining [typ];
+           check_exp env typ exp
+         end
       | _ ->
         (* Future work: Inferring will fail, we could report an explicit error instead *)
-        subs := (infer_exp env exp, typ) :: !subs
+        subs := (infer_exp env exp, typ, exp.at) :: !subs
     );
     let ts, subst_env = Bi_match.finalize ts remaining !subs in
 
     if not env.pre then begin
       (* Fix the manually decomposed terms as if they were inferred *)
-      let fix substitute = List.iter (fun (e, t) -> ignore (infer_exp_wrapper (fun _ _ -> substitute t) T.as_immut env e)) in
+     let fix substitute = List.iter (fun (e, t) ->
+         match e.it with
+         | HoleE _ -> ()
+         | _ -> ignore (infer_exp_wrapper (fun _ _ -> substitute t) T.as_immut env e)) in
       fix (T.open_ ts) to_fix;
       fix (T.open_ ts) deferred;
     end;
-(*   
+  (*
     if not env.pre then
       info env at "inferred instantiation <%s>"
         (String.concat ", " (List.map T.string_of_typ ts));
   *)
     ts, T.open_ ts t_arg, T.open_ ts t_ret
-  with Bi_match.Bimatch msg ->
+  with Bi_match.Bimatch { message; hint; reason } ->
+    reason |> Option.iter (fun Bi_match.{ actual; expected; at } ->
+      error env at "M0096"
+        "expression of type%a\ncannot produce expected type%a"
+        display_typ_expand actual
+        display_typ_expand expected);
+
+    let t1 = T.normalize t1 in
+    let remove_holes_nary ts =
+      match exp2.it, ts with
+        HoleE _, [_] ->
+        ts
+      | TupE es, ts when List.length es = List.length ts ->
+        let ets = List.combine es ts in
+        List.filter_map (fun (e, t) ->
+          match e.it with
+          | HoleE _ -> None
+          | _ -> Some t)
+          ets
+      | e -> ts
+    in
+    let strip_receiver ty = match ty with
+      | T.Func(s, c, tbs, t1::ts1, ts2) ->
+        T.Func(s, c, tbs, ts1, ts2)
+      |  _ -> ty
+    in
+    let desc, t1'  = match ctx_dot with
+      | None -> "function", t1
+      | Some (_, receiver_ty, id, _) ->
+        Printf.sprintf "function `.%s`" id,
+        strip_receiver t1
+    in
+    let t1'' = match T.normalize t1' with
+      | T.Func(s, c, tbs, ts1, ts2) ->
+        T.Func(s, c, tbs, remove_holes_nary ts1, ts2)
+      | t1 -> t1
+    in
+    let remove_holes typ =
+      T.seq (remove_holes_nary (match typ with T.Tup ts -> ts | t -> [t]))
+    in
+    let t2' = remove_holes t2 in
     error env at "M0098"
-      "cannot implicitly instantiate function of type%a\nto argument of type%a%s\nbecause %s"
-      display_typ t1
-      display_typ (err_subst t2)
-      (match t_expect_opt with
-        | None -> ""
-        | Some t ->
-          Format.asprintf "\nto produce result of type%a" display_typ t)
-      msg
+      "cannot apply %s of type%a\nto argument of type%a\nbecause %s%s"
+      desc
+      display_typ t1''
+      display_typ (err_subst t2')
+      message
+      (match hint with
+       | None -> ""
+       | Some hint -> Format.asprintf "\n%s" hint)
 
 and is_redundant_instantiation ts env infer_instantiation =
   assert env.pre;
@@ -2511,7 +3116,7 @@ and debug_print_infer_defer_split exp2 t_arg t2 subs deferred =
   print_endline (Printf.sprintf "exp2 : %s" (Source.read_region_with_markers exp2.at |> Option.value ~default:""));
   print_endline (Printf.sprintf "t_arg : %s" (T.string_of_typ t_arg));
   print_endline (Printf.sprintf "t2 : %s" (T.string_of_typ t2));
-  print_endline (Printf.sprintf "subs : %s" (String.concat ", " (List.map (fun (t, t') -> Printf.sprintf "%s <: %s" (T.string_of_typ t) (T.string_of_typ t')) subs)));
+  print_endline (Printf.sprintf "subs : %s" (String.concat ", " (List.map (fun (t, t', _at) -> Printf.sprintf "%s <: %s" (T.string_of_typ t) (T.string_of_typ t')) subs)));
   print_endline (Printf.sprintf "deferred : %s" (String.concat ", " (List.map (fun (exp, t) -> Printf.sprintf "%s : %s" (Source.read_region exp.at |> Option.value ~default:"") (T.string_of_typ t)) deferred)));
   print_endline ""
 
@@ -2649,7 +3254,7 @@ and check_shared_pat env shared_pat : T.func_sort * Scope.val_env =
 
 and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
   match shared_pat.it, obj_sort.it with
-  | T.Local, (T.Module | T.Object) -> T.Env.empty
+  | T.Local, (T.Module | T.Object | T.Mixin) -> T.Env.empty
   | T.Local, T.Actor ->
     T.Env.empty (* error instead? That's a breaking change *)
   | T.Shared (mode, pat), sort ->
@@ -2939,11 +3544,15 @@ and nonpub_field dec_field xs : visibility_env =
     vis_dec T.{depr = None; track_region = no_region; region = dec_field.at} dec xs
   | _ -> xs
 
+and pub_fields' dec_fields xs : visibility_env =
+  List.fold_right pub_field dec_fields xs
+
 and pub_fields dec_fields : visibility_env =
-  List.fold_right pub_field dec_fields T.Env.(empty, empty)
+  pub_fields' dec_fields T.Env.(empty, empty)
 
 and pub_field dec_field xs : visibility_env =
   match dec_field.it with
+  | {dec = { it=IncludeD(_, _, n); _ }; _} when Option.is_some !n -> pub_fields' (Option.get !n).decs xs
   | {vis = { it = Public depr; _}; dec; _} ->
     vis_dec T.{depr = depr; track_region = no_region; region = dec_field.at} dec xs
   | _ -> xs
@@ -2956,6 +3565,8 @@ and vis_dec src dec xs : visibility_env =
   | ClassD (_, _, _, id, _, _, _, _, _) ->
     vis_val_id src {id with note = ()} (vis_typ_id src id xs)
   | TypD (id, _, _) -> vis_typ_id src id xs
+  | MixinD _
+  | IncludeD _ -> xs
 
 and vis_pat src pat xs : visibility_env =
   match pat.it with
@@ -2983,8 +3594,16 @@ and vis_val_id src id (xs, ys) : visibility_env =
 
 (* Object/Scope transformations *)
 
-(* TODO: remove by merging conenv and valenv or by separating typ_fields *)
+and scope_of_object env (fields : T.field list) =
+  List.fold_left (fun acc field ->
+      match field with
+      | T.{ lab; typ = T.Typ t; _ } ->
+         Scope.{ acc with typ_env = T.Env.add lab t acc.typ_env }
+      | T.{ lab; typ = t; _ } ->
+         Scope.{ acc with val_env = T.Env.add lab (t, Source.no_region, Scope.FieldReference) acc.val_env }
+    ) Scope.empty fields
 
+(* TODO: remove by merging conenv and valenv or by separating typ_fields *)
 and object_of_scope env sort dec_fields scope at =
   let pub_typ, pub_val = pub_fields dec_fields in
   let tfs =
@@ -2994,6 +3613,8 @@ and object_of_scope env sort dec_fields scope at =
         | Some src ->
           Field_sources.add_src env.srcs src.id_region;
           T.{lab = id; typ = T.Typ c; src = {depr = src.depr; track_region = src.id_region; region = src.field_region}}::tfs
+        | _ when sort = T.Mixin ->
+           T.{lab = id; typ = T.Typ c; src = {depr = None; track_region = at; region = at}}::tfs
         | _ -> tfs
       ) scope.Scope.typ_env  []
   in
@@ -3004,6 +3625,8 @@ and object_of_scope env sort dec_fields scope at =
         | Some src ->
           Field_sources.add_src env.srcs src.id_region;
           T.{lab = id; typ = t; src = {depr = src.depr; track_region = src.id_region; region = src.field_region}}::tfs
+        | _ when sort = T.Mixin ->
+          T.{lab = id; typ = t; src = {depr = None; track_region = at; region = at}}::tfs
         | _ -> tfs
       ) scope.Scope.val_env tfs
   in
@@ -3042,7 +3665,7 @@ and is_typ_dec dec : bool = match dec.it with
 
 and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
   let s = obj_sort.it in
-  let private_fields =
+  let private_fields = if s = T.Mixin then S.empty else
     let scope = List.filter (fun field -> is_private field.it.vis) dec_fields
     |> List.map (fun field -> field.it.dec)
     |> gather_block_decs env in
@@ -3052,13 +3675,13 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
     T.Env.filter (fun id _ -> S.mem id private_fields) identifiers
   in
   let env =
-    if s <> T.Actor then
+    if s <> T.Actor && s <> T.Mixin then
       { env with in_actor = false }
     else
       { env with
         in_actor = true;
         labs = T.Env.empty;
-        rets = None;
+        rets = NoRet;
       }
   in
   let decs = List.map (fun (df : dec_field) -> df.it.dec) dec_fields in
@@ -3068,14 +3691,17 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
   leave_scope env (private_identifiers scope.Scope.val_env) initial_usage;
   let (_, tfs) = T.as_obj t in
   if not env.pre then begin
-    if s = T.Actor then begin
+    if s = T.Actor || s = T.Mixin then begin
       List.iter (fun T.{lab; typ; _} ->
         if not (T.is_typ typ) && not (T.is_shared_func typ) then
           let _, pub_val = pub_fields dec_fields in
-          error env ((T.Env.find lab pub_val).id_region) "M0124"
-            "public actor field %s has non-shared function type%a"
-            lab
-            display_typ_expand typ
+          match T.Env.find_opt lab pub_val with
+          | None -> () (* Mixins expose private fields as public in their type *)
+          | Some v ->
+             error env v.id_region "M0124"
+               "public actor field %s has non-shared function type%a"
+               lab
+               display_typ_expand typ
       ) tfs;
       List.iter (fun df ->
         if is_public df.it.vis && not (is_actor_method df.it.dec) && not (is_typ_dec df.it.dec) then
@@ -3175,7 +3801,7 @@ and infer_migration env obj_sort exp_opt =
       if obj_sort.it <> T.Actor then
         local_error env exp.at "M0209"
           "misplaced actor migration expression on module or object";
-      infer_exp_promote { env with async = C.NullCap; rets = None; labs = T.Env.empty } exp)
+      infer_exp_promote { env with async = C.NullCap; rets = NoRet; labs = T.Env.empty } exp)
     exp_opt
 
 and check_migration env (stab_tfs : T.field list) exp_opt =
@@ -3217,7 +3843,8 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
    in
    let dom_tfs, rng_tfs =
      try
-      let sort, tbs, t_dom, t_rng = T.as_func_sub T.Local 0 typ in
+      let sort, tbs, t_args, t_rng = T.as_func_sub T.Local 0 typ in
+      let t_dom = T.seq t_args in
       if sort <> T.Local || tbs <> [] then raise (Invalid_argument "");
       check_fields "consumes" (T.normalize t_dom),
       check_fields "produces" (T.promote t_rng)
@@ -3355,15 +3982,16 @@ and check_stab env sort scope dec_fields =
       local_error env stab.at "M0132"
         "misplaced stability declaration on field of non-actor";
       []
-    | T.Actor, Some {it = Stable; _}, VarD (id, _) ->
+    | (T.Actor | T.Mixin), _ , IncludeD _ -> []
+    | (T.Actor | T.Mixin), Some {it = Stable; _}, VarD (id, _) ->
       check_stable id.it id.at;
       [id]
-    | T.Actor, Some {it = Stable; _}, LetD (pat, _, _) when stable_pat pat ->
+    | (T.Actor | T.Mixin), Some {it = Stable; _}, LetD (pat, _, _) when stable_pat pat ->
       let ids = T.Env.keys (gather_pat env Scope.empty pat).Scope.val_env in
       List.iter (fun id -> check_stable id pat.at) ids;
       List.map (fun id -> {it = id; at = pat.at; note = ()}) ids;
-    | T.Actor, Some {it = Flexible; _} , (VarD _ | LetD _) -> []
-    | T.Actor, Some stab, _ ->
+    | (T.Actor | T.Mixin), Some {it = Flexible; _} , (VarD _ | LetD _) -> []
+    | (T.Actor | T.Mixin), Some stab, _ ->
       local_error env stab.at "M0133"
         "misplaced stability modifier: allowed on var or simple let declarations only";
       []
@@ -3424,32 +4052,53 @@ and infer_block_exps env decs : T.typ =
     if not env.pre then recover (check_dec env T.unit) dec;
     infer_block_exps env decs'
 
+and warn_unit_binding binder env (dec : dec) (exp : exp) =
+  let binder = match binder with
+    | `Let -> "let"
+    | `Var -> "var"
+  in
+  let at = Source.{dec.at with right = exp.at.left} in
+  warn env at "M0239" "Avoid binding a unit `()` result; remove `%s` and keep the expression" binder
+
 and infer_dec env dec : T.typ =
   let t =
   match dec.it with
+  | IncludeD (i, arg, n) ->
+    if not env.pre then begin
+      use_identifier env i.it;
+      if not env.in_actor then
+        error env dec.at "M0227" "mixins can only be included in an actor context";
+      match T.Env.find_opt i.it env.mixins with
+      | None -> error env i.at "M0226" "unknown mixin %s" i.it
+      | Some (_, pat, _, _) -> check_exp env pat.note arg
+    end;
+    T.unit
   | ExpD exp -> infer_exp env exp
-  | LetD (pat, exp, None) ->
-    (* For developer convenience, ignore top-level actor and module identifiers in unused detection. *)
-    (if env.in_prog && CompUnit.(is_actor_def exp || is_module_def exp) then
-      match pat.it with
-      | VarP id -> use_identifier env id.it
-      | _ -> ());
+  | LetD (pat, exp, fail_opt) ->
+    (match fail_opt with
+    | None ->
+      (* For developer convenience, ignore top-level actor and module identifiers in unused detection. *)
+      (if env.in_prog && CompUnit.(is_actor_def exp || is_module_def exp) then
+        match pat.it with
+        | VarP id -> use_identifier env id.it
+        | _ -> ())
+    | Some fail ->
+      if not env.pre then
+        check_exp env T.Non fail
+    );
     let t = infer_exp env exp in
     if !Flags.typechecker_combine_srcs then
       combine_pat_srcs env t pat;
-    t
-  | LetD (pat, exp, Some fail) ->
-    if not env.pre then
-      check_exp env T.Non fail;
-    let t = infer_exp env exp in
-    if !Flags.typechecker_combine_srcs then
-      combine_pat_srcs env t pat;
+    if not env.pre && T.is_unit (T.normalize t) then
+      warn_unit_binding `Let env dec exp;
     t
   | VarD (id, exp) ->
     if not env.pre then begin
       let t = infer_exp env exp in
       if !Flags.typechecker_combine_srcs then
-        combine_id_srcs env t id
+        combine_id_srcs env t id;
+      if T.is_unit (T.normalize t) then
+        warn_unit_binding `Var env dec exp;
     end;
     T.unit
   | ClassD (exp_opt, shared_pat, obj_sort, id, typ_binds, pat, typ_opt, self_id, dec_fields) ->
@@ -3460,7 +4109,7 @@ and infer_dec env dec : T.typ =
       let ve0 = check_class_shared_pat env shared_pat obj_sort in
       let cs, tbs, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
-      let in_actor = obj_sort.it = T.Actor in
+      let in_actor = obj_sort.it = T.Actor || obj_sort.it == T.Mixin in
       (* Top-level actor class identifier is implicitly public and thus considered used. *)
       if env.in_prog && in_actor then use_identifier env id.it;
       let t_pat, ve =
@@ -3476,7 +4125,7 @@ and infer_dec env dec : T.typ =
       let env''' =
         { (add_val env'' self_id self_typ) with
           labs = T.Env.empty;
-          rets = None;
+          rets = NoRet;
           async = async_cap;
           in_actor;
         }
@@ -3500,9 +4149,17 @@ and infer_dec env dec : T.typ =
         else ObjBlockE (exp_opt, obj_sort, (None, typ_opt), dec_fields) |> detect_lost_fields env t''
       | Some typ, T.Actor ->
          local_error env dec.at "M0193" "actor class has non-async return type"
-      | _, T.Memory -> assert false
+      | _, (T.Memory | T.Mixin) -> assert false
     end;
     T.normalize t
+  | MixinD (args, dec_fields) ->
+    if not env.in_prog then
+      error env dec.at "M0228" "mixins may only be declared at the top-level";
+    let t_pat, ve = infer_pat_exhaustive error env args in
+    let env' = adjoin_vals env ve in
+    let obj_sort : obj_sort = { it = T.Mixin ; at = no_region; note = { it = true; at = no_region; note = () } }  in
+    let t' = infer_obj { env' with check_unused = false } obj_sort None dec_fields dec.at in
+    T.normalize t'
   | TypD _ ->
     T.unit
   in
@@ -3551,6 +4208,10 @@ and infer_val_path env exp : T.typ option =
     (match T.Env.find_opt id.it env.vals with (* TBR: return None for Unavailable? *)
      | Some (t, _, _, _) -> Some t
      | _ -> None)
+  | ImplicitLibE lib ->
+    (match T.Env.find_opt lib env.libs with
+    | Some t -> Some t
+    | None -> None)
   | DotE (path, id, _) ->
     (match infer_val_path env path with
      | None -> None
@@ -3565,7 +4226,6 @@ and infer_val_path env exp : T.typ option =
     Some (check_typ {env with pre = true} typ)
   | _ -> None
 
-
 (* Pass 1: collect:
    * type identifiers and their arity,
    * object identifiers and their fields (if known) (recursively)
@@ -3576,7 +4236,6 @@ and gather_block_decs env decs : Scope.t =
 
 and gather_dec env scope dec : Scope.t =
   match dec.it with
-  | ExpD _ -> scope
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
@@ -3588,7 +4247,10 @@ and gather_dec env scope dec : Scope.t =
     let open Scope in
     if T.Env.mem id.it scope.val_env then
       error_duplicate env "" id;
-    let scope' = gather_block_decs env decs in
+    (* NOTE: This is a bit ugly. We need to extend the environment
+       with any mixin imports we've found so far, so Include's in the
+       actor body can be resolved *)
+    let scope' = gather_block_decs { env with mixins = T.Env.adjoin scope.mixin_env env.mixins } decs in
     let ve' = add_id scope.val_env id (object_of_scope env obj_sort.it dec_fields scope' at) in
     let obj_env = T.Env.add id.it scope' scope.obj_env in
     { val_env = ve';
@@ -3596,9 +4258,16 @@ and gather_dec env scope dec : Scope.t =
       lib_env = scope.lib_env;
       con_env = scope.con_env;
       obj_env = obj_env;
+      mixin_env = scope.mixin_env;
       fld_src_env = scope.fld_src_env;
     }
-  | LetD (pat, _, _) -> gather_pat env scope pat
+  | LetD (pat, exp, _) -> (match is_mixin_import env exp.it with
+    | None -> gather_pat env scope pat
+    | Some (imports, args, t, decs) ->
+      match pat.it with
+      | VarP id -> Scope.adjoin scope (Scope.mixin id.it (imports, args, t, decs))
+      | _ -> error env pat.at "M0229" "mixins may only be imported by binding to a name"
+  )
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
   | TypD (id, binds, _) | ClassD (_, _, _, id, binds, _, _, _, _) ->
     let open Scope in
@@ -3632,8 +4301,26 @@ and gather_dec env scope dec : Scope.t =
       con_env = T.ConSet.disjoint_add c scope.con_env;
       lib_env = scope.lib_env;
       obj_env = scope.obj_env;
+      mixin_env = scope.mixin_env;
       fld_src_env = scope.fld_src_env;
     }
+  | IncludeD(i, _, _) -> begin
+    match T.Env.find_opt i.it env.mixins with
+    | None -> error env i.at "M0226" "unknown mixin %s" i.it
+    | Some(imports, pat, decs, t) ->
+      let open Scope in
+      let (_, fields) = T.as_obj t in
+      let add_field acc = function
+        | T.{ lab; typ = T.Typ t; _ } ->
+          if T.Env.mem lab acc.typ_env then error_duplicate env "type " { it = lab; at = i.at; note = () };
+          { acc with typ_env = T.Env.add lab t acc.typ_env }
+        | T.{ lab; typ = t; _ } ->
+          if T.Env.mem lab acc.val_env then error_duplicate env "" { it = lab; at = i.at; note = () };
+          { acc with val_env = T.Env.add lab (t, Source.no_region, Scope.Declaration) acc.val_env }
+      in
+      List.fold_left add_field scope fields
+    end
+  | MixinD _  | ExpD _ -> scope
 
 and gather_pat env (scope : Scope.t) pat : Scope.t =
    gather_pat_aux env Scope.Declaration scope pat
@@ -3682,6 +4369,18 @@ and infer_block_typdecs env decs : Scope.t =
 
 and infer_dec_typdecs env dec : Scope.t =
   match dec.it with
+  | MixinD _ -> Scope.empty
+  | IncludeD (i, _, n) -> begin
+    match T.Env.find_opt i.it env.mixins with
+    | None -> error env i.at "M0226" "unknown mixin %s" i.it
+    | Some(imports, pat, decs, t) ->
+      n := Some({ imports; pat; decs });
+      let (_, fields) = T.as_obj t in
+      let scope = scope_of_object env fields in
+      (* Mark all included idents as used to avoid spurious warnings *)
+      T.Env.iter (fun i _ -> use_identifier env i) scope.Scope.val_env;
+      scope
+    end
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
@@ -3701,6 +4400,11 @@ and infer_dec_typdecs env dec : Scope.t =
     }
   (* TODO: generalize beyond let <id> = <valpath> *)
   | LetD ({it = VarP id; _}, exp, _) ->
+     begin match is_mixin_import env exp.it with
+     | Some (imports, args, t, decs) ->
+        (* Format.printf "Adding mixin %s at %a\n" id.it display_typ t; *)
+        Scope.mixin id.it (imports, args, t, decs)
+     | None ->
     (match infer_val_path env exp with
      | None -> Scope.empty
      | Some t ->
@@ -3709,6 +4413,7 @@ and infer_dec_typdecs env dec : Scope.t =
        | T.Obj (_, _) as t' -> { Scope.empty with val_env = singleton id t' }
        | _ -> { Scope.empty with val_env = singleton id T.Pre }
     )
+           end
   | LetD (pat, exp, _) ->
        begin match infer_val_path env exp with
        | Some t ->
@@ -3732,13 +4437,13 @@ and infer_dec_typdecs env dec : Scope.t =
     let cs, tbs, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs (adjoin_vals {env with pre = true} ve0) te ce in
     let _, ve = infer_pat true env' pat in
-    let in_actor = obj_sort.it = T.Actor in
+    let in_actor = obj_sort.it = T.Actor || obj_sort.it = T.Mixin in
     let async_cap, class_tbs, class_cs = infer_class_cap env obj_sort.it tbs cs in
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) class_cs) in
     let env'' =
      { (add_val (adjoin_vals env' ve) self_id self_typ) with
           labs = T.Env.empty;
-          rets = None;
+          rets = NoRet;
           async = async_cap;
           in_actor}
     in
@@ -3774,6 +4479,7 @@ and is_import d =
 
 and infer_dec_valdecs env dec : Scope.t =
   match dec.it with
+  | IncludeD(i, _, n) -> Scope.empty
   | ExpD _ ->
     Scope.empty
   (* TODO: generalize beyond let <id> = <obje> *)
@@ -3794,12 +4500,12 @@ and infer_dec_valdecs env dec : Scope.t =
     let _ve = check_pat env obj_typ pat in
     Scope.{empty with val_env = singleton id obj_typ}
   | LetD (pat, exp, fail) ->
-    let t = infer_exp {env with pre = true; check_unused = false} exp in
-    let ve' = match fail with
-      | None -> check_pat_exhaustive (if is_import dec then local_error else warn) env t pat
-      | Some _ -> check_pat env t pat
-    in
-    Scope.{empty with val_env = ve'}
+     let t = infer_exp {env with pre = true; check_unused = false} exp in
+     let ve' = match fail with
+       | None -> check_pat_exhaustive (if is_import dec then local_error else warn) env t pat
+       | Some _ -> check_pat env t pat
+     in
+     Scope.{empty with val_env = ve'}
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
     Scope.{empty with val_env = singleton id (T.Mut t)}
@@ -3809,6 +4515,7 @@ and infer_dec_valdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c;
     }
+  | MixinD (_, _) -> Scope.empty
   | ClassD (_exp_opt, _shared_pat, obj_sort, id, typ_binds, pat, _, _, _) ->
     if obj_sort.it = T.Actor then begin
       error_in Flags.[WASIMode; WasmMode] env dec.at "M0138" "actor classes are not supported";
@@ -3909,7 +4616,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
           let typ, _ = infer_block env (imp_ds @ ds) lib.at false in
           List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
           cub.note <- {empty_typ_note with note_typ = typ};
-          let imp_typ = match cub.it with
+          let imp_scope = match cub.it with
             | ModuleU _ ->
               if cub.at = no_region then begin
                 let r = Source.{
@@ -3918,7 +4625,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
                 in
                 warn env r "M0142" "deprecated syntax: an imported library should be a module or named actor class"
               end;
-              typ
+              Scope.lib lib.note.filename typ
             | ActorClassU (_persistence, sp, exp_opt, id, tbs, p, _, self_id, dec_fields) ->
               if is_anon_id id then
                 error env cub.at "M0143" "bad import: imported actor class cannot be anonymous";
@@ -3935,11 +4642,14 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
                 | _ -> assert false
               in
               let con = Cons.fresh id.it (T.Def([], class_typ)) in
-              T.(obj Module [
+              let typ = T.(obj Module [
                 (id.it, Typ con);
                 (id.it, fun_typ);
                 ("system", obj Module [id.it, install_typ (List.map (close cs) ts1) class_typ])
-              ])
+              ]) in
+              Scope.lib lib.note.filename typ
+            | MixinU (pat, decs) ->
+              Scope.mixin lib.note.filename (imports, pat, decs, typ)
             | ActorU _ ->
               error env cub.at "M0144" "bad import: expected a module or actor class but found an actor"
             | ProgU _ ->
@@ -3948,7 +4658,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
           in
           if pkg_opt = None && Diag.is_error_free msgs then emit_unused_warnings env;
           let fld_src_env = Field_sources.of_mutable_tbl env.srcs in
-          {(Scope.lib lib.note.filename imp_typ) with Scope.fld_src_env}
+          {imp_scope with Scope.fld_src_env}
         ) lib
     )
 

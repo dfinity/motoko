@@ -28,6 +28,7 @@ let () =
       method setPublicMetadata entries = set_public_metadata entries
       method setRunStepLimit limit = js_set_run_step_limit limit
       method setTypecheckerCombineSrcs combineSrcs = Flags.typechecker_combine_srcs := combineSrcs
+      method setBlobImportPlaceholders placeholders = Flags.blob_import_placeholders := placeholders
       method gcFlags option = gc_flags option
       method run list s = Flags.compiled := false; wrap_output (fun _ -> js_run list s)
       method check s = Flags.compiled := false; js_check s

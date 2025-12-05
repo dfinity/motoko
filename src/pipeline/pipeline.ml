@@ -141,18 +141,18 @@ let parse_verification_file = parse_file' Lexer.mode_verification
 
 type resolve_result = (Syntax.prog * ResolveImport.resolved_imports) Diag.result
 
-let resolve_flags () =
+let resolve_flags pkg_opt =
   ResolveImport.{
     package_urls = !Flags.package_urls;
     actor_aliases = !Flags.actor_aliases;
     actor_idl_path = !Flags.actor_idl_path;
-    include_all_libs = !Flags.ai_errors;
+    include_all_libs = pkg_opt = None && (!Flags.ai_errors || Option.is_some !Flags.implicit_package);
   }
 
 let resolve_prog (prog, base) : resolve_result =
   Diag.map
     (fun libs -> (prog, libs))
-    (ResolveImport.resolve (resolve_flags ()) prog base)
+    (ResolveImport.resolve (resolve_flags None) prog base)
 
 let resolve_progs =
   Diag.traverse resolve_prog
@@ -177,6 +177,7 @@ let async_cap_of_prog prog =
   match (CompUnit.comp_unit_of_prog false prog).it.body.it with
   | ActorClassU _ -> Async_cap.NullCap
   | ActorU _ -> Async_cap.initial_cap()
+  | MixinU _ -> Async_cap.initial_cap()
   | ModuleU _ -> assert false
   | ProgU _ ->
      if !Flags.compiled then
@@ -442,8 +443,8 @@ let chase_imports_cached parsefn senv0 imports scopes_map
         pending := add it !pending;
         let* prog, base = parsefn ri.Source.at f in
         let* () = Static.prog prog in
-        let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
         let cur_pkg_opt = if lib_pkg_opt <> None then lib_pkg_opt else pkg_opt in
+        let* more_imports = ResolveImport.resolve (resolve_flags cur_pkg_opt) prog base in
         let* () = go_set cur_pkg_opt more_imports in
         let lib = lib_of_prog f prog in
         let* sscope = check_lib !senv cur_pkg_opt lib in
@@ -714,7 +715,12 @@ let run_files_and_stdin files =
 
 (* Desugaring *)
 
-let desugar_unit imports u name : Ir.prog =
+let desugar_unit imports u name : Ir.prog Diag.result =
+  match u.Source.it.Syntax.body.Source.it with
+  | Syntax.MixinU _ ->
+    let at = u.Source.it.Syntax.body.Source.at in
+    Diag.error at "M0225" "compile" "A mixin cannot be used as an entry point. It needs to be included in an actor (class)"
+  | _ ->
   phase "Desugaring" name;
   let open Lowering.Desugar in
   let prog_ir' : Ir.prog = link_declarations
@@ -723,7 +729,7 @@ let desugar_unit imports u name : Ir.prog =
   dump_ir Flags.dump_lowering prog_ir';
   if !Flags.check_ir
   then Check_ir.check_prog !Flags.verbose "Desugaring" prog_ir';
-  prog_ir'
+  Diag.return prog_ir'
 
 (* IR transforms *)
 
@@ -834,7 +840,8 @@ let rec compile_libs mode libs : Lowering.Desugar.import_declaration =
         Cons.session ~scope:filename (fun () ->
           match cub.it with
           | Syntax.ActorClassU _ ->
-            let wasm = compile_unit_to_wasm mode imports l in
+            (* Okay to "run" here, as `compile_unit_to_wasm` only fails on Syntax.MixinU *)
+            let wasm = Diag.run (compile_unit_to_wasm mode imports l) in
             Lowering.Desugar.import_compiled_class l wasm
           | _ ->
             Lowering.Desugar.import_unit l)
@@ -842,25 +849,27 @@ let rec compile_libs mode libs : Lowering.Desugar.import_declaration =
       go (imports @ new_imports) libs
   in go [] libs
 
-and compile_unit mode do_link imports u : Wasm_exts.CustomModule.extended_module =
+and compile_unit mode do_link imports u : Wasm_exts.CustomModule.extended_module Diag.result =
+  let open Diag.Syntax in
   let name = u.Source.note.Syntax.filename in
   Cons.session ~scope:name (fun () ->
-    let prog_ir = desugar_unit imports u name in
+    let* prog_ir = desugar_unit imports u name in
     let prog_ir = ir_passes mode prog_ir name in
     phase "Compiling" name;
     adjust_flags ();
     let rts = if do_link then Some (load_as_rts ()) else None in
-    if !Flags.enhanced_orthogonal_persistence then
+    Diag.return (if !Flags.enhanced_orthogonal_persistence then
       Codegen.Compile_enhanced.compile mode rts prog_ir
     else
-      Codegen.Compile_classical.compile mode rts prog_ir)
+      Codegen.Compile_classical.compile mode rts prog_ir))
 
-and compile_unit_to_wasm mode imports (u : Syntax.comp_unit) : string =
-  let wasm_mod = compile_unit mode true imports u in
+and compile_unit_to_wasm mode imports (u : Syntax.comp_unit) : string Diag.result =
+  let open Diag.Syntax in
+  let* wasm_mod = compile_unit mode true imports u in
   let (_source_map, wasm) = Wasm_exts.CustomModuleEncode.encode wasm_mod in
-  wasm
+  Diag.return wasm
 
-and compile_progs mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
+and compile_progs mode do_link libs progs : Wasm_exts.CustomModule.extended_module Diag.result =
   let imports = compile_libs mode libs in
   let prog = CompUnit.combine_progs progs in
   let u = CompUnit.comp_unit_of_prog false prog in
@@ -870,7 +879,7 @@ let compile_files mode do_link files : compile_result =
   let open Diag.Syntax in
   let* libs, progs, senv = load_progs ~check_actors:true parse_file files initial_stat_env in
   let idl = Mo_idl.Mo_to_idl.prog (progs, senv) in
-  let ext_module = compile_progs mode do_link libs progs in
+  let* ext_module = compile_progs mode do_link libs progs in
   (* validate any stable type signature, as a sanity check *)
   let* () =
     match Wasm_exts.CustomModule.(ext_module.motoko.stable_types) with
@@ -896,18 +905,19 @@ let import_libs libs : Lowering.Desugar.import_declaration =
   List.concat_map Lowering.Desugar.import_unit libs
 
 let interpret_ir_progs libs progs =
+  let open Diag.Syntax in
   let prog = CompUnit.combine_progs progs in
   let name = prog.Source.note.Syntax.filename in
   let imports = import_libs libs in
   let u = CompUnit.comp_unit_of_prog false prog in
-  let prog_ir = desugar_unit imports u name in
+  let* prog_ir = desugar_unit imports u name in
   let prog_ir = ir_passes (!Flags.compile_mode) prog_ir name in
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
-  interpret_prog flags prog_ir
+  Diag.return (interpret_prog flags prog_ir)
 
 let interpret_ir_files files =
-  Option.map
-    (fun (libs, progs, senv) -> interpret_ir_progs libs progs)
-    (Diag.flush_messages (load_progs parse_file files initial_stat_env))
+  Diag.flush_messages (Diag.bind
+    (load_progs parse_file files initial_stat_env)
+    (fun (libs, progs, _) -> interpret_ir_progs libs progs))

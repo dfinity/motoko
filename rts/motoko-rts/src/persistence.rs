@@ -57,6 +57,12 @@ struct PersistentMetadata {
     /// A Value representing a pointer to a MarkStack object
     /// used to collect weak references during the GC marking phase.
     weak_ref_registry: Value,
+    /// Dedup metadata object. The dedup metadata object is an implementation of a hash table
+    /// which works like an array of a fixed size, and for collisions we have a linked list.
+    /// The implementation is done in the Motoko prelude file internals.mo, so it is entirely user-space.
+    /// We keep a pointer to this here so that we can keep if alive across upgrades.
+    /// To keep the dedup table live, we need to add it to roots as well.
+    dedup_table: Value,
 }
 
 /// Location of the persistent metadata. Prereserved and fixed forever.
@@ -105,6 +111,8 @@ impl PersistentMetadata {
         (*self).upgrade_instructions = 0;
         // Initialize the weak reference registry as the null pointer.
         (*self).weak_ref_registry = NULL_POINTER;
+        // Initialize the dedup table as the null pointer.
+        (*self).dedup_table = NULL_POINTER;
     }
 }
 
@@ -121,6 +129,12 @@ pub unsafe fn initialize_memory<M: Memory>() {
             // This is the first upgrade from a version of the RTS without weak reference
             // support. We need to initialize the weak reference registry to NULL_POINTER.
             (*metadata).weak_ref_registry = NULL_POINTER;
+        }
+        // Explicit migration from a version of the RTS without dedup table support.
+        if (*metadata).dedup_table.get_raw() == 0 {
+            // This is the first upgrade from a version of the RTS without dedup table support.
+            // We need to initialize the dedup table to NULL_POINTER.
+            (*metadata).dedup_table = NULL_POINTER;
         }
     } else {
         metadata.initialize::<M>();
@@ -334,4 +348,17 @@ unsafe fn is_weak_ref_registry_null() -> bool {
     // Barrier is not needed here, as object is transitional and
     // thus marking of previous weak ref object is not needed.
     (*metadata).weak_ref_registry == NULL_POINTER
+}
+
+/// Accessor method for the dedup table.
+pub(crate) unsafe fn get_dedup_table_ptr() -> &'static mut Value {
+    let metadata = PersistentMetadata::get();
+    &mut (*metadata).dedup_table
+}
+
+/// Setter method for the dedup table.
+pub(crate) unsafe fn set_dedup_table_ptr<M: Memory>(mem: &mut M, dedup_table: Value) {
+    let metadata = PersistentMetadata::get();
+    // Use barrier in case the dedup table is set during a GC phase.
+    write_with_barrier(mem, &mut (*metadata).dedup_table, dedup_table);
 }

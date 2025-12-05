@@ -14,6 +14,7 @@ s/<id>/ID/g
 /^<typ_dec> ::=/,+2d
 /^<parse_stab_sig> ::=/,+5d
 /.*PRIM.*/d
+/.*NUM_DOT_ID.*/d
 /^<bl> ::=/,+2d
 /^<ob> ::=/,+2d
 s/<start> //g
@@ -106,6 +107,8 @@ s/LCURLY/\'{\'/g
 s/LBRACKET/\'[\'/g
 s/LABEL/\'label\'/g
 s/CONTINUE/\'continue\'/g
+s/MIXIN/\'mixin\'/g
+s/INCLUDE/\'include\'/g
 s/IN/\'in\'/g
 s/IF/\'if\'/g
 s/TO_CANDID/\'to_candid\'/g
