@@ -9640,7 +9640,7 @@ module FuncDec = struct
     
     (* Check if this is a raw HTTP handler method *)
     let is_raw_http_handler = match exported_name_opt with
-      | Some name when (name = "http_handler_query" || name = "http_handler_update") ->
+      | Some name when (name = "http_request_v2" || name = "http_request_update_v2") ->
         (* Validate signature: must be (Blob|[Nat8]) -> async (Blob|[Nat8]) *)
         (match args with
          | [arg] ->
