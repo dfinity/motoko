@@ -5,9 +5,9 @@ hide_table_of_contents: true
 
 # Defining an actor
 
-In Motoko, an **actor** is a computational process with its own [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and behavior. Actors are declared with the `actor` keyword.
+In Motoko, an **actor** is a computational process with its own [state](../2-actors/2-state.md) and behavior. Actors are declared with the `actor` keyword.
 
-Unlike traditional functions or objects in other programming languages, actors operate independently and communicate via [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) messaging. Each actor maintains its own message queue, enabling concurrent execution.
+Unlike traditional functions or objects in other programming languages, actors operate independently and communicate via [asynchronous](../2-actors/1-actors-async.md#async--await) messaging. Each actor maintains its own message queue, enabling concurrent execution.
 
 An actor's state is defined by its private variables, while its behavior is defined by the public functions it exposes to other actors.
 
@@ -53,7 +53,7 @@ persistent actor Main {
 This code defines an actor that can be deployed on ICP.
 The actor is declared as `persistent` so that its state, `count`, will be preserved
 when the actor is upgraded.
-Learn more about [persistence](https://internetcomputer.org/docs/motoko/fundamentals/data-persistence).
+Learn more about [persistence](../2-actors/3-data-persistence.md).
 :::
 
 Another actor can call `Main.greet()` with an argument and await the result:
@@ -62,7 +62,7 @@ Another actor can call `Main.greet()` with an argument and await the result:
 await Main.greet("Programmer");
 ```
 
-A Motoko actor always presents its interface as a suite of named [functions](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/functions) (also called methods) with defined argument and return types. When Motoko code is compiled, this interface is automatically translated to [Candid](https://internetcomputer.org/docs/building-apps/interact-with-canisters/candid/candid-concepts), an interface description language. The Candid description can be consumed by other canisters, including canisters written in another language such as Rust.
+A Motoko actor always presents its interface as a suite of named [functions](../1-basic-syntax/8-functions.md) (also called methods) with defined argument and return types. When Motoko code is compiled, this interface is automatically translated to [Candid](https://internetcomputer.org/docs/building-apps/interact-with-canisters/candid/candid-concepts), an interface description language. The Candid description can be consumed by other canisters, including canisters written in another language such as Rust.
 
 The above example's corresponding Candid interface can be found below.
 
@@ -76,5 +76,5 @@ service : {
 
 ## Resources
 
-- [Actors](https://internetcomputer.org/docs/motoko/fundamentals/actors-async)
+- [Actors](../2-actors/1-actors-async.md)
 
