@@ -56,7 +56,7 @@ Function callsite:
 
 ## Pattern matching
 
-The most common way of working with `Option` and `Result` is to use pattern matching. If you have a value of type `?Text`, you can use the `switch` keyword to access the potential [`Text`](https://internetcomputer.org/docs/motoko/core/Text) contents:
+The most common way of working with `Option` and `Result` is to use pattern matching. If you have a value of type `?Text`, you can use the `switch` keyword to access the potential [`Text`](../core/Text) contents:
 
 ``` motoko no-repl file=../examples/error-examples.mo#L3-L10
 ```
@@ -94,7 +94,7 @@ Function callsite:
 
 ## Traps
 
-Traps immediately stop execution and roll back [state](https://internetcomputer.org/docs/motoko/fundamentals/state). They are used for fatal errors that cannot be recovered.
+Traps immediately stop execution and roll back [state](../fundamentals/2-actors/2-state.md). They are used for fatal errors that cannot be recovered.
 
 ```motoko no-repl
 import Runtime "mo:core/Runtime";
