@@ -67,6 +67,10 @@ and exp' at note = function
   | S.LitE l -> I.LitE (lit !l)
   | S.UnE (ot, o, e) ->
     I.PrimE (I.UnPrim (!ot, o), [exp e])
+  | S.BinE (ot, e1, (AddOp | SubOp), {it = LitE {contents = NatLit n}; _}) when Numerics.Int.(eq n zero) ->
+    exp' at note e1.it
+  | S.BinE (ot, e1, (MulOp | DivOp), {it = LitE {contents = NatLit n}; _}) when Numerics.Int.(of_int 1 |> eq n) ->
+    exp' at note e1.it
   | S.BinE (ot, e1, o, e2) ->
     I.PrimE (I.BinPrim (!ot, o), [exp e1; exp e2])
   | S.RelE (ot, e1, Operator.NeqOp, e2) ->
