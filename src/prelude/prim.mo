@@ -824,6 +824,24 @@ func getCandidLimits<system>() : {
   };
 };
 
+func setCandidTypeLimits<system>({
+  scaler : Nat32;
+  bias : Nat32;
+}) {
+  (prim "setCandidTypeLimits" : (Nat32, Nat32) -> ())(scaler, bias);
+};
+
+func getCandidTypeLimits<system>() : {
+  scaler : Nat32;
+  bias : Nat32;
+} {
+  let (scaler, bias) = (prim "getCandidTypeLimits" : () -> (Nat32, Nat32))();
+  {
+    scaler;
+    bias;
+  };
+};
+
 // predicates for motoko-san
 
 func forall<T>(f : T -> Bool) : Bool {
