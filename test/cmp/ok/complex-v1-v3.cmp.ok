@@ -19,6 +19,6 @@
   }
  is not compatible with type 
   (Text, Nat)
- of OldProduct (used by Tree in Map in products.root).
+ of OldProduct (used by Tree in root in Map in products).
  Write an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
 FALSE
