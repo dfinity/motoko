@@ -821,6 +821,7 @@ let cons t = cons' true t ConSet.empty
 let cons_kind k = cons_kind' true k ConSet.empty
 let cons_typs ts = List.fold_left (fun acc t -> cons t |> ConSet.union acc) ConSet.empty ts
 
+
 (* Checking for concrete types *)
 
 module S = Set.Make (Ord)
@@ -858,6 +859,40 @@ let concrete t =
       | Weak t -> go t
     end
   in go t
+
+(* Mapping constructors to type paths *)
+
+let paths p t =
+  let cm = ref ConEnv.empty in
+  let seen = ref S.empty in
+  let rec go p t =
+    if  S.mem t !seen then () else
+    begin
+      seen := S.add t !seen;
+      match t with
+      | Typ c ->
+        cm := ConEnv.add c (String.concat "." (List.rev p)) (!cm)
+      | Named (_, t) -> go p t
+      | Obj (_, fs) ->
+        List.iter (fun f -> go (f.lab::p) f.typ) fs
+      | Con (c, ts) ->
+        (match Cons.kind c with
+        | Abs (_, t) -> go p (open_ ts t)
+        | Def (_, t) -> go p (open_ ts t)
+        )
+      (* explicit match in case we add a constructor later *)
+      | Var _ | Pre
+      | Prim _ | Any | Non
+      | Array _ | Opt _ | Mut _
+      | Async _
+      | Tup _
+      | Variant _
+      | Func _
+      | Weak _ -> ()
+    end
+  in
+  go p t;
+  !cm
 
 (* stable or shared *)
 let serializable allow_mut t =
@@ -1916,6 +1951,11 @@ end
 
 module MakePretty(Cfg : PrettyConfig) = struct
 
+let con_map = ref ConEnv.empty
+
+let set_con_map cm = con_map := cm
+let clear_con_map () = con_map := ConEnv.empty
+
 let remove_hash_suffix s =
   let len = String.length s in
   if len = 0 then s
@@ -1969,9 +2009,12 @@ let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s%s%d" x Cfg.par_sep i
 
 let string_of_con c =
-  let name = Cons.to_string Cfg.show_stamps Cfg.con_sep c in
-  if Cfg.show_hash_suffix then name
-  else remove_hash_suffix name
+  match ConEnv.find_opt c !con_map with
+  | Some n -> n
+  | None ->
+    let name = Cons.to_string Cfg.show_stamps Cfg.con_sep c in
+    if Cfg.show_hash_suffix then name
+    else remove_hash_suffix name
 
 let rec can_sugar = function
   | Func(s, Promises, tbs, ts1, ts2)
@@ -2352,6 +2395,8 @@ let string_of_explanation explanation =
 end
 
 module type Pretty = sig
+  val set_con_map : string ConEnv.t -> unit
+  val clear_con_map : unit -> unit
   val pp_lab : Format.formatter -> lab -> unit
   val pp_typ : Format.formatter -> typ -> unit
   val pp_typ_expand : Format.formatter -> typ -> unit
