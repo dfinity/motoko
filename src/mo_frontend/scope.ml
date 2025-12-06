@@ -14,9 +14,14 @@ type lib_env = T.typ T.Env.t
 type typ_env = T.con T.Env.t
 type con_env = T.ConSet.t
 type fld_src_env = Field_sources.srcs_map
-
-type mixin_env = (S.import list * S.pat * S.dec_field list * T.typ) T.Env.t
-and obj_env = scope T.Env.t  (* internal object scopes *)
+type mixin_env = mixin_data T.Env.t
+and mixin_data =  {
+  imports : S.import list;
+  arg : S.pat;
+  decs : S.dec_field list;
+  typ : T.typ;
+}
+type obj_env = scope T.Env.t  (* internal object scopes *)
 and scope =
   { val_env : val_env;
     lib_env : lib_env;
