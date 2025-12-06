@@ -15,8 +15,7 @@ wrong-call-args.mo:39.13-39.25: type error [M0096], expression of type
 cannot produce expected type
   Text
 wrong-call-args.mo:45.5-45.17: type error [M0098], cannot apply function of type
-  <K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K) ->
-    ?V
+  <K, V>(self : Map<K, V>, implicit compare : (K, K) -> Order, key : K) -> ?V
 to argument of type
   {var root : Node<Text, Text>; var size_ : Nat}
 because there is no way to satisfy subtyping
