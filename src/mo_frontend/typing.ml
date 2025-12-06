@@ -133,7 +133,7 @@ let con_map env =
   T.Env.iter (fun id (typ, _, _, _) ->
       m := T.ConEnv.adjoin (!m) (T.paths [id] typ))
     env.vals;
-  T.Env.iter (fun id c -> m := T.ConEnv.add c (id) !m) env.typs;
+  T.Env.iter (fun id c -> m := T.ConEnv.add c [id] !m) env.typs;
   !m
 
 (* Error bookkeeping *)

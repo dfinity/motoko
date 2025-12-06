@@ -871,7 +871,7 @@ let paths p t =
       seen := S.add t !seen;
       match t with
       | Typ c ->
-        cm := ConEnv.add c (String.concat "." (List.rev p)) (!cm)
+        cm := ConEnv.add c (List.rev p) (!cm)
       | Named (_, t) -> go p t
       | Obj (_, fs) ->
         List.iter (fun f -> go (f.lab::p) f.typ) fs
@@ -1951,7 +1951,7 @@ end
 
 module MakePretty(Cfg : PrettyConfig) = struct
 
-let con_map = ref ConEnv.empty
+let con_map = ref (ConEnv.empty : string list ConEnv.t)
 
 let set_con_map cm = con_map := cm
 let clear_con_map () = con_map := ConEnv.empty
@@ -2002,7 +2002,15 @@ let semi ppf () = fprintf ppf ";@ "
 module StringSet = Set.Make(String)
 
 let vs_of_cs cs =
-  let names = ConSet.fold (fun c ns -> StringSet.add (Cons.name c) ns) cs StringSet.empty in
+  let names = ConSet.fold (fun c ns ->
+      match ConEnv.find_opt c (!con_map) with
+      | Some [id] -> StringSet.add id ns (* avoid required simple paths *)
+      | Some _ -> ns (* ignore qualified paths *)
+      | None -> (* avoid other anonymous cons *)
+        StringSet.add (Cons.name c) ns)
+      cs
+      StringSet.empty
+  in
   StringSet.fold (fun n vs -> (n, 0)::vs) names []
 
 let string_of_var (x, i) =
@@ -2010,7 +2018,7 @@ let string_of_var (x, i) =
 
 let string_of_con c =
   match ConEnv.find_opt c !con_map with
-  | Some n -> n
+  | Some path -> String.concat "." path
   | None ->
     let name = Cons.to_string Cfg.show_stamps Cfg.con_sep c in
     if Cfg.show_hash_suffix then name
@@ -2395,7 +2403,7 @@ let string_of_explanation explanation =
 end
 
 module type Pretty = sig
-  val set_con_map : string ConEnv.t -> unit
+  val set_con_map : string list ConEnv.t -> unit
   val clear_con_map : unit -> unit
   val pp_lab : Format.formatter -> lab -> unit
   val pp_typ : Format.formatter -> typ -> unit
