@@ -106,7 +106,7 @@ and dec m d = match d.it with
   | VarD _ | IncludeD _ -> err m d.at
 
 and pat m p = match p.it with
-  | (WildP | VarP _) -> ()
+  | (WildP | VarP _ | ImplicitP _) -> ()
 
   (*
   If we allow projections above, then we should allow irrefutable
