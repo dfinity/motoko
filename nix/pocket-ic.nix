@@ -10,9 +10,9 @@ pkgs: let
         "bitcoin-0.32.5-doge.0" = "sha256-DK+TKcY2c5sNI5q+DDddJ07UUOBBqiMAZ5sMV+fHoYA=";
         "build-info-0.0.27" = "sha256-SkwWwDNrTsntkNiCv6rsyTFGazhpRDnKtVzPpYLKF9U=";
         "cloudflare-0.12.0" = "sha256-67kQWJFRXZXHx+qwlyLa9NLF09b/4iRWxTLzCniCHZE=";
-        "ic-bn-lib-0.1.0" = "sha256-6ABcruF7vuvTQkhGWdxUcSdO+qgOHKY1MhQRADHtJYw=";
         "ic-doge-interface-0.1.0" = "sha256-08SglLhGTo1h9AZzl3x56wwYrNjaYhfBlluMpIW8z/8=";
-        "ic-gateway-0.2.0" = "sha256-ksiSqBLmnAIAtqvzuHIsyi2FrXs5rwo00n+xto97ctI=";
+        "ic-gateway-0.2.0" = "sha256-0XdBR0GwvJrPbz/nesY2T41JmqHHGMPj8J+OgZA0N7k=";
+        "ic-http-gateway-0.3.0" = "sha256-QwWDtvOkkQ9DvBUrvyVPheLNGMRBX3RkgruSffYb3Kc=";
         "icrc1-test-env-0.1.1" = "sha256-2PB7e64Owin/Eji3k8UoeWs+pfDfOOTaAyXjvjOZ/4g=";
         "lmdb-rkv-0.14.99" = "sha256-0wbrIN5mQVZMuuzMNndC0i7wlqfpVI4TJWV6zLAN4iM=";
       };
