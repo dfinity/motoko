@@ -20,7 +20,7 @@ Therefore, it is absolutely necessary to thoroughly test how much data an upgrad
 Moreover, it is ideal to have a backup plan to rescue data even if upgrades fail, e.g. by controller-privileged data query calls. Another option is to [snapshot](https://internetcomputer.org/docs/building-apps/canister-management/snapshots) the canister before attempting the upgrade.
 :::
 
-These issues are solved by [enhanced orthogonal persistence](https://internetcomputer.org/docs/motoko/orthogonal-persistence/enhanced).
+These issues are solved by [enhanced orthogonal persistence](./enhanced.md).
 
 
 :::info

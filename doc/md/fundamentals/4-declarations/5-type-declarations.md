@@ -42,7 +42,7 @@ Structural typing means that the types `User` and `Person` are interchangeable b
 
 ## Record types
 
-In Motoko, a type can define a structured [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) with labeled fields. Each field has a specific type, and you can access them using dot notation. Records are useful for organizing related data clearly and safely.
+In Motoko, a type can define a structured [record](../3-types/5-records.md) with labeled fields. Each field has a specific type, and you can access them using dot notation. Records are useful for organizing related data clearly and safely.
 
 ```motoko no-repl
 // A reusable record
@@ -145,8 +145,8 @@ type Seq<T> = ?(T, Seq<[T]>);
 
 ## Resources
 
-- [`Record`](https://internetcomputer.org/docs/motoko/fundamentals/types/records)
-- [`Variant`](https://internetcomputer.org/docs/motoko/fundamentals/types/variants)
+- [`Record`](../3-types/5-records.md)
+- [`Variant`](../3-types/7-variants.md)
 
 <!-- TODO(future) explain variance of type definition parameters, perhaps using InvBox<T> (r/w) CoBox<T> (ro) and ContraBox<T> (wo) as examples -->
 

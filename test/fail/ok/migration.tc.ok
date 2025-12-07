@@ -8,6 +8,11 @@ migration.mo:3.7-13.7: type error [M0204], migration expression produces field `
   var Text
 , not the expected type
   var [var (Nat, Text)]
+because: The type 
+  Text
+ is not compatible with type 
+  [var (Nat, Text)]
+ of three
 migration.mo:3.7-13.7: type error [M0205], migration expression produces unexpected field `unstable2` of type
   () -> ()
 

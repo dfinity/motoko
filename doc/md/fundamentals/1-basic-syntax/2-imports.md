@@ -48,4 +48,4 @@ import { compare } "mo:core/Nat";
 import { type Result; mapOk } "mo:core/Result";
 ```
 
-Learn more about [modules and imports](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/imports).
+Learn more about [modules and imports](../1-basic-syntax/2-imports.md).
