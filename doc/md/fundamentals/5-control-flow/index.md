@@ -2,12 +2,12 @@
 
 Understand the control flow mechanisms in Motoko.
 
-- [Types of control flow](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/basic-control-flow)
+- [Types of control flow](./1-basic-control-flow.md)
 
-- [Loops](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/loops)
+- [Loops](./2-loops.md)
 
-- [Conditionals](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/conditionals)
+- [Conditionals](./3-conditionals.md)
 
-- [Block expressions](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/blocks)
+- [Block expressions](./4-blocks.md)
 
-- [Switch](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/switch)
+- [Switch](./5-switch.md)

@@ -3878,15 +3878,22 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
    in
    List.iter
      (fun tf ->
-       match T.lookup_val_field_opt tf.T.lab rng_tfs with
-       | None -> ()
-       | Some typ ->
-         if not (T.stable_sub ~src_fields:env.srcs (T.as_immut typ) (T.as_immut tf.T.typ)) then
-           local_error env focus "M0204"
-             "migration expression produces field `%s` of type%a\n, not the expected type%a"
-              tf.T.lab
-              display_typ_expand typ
-              display_typ_expand tf.T.typ) stab_tfs;
+      match T.lookup_val_field_opt tf.T.lab rng_tfs with
+      | None -> ()
+      | Some typ ->
+        let context = [T.StableVariable tf.T.lab] in
+        let imm_typ = T.as_immut typ in
+        let imm_expected = T.as_immut tf.T.typ in
+        match T.stable_sub_explained ~src_fields:env.srcs context imm_typ imm_expected with
+        | T.Compatible -> ()
+        | T.Incompatible explanation ->
+          local_error env focus "M0204"
+            "migration expression produces field `%s` of type%a\n, not the expected type%a\nbecause: %s"
+            tf.T.lab
+            display_typ_expand typ
+            display_typ_expand tf.T.typ
+            (T.string_of_explanation explanation)
+    ) stab_tfs;
    (* Construct the pre signature *)
    let pre_tfs = List.sort T.compare_field
       dom_tfs @
