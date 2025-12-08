@@ -152,20 +152,14 @@
       buildableReleaseMoPackages = buildableMoPackages releaseMoPackages;
       buildableDebugMoPackages = buildableMoPackages debugMoPackages;
 
-      # Common cargo lock configuration for test-runner packages.
-      test-runner-cargo-lock = {
-        lockFile = ./test-runner/Cargo.lock;
-        outputHashes = {
-          "pocket-ic-10.0.0" = "sha256-Y71hDHsqxcDlUzKBP9fd9HyO1L51kqwTbIyTrGMRftk=";
-        };
-      };
-
       # Define test-runner package.
       test-runner = pkgs.rustPlatform-stable.buildRustPackage {
         pname = "test-runner";
         version = "0.1.0";
         src = ./test-runner;
-        cargoLock = test-runner-cargo-lock;
+        cargoLock ={
+          lockFile = ./test-runner/Cargo.lock;
+        };
         buildInputs = [
           pocket-ic.server
         ];
