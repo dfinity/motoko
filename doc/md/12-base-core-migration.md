@@ -5,7 +5,7 @@ sidebar_position: 12
 # Motoko `base` to `core` migration guide
 
 * [GitHub repository](https://github.com/dfinity/motoko-core)
-* [Documentation](https://internetcomputer.org/docs/motoko/core/)
+* [Documentation](./core/)
 
 The `core` package is a new and improved standard library for Motoko, focusing on:
 * AI-friendly design patterns.
@@ -40,7 +40,7 @@ When updating to the `core` package:
 - Hash-based data structures are no longer included in the standard library. It is encouraged to use ordered maps and sets for improved security.
 - In some cases, it won't be possible to fully migrate to `core` due to removal of some features in `base`. In these cases, you can continue using both packages side-by-side or search for [Mops packages](https://mops.one/) built by the community.
 
-For details on function signatures, please refer to the official [documentation](https://internetcomputer.org/docs/motoko/core/).
+For details on function signatures, please refer to the official [documentation](./core/).
 
 Also, feel free to ask for help by posting on the [ICP developer forum](https://forum.dfinity.org/c/developers) or opening a GitHub issue on the [`dfinity/motoko-core`](https://github.com/dfinity/motoko-core/issues) repository.
 
@@ -120,7 +120,7 @@ The `core` package brings significant changes to data structures, making a clear
 
 ## Interface changes by module
 
-### [`Array`](https://internetcomputer.org/docs/motoko/core/Array)
+### [`Array`](./core/Array)
 
 #### Renamed functions
 - `append()` → `concat()`
@@ -158,7 +158,7 @@ The `core` package brings significant changes to data structures, making a clear
 - `sortInPlace()` - Use `VarArray.sortInPlace()` instead
 - `tabulateVar()` - Use `VarArray.tabulate()` instead
 
-### [`Blob`](https://internetcomputer.org/docs/motoko/core/Blob)
+### [`Blob`](./core/Blob)
 
 #### Modified functions
 - `fromArrayMut()` → `fromVarArray()`
@@ -170,7 +170,7 @@ The `core` package brings significant changes to data structures, making a clear
 - `isEmpty()` - Check if blob is empty
 - `size()` - Get number of bytes in a blob (equivalent to `blob.size()`)
 
-### [`Bool`](https://internetcomputer.org/docs/motoko/core/Bool)
+### [`Bool`](./core/Bool)
 
 #### Renamed functions
 - `logand()` → `logicalAnd()`
@@ -181,13 +181,13 @@ The `core` package brings significant changes to data structures, making a clear
 #### New functions
 - `allValues()` - Iterator over all boolean values
 
-### [`Char`](https://internetcomputer.org/docs/motoko/core/Char)
+### [`Char`](./core/Char)
 
 #### Renamed functions
 - `isLowercase()` → `isLower()`
 - `isUppercase()` → `isUpper()`
 
-### [`Debug`](https://internetcomputer.org/docs/motoko/core/Debug)
+### [`Debug`](./core/Debug)
 
 #### Added functions
 - `todo()` - Replaces `Prelude.nyi()`
@@ -195,7 +195,7 @@ The `core` package brings significant changes to data structures, making a clear
 #### Removed functions
 - `trap()` - Moved to `Runtime.trap()`
 
-### [`Float`](https://internetcomputer.org/docs/motoko/core/Float)
+### [`Float`](./core/Float)
 
 #### Modified functions
 - `equal()` - Now requires epsilon parameter
@@ -204,7 +204,7 @@ The `core` package brings significant changes to data structures, making a clear
 #### Removed functions
 - `equalWithin()`, `notEqualWithin()` - Use `equal()` and `notEqual()` with epsilon
 
-### [`Iter`](https://internetcomputer.org/docs/motoko/core/Iter)
+### [`Iter`](./core/Iter)
 
 `Iter.range()` has been removed in favor of type-specific range functions such as `Nat.range()`, `Int.range()`, `Nat32.range()`, etc. These functions have an **exclusive upper bound**, in contrast to the original inclusive upper bound of `Iter.range()`. 
 
@@ -229,7 +229,7 @@ persistent actor {
 
 Helper functions have been added, such as `allValues()`, for each finite type in the `base` package.
 
-### [`Int`](https://internetcomputer.org/docs/motoko/core/Int)
+### [`Int`](./core/Int)
 
 #### New functions
 - `fromNat()` - Convert Nat to Int
@@ -247,7 +247,7 @@ Helper functions have been added, such as `allValues()`, for each finite type in
 - `hash()`
 - `hashAcc()` 
 
-### [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat)
+### [`Nat`](./core/Nat)
 
 #### New functions
 - `allValues()` - Iterator over all natural numbers
@@ -258,7 +258,7 @@ Helper functions have been added, such as `allValues()`, for each finite type in
 - `rangeBy()`, `rangeByInclusive()` - Range with step
 - `toInt()` - Convert to Int
 
-### [`Int8`, `Int16`, `Int32`, `Int64`, `Nat8`, `Nat16`, `Nat32`, `Nat64`](https://internetcomputer.org/docs/motoko/core/)
+### [`Int8`, `Int16`, `Int32`, `Int64`, `Nat8`, `Nat16`, `Nat32`, `Nat64`](./core/)
 
 #### Renamed fields
 
@@ -270,7 +270,7 @@ Helper functions have been added, such as `allValues()`, for each finite type in
 - `range()`, `rangeInclusive()` - Range iterators (replaces `Iter.range()`)
 - `explode()` - Slice into constituent bytes (only for sizes `16`, `32`, `64`)
 
-### [`Option`](https://internetcomputer.org/docs/motoko/core/Option)
+### [`Option`](./core/Option)
 
 #### Renamed functions
 - `make()` → `some()` - Create option from value
@@ -284,12 +284,12 @@ Helper functions have been added, such as `allValues()`, for each finite type in
 - `assertNull()` - Removed in favor of pattern matching
 - `assertSome()` - Removed in favor of pattern matching
 
-### [`Order`](https://internetcomputer.org/docs/motoko/core/Order)
+### [`Order`](./core/Order)
 
 #### New functions
 - `allValues()` - Iterator over all order values (`#less`, `#equal`, `#greater`)
 
-### [`Random`](https://internetcomputer.org/docs/motoko/core/Random)
+### [`Random`](./core/Random)
 
 The `Random` module has been completely redesigned in the core package with a new API that provides better control over random number generation and supports both pseudo-random and cryptographic random number generation.
 
@@ -328,7 +328,7 @@ persistent actor {
 - `crypto()` - Create cryptographic random generator using ICP entropy
 - `cryptoFromState()` - Create cryptographic generator from state
 
-### [`Result`](https://internetcomputer.org/docs/motoko/core/Result)
+### [`Result`](./core/Result)
 
 #### New functions
 - `all()` - Check all results in iterator
@@ -337,7 +337,7 @@ persistent actor {
 - `forErr()` - Apply function to `#err` value
 - `fromBool()` - Create Result from boolean
 
-### [`Text`](https://internetcomputer.org/docs/motoko/core/Text)
+### [`Text`](./core/Text)
 
 #### Renamed functions
 - `toLowercase()` → `toLower()`
@@ -967,4 +967,4 @@ If you experience issues with the migration pattern:
 2. Verify that all types referenced in the migration function are accessible (marked as `public` if needed)
 3. Test the migration incrementally by converting one data structure at a time
 
-For additional help, visit the ICP [developer forum](https://forum.dfinity.org/c/developers) or [Discord community](https://discord.com/invite/e8Xr8A5pX3).
+For additional help, visit the ICP [developer forum](https://forum.dfinity.org/c/developers) or [Discord community](https://discord.internetcomputer.org).
