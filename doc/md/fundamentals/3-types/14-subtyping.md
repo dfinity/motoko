@@ -70,7 +70,7 @@ In this table:
 
 ## Numbers `Nat` and `Int`
 
-[`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) is a subtype of [`Int`](https://internetcomputer.org/docs/motoko/core/Int) (`Nat <: Int`), meaning a [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) value can be used where an `Int` is expected. This works because every [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) is an `Int`, but not every `Int` is a [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) (as negative numbers exist in `Int`).
+[`Nat`](../../core/Nat.md) is a subtype of [`Int`](../../core/Int.md) (`Nat <: Int`), meaning a [`Nat`](../../core/Nat.md) value can be used where an `Int` is expected. This works because every [`Nat`](../../core/Nat.md) is an `Int`, but not every `Int` is a [`Nat`](../../core/Nat.md) (as negative numbers exist in `Int`).
 
 
 ```motoko
@@ -125,7 +125,7 @@ discard("abc"); // Allowed, since `Text <: Any`
 
 ## Options
 
-If `T <: U`, then `?T <: ?U` because option subtyping is covariant. This means an [optional value](https://internetcomputer.org/docs/motoko/fundamentals/types/options) of a subtype can be used as an optional value of a supertype.
+If `T <: U`, then `?T <: ?U` because option subtyping is covariant. This means an [optional value](../3-types/10-options.md) of a subtype can be used as an optional value of a supertype.
 
 ```motoko no-repl
 let a : ?Nat = ?5;
@@ -144,7 +144,7 @@ let ot : ?Text = n;     // Allowed, since `Null <: ?Text`
 
 ## Records and objects
 
-[Records](https://internetcomputer.org/docs/motoko/fundamentals/types/records) and, more generally, [objects](https://internetcomputer.org/docs/motoko/fundamentals/types/objects-classes)
+[Records](../3-types/5-records.md) and, more generally, [objects](../3-types/6-objects-classes.md)
 support subtyping, both in the required fields and the types of those fields.
 
 An object type `T` is a subtype of another object type `U`, if `T` requires all the fields required by `U`,
@@ -182,7 +182,7 @@ However, both `A` and `B` are still subtypes of `C`, since `C` lacks the `age` f
 
 ## Variants
 
-[Variants](https://internetcomputer.org/docs/motoko/fundamentals/types/variants) also support subtyping, both in the allowed fields and the types of those fields.
+[Variants](../3-types/7-variants.md) also support subtyping, both in the allowed fields and the types of those fields.
 
 A variant type `T` is a subtype of another variant type `U` if every value in `T` also appears in `U`, and the associated types in `T` are subtypes of those in `U`. `T` may allow fewer fields than `U`.
 
@@ -227,7 +227,7 @@ let rok : Result<Int, Text> = ok; // Allowed, since `{#ok : Nat} <: {#ok : Int; 
 
 ## Immutable arrays
 
-[Immutable arrays (`[T]`)](https://internetcomputer.org/docs/motoko/fundamentals/types/immutable-arrays) support covariant subtyping, meaning if `T <: U`, then `[T] <: [U]`.
+[Immutable arrays (`[T]`)](../3-types/8-immutable-arrays.md) support covariant subtyping, meaning if `T <: U`, then `[T] <: [U]`.
 
 If `T <: U`, then an (immutable) array of type `[T]` can be used as an array of type `[U]`.
 
@@ -238,7 +238,7 @@ let ints : [Int] = nats;  // Allowed, since `Nat <: Int` we also have `[Nat] <: 
 
 ## Mutable arrays
 
-[Mutable arrays](https://internetcomputer.org/docs/motoko/fundamentals/types/mutable-arrays) of the form `[var T]` do not support interesting subtyping.
+[Mutable arrays](../3-types/9-mutable-arrays.md) of the form `[var T]` do not support interesting subtyping.
 The mutable array constructor `[var T]` is invariant in `T`.
 
 This means that `[var T]` is a subtype of `[var U]` only if `T` and `U` are equivalent types, that is, both `T <: U` and `U <: T` must hold.
@@ -252,7 +252,7 @@ let ints : [var Int] = nats;  // Not allowed, because `[var Nat] </: [var Int]`.
 
 ## Functions
 
-[Functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions) also support subtyping.
+[Functions](../3-types/3-functions.md) also support subtyping.
 A function type `T1 -> T2` is a subtype of another function type `U1 -> U2` provided that:
 
 1. The argument types are related in the opposite direction (`U1 <: T1` ).
@@ -298,7 +298,7 @@ In the case of actors, which can only contain shared functions as fields, this m
 
 ## Recursive and generic types
 
-[Recursive and generic types](https://internetcomputer.org/docs/motoko/fundamentals/types/advanced-types) can be subtypes of each other when their definitions allow it.
+[Recursive and generic types](../3-types/12-advanced-types.md) can be subtypes of each other when their definitions allow it.
 
 Consider the following recursive point types, where the second extends the first by adding a color field:
 

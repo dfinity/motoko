@@ -25,5 +25,5 @@ You can use literals directly in expressions.
 
 ## Resources
 
-- [Literals](https://internetcomputer.org/docs/motoko/language-manual#literals)
+- [Literals](../../16-language-manual.md#literals)
 

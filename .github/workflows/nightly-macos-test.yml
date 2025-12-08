@@ -8,7 +8,7 @@ jobs:
   common-tests:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Run Common Tests
         uses: ./.github/actions/test-blueprint
@@ -21,7 +21,7 @@ jobs:
   gc-tests:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Run GC Tests
         uses: ./.github/actions/test-blueprint
@@ -37,7 +37,7 @@ jobs:
         build_type: [release, debug]
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Run Tests
         uses: ./.github/actions/test-blueprint
@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Get `motoko` Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Populate `moc`
         uses: ./.github/actions/test-blueprint
         with:
@@ -69,7 +69,7 @@ jobs:
         # we have to keep it elsewhere and restore later.
         run: cp -r ./.github/actions/test-blueprint ..
       - name: Get `motoko-core` Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: dfinity/motoko-core
           fetch-depth: "0"
@@ -90,7 +90,7 @@ jobs:
 
   create-issue:
     needs: [common-tests, gc-tests, systems-go-tests, motoko-core-tests]
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    if: ${{ always() && contains(needs.*.result, 'failure') && github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest # No need to run on macOS, the ubuntu runner should be cheaper to run.
     steps:
       - name: Create Issue
@@ -102,6 +102,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `Nightly macOS Test Failure (${date})`,
-              body: `Nightly tests for macOS  failed. Please investigate.\n\nWorkflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              body: `Nightly tests for macOS failed. Please investigate.\n\nWorkflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               labels: ['macos-failure', 'bug']
             }); 

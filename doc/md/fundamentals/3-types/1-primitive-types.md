@@ -21,30 +21,30 @@ Int.toText(0); // returns "0"
 
 Motoko supports both signed integers and unsigned naturals. Signed numbers can represent all numbers, positive and negative, while unsigned integers can only represent 0 and positive numbers. Natural numbers are unsigned integers.
 
-- Signed integers: [`Int`](https://internetcomputer.org/docs/motoko/core/Int), [`Int8`](https://internetcomputer.org/docs/motoko/core/Int8), [`Int16`](https://internetcomputer.org/docs/motoko/core/Int16), [`Int32`](https://internetcomputer.org/docs/motoko/core/Int32), [`Int64`](https://internetcomputer.org/docs/motoko/core/Int64)
-- Unsigned naturals: [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat), [`Nat8`](https://internetcomputer.org/docs/motoko/core/Nat8), [`Nat16`](https://internetcomputer.org/docs/motoko/core/Nat16), [`Nat32`](https://internetcomputer.org/docs/motoko/core/Nat32), [`Nat64`](https://internetcomputer.org/docs/motoko/core/Nat64)
+- Signed integers: [`Int`](../../core/Int.md), [`Int8`](../../core/Int8.md), [`Int16`](../../core/Int16.md), [`Int32`](../../core/Int32.md), [`Int64`](../../core/Int64.md)
+- Unsigned naturals: [`Nat`](../../core/Nat.md), [`Nat8`](../../core/Nat8.md), [`Nat16`](../../core/Nat16.md), [`Nat32`](../../core/Nat32.md), [`Nat64`](../../core/Nat64.md)
 
-The [`Int`](https://internetcomputer.org/docs/motoko/core/Int) and [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) types prevent overflow and underflow since they can represent values of arbitrary size. Of course, subtraction on a `Nat` can still result in underflow if the result would be negative.
+The [`Int`](../../core/Int.md) and [`Nat`](../../core/Nat.md) types prevent overflow and underflow since they can represent values of arbitrary size. Of course, subtraction on a [`Nat`](../../core/Nat.md) can still result in underflow if the result would be negative.
 
-In Motoko, [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) is a subtype of [`Int`](https://internetcomputer.org/docs/motoko/core/Int), since the set of non-negative integers is a subset of all integers.
+In Motoko, [`Nat`](../../core/Nat.md) is a subtype of [`Int`](../../core/Int.md), since the set of non-negative integers is a subset of all integers.
 
-This means that every expression of type [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) can implicitly serve as an [`Int`](https://internetcomputer.org/docs/motoko/core/Int) without any need for conversion. The opposite is not true.
+This means that every expression of type [`Nat`](../../core/Nat.md) can implicitly serve as an [`Int`](../../core/Int.md) without any need for conversion. The opposite is not true.
 
-An [`Int`](https://internetcomputer.org/docs/motoko/core/Int) cannot be directly assigned to a [`Nat`](https://internetcomputer.org/docs/motoko/core/) since it may be a negative number and the [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) type only contains non-negative numbers.
+An [`Int`](../../core/Int.md) cannot be directly assigned to a [`Nat`](../../core/Nat.md) since it may be a negative number and the [`Nat`](../../core/Nat.md) type only contains non-negative numbers.
 
 ```motoko
 let x : Int = -5;
 let y : Nat = x; // Error
 ```
 
-Passing an [`Int`](https://internetcomputer.org/docs/motoko/core/Int) as a [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) equires an explicit conversion, such as taking the absolute value or applying another conversion function.
+Passing an [`Int`](../../core/Int.md) as a [`Nat`](../../core/Nat.md) equires an explicit conversion, such as taking the absolute value or applying another conversion function.
 
 ```motoko no-repl
 let x : Int = -5;
 let y : Nat = Int.abs(x); // Allowed, y = 5
 ```
 
-Fixed-size numeric types ([`Int8`](https://internetcomputer.org/docs/motoko/core/Int8), [`Nat32`](https://internetcomputer.org/docs/motoko/core/Nat32), etc.) support additional operations, including bitwise shifts.
+Fixed-size numeric types ([`Int8`](../../core/Int8.md), [`Nat32`](../../core/Nat32.md), etc.) support additional operations, including bitwise shifts.
 
 ```motoko
 let x : Nat32 = 0xA; // 10 in hexadecimal
@@ -53,7 +53,7 @@ let y = x << 2; // 0x28 (40 in decimal)
 
 ## `Char` and `Text`
 
-`Char` represents a single Unicode scalar value, while [`Text`](https://internetcomputer.org/docs/motoko/core/Text) represents a sequence of characters.
+`Char` represents a single Unicode scalar value, while [`Text`](../../core/Text.md) represents a sequence of characters.
 
 ```motoko
 import Char "mo:core/Char";
@@ -72,7 +72,7 @@ let words = Text.split("apple,banana,cherry", #char ','); // apple -> banana -> 
 
 ## Bool
 
-The [`Bool`](https://internetcomputer.org/docs/motoko/core/Bool) type represents boolean values, `true` or `false`, and supports logical operations.
+The [`Bool`](../../core/Bool.md) type represents boolean values, `true` or `false`, and supports logical operations.
 
 The logical operators `and` and `or` will only evaluate their second operand if necessary.
 
@@ -85,7 +85,7 @@ let isEqual =  true == false ; // false
 
 ## Float
 
-[`Float`](https://internetcomputer.org/docs/motoko/core/Float) is a 64-bit floating-point type that provides mathematical operations.
+[`Float`](../../core/Float.md) is a 64-bit floating-point type that provides mathematical operations.
 
 ```motoko
 import Float "mo:core/Float";
@@ -99,11 +99,11 @@ let trigValue = Float.sin(Float.pi / 2); // 1.0
 
 ## Resources
 
-- [`Int`](https://internetcomputer.org/docs/motoko/core/Int)
-- [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat)
-- [`Bool`](https://internetcomputer.org/docs/motoko/core/Bool)
-- [`Blob`](https://internetcomputer.org/docs/motoko/core/Blob)
-- [`Char`](https://internetcomputer.org/docs/motoko/core/Char)
-- [`Text`](https://internetcomputer.org/docs/motoko/core/Text)
-- [`Float`](https://internetcomputer.org/docs/motoko/core/Float)
+- [`Int`](../../core/Int.md)
+- [`Nat`](../../core/Nat.md)
+- [`Bool`](../../core/Bool.md)
+- [`Blob`](../../core/Blob.md)
+- [`Char`](../../core/Char.md)
+- [`Text`](../../core/Text.md)
+- [`Float`](../../core/Float.md)
 
