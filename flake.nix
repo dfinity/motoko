@@ -12,6 +12,9 @@
     rust-overlay.url = "github:oxalica/rust-overlay";
     rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
 
+    # Dependency of pocket-ic
+    motoko.url = "github:dfinity/motoko/0.16.3";
+
     esm = {
       url = "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz";
       flake = false;
@@ -69,6 +72,7 @@
     , flake-utils
     , nix-update-flake
     , rust-overlay
+    , motoko
     , esm
     , viper-server
     , candid-src
@@ -236,7 +240,7 @@
         inherit rts base-src core-src docs shell;
       };
 
-      pocket-ic = import ./nix/pocket-ic.nix pkgs buildableReleaseMoPackages.moc;
+      pocket-ic = import ./nix/pocket-ic.nix pkgs motoko.packages."${system}".release.moc;
     in
     {
       packages = checks // common-constituents // rec {
