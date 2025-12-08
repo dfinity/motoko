@@ -163,17 +163,17 @@
         src = ./test-runner;
         cargoLock = test-runner-cargo-lock;
         buildInputs = [
-          pkgs.pocket-ic.server
+          pocket-ic.server
         ];
-        POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
+        POCKET_IC_BIN = "${pocket-ic.server}/bin/pocket-ic-server";
         SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
-        
+
         # Enable tests when building the package.
         doCheck = true;
       };
 
-      tests = import ./nix/tests.nix { 
-        inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages test-runner; 
+      tests = import ./nix/tests.nix {
+        inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages test-runner pocket-ic;
       };
 
       filterTests = type:
@@ -221,7 +221,7 @@
       nix-update = nix-update-flake.packages.${system}.default;
 
       shell = import ./nix/shell.nix {
-        inherit pkgs nix-update base-src core-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages docs test-runner;
+        inherit pkgs nix-update base-src core-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages docs test-runner pocket-ic;
         inherit (checks) check-rts-formatting;
       };
 
@@ -235,6 +235,8 @@
 
         inherit rts base-src core-src docs shell;
       };
+
+      pocket-ic = import ./nix/pocket-ic.nix pkgs buildableReleaseMoPackages.moc;
     in
     {
       packages = checks // common-constituents // rec {
@@ -243,12 +245,10 @@
 
         inherit nix-update tests js test-runner;
 
-        inherit (pkgs) nix-build-uncached ic-wasm pocket-ic;
+        inherit (pkgs) nix-build-uncached ic-wasm;
 
         # Get pocket-ic server.
-        pocket-ic-server = pkgs.pocket-ic.server;
-
-
+        pocket-ic-server = pocket-ic.server;
 
         # Platform-specific release files.
         release-files-ubuntu-latest = import ./nix/release-files-ubuntu-latest.nix { inherit self pkgs; };

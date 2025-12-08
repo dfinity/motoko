@@ -1,4 +1,4 @@
-pkgs: let
+pkgs: moc: let
   # Common attributes for both packages
   commonAttrs = {
     pname = "pocket-ic";
@@ -47,14 +47,14 @@ pkgs: let
       pkg-config
       cmake
     ];
-    buildInputs = with pkgs; [
+    buildInputs = [
       moc
-      openssl
-      llvm_19
-      llvmPackages_19.libclang
-      lmdb
-      libunwind
-      libiconv
+      pkgs.openssl
+      pkgs.llvm_19
+      pkgs.llvmPackages_19.libclang
+      pkgs.lmdb
+      pkgs.libunwind
+      pkgs.libiconv
     ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin
       pkgs.darwin.apple_sdk.frameworks.Security;
     LIBCLANG_PATH = "${pkgs.llvmPackages_19.libclang.lib}/lib";
@@ -71,4 +71,4 @@ pkgs: let
 
 in {
   inherit server;
-} 
+}

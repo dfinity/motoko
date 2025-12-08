@@ -12,6 +12,7 @@
 , check-rts-formatting
 , debugMoPackages
 , test-runner
+, pocket-ic
 }:
 pkgs.mkShell {
   name = "motoko-shell";
@@ -50,7 +51,7 @@ pkgs.mkShell {
         pkgs.openjdk
         pkgs.z3 # for viper dev
         pkgs.difftastic
-        pkgs.pocket-ic.server
+        pocket-ic.server
         pkgs.gh # GitHub CLI
         test-runner
       ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin pkgs.darwin.apple_sdk.frameworks.Security
@@ -58,7 +59,7 @@ pkgs.mkShell {
 
   # Add these variables to the shell environment so that
   # test-runner can find the pocket-ic binary and library.
-  POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
+  POCKET_IC_BIN = "${pocket-ic.server}/bin/pocket-ic-server";
 
   shellHook = llvmEnv + ''
     # We need to add the ./bin directory to PATH however `nix develop` or direnv
