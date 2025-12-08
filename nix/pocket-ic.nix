@@ -43,9 +43,10 @@ pkgs: moc: let
       rustflags = [ "-C", "linker=c++" ]
       EOF
     '';
-    nativeBuildInputs = with pkgs; [
-      pkg-config
-      cmake
+    nativeBuildInputs = [
+      pkgs.pkg-config
+      pkgs.cmake
+      pkgs.git
       moc
     ];
     buildInputs = with pkgs; [
