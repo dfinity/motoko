@@ -568,8 +568,8 @@ The syntax of a pattern is as follows:
   <pat> : <typ>                                  Type annotation
   <pat> or <pat>                                 Disjunctive pattern
   implicit <id> : <typ>                          implicit named parameter
-  implicit <id> : <typ> = <pat>                  implicit named parameter (NYI)
-  implicit _ : <typ> = <pat>                     implicit wildcard parameter (NYI)
+  implicit <id> : <typ> = <pat>                  implicit named parameter
+  implicit _ : <typ> = <pat>                     implicit wildcard parameter 
 
 
 <pat-field> ::=                                Object pattern fields
