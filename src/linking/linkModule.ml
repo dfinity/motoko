@@ -443,25 +443,11 @@ let fill_global (global : int32) (value : Wasm_exts.Values.value) (uses_memory64
 
   let const = phrase instrs in
 
-  (* For 64-bit, convert the constant expression of the table segment offset to 32-bit. *)
-  let const_instr_to_32' = function
-    | Const { it = (Wasm_exts.Values.I64 number); at } -> Const ((Wasm_exts.Values.I32 (Int64.to_int32 number)) @@ at)
-    | GlobalGet v -> GlobalGet v
-    | _ -> assert false
-  in
-  let const_instr_to_32 i = phrase const_instr_to_32' i in
-  let convert_const_to_32' = safe_map const_instr_to_32 in
-  let convert_const_to_32 = phrase convert_const_to_32' in
-  let table_const offset = 
-    let expr = const offset in
-    if uses_memory64 then convert_const_to_32 expr else expr
-  in
-
   let global' g = { g with value = const g.value } in
   let global = phrase global' in
   let globals = safe_map global in
 
-  let table_segment' (s : var list segment') = { s with offset = table_const s.offset; } in
+  let table_segment' (s : var list segment') = { s with offset = const s.offset; } in
   let table_segment = phrase (table_segment') in
   let table_segments = safe_map table_segment in
 
@@ -554,10 +540,16 @@ let read_table_size (m : module_') : int32 =
   let open Wasm_exts.Types in
   match m.tables with
   | [t] ->
-    let TableType ({min;max}, _) = t.it.ttype in
-    if Some min <> max
-    then raise (LinkError "Expect fixed sized table in first module")
-    else min
+     begin match t.it.ttype with
+     | TableType ({min;max}, _) ->
+       if Some min <> max
+       then raise (LinkError "Expect fixed sized table in first module")
+       else min
+     | HugeTableType ({min;max}, _) ->
+       if Some min <> max
+       then raise (LinkError "Expect fixed sized table in first module")
+       else Int64.to_int32 min
+     end
   | _ -> raise (LinkError "Expect one table in first module")
 
 let set_memory_size new_size_bytes : module_' -> module_' = fun m ->
@@ -582,11 +574,30 @@ let set_memory_size new_size_bytes : module_' -> module_' = fun m ->
 
 let set_table_size new_size : module_' -> module_' = fun m ->
   let open Wasm_exts.Types in
+  let is_huge = function
+    | HugeTableType _ -> true
+    | _ -> false in
   match m.tables with
+  | [t] when is_huge t.it.ttype ->
+    { m with
+      tables = [ phrase (fun t ->
+        let [@warning "-8"] HugeTableType (_, ty) = t.ttype in
+        let new_size = Int64.of_int32 new_size in
+        { ttype = HugeTableType ({min = new_size; max = Some new_size}, ty) }
+      ) t ]
+    }
+  | [t] when uses_memory64 m ->
+    { m with
+      tables = [ phrase (fun t ->
+        let [@warning "-8"] TableType (_, ty) = t.ttype in
+        let new_size = Int64.of_int32 new_size in
+        { ttype = HugeTableType ({min = new_size; max = Some new_size}, ty) }
+      ) t ]
+    }
   | [t] ->
     { m with
       tables = [ phrase (fun t ->
-        let TableType (_, ty) = t.ttype in
+        let [@warning "-8"] TableType (_, ty) = t.ttype in
         { ttype = TableType ({min = new_size; max = Some new_size}, ty) }
       ) t ]
     }
@@ -613,7 +624,7 @@ let fill_item_import module_name item_name new_base uses_memory64 (m : module_')
     in go 0 m.imports in
 
     let new_base_value = if uses_memory64 then
-      Wasm_exts.Values.I64 (I64_convert.extend_i32_u new_base)
+      Wasm_exts.Values.I64 (Int64.of_int32 new_base)
     else
       Wasm_exts.Values.I32 new_base
     in
@@ -629,13 +640,9 @@ let fill_item_import module_name item_name new_base uses_memory64 (m : module_')
 let fill_memory_base_import new_base uses_memory64 : module_' -> module_' =
   fill_item_import "env" "__memory_base" new_base uses_memory64
 
-let fill_table_base_import new_base uses_memory64 : module_' -> module_' = fun m ->
-  let m = fill_item_import "env" "__table_base" new_base uses_memory64 m in
-  if uses_memory64 then
-    fill_item_import "env" "__table_base32" new_base uses_memory64 m
-  else
-    m
-   
+let fill_table_base_import new_base uses_memory64 : module_' -> module_' =
+  fill_item_import "env" "__table_base" new_base uses_memory64
+
 (* Concatenation of modules *)
 
 let join_modules
@@ -879,8 +886,9 @@ let replace_got_imports (lib_memory_base : int32) (table_size : int32) (imports:
     got_func_imports
   in
   let offset_global global_type offset = Wasm_exts.Types.(match global_type with
+    | GlobalType (I32Type, _) when uses_memory64 m -> mk_i64_global (Int32.(add table_size (of_int offset)) |> Int64.of_int32)
     | GlobalType (I32Type, _) -> mk_i32_global (Int32.add table_size (Int32.of_int offset))
-    | GlobalType (I64Type, _) -> mk_i64_global (Int64.add (Int64.of_int32 table_size) (Int64.of_int offset))
+    | GlobalType (I64Type, _) -> mk_i64_global Int64.(add (of_int32 table_size) (of_int offset))
     | _ -> raise (LinkError "GOT.func global type is not supported"))
   in
   let function_globals = List.mapi (fun offset (global_index, global_type, _) ->
@@ -893,7 +901,7 @@ let replace_got_imports (lib_memory_base : int32) (table_size : int32) (imports:
     else
       Some {
         index = 0l @@ no_region;
-        offset = [ mk_i32_const table_size ] @@ no_region;
+        offset = [ if uses_memory64 m then mk_i64_const (Int64.of_int32 table_size) else mk_i32_const table_size ] @@ no_region;
         init = elements
       }
   in

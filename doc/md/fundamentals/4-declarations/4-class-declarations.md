@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # Class declarations
 
-A class in Motoko serves as a blueprint for creating [objects](https://internetcomputer.org/docs/motoko/fundamentals/declarations/object-declaration) that encapsulate both [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and behavior. It defines fields to hold data and methods to operate on that data. Unlike records and plain objects, classes support constructors, allowing developers to initialize each instance with unique values at creation time.
+A class in Motoko serves as a blueprint for creating [objects](../4-declarations/3-object-declaration.md) that encapsulate both [state](../2-actors/2-state.md) and behavior. It defines fields to hold data and methods to operate on that data. Unlike records and plain objects, classes support constructors, allowing developers to initialize each instance with unique values at creation time.
 
 Classes in Motoko are not the same as classes in other object oriented programming languages, but they serve the same purpose. Motoko also doesn’t have a `this` or `self` keyword because you can simply call other methods directly by name or name the entire object using an identifier of your choice.
 
@@ -147,7 +147,7 @@ Unlike object classes, actor class constructors are asynchronous. The constructo
 
 :::note
 
-On ICP, calls to a class constructor must be provisioned with cycles to pay for the creation of a principal. See [Cycles](/https://internetcomputer.org/docs/motoko/core/Cycles.md) for instructions on how to add cycles to a call using the imperative `Cycles.add<system>(cycles)` function.
+On ICP, calls to a class constructor must be provisioned with cycles to pay for the creation of a principal. See [Cycles](../../core/Cycles.md) for instructions on how to add cycles to a call using the imperative `Cycles.add<system>(cycles)` function.
 
 :::
 
@@ -165,5 +165,5 @@ Using this `system` syntax, developers can:
 - Manually install, upgrade, or reinstall canisters.
 - Access lower-level canister management features provided by ICP.
 
-[Learn more about actor class management](https://internetcomputer.org/docs/motoko/language-manual#actor-class-management).
+[Learn more about actor class management](../../16-language-manual.md#actor-class-management).
 

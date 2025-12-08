@@ -5,7 +5,7 @@ sidebar_position: 5
 # Records
 
 Records allow you to group related values using named fields, with each field potentially having a different type.
-Unlike [tuples](https://internetcomputer.org/docs/motoko/fundamentals/types/tuples), which use positional access, records provide field-based access, improving readability and maintainability.
+Unlike [tuples](../3-types/4-tuples.md), which use positional access, records provide field-based access, improving readability and maintainability.
 
 Records also support **mutable fields**, declared using the `var` keyword.
 In contrast, all fields in a tuple are always **immutable**.
@@ -42,7 +42,7 @@ account.balance := -100; //  Allowed
 This recommendation also applies to all `var` declarations, not just record fields.
 :::
 
-`person` is a record with two labeled fields, `name` of type [`Text`](https://internetcomputer.org/docs/motoko/core/Text) and `age` of type [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat).
+`person` is a record with two labeled fields, `name` of type [`Text`](../../core/Text.md) and `age` of type [`Nat`](../../core/Nat.md).
 
 The values of the fields are `"Motoko"` and `25` respectively.
 
@@ -120,7 +120,7 @@ let individual : Individual = {
 
 ## Pattern matching on records
 
-Records can be destructured using [`switch`](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/switch), allowing selective extraction of fields. This approach makes accessing deeply nested fields more explicit and readable.
+Records can be destructured using [`switch`](../5-control-flow/5-switch.md), allowing selective extraction of fields. This approach makes accessing deeply nested fields more explicit and readable.
 
 ```motoko
 type Address = {
