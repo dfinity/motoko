@@ -2,7 +2,7 @@
   description = "The Motoko compiler";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
 
     flake-utils.url = "github:numtide/flake-utils";
 
@@ -23,10 +23,6 @@
 
     candid-src = {
       url = "github:dfinity/candid";
-      flake = false;
-    };
-    ic-src = {
-      url = "github:dfinity/ic";
       flake = false;
     };
     pocket-ic-src = {
@@ -76,7 +72,6 @@
     , esm
     , viper-server
     , candid-src
-    , ic-src
     , pocket-ic-src
     , ic-wasm-src
     , libtommath-src
@@ -93,7 +88,6 @@
         sources = {
           inherit
             candid-src
-            ic-src
             pocket-ic-src
             ic-wasm-src
             libtommath-src

@@ -138,7 +138,7 @@ impl StableTag {
             STABLE_TAG_BIGINT => StableObjectKind::BigInt,
             STABLE_TAG_SOME => StableObjectKind::Some,
             STABLE_TAG_WEAK_REF => StableObjectKind::WeakRef,
-            _ => unsafe { rts_trap_with("Invalid tag") },
+            _ => rts_trap_with("Invalid tag"),
         }
     }
 }
