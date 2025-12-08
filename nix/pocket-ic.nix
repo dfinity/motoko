@@ -48,6 +48,7 @@ pkgs: let
       cmake
     ];
     buildInputs = with pkgs; [
+      moc
       openssl
       llvm_19
       llvmPackages_19.libclang
