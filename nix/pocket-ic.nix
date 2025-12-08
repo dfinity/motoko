@@ -43,10 +43,15 @@ pkgs: moc: let
       rustflags = [ "-C", "linker=c++" ]
       EOF
     '';
+
+    # These env vars are necessary for building ic-admin.
+    # See: https://github.com/dfinity/ic/blob/master/rs/registry/admin/build.rs
+    COMMIT_DATE_ISO_8601_TXT_PATH = pkgs.writeText "ic-commit-date-iso-8601.txt" "1970-01-01";
+    VERSION_TXT_PATH = pkgs.writeText "ic-version.txt" pkgs.sources.pocket-ic-src.rev;
+
     nativeBuildInputs = [
       pkgs.pkg-config
       pkgs.cmake
-      pkgs.git
       moc
     ];
     buildInputs = with pkgs; [
