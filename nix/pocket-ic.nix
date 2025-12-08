@@ -46,15 +46,15 @@ pkgs: moc: let
     nativeBuildInputs = with pkgs; [
       pkg-config
       cmake
-    ];
-    buildInputs = [
       moc
-      pkgs.openssl
-      pkgs.llvm_19
-      pkgs.llvmPackages_19.libclang
-      pkgs.lmdb
-      pkgs.libunwind
-      pkgs.libiconv
+    ];
+    buildInputs = with pkgs; [
+      openssl
+      llvm_19
+      llvmPackages_19.libclang
+      lmdb
+      libunwind
+      libiconv
     ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin
       pkgs.darwin.apple_sdk.frameworks.Security;
     LIBCLANG_PATH = "${pkgs.llvmPackages_19.libclang.lib}/lib";
