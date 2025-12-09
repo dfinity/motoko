@@ -1,5 +1,5 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
-debug.print: {bias = 1_024; scaler = 3}
+debug.print: {bias = 1_024; scaler = 16}
 debug.print: {bias = 0; scaler = 1}
 debug.print: worked
 debug.print: {bias = 1; scaler = 0}
