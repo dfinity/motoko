@@ -365,6 +365,12 @@ struct
     then (take n xs, drop n xs)
     else (xs, [])
 
+  let split3 l =
+    let rec loop (xs, ys, zs) = function
+      | [] -> (List.rev xs, List.rev ys, List.rev zs)
+      | (x, y, z) :: t -> loop (x :: xs, y :: ys, z :: zs) t
+    in loop ([], [], []) l
+
   let mapi2 f xs ys =
     let _, acc = List.fold_left2 (fun (i, acc) x y -> (1 + i, f i x y :: acc)) (0, []) xs ys in
     List.rev acc

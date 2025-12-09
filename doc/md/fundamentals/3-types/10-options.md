@@ -17,7 +17,7 @@ var username : ?Text = null;
 username;
 ```
 
-`username` is an optional [`Text`](https://internetcomputer.org/docs/motoko/core/Text) value that starts as `null` (no username set).
+`username` is an optional [`Text`](../../core/Text.md) value that starts as `null` (no username set).
 
 :::info Null semantics
 
@@ -53,11 +53,11 @@ if (Option.isSome(value)) {
 }
 ```
 
-By leveraging the `Option` module, handling optional values becomes more concise and expressive, reducing the need for explicit [`switch`](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/switch) statements.
+By leveraging the `Option` module, handling optional values becomes more concise and expressive, reducing the need for explicit [`switch`](../5-control-flow/5-switch.md) statements.
 
 ### Providing default values
 
-Instead of manually handling `null` cases with [pattern matching](https://internetcomputer.org/docs/motoko/fundamentals/pattern-matching), `Option.get` allows for cleaner fallback logic to ensure that missing values are safely replaced with a default.
+Instead of manually handling `null` cases with [pattern matching](../8-pattern-matching.md), `Option.get` allows for cleaner fallback logic to ensure that missing values are safely replaced with a default.
 
 ```motoko no-repl
 import Option "mo:core/Option";
@@ -67,7 +67,7 @@ Option.get(username, "Guest"); // "Guest" if username is null
 
 ### Using options for error handling
 
-Options can be used to catch expected failures instead of calling a [`trap`](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps), making a function return `null` when it encounters an invalid input.
+Options can be used to catch expected failures instead of calling a [`trap`](../1-basic-syntax/12-traps.md), making a function return `null` when it encounters an invalid input.
 
 ```motoko
 func safeDivide(a : Int, b : Int) : ?Int {
@@ -213,6 +213,6 @@ Each recursive call is checked for `null` using `!`, immediately exiting the out
 
 ## Resources
 
-- [`Option`](https://internetcomputer.org/docs/motoko/core/Option)
+- [`Option`](../../core/Option.md)
 
 
