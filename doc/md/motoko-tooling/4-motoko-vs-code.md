@@ -4,7 +4,7 @@ sidebar: 4
 
 # Motoko Visual Studio Code extension
 
-[Visual Studio Code (VS Code)](https://survey.stackoverflow.co/2022/#section-worked-with-vs-want-to-work-with-integrated-development-environment) is a widely used open source IDE that supports canister development in [Motoko](https://internetcomputer.org/docs/motoko/getting-started/motoko-introduction).
+[Visual Studio Code (VS Code)](https://survey.stackoverflow.co/2022/#section-worked-with-vs-want-to-work-with-integrated-development-environment) is a widely used open source IDE that supports canister development in [Motoko](../1-home.mdx).
 
 The [Motoko VS Code extension](https://github.com/dfinity/vscode-motoko) enhances the development experience by providing features such as type checking, code formatting, autocompletion, go-to-definition, code snippets, and more, making it easier to build, navigate, and manage Motoko-based canisters.
 

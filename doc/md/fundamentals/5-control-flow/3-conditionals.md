@@ -32,7 +32,7 @@ let identity : Text =
   }; // Produces a value
 ```
 
-The result of the `if-else` is assigned to `identity`. Here, both branches have the same type ([`Text`](https://internetcomputer.org/docs/motoko/core/Text) in this case) as does the entire `if-else`.
+The result of the `if-else` is assigned to `identity`. Here, both branches have the same type ([`Text`](../../core/Text.md) in this case) as does the entire `if-else`.
 
 ``` motoko no-repl
 let n : Nat = 0;
