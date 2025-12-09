@@ -483,7 +483,7 @@ let check_import env at f ri =
   | Some t -> t
   | None ->
     match T.Env.find_opt full_path env.mixins with
-    | Some (_, _, _, t) -> t
+    | Some mix -> mix.Scope.typ
     | None -> error env at "M0022" "imported file %s not loaded" full_path
 
 
@@ -3879,15 +3879,22 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
    in
    List.iter
      (fun tf ->
-       match T.lookup_val_field_opt tf.T.lab rng_tfs with
-       | None -> ()
-       | Some typ ->
-         if not (T.stable_sub ~src_fields:env.srcs (T.as_immut typ) (T.as_immut tf.T.typ)) then
-           local_error env focus "M0204"
-             "migration expression produces field `%s` of type%a\n, not the expected type%a"
-              tf.T.lab
-              display_typ_expand typ
-              display_typ_expand tf.T.typ) stab_tfs;
+      match T.lookup_val_field_opt tf.T.lab rng_tfs with
+      | None -> ()
+      | Some typ ->
+        let context = [T.StableVariable tf.T.lab] in
+        let imm_typ = T.as_immut typ in
+        let imm_expected = T.as_immut tf.T.typ in
+        match T.stable_sub_explained ~src_fields:env.srcs context imm_typ imm_expected with
+        | T.Compatible -> ()
+        | T.Incompatible explanation ->
+          local_error env focus "M0204"
+            "migration expression produces field `%s` of type%a\n, not the expected type%a\nbecause: %s"
+            tf.T.lab
+            display_typ_expand typ
+            display_typ_expand tf.T.typ
+            (T.string_of_explanation explanation)
+    ) stab_tfs;
    (* Construct the pre signature *)
    let pre_tfs = List.sort T.compare_field
       dom_tfs @
@@ -4093,7 +4100,7 @@ and infer_dec env dec : T.typ =
         error env dec.at "M0227" "mixins can only be included in an actor context";
       match T.Env.find_opt i.it env.mixins with
       | None -> error env i.at "M0226" "unknown mixin %s" i.it
-      | Some (_, pat, _, _) -> check_exp env pat.note arg
+      | Some mix -> check_exp env mix.Scope.arg.note arg
     end;
     T.unit
   | ExpD exp -> infer_exp env exp
@@ -4286,9 +4293,9 @@ and gather_dec env scope dec : Scope.t =
     }
   | LetD (pat, exp, _) -> (match is_mixin_import env exp.it with
     | None -> gather_pat env scope pat
-    | Some (imports, args, t, decs) ->
+    | Some mix ->
       match pat.it with
-      | VarP id -> Scope.adjoin scope (Scope.mixin id.it (imports, args, t, decs))
+      | VarP id -> Scope.adjoin scope (Scope.mixin id.it mix)
       | _ -> error env pat.at "M0229" "mixins may only be imported by binding to a name"
   )
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
@@ -4330,9 +4337,9 @@ and gather_dec env scope dec : Scope.t =
   | IncludeD(i, _, _) -> begin
     match T.Env.find_opt i.it env.mixins with
     | None -> error env i.at "M0226" "unknown mixin %s" i.it
-    | Some(imports, pat, decs, t) ->
+    | Some mix ->
       let open Scope in
-      let (_, fields) = T.as_obj t in
+      let (_, fields) = T.as_obj mix.typ in
       let add_field acc = function
         | T.{ lab; typ = T.Typ t; _ } ->
           if T.Env.mem lab acc.typ_env then error_duplicate env "type " { it = lab; at = i.at; note = () };
@@ -4396,12 +4403,13 @@ and infer_dec_typdecs env dec : Scope.t =
   | IncludeD (i, _, n) -> begin
     match T.Env.find_opt i.it env.mixins with
     | None -> error env i.at "M0226" "unknown mixin %s" i.it
-    | Some(imports, pat, decs, t) ->
-      n := Some({ imports; pat; decs });
-      let (_, fields) = T.as_obj t in
+    | Some mix ->
+      let open Scope in
+      n := Some({ imports = mix.imports; pat = mix.arg; decs = mix.decs });
+      let (_, fields) = T.as_obj mix.typ in
       let scope = scope_of_object env fields in
       (* Mark all included idents as used to avoid spurious warnings *)
-      T.Env.iter (fun i _ -> use_identifier env i) scope.Scope.val_env;
+      T.Env.iter (fun i _ -> use_identifier env i) scope.val_env;
       scope
     end
   (* TODO: generalize beyond let <id> = <obje> *)
@@ -4424,9 +4432,9 @@ and infer_dec_typdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <valpath> *)
   | LetD ({it = VarP id; _}, exp, _) ->
      begin match is_mixin_import env exp.it with
-     | Some (imports, args, t, decs) ->
+     | Some mix ->
         (* Format.printf "Adding mixin %s at %a\n" id.it display_typ t; *)
-        Scope.mixin id.it (imports, args, t, decs)
+        Scope.mixin id.it mix
      | None ->
     (match infer_val_path env exp with
      | None -> Scope.empty
@@ -4671,8 +4679,8 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
                 ("system", obj Module [id.it, install_typ (List.map (close cs) ts1) class_typ])
               ]) in
               Scope.lib lib.note.filename typ
-            | MixinU (pat, decs) ->
-              Scope.mixin lib.note.filename (imports, pat, decs, typ)
+            | MixinU (arg, decs) ->
+              Scope.mixin lib.note.filename Scope.{ imports; arg; decs; typ }
             | ActorU _ ->
               error env cub.at "M0144" "bad import: expected a module or actor class but found an actor"
             | ProgU _ ->

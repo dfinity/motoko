@@ -146,7 +146,7 @@ func isCanister(p : Principal) : Bool
 Checks if the given principal is a canister.
 
 The last byte for opaque principal ids must be 0x01
-https://internetcomputer.org/docs/current/references/ic-interface-spec#principal
+https://internetcomputer.org/docs/references/ic-interface-spec#principal
 
 Example:
 ```motoko include=import
@@ -163,7 +163,7 @@ Checks if the given principal is a self authenticating principal.
 Most of the time, this is a user principal.
 
 The last byte for user principal ids must be 0x02
-https://internetcomputer.org/docs/current/references/ic-interface-spec#principal
+https://internetcomputer.org/docs/references/ic-interface-spec#principal
 
 Example:
 ```motoko include=import
@@ -179,7 +179,7 @@ func isReserved(p : Principal) : Bool
 Checks if the given principal is a reserved principal.
 
 The last byte for reserved principal ids must be 0x7f
-https://internetcomputer.org/docs/current/references/ic-interface-spec#principal
+https://internetcomputer.org/docs/references/ic-interface-spec#principal
 
 Example:
 ```motoko include=import

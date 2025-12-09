@@ -132,7 +132,7 @@ Bounded integers **trap** on overflow, but **wrapping versions** allow overflow 
 
 | Operator | Description | Example |
 |----------|------------|------------|
-| `#`      | Concatenates two [`Text`](https://internetcomputer.org/docs/motoko/core/Text) values | `a # b` |
+| `#`      | Concatenates two [`Text`](../../core/Text.md) values | `a # b` |
 
 ## Assignment operators
 
@@ -145,7 +145,7 @@ Assignment operators modify variables in place. Both mutable variables declared 
 | `-=`     | Subtract and assign | `a -= b` |
 | `*=`     | Multiply and assign | `a *= b` |
 | `/=`     | Divide and assign | `a /= b` |
-| `#=`     | Concatenate and assign (for [`Text`](https://internetcomputer.org/docs/motoko/core/Text)) | `a #= b` |
+| `#=`     | Concatenate and assign (for [`Text`](../../core/Text.md)) | `a #= b` |
 
 For example:
 
