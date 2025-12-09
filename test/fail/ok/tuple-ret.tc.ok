@@ -1,0 +1,7 @@
+tuple-ret.mo:11.8-11.15: warning [M0194], unused identifier update0 (delete or rename to wildcard `_` or `_update0`)
+tuple-ret.mo:19.8-19.15: warning [M0194], unused identifier update1 (delete or rename to wildcard `_` or `_update1`)
+tuple-ret.mo:40.8-40.15: warning [M0194], unused identifier update2 (delete or rename to wildcard `_` or `_update2`)
+tuple-ret.mo:59.8-59.15: warning [M0194], unused identifier update4 (delete or rename to wildcard `_` or `_update4`)
+tuple-ret.mo:67.8-67.16: warning [M0194], unused identifier update4b (delete or rename to wildcard `_` or `_update4b`)
+tuple-ret.mo:77.8-77.15: warning [M0194], unused identifier update5 (delete or rename to wildcard `_` or `_update5`)
+tuple-ret.mo:85.8-85.15: warning [M0194], unused identifier update6 (delete or rename to wildcard `_` or `_update6`)
