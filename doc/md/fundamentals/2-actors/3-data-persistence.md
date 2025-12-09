@@ -120,7 +120,7 @@ When upgrading a canister, it is important to verify that the upgrade can procee
 -   Introducing an incompatible change in stable declarations.
 -   Breaking clients due to a Candid interface change.
 
-With [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md), Motoko rejects incompatible changes of stable declarations during an upgrade attempt.
+With [enhanced orthogonal persistence](./6-orthogonal-persistence/enhanced.md), Motoko rejects incompatible changes of stable declarations during an upgrade attempt.
 Moreover, `dfx` checks the two conditions before attempting the upgrade and warns users as necessary.
 
 A Motoko canister upgrade is safe provided:
@@ -129,7 +129,7 @@ A Motoko canister upgrade is safe provided:
 -  The canister’s Motoko stable signature evolves to a stable-compatible one.
 
 :::danger
-With [classical orthogonal persistence](orthogonal-persistence/classical.md), the upgrade can still fail due to resource constraints. This is problematic as the canister can then not be upgraded. It is therefore strongly advised to test the scalability of upgrades extensively. This does not apply to enhanced orthogonal persistence.
+With [classical orthogonal persistence](./6-orthogonal-persistence/classical.md), the upgrade can still fail due to resource constraints. This is problematic as the canister can then not be upgraded. It is therefore strongly advised to test the scalability of upgrades extensively. This does not apply to enhanced orthogonal persistence.
 :::
 
 
