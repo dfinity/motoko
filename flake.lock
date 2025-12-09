@@ -121,11 +121,11 @@
     "motoko-core-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1764956813,
-        "narHash": "sha256-PiLr4mrWW0pZWW/BPCALQfp05M9koecT+Rt75mdZ+xs=",
+        "lastModified": 1765229815,
+        "narHash": "sha256-wttWru4Eiiyn7fw8T9Gp2BbM8TEsLiY4ZwyzMrZKU8I=",
         "owner": "dfinity",
         "repo": "motoko-core",
-        "rev": "cae618a3f88d4cd60ed74c84a2c8af8b7e63d01b",
+        "rev": "f49fe688a8066d8040fdc618e7620709f74b7eb3",
         "type": "github"
       },
       "original": {
@@ -177,7 +177,7 @@
     "nixpkgs": {
       "locked": {
         "lastModified": 1764836381,
-        "narHash": "sha256-8jemYbbW9EBttQKHep7Rj8kzXaxsrk/lACdXA2DN5Xk=", 
+        "narHash": "sha256-8jemYbbW9EBttQKHep7Rj8kzXaxsrk/lACdXA2DN5Xk=",
         "owner": "NixOS",
         "repo": "nixpkgs",
         "rev": "ff06bd3398fb1bea6c937039ece7e7c8aa396ebf",
