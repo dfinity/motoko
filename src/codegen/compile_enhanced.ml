@@ -7097,7 +7097,7 @@ module Serialization = struct
     let idl_value_numerator = 1L
     let idl_value_denominator = 1L
     let idl_value_bias = 1024L
-    let idl_typetbl_scaler = 3L
+    let idl_typetbl_scaler = 16L
     let idl_typetbl_bias = 1024L
 
     let register_globals env =

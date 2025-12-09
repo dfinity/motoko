@@ -6776,7 +6776,7 @@ module MakeSerialization (Strm : Stream) = struct
     let idl_value_numerator = 1l
     let idl_value_denominator = 1l
     let idl_value_bias = 1024l
-    let idl_typetbl_scaler = 3l
+    let idl_typetbl_scaler = 16l
     let idl_typetbl_bias = 1024l
 
     let register_globals env =
