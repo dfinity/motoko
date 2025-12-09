@@ -6776,8 +6776,8 @@ module MakeSerialization (Strm : Stream) = struct
     let idl_value_numerator = 1l
     let idl_value_denominator = 1l
     let idl_value_bias = 1024l
-    let idl_type_scaler = 3l
-    let idl_type_bias = 1024l
+    let idl_typetbl_scaler = 3l
+    let idl_typetbl_bias = 1024l
 
     let register_globals env =
       E.add_global32 env "@@rel_buf_opt" Mutable 0l;
@@ -6790,8 +6790,8 @@ module MakeSerialization (Strm : Stream) = struct
       E.add_global32 env "@@value_numerator" Mutable idl_value_numerator;
       E.add_global32 env "@@value_bias" Mutable idl_value_bias;
       E.add_global64 env "@@value_quota" Mutable 0L;
-      E.add_global32 env "@@type_scaler" Mutable idl_type_scaler;
-      E.add_global32 env "@@type_bias" Mutable idl_type_bias
+      E.add_global32 env "@@type_scaler" Mutable idl_typetbl_scaler;
+      E.add_global32 env "@@type_bias" Mutable idl_typetbl_bias
 
     let get_rel_buf_opt env =
       G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))

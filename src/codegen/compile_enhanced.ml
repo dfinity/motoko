@@ -7097,8 +7097,8 @@ module Serialization = struct
     let idl_value_numerator = 1L
     let idl_value_denominator = 1L
     let idl_value_bias = 1024L
-    let idl_type_scaler = 3L
-    let idl_type_bias = 1024L
+    let idl_typetbl_scaler = 3L
+    let idl_typetbl_bias = 1024L
 
     let register_globals env =
       E.add_global64 env "@@rel_buf_opt" Mutable 0L;
@@ -7114,8 +7114,8 @@ module Serialization = struct
       E.add_global64 env "@@value_numerator" Mutable idl_value_numerator;
       E.add_global64 env "@@value_bias" Mutable idl_value_bias;
       E.add_global64 env "@@value_quota" Mutable 0L;
-      E.add_global64 env "@@type_scaler" Mutable idl_type_scaler;
-      E.add_global64 env "@@type_bias" Mutable idl_type_bias
+      E.add_global64 env "@@type_scaler" Mutable idl_typetbl_scaler;
+      E.add_global64 env "@@type_bias" Mutable idl_typetbl_bias
 
     let get_rel_buf_opt env =
       G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
