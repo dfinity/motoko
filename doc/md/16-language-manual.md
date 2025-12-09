@@ -211,7 +211,6 @@ To simplify the presentation of available operators, operators and primitive typ
 | Abbreviation | Category   | Supported operations             |
 | ------------ | ---------- | ------------------------------- |
 | A            | Arithmetic | Arithmetic operations           |
-| L            | Logical    | Logical/Boolean operations      |
 | B            | Bitwise    | Bitwise and wrapping operations |
 | O            | Ordered    | Comparison                      |
 | T            | Text       | Concatenation                   |
