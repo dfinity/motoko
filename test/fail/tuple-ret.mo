@@ -47,7 +47,7 @@ actor {
 
 /*
   func update3(members : [(Nat, Nat)]) {
-    // TODO: Does not type check
+    // Does not type check (as expected)
     let _ = members.map(
       func(memberRole : (Nat, Nat)) : (Nat, Nat) {
         memberRole
