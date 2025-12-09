@@ -26,7 +26,7 @@
       flake = false;
     };
     pocket-ic-src = {
-      url = "github:dfinity/ic/master";
+      url = "github:dfinity/ic/f07e9896fef2c24db8d4d0bed3d3ed42f0934e2a";
       flake = false;
     };
     ic-wasm-src = {
