@@ -606,6 +606,7 @@ Type expressions are used to specify the types of arguments, constraints on type
 <typ-item>                                    Type item
   <id> : <typ>                                  Named type
   <typ>                                         type
+  implicit : <typ>                              Implicit (argument) type
 
 <typ-sort> ::= (actor | module | object)
 
@@ -619,8 +620,8 @@ Type expressions are used to specify the types of arguments, constraints on type
 
 An absent `<sort>?` abbreviates `object`.
 
-Let `<implicit>` be the distinguished identifier `implicit`.
-Type items of the form `<id> (<implicit> : <typ>)` and `<id0> : (<implicit> (<id> : <typ>))` are used to indicate implicit and re-named implicit parameters.  The second form is used to override the parameter named `<id0>` as implicit parameter named `<id>`.
+
+Type items of the form `<id> (implicit : <typ>)` and `<id0> : (implicit (<id> : <typ>))` are used to indicate implicit and re-named implicit parameters.  The second form is used to override the parameter named `<id0>` as implicit parameter named `<id>`.
 These special type items are only meaningful in parameter positions of function types and have no significance elsewhere.
 
 ### Primitive types
@@ -2334,9 +2335,9 @@ the expanded function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <
     ```
     insert_holes(n ; <empty> ; <exps>) =
       <exps>
-    insert_holes(n ; ( (<id0> : (<implicit> : (<id> : U))), Us) ; <exps>) =
+    insert_holes(n ; ( (<id0> : (implicit : (<id> : U))), Us) ; <exps>) =
       hole(n, <id>, U), insert_holes(n + 1 ; Us ; exps)
-    insert_holes(n ; ( (<id> : (<implicit> : U)), Us) ; <exps>) =
+    insert_holes(n ; ( (<id> : (implicit : U)), Us) ; <exps>) =
       hole(n, <id>, U), insert_holes(n + 1 ; Us ; exps)
     insert_holes(n ; (U, Us);  (<exp>, <exps>)) =
       <exp>, insert_holes(n ; Us ; <exps>)
