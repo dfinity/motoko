@@ -57,6 +57,7 @@ type Region = Prim.Types.Region
 
 A stateful handle to an isolated region of IC stable memory.
 `Region` is a stable type and regions can be stored in stable variables.
+@deprecated M0235
 
 ## Function `new`
 ``` motoko no-repl
@@ -78,7 +79,7 @@ persistent actor {
 
 ## Function `id`
 ``` motoko no-repl
-func id(_ : Region) : Nat
+func id(self : Region) : Nat
 ```
 
 Return a Nat identifying the given region.
@@ -100,7 +101,7 @@ persistent actor {
 
 ## Function `size`
 ``` motoko no-repl
-func size(region : Region) : (pages : Nat64)
+func size(self : Region) : (pages : Nat64)
 ```
 
 Current size of `region`, in pages.
@@ -124,7 +125,7 @@ persistent actor {
 
 ## Function `grow`
 ``` motoko no-repl
-func grow(region : Region, newPages : Nat64) : (oldPages : Nat64)
+func grow(self : Region, newPages : Nat64) : (oldPages : Nat64)
 ```
 
 Grow current `size` of `region` by the given number of pages.
@@ -154,7 +155,7 @@ persistent actor {
 
 ## Function `loadNat8`
 ``` motoko no-repl
-func loadNat8(region : Region, offset : Nat64) : Nat8
+func loadNat8(self : Region, offset : Nat64) : Nat8
 ```
 
 Within `region`, load a `Nat8` value from `offset`.
@@ -175,7 +176,7 @@ persistent actor {
 
 ## Function `storeNat8`
 ``` motoko no-repl
-func storeNat8(region : Region, offset : Nat64, value : Nat8) : ()
+func storeNat8(self : Region, offset : Nat64, value : Nat8) : ()
 ```
 
 Within `region`, store a `Nat8` value at `offset`.
@@ -196,7 +197,7 @@ persistent actor {
 
 ## Function `loadNat16`
 ``` motoko no-repl
-func loadNat16(region : Region, offset : Nat64) : Nat16
+func loadNat16(self : Region, offset : Nat64) : Nat16
 ```
 
 Within `region`, load a `Nat16` value from `offset`.
@@ -217,7 +218,7 @@ persistent actor {
 
 ## Function `storeNat16`
 ``` motoko no-repl
-func storeNat16(region : Region, offset : Nat64, value : Nat16) : ()
+func storeNat16(self : Region, offset : Nat64, value : Nat16) : ()
 ```
 
 Within `region`, store a `Nat16` value at `offset`.
@@ -238,7 +239,7 @@ persistent actor {
 
 ## Function `loadNat32`
 ``` motoko no-repl
-func loadNat32(region : Region, offset : Nat64) : Nat32
+func loadNat32(self : Region, offset : Nat64) : Nat32
 ```
 
 Within `region`, load a `Nat32` value from `offset`.
@@ -259,7 +260,7 @@ persistent actor {
 
 ## Function `storeNat32`
 ``` motoko no-repl
-func storeNat32(region : Region, offset : Nat64, value : Nat32) : ()
+func storeNat32(self : Region, offset : Nat64, value : Nat32) : ()
 ```
 
 Within `region`, store a `Nat32` value at `offset`.
@@ -280,7 +281,7 @@ persistent actor {
 
 ## Function `loadNat64`
 ``` motoko no-repl
-func loadNat64(region : Region, offset : Nat64) : Nat64
+func loadNat64(self : Region, offset : Nat64) : Nat64
 ```
 
 Within `region`, load a `Nat64` value from `offset`.
@@ -301,7 +302,7 @@ persistent actor {
 
 ## Function `storeNat64`
 ``` motoko no-repl
-func storeNat64(region : Region, offset : Nat64, value : Nat64) : ()
+func storeNat64(self : Region, offset : Nat64, value : Nat64) : ()
 ```
 
 Within `region`, store a `Nat64` value at `offset`.
@@ -322,7 +323,7 @@ persistent actor {
 
 ## Function `loadInt8`
 ``` motoko no-repl
-func loadInt8(region : Region, offset : Nat64) : Int8
+func loadInt8(self : Region, offset : Nat64) : Int8
 ```
 
 Within `region`, load a `Int8` value from `offset`.
@@ -343,7 +344,7 @@ persistent actor {
 
 ## Function `storeInt8`
 ``` motoko no-repl
-func storeInt8(region : Region, offset : Nat64, value : Int8) : ()
+func storeInt8(self : Region, offset : Nat64, value : Int8) : ()
 ```
 
 Within `region`, store a `Int8` value at `offset`.
@@ -364,7 +365,7 @@ persistent actor {
 
 ## Function `loadInt16`
 ``` motoko no-repl
-func loadInt16(region : Region, offset : Nat64) : Int16
+func loadInt16(self : Region, offset : Nat64) : Int16
 ```
 
 Within `region`, load a `Int16` value from `offset`.
@@ -385,7 +386,7 @@ persistent actor {
 
 ## Function `storeInt16`
 ``` motoko no-repl
-func storeInt16(region : Region, offset : Nat64, value : Int16) : ()
+func storeInt16(self : Region, offset : Nat64, value : Int16) : ()
 ```
 
 Within `region`, store a `Int16` value at `offset`.
@@ -406,7 +407,7 @@ persistent actor {
 
 ## Function `loadInt32`
 ``` motoko no-repl
-func loadInt32(region : Region, offset : Nat64) : Int32
+func loadInt32(self : Region, offset : Nat64) : Int32
 ```
 
 Within `region`, load a `Int32` value from `offset`.
@@ -427,7 +428,7 @@ persistent actor {
 
 ## Function `storeInt32`
 ``` motoko no-repl
-func storeInt32(region : Region, offset : Nat64, value : Int32) : ()
+func storeInt32(self : Region, offset : Nat64, value : Int32) : ()
 ```
 
 Within `region`, store a `Int32` value at `offset`.
@@ -448,7 +449,7 @@ persistent actor {
 
 ## Function `loadInt64`
 ``` motoko no-repl
-func loadInt64(region : Region, offset : Nat64) : Int64
+func loadInt64(self : Region, offset : Nat64) : Int64
 ```
 
 Within `region`, load a `Int64` value from `offset`.
@@ -469,7 +470,7 @@ persistent actor {
 
 ## Function `storeInt64`
 ``` motoko no-repl
-func storeInt64(region : Region, offset : Nat64, value : Int64) : ()
+func storeInt64(self : Region, offset : Nat64, value : Int64) : ()
 ```
 
 Within `region`, store a `Int64` value at `offset`.
@@ -490,7 +491,7 @@ persistent actor {
 
 ## Function `loadFloat`
 ``` motoko no-repl
-func loadFloat(region : Region, offset : Nat64) : Float
+func loadFloat(self : Region, offset : Nat64) : Float
 ```
 
 Within `region`, loads a `Float` value from the given `offset`.
@@ -511,7 +512,7 @@ persistent actor {
 
 ## Function `storeFloat`
 ``` motoko no-repl
-func storeFloat(region : Region, offset : Nat64, value : Float) : ()
+func storeFloat(self : Region, offset : Nat64, value : Float) : ()
 ```
 
 Within `region`, store float `value` at the given `offset`.
@@ -532,7 +533,7 @@ persistent actor {
 
 ## Function `loadBlob`
 ``` motoko no-repl
-func loadBlob(region : Region, offset : Nat64, size : Nat) : Blob
+func loadBlob(self : Region, offset : Nat64, size : Nat) : Blob
 ```
 
 Within `region,` load `size` bytes starting from `offset` as a `Blob`.
@@ -556,7 +557,7 @@ persistent actor {
 
 ## Function `storeBlob`
 ``` motoko no-repl
-func storeBlob(region : Region, offset : Nat64, value : Blob) : ()
+func storeBlob(self : Region, offset : Nat64, value : Blob) : ()
 ```
 
 Within `region, write `blob.size()` bytes of `blob` beginning at `offset`.

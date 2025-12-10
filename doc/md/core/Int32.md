@@ -41,7 +41,7 @@ assert Int32.maxValue == +2_147_483_647;
 
 ## Function `toInt`
 ``` motoko no-repl
-func toInt(_ : Int32) : Int
+func toInt(self : Int32) : Int
 ```
 
 Converts a 32-bit signed integer to a signed integer with infinite precision.
@@ -91,9 +91,35 @@ Example:
 assert Int32.fromInt16(-123) == (-123 : Int32);
 ```
 
+## Function `fromInt8`
+``` motoko no-repl
+func fromInt8(x : Int8) : Int32
+```
+
+Converts an 8-bit signed integer to a 32-bit signed integer.
+
+Example:
+```motoko include=import
+assert Int32.fromInt8(-123) == (-123 : Int32);
+```
+
+## Function `toInt8`
+``` motoko no-repl
+func toInt8(self : Int32) : Int8
+```
+
+Converts a 32-bit signed integer to an 8-bit signed integer.
+
+Traps on overflow/underflow.
+
+Example:
+```motoko include=import
+assert Int32.toInt8(-123) == (-123 : Int8);
+```
+
 ## Function `toInt16`
 ``` motoko no-repl
-func toInt16(_ : Int32) : Int16
+func toInt16(self : Int32) : Int16
 ```
 
 Converts a 32-bit signed integer to a 16-bit signed integer.
@@ -121,7 +147,7 @@ assert Int32.fromInt64(-123_456) == (-123_456 : Int32);
 
 ## Function `toInt64`
 ``` motoko no-repl
-func toInt64(_ : Int32) : Int64
+func toInt64(self : Int32) : Int64
 ```
 
 Converts a 32-bit signed integer to a 64-bit signed integer.
@@ -147,7 +173,7 @@ assert Int32.fromNat32(123_456) == (+123_456 : Int32);
 
 ## Function `toNat32`
 ``` motoko no-repl
-func toNat32(_ : Int32) : Nat32
+func toNat32(self : Int32) : Nat32
 ```
 
 Converts a signed 32-bit integer to an unsigned 32-bit integer.
@@ -161,7 +187,7 @@ assert Int32.toNat32(-1) == (4_294_967_295 : Nat32); // underflow
 
 ## Function `toText`
 ``` motoko no-repl
-func toText(x : Int32) : Text
+func toText(self : Int32) : Text
 ```
 
 Returns the Text representation of `x`. Textual representation _do not_
@@ -618,7 +644,7 @@ func bitrotLeft(x : Int32, y : Int32) : Int32
 
 Returns the bitwise left rotatation of `x` by `y`, `x <<> y`.
 Each left-overflowing bit is inserted again on the right side.
-The sign bit is rotated like other bits, i.e. the rotation interprets the number as unsigned.
+The sign bit is rotated like y bits, i.e. the rotation interprets the number as unsigned.
 
 Changes the direction of rotation for negative `y`.
 For `y >= 32`, the semantics is the same as for `bitrotLeft(x, y % 32)`.
@@ -640,7 +666,7 @@ func bitrotRight(x : Int32, y : Int32) : Int32
 
 Returns the bitwise right rotation of `x` by `y`, `x <>> y`.
 Each right-underflowing bit is inserted again on the right side.
-The sign bit is rotated like other bits, i.e. the rotation interprets the number as unsigned.
+The sign bit is rotated like y bits, i.e. the rotation interprets the number as unsigned.
 
 Changes the direction of rotation for negative `y`.
 For `y >= 32`, the semantics is the same as for `bitrotRight(x, y % 32)`.
