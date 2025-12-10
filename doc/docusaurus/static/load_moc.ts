@@ -1,7 +1,7 @@
 import ExecutionEnvironment from "@docusaurus/ExecutionEnvironment";
 
 const BASE_VERSION = "0.15.1"; /* This may be slightly behind the base files we have locally in nix/sources.json */
-const CORE_VERSION = "0.6.0"; /* This may be slightly behind the base files we have locally in nix/sources.json */
+const CORE_VERSION = "implicits-22"; /* This may be slightly behind the base files we have locally in nix/sources.json */
 
 async function addPackage(name, repo, version, dir) {
   const meta_url = `https://data.jsdelivr.com/v1/package/gh/${repo}@${version}/flat`;
@@ -27,7 +27,7 @@ function attachOnRunButton() {
     script.src = `/moc_interpreter.js`;
 
     script.addEventListener("load", () => {
-      addPackage("base", "dfinity/motoko-base", `moc-${BASE_VERSION}`, "src")
+      addPackage("base", "caffeinelabs/motoko-base", `moc-${BASE_VERSION}`, "src")
         .then(() => {
           console.log(`base package version: ${BASE_VERSION}`);
           // Run code
@@ -36,7 +36,7 @@ function attachOnRunButton() {
             btns[i].click();
           }
         });
-      addPackage("core", "dfinity/motoko-core", `preview-${CORE_VERSION}`, "src")
+      addPackage("core", "caffeinelabs/motoko-core", `${CORE_VERSION}`, "src")
         .then(() => {
           console.log(`core library version: ${CORE_VERSION}`);
           // Run code
