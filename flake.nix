@@ -42,7 +42,7 @@
       flake = false;
     };
     motoko-core-src = {
-      url = "github:dfinity/motoko-core";
+      url = "github:caffeinelabs/motoko-core";
       flake = false;
     };
     motoko-matchers-src = {
