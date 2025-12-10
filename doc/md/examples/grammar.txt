@@ -218,6 +218,7 @@
     <exp_bin> <relop> <exp_bin>
     <exp_bin> 'and' <exp_bin>
     <exp_bin> 'or' <exp_bin>
+    <exp_bin> '??' <exp_bin>
     <exp_bin> ':' <typ_nobin>
     <exp_bin> '|>' <exp_bin>
 

@@ -117,6 +117,7 @@ module Make (Cfg : Config) = struct
     | NotE e              -> "NotE"    $$ [exp e]
     | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
     | OrE (e1, e2)        -> "OrE"     $$ [exp e1; exp e2]
+    | NullCoalesceE (e1, e2) -> "NullCoalesceE" $$ [exp e1; exp e2]
     | ImpliesE (e1, e2)   -> "ImpliesE"$$ [exp e1; exp e2]
     | OldE e              -> "OldE"    $$ [exp e]
     | IfE (e1, e2, e3)    -> "IfE"     $$ [exp e1; exp e2; exp e3]

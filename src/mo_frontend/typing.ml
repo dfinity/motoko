@@ -1085,7 +1085,7 @@ let rec is_explicit_exp e =
   | BreakE _ | RetE _ | ThrowE _ ->
     false
   | VarE _
-  | RelE _ | NotE _ | AndE _ | OrE _ | ImpliesE _ | OldE _ | ShowE _ | ToCandidE _ | FromCandidE _
+  | RelE _ | NotE _ | AndE _ | OrE _ | NullCoalesceE _ | ImpliesE _ | OldE _ | ShowE _ | ToCandidE _ | FromCandidE _
   | AssignE _ | IgnoreE _ | AssertE _ | DebugE _
   | WhileE _ | ForE _
   | AnnotE _ | ImportE _ | ImplicitLibE _ ->
@@ -1991,6 +1991,17 @@ and infer_exp'' env exp : T.typ =
       check_exp_strong env T.bool exp2
     end;
     T.bool
+  | NullCoalesceE (e1, e2) ->
+    let t1 = infer_exp env e1 in
+    (match T.promote t1 with
+    | T.Opt t_inner ->
+      if not env.pre then
+        check_exp_strong env t_inner e2;
+      t_inner
+    | _ ->
+      (* TODO: print actual type, not just "optional type" *)
+      (* TODO: fix code *)
+      error env e1.at "M0000" "left operand of ?? must be an optional type")
   | ImpliesE (exp1, exp2) ->
     if not env.pre then begin
       check_exp_strong env T.bool exp1;

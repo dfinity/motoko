@@ -242,6 +242,7 @@ and objblock eo s id ty dec_fields =
 %token ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN SHRASSIGN ROTLASSIGN ROTRASSIGN
 %token WRAPADDASSIGN WRAPSUBASSIGN WRAPMULASSIGN WRAPPOWASSIGN
 %token NULL
+%token NULLCOALESCE
 %token FLEXIBLE STABLE
 %token TRANSIENT PERSISTENT
 %token<string> DOT_NUM
@@ -267,6 +268,7 @@ and objblock eo s id ty dec_fields =
 %left PIPE
 %left OR
 %left AND
+%left NULLCOALESCE
 %nonassoc EQOP NEQOP LEOP LTOP GTOP GEOP
 %left ADDOP SUBOP WRAPADDOP WRAPSUBOP HASH
 %left MULOP WRAPMULOP DIVOP MODOP
@@ -453,6 +455,8 @@ typ_un :
     { t }
   | QUEST t=typ_un
     { OptT(t) @! at $sloc }
+  | NULLCOALESCE t=typ_un
+    { OptT(OptT(t) @! at $sloc) @! at $sloc }
   | WEAK t=typ_un
     { WeakT(t) @! at $sloc }
 
@@ -703,6 +707,8 @@ exp_un(B) :
     { TagE (x, e) @? at $sloc }
   | QUEST e=exp_un(ob)
     { OptE(e) @? at $sloc }
+  | NULLCOALESCE e=exp_un(ob)
+    { OptE(OptE(e) @? at $sloc) @? at $sloc }
   | op=unop e=exp_un(ob)
     { match op, e.it with
       | (PosOp | NegOp), LitE {contents = PreLit (s, (Type.(Nat | Float) as typ))} ->
@@ -734,6 +740,8 @@ exp_un(B) :
     { AndE(e1, e2) @? at $sloc }
   | e1=exp_bin(B) OR e2=exp_bin(ob)
     { OrE(e1, e2) @? at $sloc }
+  | e1=exp_bin(B) NULLCOALESCE e2=exp_bin(ob)
+    { NullCoalesceE(e1, e2) @? at $sloc }
   | e=exp_bin(B) COLON t=typ_nobin
     { AnnotE(e, t) @? at $sloc }
   | e1=exp_bin(B) PIPE e2=exp_bin(ob)
@@ -907,6 +915,8 @@ pat_un :
     { TagP(x, p) @! at $sloc }
   | QUEST p=pat_un
     { OptP(p) @! at $sloc }
+  | NULLCOALESCE p=pat_un
+    { OptP(OptP(p) @! at $sloc) @! at $sloc }
   | op=unop l=lit
     { match op, l with
       | (PosOp | NegOp), PreLit (s, (Type.(Nat | Float) as typ)) ->

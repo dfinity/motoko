@@ -661,6 +661,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       then k v1
       else interpret_exp env exp2 k
     )
+  | NullCoalesceE (e1, e2) ->
+    interpret_exp env e1 (fun v1 ->
+      match v1 with
+      | V.Null -> interpret_exp env e2 k
+      | V.Opt v -> k v
+      | _ -> k v1  (* Should not happen with proper type checking *)
+    )
   | ImpliesE (exp1, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
