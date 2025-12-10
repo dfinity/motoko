@@ -379,6 +379,7 @@ The syntax of a **library** that can be referenced in an import is as follows:
   <imp>;* module <id>? (: <typ>)? =? <obj-body>           Module
   <imp>;* <shared-pat>? actor <migration>? class          Actor class
     <id> <typ-params>? <pat> (: <typ>)? <class-body>
+  <imp>;* mixin <pat> <obj-body>                          Mixin
 ```
 
 A library `<lib>` is a sequence of imports `<imp>;*` followed by:
@@ -386,6 +387,8 @@ A library `<lib>` is a sequence of imports `<imp>;*` followed by:
 -   A named or anonymous module declaration, or
 
 -   A named actor class declaration.
+
+-   An anonymous mixin declaration.
 
 Libraries stored in `.mo` files may be referenced by `import` declarations.
 
@@ -1937,15 +1940,17 @@ The class declaration has the same type as function `<id>` and evaluates to the 
 The mixin declaration `mixin <pat> <obj-body>` declares a mixin and has no effect.
 It can only occur in the body of a library.
 
-### Mixin declaration
+The fields of a mixin are stable unless declared `transient`.
+
+### Mixin inclusion
 
 The mixin inclusion `include <id> <exp>` instantiates a copy of the (imported) mixin `<id>`
-with the value of argument `<exp`.
+with the value of argument `<exp>`.
 
-A mixin declaration can only occur in the body of an actor or another mixin.
+Mixin inclusion can only occur in the body of an actor, actor class, or another mixin.
 
 The inclusion extends the environment with all the declarations of the mixin body
-(with their declared visibility).
+(with their declared visibility and stability modifiers).
 
 ### Identifiers
 
