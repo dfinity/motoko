@@ -24,6 +24,42 @@ func blob() : async Blob
 ```
 
 
+## Function `bool`
+``` motoko no-repl
+func bool() : async Bool
+```
+
+
+## Function `nat8`
+``` motoko no-repl
+func nat8() : async Nat8
+```
+
+
+## Function `nat64`
+``` motoko no-repl
+func nat64() : async Nat64
+```
+
+
+## Function `nat64Range`
+``` motoko no-repl
+func nat64Range(fromInclusive : Nat64, toExclusive : Nat64) : async Nat64
+```
+
+
+## Function `natRange`
+``` motoko no-repl
+func natRange(fromInclusive : Nat, toExclusive : Nat) : async Nat
+```
+
+
+## Function `intRange`
+``` motoko no-repl
+func intRange(fromInclusive : Int, toExclusive : Int) : async Int
+```
+
+
 ## Function `emptyState`
 ``` motoko no-repl
 func emptyState() : State
@@ -46,6 +82,7 @@ persistent actor {
   }
 }
 ```
+@deprecated M0235
 
 ## Function `seedState`
 ``` motoko no-repl
@@ -69,6 +106,7 @@ persistent actor {
   }
 }
 ```
+@deprecated M0235
 
 ## Function `seed`
 ``` motoko no-repl
@@ -84,6 +122,7 @@ Example:
 let random = Random.seed(123);
 let coin = random.bool(); // true or false
 ```
+@deprecated M0235
 
 ## Function `seedFromState`
 ``` motoko no-repl
@@ -107,6 +146,7 @@ persistent actor {
   }
 }
 ```
+@deprecated M0235
 
 ## Function `crypto`
 ``` motoko no-repl
@@ -128,6 +168,7 @@ persistent actor {
   }
 }
 ```
+@deprecated M0235
 
 ## Function `cryptoFromState`
 ``` motoko no-repl
@@ -152,6 +193,7 @@ persistent actor {
   }
 }
 ```
+@deprecated M0235
 
 ## Class `Random`
 
@@ -159,6 +201,7 @@ persistent actor {
 class Random(state : State, generator : () -> Blob)
 ```
 
+@deprecated M0235
 
 ### Function `bool`
 ``` motoko no-repl
@@ -172,6 +215,7 @@ Example:
 let random = Random.seed(42);
 let coin = random.bool(); // true or false
 ```
+@deprecated M0235
 
 
 ### Function `nat8`
@@ -186,6 +230,7 @@ Example:
 let random = Random.seed(42);
 let byte = random.nat8(); // 0 to 255
 ```
+@deprecated M0235
 
 
 ### Function `nat64`
@@ -200,6 +245,7 @@ Example:
 let random = Random.seed(42);
 let number = random.nat64(); // 0 to 18446744073709551615
 ```
+@deprecated M0235
 
 
 ### Function `nat64Range`
@@ -214,6 +260,7 @@ Example:
 let random = Random.seed(42);
 let dice = random.nat64Range(1, 7); // 1 to 6
 ```
+@deprecated M0235
 
 
 ### Function `natRange`
@@ -228,6 +275,7 @@ Example:
 let random = Random.seed(42);
 let index = random.natRange(0, 10); // 0 to 9
 ```
+@deprecated M0235
 
 
 ### Function `intRange`
@@ -235,6 +283,7 @@ let index = random.natRange(0, 10); // 0 to 9
 func intRange(fromInclusive : Int, toExclusive : Int) : Int
 ```
 
+@deprecated M0235
 
 ## Class `AsyncRandom`
 
@@ -242,6 +291,7 @@ func intRange(fromInclusive : Int, toExclusive : Int) : Int
 class AsyncRandom(state : State, generator : () -> async* Blob)
 ```
 
+@deprecated M0235
 
 ### Function `bool`
 ``` motoko no-repl
@@ -249,6 +299,7 @@ func bool() : async* Bool
 ```
 
 Random choice between `true` and `false`.
+@deprecated M0235
 
 
 ### Function `nat8`
@@ -257,6 +308,7 @@ func nat8() : async* Nat8
 ```
 
 Random `Nat8` value in the range [0, 256).
+@deprecated M0235
 
 
 ### Function `nat64`
@@ -265,6 +317,7 @@ func nat64() : async* Nat64
 ```
 
 Random `Nat64` value in the range [0, 2^64).
+@deprecated M0235
 
 
 ### Function `nat64Range`
@@ -273,6 +326,7 @@ func nat64Range(fromInclusive : Nat64, toExclusive : Nat64) : async* Nat64
 ```
 
 Random `Nat64` value in the range [fromInclusive, toExclusive).
+@deprecated M0235
 
 
 ### Function `natRange`
@@ -281,6 +335,7 @@ func natRange(fromInclusive : Nat, toExclusive : Nat) : async* Nat
 ```
 
 Random `Nat` value in the range [fromInclusive, toExclusive).
+@deprecated M0235
 
 
 ### Function `intRange`
@@ -289,3 +344,4 @@ func intRange(fromInclusive : Int, toExclusive : Int) : async* Int
 ```
 
 Random `Int` value in the range [fromInclusive, toExclusive).
+@deprecated M0235
