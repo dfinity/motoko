@@ -9,7 +9,7 @@ func main1() {
   };
   assert (sum == 1 + 3 + 4);
 
-  // TODO: disallow for 'loop' or fix typing problem there
+  // Future work: consider supporting 'loop' without `while` or fix typing problem there
   // var hits = 0;
   // loop {
   //   hits += 1;
@@ -18,17 +18,18 @@ func main1() {
   // };
   // assert (hits == 4);
 };
-func main2() {
-  var n = 0;
-  var sum = 0;
-  loop {
-    n += 1;
-    if (n == 2) continue;
-    if (n == 5) break;
-    sum += n;
-  } while (true);
-  assert (sum == 1 + 3 + 4);
-};
+// Future work: consider supporting 'loop' with `while`
+// func main2() {
+//   var n = 0;
+//   var sum = 0;
+//   loop {
+//     n += 1;
+//     if (n == 2) continue;
+//     if (n == 5) break;
+//     sum += n;
+//   } while (true);
+//   assert (sum == 1 + 3 + 4);
+// };
 func main3() {
   var n = 0;
   var sum = 0;
@@ -41,5 +42,5 @@ func main3() {
   assert (sum == 1 + 3 + 4);
 };
 main1();
-main2();
+// main2();
 main3();

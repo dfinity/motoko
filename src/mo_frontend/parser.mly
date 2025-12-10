@@ -216,20 +216,6 @@ and objblock eo s id ty dec_fields =
     | _ -> ()) dec_fields;
   ObjBlockE(eo, s, (id, ty), dec_fields)
 
-let loop_labels at x rt e =
-  let x' = ("continue " ^ x.it) @@ x.at in
-  let unit () = TupT [] @! at in
-  let e' =
-    match e.it with
-    | WhileE (e1, e2) -> WhileE (e1, LabelE (x', unit (), e2) @? e2.at) @? e.at
-    | LoopE (e1, eo) -> LoopE (LabelE (x', unit (), e1) @? e1.at, eo) @? e.at
-    | ForE (p, e1, e2) -> ForE (p, e1, LabelE (x', unit (), e2) @? e2.at) @? e.at
-    | _ -> e
-  in
-  LabelE(x, Lib.Option.get rt (unit ()), e') @? at
-
-let auto_loop_labels at e =
-  loop_labels at ("auto " @@ no_region) None e
 %}
 
 %token EOF DISALLOWED
@@ -782,16 +768,26 @@ exp_un(B) :
   | ASSERT e=exp_nest
     { AssertE(Runtime, e) @? at $sloc }
   | LABEL x=id rt=annot_opt e=exp_nest
-    { loop_labels (at $sloc) x rt e }
+    { let e = replace_auto_loop_labels (at $sloc) x rt e in
+      let x' = ("continue " ^ x.it) @@ x.at in
+      let unit () = TupT [] @! at $sloc in
+      let e' =
+        match e.it with
+        | WhileE (e1, e2) -> WhileE (e1, LabelE (x', unit (), e2) @? e2.at) @? e.at
+        | LoopE (e1, eo) -> LoopE (LabelE (x', unit (), e1) @? e1.at, eo) @? e.at
+        | ForE (p, e1, e2) -> ForE (p, e1, LabelE (x', unit (), e2) @? e2.at) @? e.at
+        | _ -> e
+      in
+      LabelE(x, Lib.Option.get rt (unit ()), e') @? at $sloc }
   | BREAK x=id eo=exp_nullary(ob)?
     { let e = Lib.Option.get eo (TupE([]) @? at $sloc) in
       BreakE(x, e) @? at $sloc }
   | BREAK
     { let e = TupE([]) @? at $sloc in
-      let x = "auto " @@ no_region in
+      let x = auto_s @@ no_region in
       BreakE(x, e) @? at $sloc }
   | CONTINUE x=id?
-    { let x = Lib.Option.get x ("auto " @@ no_region) in
+    { let x = Lib.Option.get x (auto_s @@ no_region) in
       let x' = ("continue " ^ x.it) @@ x.at in
       BreakE(x', TupE([]) @? no_region) @? at $sloc }
   | DEBUG e=exp_nest
@@ -815,13 +811,13 @@ exp_un(B) :
   | SWITCH e=exp_nullary(ob) LCURLY cs=seplist(case, semicolon) RCURLY
     { SwitchE(e, cs) @? at $sloc }
   | WHILE e1=exp_nullary(ob) e2=exp_nest
-    { auto_loop_labels (at $sloc) (WhileE(e1, e2) @? at $sloc) }
+    { auto_loop_labels (WhileE(e1, e2) @? at $sloc) }
   | LOOP e=exp_nest %prec LOOP_NO_WHILE
     { LoopE(e, None) @? at $sloc }
   | LOOP e1=exp_nest WHILE e2=exp_nest
-    { auto_loop_labels (at $sloc) (LoopE(e1, Some e2) @? at $sloc) }
+    { LoopE(e1, Some e2) @? at $sloc }
   | FOR LPAR p=pat IN e1=exp(ob) RPAR e2=exp_nest
-    { auto_loop_labels (at $sloc) (ForE(p, e1, e2) @? at $sloc) }
+    { auto_loop_labels (ForE(p, e1, e2) @? at $sloc) }
   | IGNORE e=exp_nest
     { IgnoreE(e) @? at $sloc }
   | DO e=block
