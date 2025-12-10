@@ -155,26 +155,6 @@ Contextual dot notation has some intentional limitations:
 - If there is more than one available module function, and none is more general than all the others, the call is considered ambigious and rejected at compile-time.
 - The feature is purely syntactic - there is no runtime overhead
 
-## Comparison with object-oriented styles
-
-Contextual dot notation provides a familiar syntax without the overhead or restrictions of true object-oriented programming. Here's how different styles compare:
-
-```motoko
-// Functional style (traditional)
-let result1 = Array.filter(numbers, func(n) { n > 5 });
-
-// Contextual dot notation (improved readability)
-let result2 = numbers.filter(func(n) { n > 5 });
-
-// Object-oriented style (using classes)
-class IntArray(arr : [Nat]) {
-  public func filter(predicate : Nat -> Bool) : [Nat] {
-    // Implementation
-  };
-};
-```
-
-Each style has its place. Contextual dot notation offers a good balance between the clarity of object-oriented syntax and the flexibility of functional programming.
 
 ## See also
 
