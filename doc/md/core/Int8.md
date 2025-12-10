@@ -41,7 +41,7 @@ assert Int8.maxValue == +127;
 
 ## Function `toInt`
 ``` motoko no-repl
-func toInt(_ : Int8) : Int
+func toInt(self : Int8) : Int
 ```
 
 Converts an 8-bit signed integer to a signed integer with infinite precision.
@@ -95,7 +95,7 @@ assert Int8.fromInt16(123) == (+123 : Int8);
 
 ## Function `toInt16`
 ``` motoko no-repl
-func toInt16(_ : Int8) : Int16
+func toInt16(self : Int8) : Int16
 ```
 
 Converts an 8-bit signed integer to a 16-bit signed integer.
@@ -103,6 +103,58 @@ Converts an 8-bit signed integer to a 16-bit signed integer.
 Example:
 ```motoko include=import
 assert Int8.toInt16(123) == (+123 : Int16);
+```
+
+## Function `fromInt32`
+``` motoko no-repl
+func fromInt32(self : Int32) : Int8
+```
+
+Converts a 32-bit signed integer to an 8-bit signed integer.
+
+Traps on overflow/underflow.
+
+Example:
+```motoko include=import
+assert Int8.fromInt32(123) == (+123 : Int8);
+```
+
+## Function `toInt32`
+``` motoko no-repl
+func toInt32(self : Int8) : Int32
+```
+
+Converts an 8-bit signed integer to a 32-bit signed integer.
+
+Example:
+```motoko include=import
+assert Int8.toInt32(123) == (+123 : Int32);
+```
+
+## Function `fromInt64`
+``` motoko no-repl
+func fromInt64(x : Int64) : Int8
+```
+
+Converts a 64-bit signed integer to an 8-bit signed integer.
+
+Traps on overflow/underflow.
+
+Example:
+```motoko include=import
+assert Int8.fromInt64(123) == (+123 : Int8);
+```
+
+## Function `toInt64`
+``` motoko no-repl
+func toInt64(x : Int8) : Int64
+```
+
+Converts an 8-bit signed integer to a 64-bit signed integer.
+
+Example:
+```motoko include=import
+assert Int8.toInt64(123) == (+123 : Int64);
 ```
 
 ## Function `fromNat8`
@@ -121,7 +173,7 @@ assert Int8.fromNat8(123) == (+123 : Int8);
 
 ## Function `toNat8`
 ``` motoko no-repl
-func toNat8(_ : Int8) : Nat8
+func toNat8(self : Int8) : Nat8
 ```
 
 Converts a signed 8-bit integer to an unsigned 8-bit integer.
@@ -135,7 +187,7 @@ assert Int8.toNat8(-1) == (255 : Nat8); // underflow
 
 ## Function `toText`
 ``` motoko no-repl
-func toText(x : Int8) : Text
+func toText(self : Int8) : Text
 ```
 
 Converts an integer number to its textual representation.
@@ -591,7 +643,7 @@ func bitrotLeft(x : Int8, y : Int8) : Int8
 
 Returns the bitwise left rotatation of `x` by `y`, `x <<> y`.
 Each left-overflowing bit is inserted again on the right side.
-The sign bit is rotated like other bits, i.e. the rotation interprets the number as unsigned.
+The sign bit is rotated like y bits, i.e. the rotation interprets the number as unsigned.
 
 Changes the direction of rotation for negative `y`.
 For `y >= 8`, the semantics is the same as for `bitrotLeft(x, y % 8)`.
@@ -613,7 +665,7 @@ func bitrotRight(x : Int8, y : Int8) : Int8
 
 Returns the bitwise right rotation of `x` by `y`, `x <>> y`.
 Each right-underflowing bit is inserted again on the right side.
-The sign bit is rotated like other bits, i.e. the rotation interprets the number as unsigned.
+The sign bit is rotated like y bits, i.e. the rotation interprets the number as unsigned.
 
 Changes the direction of rotation for negative `y`.
 For `y >= 8`, the semantics is the same as for `bitrotRight(x, y % 8)`.

@@ -29,7 +29,7 @@ assert Nat64.maxValue == (18446744073709551615 : Nat64);
 
 ## Function `toNat`
 ``` motoko no-repl
-func toNat(_ : Nat64) : Nat
+func toNat(self : Nat64) : Nat
 ```
 
 Converts a 64-bit unsigned integer to an unsigned integer with infinite precision.
@@ -53,6 +53,60 @@ Example:
 assert Nat64.fromNat(123) == (123 : Nat64);
 ```
 
+## Function `toNat8`
+``` motoko no-repl
+func toNat8(self : Nat64) : Nat8
+```
+
+Converts a 64-bit unsigned integer to an 8-bit unsigned integer.
+
+Traps on overflow.
+
+Example:
+```motoko include=import
+assert Nat64.toNat8(123) == (123 : Nat8);
+```
+
+## Function `fromNat16`
+``` motoko no-repl
+func fromNat16(x : Nat16) : Nat64
+```
+
+Converts a 16-bit unsigned integer to a 64-bit unsigned integer.
+
+Example:
+```motoko include=import
+assert Nat64.fromNat16(123) == (123 : Nat64);
+```
+@deprecated M0235
+
+## Function `toNat16`
+``` motoko no-repl
+func toNat16(self : Nat64) : Nat16
+```
+
+Converts a 64-bit unsigned integer to a 16-bit unsigned integer.
+
+Traps on overflow.
+
+Example:
+```motoko include=import
+assert Nat64.toNat16(123) == (123 : Nat16);
+```
+
+## Function `fromNat8`
+``` motoko no-repl
+func fromNat8(x : Nat8) : Nat64
+```
+
+Converts an 8-bit unsigned integer to a 64-bit unsigned integer.
+
+Example:
+```motoko include=import
+assert Nat64.fromNat8(123) == (123 : Nat64);
+```
+@deprecated M0235
+
 ## Function `fromNat32`
 ``` motoko no-repl
 func fromNat32(x : Nat32) : Nat64
@@ -64,10 +118,11 @@ Example:
 ```motoko include=import
 assert Nat64.fromNat32(123) == (123 : Nat64);
 ```
+@deprecated M0235
 
 ## Function `toNat32`
 ``` motoko no-repl
-func toNat32(x : Nat64) : Nat32
+func toNat32(self : Nat64) : Nat32
 ```
 
 Converts a 64-bit unsigned integer to a 32-bit unsigned integer.
@@ -95,7 +150,7 @@ assert Nat64.fromIntWrap(123) == (123 : Nat64);
 
 ## Function `toText`
 ``` motoko no-repl
-func toText(x : Nat64) : Text
+func toText(self : Nat64) : Text
 ```
 
 Converts `x` to its textual representation. Textual representation _do not_
