@@ -15,3 +15,5 @@ This section explores different types of declarations in Motoko.
 6. [Expression declarations](./6-expression-declarations.md)
 
 7. [Module declarations](./7-module-declarations.md)
+
+8. [Contextual dot notation](./8-contextual-dot.md)
