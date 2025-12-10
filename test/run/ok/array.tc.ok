@@ -1,4 +1,4 @@
-array.mo:109.27-109.64: warning [M0074], this array has type
+array.mo:109.27-109.64: type error [M0074], this array has type
   [Any]
 because elements have inconsistent types
 array.mo:2.5-2.7: warning [M0194], unused identifier aa (delete or rename to wildcard `_` or `_aa`)
