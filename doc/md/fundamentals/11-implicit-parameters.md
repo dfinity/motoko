@@ -45,7 +45,6 @@ When calling a function with implicit parameters, you can omit the implicit argu
 import Map "mo:core/Map";
 import Nat "mo:core/Nat";
 
-
 let map = Map.empty<Nat, Text>();
 
 // Without implicits - must provide compare function explicitly
@@ -95,7 +94,7 @@ The primary use case for implicit arguments is simplifying code that uses maps a
 
 ```motoko
 import Map "mo:core/Map";
-import Nat "mo:base/Nat";
+import Nat "mo:core/Nat";
 
 let inventory = Map.empty<Nat, Text>();
 
@@ -106,12 +105,12 @@ Map.add(inventory, Nat.compare, 103, "Doohickey");
 
 let item1 = Map.get(inventory, Nat.compare, 102);
 
-// With implicits: compare function inferred
-Map.add(inventory, 101, "Widget");
-Map.add(inventory, 102, "Gadget");
-Map.add(inventory, 103, "Doohickey");
+// With contextual dots and implicits: compare function inferred
+inventory.add(101, "Widget");
+inventory.add(102, "Gadget");
+inventory.add(103, "Doohickey");
 
-let item2 = Map.get(inventory, 102);
+let item2 = inventory.get(102);
 ```
 
 
@@ -120,7 +119,7 @@ let item2 = Map.get(inventory, 102);
 The core `Set` type also takes advantage of implicit `compare` parameters.
 ```motoko
 import Set "mo:core/Set";
-import Text "mo:base/Text";
+import Text "mo:core/Text";
 
 let tags = Set.empty<Text>();
 
@@ -130,9 +129,9 @@ Set.add(tags, Text.compare, "reviewed");
 let hasTag1 = Set.contains(tags, Text.compare, "urgent");
 
 // With implicits
-Set.add(tags, "urgent");
-Set.add(tags, "reviewed");
-let hasTag2 = Set.contains(tags, "urgent");
+tags.add("urgent");
+tags.add("reviewed");
+let hasTag2 = tags.contains("urgent");
 ```
 
 ### Building Collections Incrementally
@@ -146,20 +145,20 @@ import Text "mo:core/Text";
 let scores = Map.empty<Text, Nat>();
 
 // Add player scores
-Map.add(scores, "Alice", 100);
-Map.add(scores, "Bob", 85);
-Map.add(scores, "Charlie", 92);
+scores.add("Alice", 100);
+scores.add("Bob", 85);
+scores.add( "Charlie", 92);
 
 // Update a score
-Map.add(scores, "Bob", 95);
+scores.add("Bob", 95);
 
 // Check and remove
-if (Map.containsKey(scores, "Alice")) {
-  Map.remove(scores, "Alice");
+if (scores.containsKey("Alice")) {
+  scores.remove("Alice");
 };
 
 // Get size
-let playerCount = Map.size(scores);
+let playerCount = scores.size()
 ```
 
 ## How Inference Works
@@ -205,8 +204,8 @@ func reverseCompare(a : Nat, b : Nat) : Order {
 
 let reversedMap = Map.empty<Nat, Text>();
 // Explicitly provide the comparison function
-Map.add(reversedMap, reverseCompare, 5, "five");
-Map.add(reversedMap, reverseCompare, 3, "three");
+reversedMap.add(reverseCompare, 5, "five");
+reversedMap.add(reverseCompare, 3, "three");
 ```
 
 This is useful when:
@@ -236,15 +235,15 @@ module Person {
 
 // Now works with implicits
 let directory = Map.empty<Person, Text>();
-Map.add(directory, { name = "Alice"; age = 30 }, "alice@example.com");
-Map.add(directory, { name = "Bob"; age = 25 }, "bob@example.com");
+directory.add({ name = "Alice"; age = 30 }, "alice@example.com");
+directory.add({ name = "Bob"; age = 25 }, "bob@example.com");
 
-let email = Map.get(directory, { name = "Alice"; age = 30 });
+let email = directory.get({ name = "Alice"; age = 30 });
 ```
 
 ## Best Practices
 
-1. **Use implicits for standard types**: When working with `Nat`, `Text`, `Int`, `Principal`, and other base types, let the compiler infer the comparison function.
+1. **Use implicits for standard types**: When working with `Nat`, `Text`, `Int`, `Principal`, and other primitive types, let the compiler infer the comparison function.
 
 2. **Be explicit with custom logic**: When using non-standard comparison logic, explicitly provide the comparison function for clarity.
 
