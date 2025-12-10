@@ -152,7 +152,6 @@ Contextual dot notation has some intentional limitations:
 
 - It requires the receiving value to be the first parameter, named `self`.
 - Any function must be declared in a module that is imported or otherwise in scope: function in object, actors or nested modules are not considered.
-- It does not affect the representation of self values.
 - If there is more than one available module function, and none is more general than all the others, the call is considered ambigious and rejected at compile-time.
 - The feature is purely syntactic - there is no runtime overhead
 
