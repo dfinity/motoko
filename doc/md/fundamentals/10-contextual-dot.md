@@ -179,5 +179,5 @@ Each style has its place. Contextual dot notation offers a good balance between 
 
 ## See also
 
-- [Modules and imports](../../modules-imports)
-- [Language reference](../../language-manual)
+- [Modules and imports](modules-imports)
+- [Language reference](../language-manual#dotted-function-calls)

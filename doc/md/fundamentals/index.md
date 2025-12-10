@@ -25,3 +25,5 @@ The fundamentals section introduces the core building blocks of Motoko, includin
 11. [Error handling](../fundamentals/9-error-handling.md)
 
 13. [Orthogonal persistence](../fundamentals/2-actors/6-orthogonal-persistence/index.md)
+
+14. [Contextual dot notations](../fundamentals/10-contextual-dot)
