@@ -2335,8 +2335,6 @@ the expanded function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <
     ```
     insert_holes(n ; <empty> ; <exps>) =
       <exps>
-    insert_holes(n ; ( ((implicit : (<id> : U))), Us) ; <exps>) =
-      hole(n, <id>, U), insert_holes(n + 1 ; Us ; exps)
     insert_holes(n ; ( (<id0> : (implicit : (<id> : U))), Us) ; <exps>) =
       hole(n, <id>, U), insert_holes(n + 1 ; Us ; exps)
     insert_holes(n ; ( (<id> : (implicit : U)), Us) ; <exps>) =
