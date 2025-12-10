@@ -17,7 +17,7 @@ module Map {
 
   public func get<K, V>(
     self : Map<K, V>,
-    _compare: implicit (compare : (K, K) -> Order),
+    _compare: (implicit : (compare : (K, K) -> Order)),
     _n : K)
   : ?V {
     null
@@ -25,7 +25,7 @@ module Map {
 
   public func set<K, V>(
     self : Map<K, V>,
-    _compare: implicit (compare : (K, K) -> Order),
+    _compare: (implicit : (compare : (K, K) -> Order)),
     _n : K,
     _v : V)
   : Map<K, V> {

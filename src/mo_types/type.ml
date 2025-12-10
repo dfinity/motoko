@@ -2092,8 +2092,6 @@ and sequence pp ppf ts =
 
 and pp_typ_nobin vs ppf t =
   match t with
-  | Named ("implicit", t) ->
-    fprintf ppf "@[<1>implicit %a@]" (pp_typ_nobin vs) t
   | Func (s, c, tbs, ts1, ts2) ->
     let sugar = can_sugar t in
     let vs' = vars_of_binds vs tbs in

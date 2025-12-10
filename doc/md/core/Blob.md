@@ -53,7 +53,7 @@ assert emptyBlob.size() == 0;
 
 ## Function `isEmpty`
 ``` motoko no-repl
-func isEmpty(blob : Blob) : Bool
+func isEmpty(self : Blob) : Bool
 ```
 
 Returns whether the given `Blob` is empty (has a size of zero).
@@ -67,7 +67,7 @@ assert not Blob.isEmpty(blob2);
 
 ## Function `size`
 ``` motoko no-repl
-func size(blob : Blob) : Nat
+func size(self : Blob) : Nat
 ```
 
 Returns the number of bytes in the given `Blob`.
@@ -110,7 +110,7 @@ assert blob == "\00\FF\00";
 
 ## Function `toArray`
 ``` motoko no-repl
-func toArray(blob : Blob) : [Nat8]
+func toArray(self : Blob) : [Nat8]
 ```
 
 Converts a `Blob` to an array of bytes (`[Nat8]`), by copying each element.
@@ -124,7 +124,7 @@ assert bytes == [0, 255, 0];
 
 ## Function `toVarArray`
 ``` motoko no-repl
-func toVarArray(blob : Blob) : [var Nat8]
+func toVarArray(self : Blob) : [var Nat8]
 ```
 
 Converts a `Blob` to a mutable array of bytes (`[var Nat8]`), by copying each element.
@@ -141,7 +141,7 @@ assert VarArray.equal<Nat8>(bytes, [var 0, 255, 0], Nat8.equal);
 
 ## Function `hash`
 ``` motoko no-repl
-func hash(blob : Blob) : Types.Hash
+func hash(self : Blob) : Types.Hash
 ```
 
 Returns the (non-cryptographic) hash of `blob`.
@@ -155,7 +155,7 @@ assert h == 1_818_567_776;
 
 ## Function `compare`
 ``` motoko no-repl
-func compare(b1 : Blob, b2 : Blob) : Order.Order
+func compare(self : Blob, other : Blob) : Order.Order
 ```
 
 General purpose comparison function for `Blob` by comparing the value of
@@ -172,7 +172,7 @@ assert result == #less;
 
 ## Function `equal`
 ``` motoko no-repl
-func equal(blob1 : Blob, blob2 : Blob) : Bool
+func equal(self : Blob, other : Blob) : Bool
 ```
 
 Equality function for `Blob` types.
@@ -200,7 +200,7 @@ assert List.equal(list1, list2, Blob.equal);
 
 ## Function `notEqual`
 ``` motoko no-repl
-func notEqual(blob1 : Blob, blob2 : Blob) : Bool
+func notEqual(self : Blob, other : Blob) : Bool
 ```
 
 Inequality function for `Blob` types.
@@ -219,7 +219,7 @@ to pass to a higher order function.
 
 ## Function `less`
 ``` motoko no-repl
-func less(blob1 : Blob, blob2 : Blob) : Bool
+func less(self : Blob, other : Blob) : Bool
 ```
 
 "Less than" function for `Blob` types.
@@ -238,7 +238,7 @@ to pass to a higher order function.
 
 ## Function `lessOrEqual`
 ``` motoko no-repl
-func lessOrEqual(blob1 : Blob, blob2 : Blob) : Bool
+func lessOrEqual(self : Blob, other : Blob) : Bool
 ```
 
 "Less than or equal to" function for `Blob` types.
@@ -257,7 +257,7 @@ to pass to a higher order function.
 
 ## Function `greater`
 ``` motoko no-repl
-func greater(blob1 : Blob, blob2 : Blob) : Bool
+func greater(self : Blob, other : Blob) : Bool
 ```
 
 "Greater than" function for `Blob` types.
@@ -276,7 +276,7 @@ to pass to a higher order function.
 
 ## Function `greaterOrEqual`
 ``` motoko no-repl
-func greaterOrEqual(blob1 : Blob, blob2 : Blob) : Bool
+func greaterOrEqual(self : Blob, other : Blob) : Bool
 ```
 
 "Greater than or equal to" function for `Blob` types.

@@ -2,28 +2,30 @@
 
 The fundamentals section introduces the core building blocks of Motoko, including basic syntax and familiar programming concepts like control flow and pattern matching.
 
-1. [Basic syntax](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/)
+1. [Basic syntax](../fundamentals/1-basic-syntax/index.md)
 
-2. [Types](https://internetcomputer.org/docs/motoko/fundamentals/types/)
+2. [Types](../fundamentals/3-types/index.md)
 
-3. [Declarations](https://internetcomputer.org/docs/motoko/fundamentals/declarations/)
+3. [Declarations](../fundamentals/4-declarations/index.md)
 
-4. [Control flow](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/)
+4. [Control flow](../fundamentals/5-control-flow/index.md)
 
-5. [Actors & async data](https://internetcomputer.org/docs/motoko/fundamentals/actors-async)
+5. [Actors & async data](../fundamentals/2-actors/1-actors-async.md)
 
-6. [Mutable state](https://internetcomputer.org/docs/motoko/fundamentals/state)
+6. [Mutable state](../fundamentals/2-actors/2-state.md)
 
-7. [Messaging](https://internetcomputer.org/docs/motoko/fundamentals/messaging)
+7. [Messaging](../fundamentals/2-actors/5-messaging.md)
 
-8. [Modules and imports](https://internetcomputer.org/docs/motoko/fundamentals/modules-imports)
+8. [Modules and imports](../fundamentals/7-modules-imports.md)
 
-9. [Data persistence](https://internetcomputer.org/docs/motoko/fundamentals/data-persistence)
+9. [Data persistence](../fundamentals/2-actors/3-data-persistence.md)
 
-10. [Pattern matching](https://internetcomputer.org/docs/motoko/fundamentals/pattern-matching)
+10. [Pattern matching](../fundamentals/8-pattern-matching.md)
 
-11. [Error handling](https://internetcomputer.org/docs/motoko/fundamentals/error-handling)
+11. [Error handling](../fundamentals/9-error-handling.md)
 
-12. [Garbage collection](https://internetcomputer.org/docs/motoko/fundamentals/garbage-collection)
+13. [Orthogonal persistence](../fundamentals/2-actors/6-orthogonal-persistence/index.md)
 
-13. [Orthogonal persistence](https://internetcomputer.org/docs/motoko/orthogonal-persistence/modes)
+14. [Contextual dot notations](../fundamentals/10-contextual-dot)
+
+14. [Implicit parameters](../fundamentals/11-implicit-parameters)

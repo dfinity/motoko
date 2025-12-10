@@ -3,8 +3,8 @@ module M {
   public let i : Nat = 42;
   public func f1(self : T, _x : Nat, _y : Nat) {};
   public func f2(self : T, _xy : (Nat, Nat)) {};
-  public func f3(self : T, _i : implicit (i : Nat)) {};
-  public func f4(self : T, _xy : (Nat, Nat), _i : implicit (i : Nat)) {};
+  public func f3(self : T, _i : (implicit : (i : Nat))) {};
+  public func f4(self : T, _xy : (Nat, Nat), _i : (implicit : (i : Nat))) {};
 };
 
 let s : M.T = (0, 0);

@@ -51,7 +51,7 @@ persistent actor MyCanister {
 
 ## Function `toLedgerAccount`
 ``` motoko no-repl
-func toLedgerAccount(principal : Principal, subAccount : ?Blob) : Blob
+func toLedgerAccount(self : Principal, subAccount : ?Blob) : Blob
 ```
 
 Compute the Ledger account identifier of a principal. Optionally specify a sub-account.
@@ -66,7 +66,7 @@ assert account == "\8C\5C\20\C6\15\3F\7F\51\E2\0D\0F\0F\B5\08\51\5B\47\65\63\A9\
 
 ## Function `toBlob`
 ``` motoko no-repl
-func toBlob(p : Principal) : Blob
+func toBlob(self : Principal) : Blob
 ```
 
 Convert a `Principal` to its `Blob` (bytes) representation.
@@ -80,7 +80,7 @@ assert blob == "\00\00\00\00\00\30\00\D3\01\01";
 
 ## Function `fromBlob`
 ``` motoko no-repl
-func fromBlob(b : Blob) : Principal
+func fromBlob(self : Blob) : Principal
 ```
 
 Converts a `Blob` (bytes) representation of a `Principal` to a `Principal` value.
@@ -94,7 +94,7 @@ assert Principal.toText(principal) == "un4fu-tqaaa-aaaab-qadjq-cai";
 
 ## Function `toText`
 ``` motoko no-repl
-func toText(p : Principal) : Text
+func toText(self : Principal) : Text
 ```
 
 Converts a `Principal` to its `Text` representation.
@@ -127,7 +127,7 @@ Constructs and returns the anonymous principal.
 
 ## Function `isAnonymous`
 ``` motoko no-repl
-func isAnonymous(p : Principal) : Bool
+func isAnonymous(self : Principal) : Bool
 ```
 
 Checks if the given principal represents an anonymous user.
@@ -140,7 +140,7 @@ assert not Principal.isAnonymous(principal);
 
 ## Function `isCanister`
 ``` motoko no-repl
-func isCanister(p : Principal) : Bool
+func isCanister(self : Principal) : Bool
 ```
 
 Checks if the given principal is a canister.
@@ -156,7 +156,7 @@ assert Principal.isCanister(principal);
 
 ## Function `isSelfAuthenticating`
 ``` motoko no-repl
-func isSelfAuthenticating(p : Principal) : Bool
+func isSelfAuthenticating(self : Principal) : Bool
 ```
 
 Checks if the given principal is a self authenticating principal.
@@ -173,7 +173,7 @@ assert Principal.isSelfAuthenticating(principal);
 
 ## Function `isReserved`
 ``` motoko no-repl
-func isReserved(p : Principal) : Bool
+func isReserved(self : Principal) : Bool
 ```
 
 Checks if the given principal is a reserved principal.
@@ -189,7 +189,7 @@ assert not Principal.isReserved(principal);
 
 ## Function `isController`
 ``` motoko no-repl
-func isController(p : Principal) : Bool
+func isController(self : Principal) : Bool
 ```
 
 Checks if the given principal can control this canister.
@@ -202,7 +202,7 @@ assert not Principal.isController(principal);
 
 ## Function `hash`
 ``` motoko no-repl
-func hash(principal : Principal) : Types.Hash
+func hash(self : Principal) : Types.Hash
 ```
 
 Hashes the given principal by hashing its `Blob` representation.
@@ -215,7 +215,7 @@ assert Principal.hash(principal) == 2_742_573_646;
 
 ## Function `compare`
 ``` motoko no-repl
-func compare(principal1 : Principal, principal2 : Principal) : {#less; #equal; #greater}
+func compare(self : Principal, other : Principal) : {#less; #equal; #greater}
 ```
 
 General purpose comparison function for `Principal`. Returns the `Order` (
@@ -231,7 +231,7 @@ assert Principal.compare(principal1, principal2) == #equal;
 
 ## Function `equal`
 ``` motoko no-repl
-func equal(principal1 : Principal, principal2 : Principal) : Bool
+func equal(self : Principal, other : Principal) : Bool
 ```
 
 Equality function for Principal types.
@@ -259,7 +259,7 @@ assert Principal.equal(principal1, principal2);
 
 ## Function `notEqual`
 ``` motoko no-repl
-func notEqual(principal1 : Principal, principal2 : Principal) : Bool
+func notEqual(self : Principal, other : Principal) : Bool
 ```
 
 Inequality function for Principal types.
@@ -280,7 +280,7 @@ as a function value at the moment.
 
 ## Function `less`
 ``` motoko no-repl
-func less(principal1 : Principal, principal2 : Principal) : Bool
+func less(self : Principal, other : Principal) : Bool
 ```
 
 "Less than" function for Principal types.
@@ -301,7 +301,7 @@ as a function value at the moment.
 
 ## Function `lessOrEqual`
 ``` motoko no-repl
-func lessOrEqual(principal1 : Principal, principal2 : Principal) : Bool
+func lessOrEqual(self : Principal, other : Principal) : Bool
 ```
 
 "Less than or equal to" function for Principal types.
@@ -322,7 +322,7 @@ as a function value at the moment.
 
 ## Function `greater`
 ``` motoko no-repl
-func greater(principal1 : Principal, principal2 : Principal) : Bool
+func greater(self : Principal, other : Principal) : Bool
 ```
 
 "Greater than" function for Principal types.
@@ -343,7 +343,7 @@ as a function value at the moment.
 
 ## Function `greaterOrEqual`
 ``` motoko no-repl
-func greaterOrEqual(principal1 : Principal, principal2 : Principal) : Bool
+func greaterOrEqual(self : Principal, other : Principal) : Bool
 ```
 
 "Greater than or equal to" function for Principal types.

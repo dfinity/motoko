@@ -113,7 +113,7 @@ while (condition) {
 
 A `while` loops must satisfy these constraints:
 
-- The condition must have a type  [`Bool`](https://internetcomputer.org/docs/motoko/core/Bool) producing `true` or `false`.
+- The condition must have a type  [`Bool`](../../core/Bool.md) producing `true` or `false`.
 
 - The loop body must have type `()` such that it doesn't return a meaningful value.
 

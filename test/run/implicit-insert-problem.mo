@@ -1,4 +1,4 @@
-func foo(a : Nat, b : implicit Nat, c : Nat, d : implicit Nat) : (Nat, Nat, Nat, Nat) = (a, b, c, d);
+func foo(a : Nat, b : (implicit : Nat), c : Nat, d : (implicit : Nat)) : (Nat, Nat, Nat, Nat) = (a, b, c, d);
 
 let b = 2;
 let d = 4;

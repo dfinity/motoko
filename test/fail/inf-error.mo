@@ -20,7 +20,7 @@ module Map {
 
   public func get<K, V>(
     self : Map<K, V>,
-    compare : implicit (K, K) -> Order,
+    compare : (implicit : (K, K) -> Order),
     n : K)
   : ?V {
     null
@@ -28,7 +28,7 @@ module Map {
 
   public func set<K, V>(
     self : Map<K, V>,
-    compare : implicit (K, K) -> Order,
+    compare : (implicit : (K, K) -> Order),
     n : K,
     v : V)
   : Map<K, V> {

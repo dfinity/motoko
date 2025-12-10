@@ -34,7 +34,7 @@ fn main() {
 
     let compiler_cargo_lock_path = format!(
         "{}/{}",
-        rust_install_path, "lib/rustlib/src/rust/Cargo.lock"
+        rust_install_path, "lib/rustlib/src/rust/library/Cargo.lock"
     );
 
     println!("Reading compiler Cargo.lock ...");

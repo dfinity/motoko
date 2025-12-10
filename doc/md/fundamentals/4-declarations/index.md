@@ -2,16 +2,16 @@
 
 This section explores different types of declarations in Motoko.
 
-1. [Variable declarations](https://internetcomputer.org/docs/motoko/fundamentals/declarations/variable-declarations)
+1. [Variable declarations](./1-variable-declarations.md)
 
-2. [Function declarations](https://internetcomputer.org/docs/motoko/fundamentals/declarations/function-declarations)
+2. [Function declarations](./2-function-declarations.md)
 
-3. [Object declarations](https://internetcomputer.org/docs/motoko/fundamentals/declarations/object-declarations)
+3. [Object declarations](./3-object-declaration.md)
 
-4. [Class declarations](https://internetcomputer.org/docs/motoko/fundamentals/declarations/class-declarations)
+4. [Class declarations](./4-class-declarations.md)
 
-5. [Type declarations](https://internetcomputer.org/docs/motoko/fundamentals/declarations/type-declarations)
+5. [Type declarations](./5-type-declarations.md)
 
-6. [Expression declarations](https://internetcomputer.org/docs/motoko/fundamentals/declarations/expression-declarations)
+6. [Expression declarations](./6-expression-declarations.md)
 
-7. [Module declarations](https://internetcomputer.org/docs/motoko/fundamentals/declarations/module-declarations)
+7. [Module declarations](./7-module-declarations.md)

@@ -29,7 +29,7 @@ assert Nat8.maxValue == (255 : Nat8);
 
 ## Function `toNat`
 ``` motoko no-repl
-func toNat(_ : Nat8) : Nat
+func toNat(self : Nat8) : Nat
 ```
 
 Converts an 8-bit unsigned integer to an unsigned integer with infinite precision.
@@ -69,7 +69,7 @@ assert Nat8.fromNat16(123) == (123 : Nat8);
 
 ## Function `toNat16`
 ``` motoko no-repl
-func toNat16(_ : Nat8) : Nat16
+func toNat16(self : Nat8) : Nat16
 ```
 
 Converts an 8-bit unsigned integer to a 16-bit unsigned integer.
@@ -77,6 +77,58 @@ Converts an 8-bit unsigned integer to a 16-bit unsigned integer.
 Example:
 ```motoko include=import
 assert Nat8.toNat16(123) == (123 : Nat16);
+```
+
+## Function `fromNat32`
+``` motoko no-repl
+func fromNat32(x : Nat32) : Nat8
+```
+
+Converts a 32-bit unsigned integer to a 8-bit unsigned integer.
+
+Traps on overflow.
+
+Example:
+```motoko include=import
+assert Nat8.fromNat32(123) == (123 : Nat8);
+```
+
+## Function `toNat32`
+``` motoko no-repl
+func toNat32(self : Nat8) : Nat32
+```
+
+Converts an 8-bit unsigned integer to a 32-bit unsigned integer.
+
+Example:
+```motoko include=import
+assert Nat8.toNat32(123) == (123 : Nat32);
+```
+
+## Function `fromNat64`
+``` motoko no-repl
+func fromNat64(x : Nat64) : Nat8
+```
+
+Converts a 64-bit unsigned integer to a 8-bit unsigned integer.
+
+Traps on overflow.
+
+Example:
+```motoko include=import
+assert Nat8.fromNat64(123) == (123 : Nat8);
+```
+
+## Function `toNat64`
+``` motoko no-repl
+func toNat64(self : Nat8) : Nat64
+```
+
+Converts an 8-bit unsigned integer to a 64-bit unsigned integer.
+
+Example:
+```motoko include=import
+assert Nat8.toNat64(123) == (123 : Nat64);
 ```
 
 ## Function `fromIntWrap`
@@ -95,7 +147,7 @@ assert Nat8.fromIntWrap(123) == (123 : Nat8);
 
 ## Function `toText`
 ``` motoko no-repl
-func toText(x : Nat8) : Text
+func toText(self : Nat8) : Text
 ```
 
 Converts `x` to its textual representation.

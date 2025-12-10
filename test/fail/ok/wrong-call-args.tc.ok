@@ -1,27 +1,22 @@
-wrong-call-args.mo:26.5-26.13: type error [M0098], cannot apply function of type
-  <K>Nat -> ()
-to argument of type
+wrong-call-args.mo:26.9-26.12: type error [M0096], expression of type
   (Nat, (self : Text, t2 : Text) -> Order)
-because there is no way to satisfy subtyping
-  (Nat, (self : Text, t2 : Text) -> Order)  <:  Nat
-wrong-call-args.mo:29.5-29.12: type error [M0098], cannot apply function of type
-  <K>Nat -> ()
-to argument of type
+cannot produce expected type
+  Nat
+wrong-call-args.mo:29.9-29.12: type error [M0096], expression of type
   (Nat, (self : Text, t2 : Text) -> Order)
-because there is no way to satisfy subtyping
-  (Nat, (self : Text, t2 : Text) -> Order)  <:  Nat
+cannot produce expected type
+  Nat
 wrong-call-args.mo:35.12-35.14: type error [M0233], wrong number of arguments: expected 1 but got 0
 Expected 1 argument of type:
   (key : Text)
 But got no arguments
-wrong-call-args.mo:39.5-39.31: type error [M0098], cannot apply function `.add` of type
-  <K, V>(key : K, value : V) -> ()
-to argument of type
-  ((self : Text, t2 : Text) -> Order, Text)
-because there is no way to satisfy subtyping
-  (self : Text, t2 : Text) -> Order  <:  Text  (for argument `key`) 
+wrong-call-args.mo:39.13-39.25: type error [M0096], expression of type
+  (self : Text, t2 : Text) -> Order
+cannot produce expected type
+  Text
 wrong-call-args.mo:45.5-45.17: type error [M0098], cannot apply function of type
-  <K, V>(self : Map<K, V>, compare : implicit (K, K) -> Order, key : K) -> ?V
+  <K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K) ->
+    ?V
 to argument of type
   {var root : Node<Text, Text>; var size_ : Nat}
 because there is no way to satisfy subtyping
@@ -30,19 +25,14 @@ wrong-call-args.mo:48.27-48.39: type error [M0096], expression of type
   (self : Text, t2 : Text) -> Order
 cannot produce expected type
   ()
-wrong-call-args.mo:51.5-51.28: type error [M0098], cannot apply function of type
-  <K, V>() -> Map<K, V>
-to argument of type
+wrong-call-args.mo:51.15-51.27: type error [M0096], expression of type
   (self : Text, t2 : Text) -> Order
-because there is no way to satisfy subtyping
-  (self : Text, t2 : Text) -> Order  <:  ()
-wrong-call-args.mo:55.5-55.36: type error [M0098], cannot apply function of type
-  <K, V>(self : Map<K, V>, key : K, value : V) -> ()
-to argument of type
-  ({var root : Node<Text, Text>; var size_ : Nat},
-   (self : Text, t2 : Text) -> Order, Text)
-because there is no way to satisfy subtyping
-  (self : Text, t2 : Text) -> Order  <:  Text  (for argument `key`) 
+cannot produce expected type
+  ()
+wrong-call-args.mo:55.18-55.30: type error [M0096], expression of type
+  (self : Text, t2 : Text) -> Order
+cannot produce expected type
+  Text
 wrong-call-args.mo:82.3-82.11: warning [M0239], Avoid binding a unit `()` result; remove `let` and keep the expression
 wrong-call-args.mo:107.8-107.9: type error [M0050], literal of type
   Nat

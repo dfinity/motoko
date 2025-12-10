@@ -533,6 +533,13 @@ do
           continue
         fi
       fi
+      if grep -q "# SKIP-SANITY-CHECKS" $(basename $file)
+      then
+        if [[ $EXTRA_MOC_ARGS == *"--sanity-checks"* ]]
+        then
+          continue
+        fi
+      fi
       if grep -q "# DEFAULT-GC-ONLY" $(basename $file)
       then
         if [[ $EXTRA_MOC_ARGS == *"--copying-gc"* ]] || [[ $EXTRA_MOC_ARGS == *"--compacting-gc"* ]] || [[ $EXTRA_MOC_ARGS == *"--generational-gc"* ]] || [[ $EXTRA_MOC_ARGS == *"--incremental-gc"* ]]

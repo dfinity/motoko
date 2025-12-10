@@ -68,30 +68,14 @@
         "type": "github"
       }
     },
-    "ic-src": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1761929779,
-        "narHash": "sha256-5jqAkVDelrPBepsaODDGUCKNe2L1DGm9wSEagL4t1BU=",
-        "owner": "dfinity",
-        "repo": "ic",
-        "rev": "7a8c16764cdcfb901759ff62e64ac983633fcc17",
-        "type": "github"
-      },
-      "original": {
-        "owner": "dfinity",
-        "repo": "ic",
-        "type": "github"
-      }
-    },
     "ic-wasm-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1763461183,
-        "narHash": "sha256-78r0mOJy4cdOfQheUYNo1Lisgh/KP0rG0543PeV5hhg=",
+        "lastModified": 1763575621,
+        "narHash": "sha256-gxfjS/X9EkVEEqDGCWWJQtNXuJk8Kc94o+hVfC5sw5Y=",
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "64db3a513cf9f741ba7697d22fafbadd378235ad",
+        "rev": "65a9462fd63503182c7c5dd44f92839a21047e71",
         "type": "github"
       },
       "original": {
@@ -122,13 +106,13 @@
       "locked": {
         "lastModified": 1759588547,
         "narHash": "sha256-p7Z+cy9F0abuCWh4hvUpoOROhIPiYJfAO3f4hTXMKow=",
-        "owner": "dfinity",
+        "owner": "caffeinelabs",
         "repo": "motoko-base",
         "rev": "15f79638ab493b985f9a0c45d62460781a728d33",
         "type": "github"
       },
       "original": {
-        "owner": "dfinity",
+        "owner": "caffeinelabs",
         "ref": "next-moc",
         "repo": "motoko-base",
         "type": "github"
@@ -137,15 +121,15 @@
     "motoko-core-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1763395090,
-        "narHash": "sha256-ePEOG9yxZ/xfJCMavfwC10gDAuaFzfCycps50ibx0dU=",
-        "owner": "dfinity",
+        "lastModified": 1765363855,
+        "narHash": "sha256-IVGR4HBOcbMzFySPIESRxyP64BBKT6vgjvX4T7+Ji4c=",
+        "owner": "caffeinelabs",
         "repo": "motoko-core",
-        "rev": "a47436dd8188dfcdfa788f0424ed4cb02d70bcfe",
+        "rev": "24a5ca7e9f6a5062e6dc7d7f0c51473df4cfdca4",
         "type": "github"
       },
       "original": {
-        "owner": "dfinity",
+        "owner": "caffeinelabs",
         "repo": "motoko-core",
         "type": "github"
       }
@@ -192,16 +176,16 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1751274312,
-        "narHash": "sha256-/bVBlRpECLVzjV19t5KMdMFWSwKLtb5RyXdjz3LJT+g=",
+        "lastModified": 1764836381,
+        "narHash": "sha256-8jemYbbW9EBttQKHep7Rj8kzXaxsrk/lACdXA2DN5Xk=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "50ab793786d9de88ee30ec4e4c24fb4236fc2674",
+        "rev": "ff06bd3398fb1bea6c937039ece7e7c8aa396ebf",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
-        "ref": "nixos-24.11",
+        "ref": "nixos-25.05",
         "repo": "nixpkgs",
         "type": "github"
       }
@@ -241,17 +225,17 @@
     "pocket-ic-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1757573980,
-        "narHash": "sha256-yOjLoRCMsi29tEK8M1XNC8AaU1ixkHE3B5sdGSr6u6s=",
+        "lastModified": 1763769101,
+        "narHash": "sha256-/VaUL3Wu9NILofasZPTCtFVIoXmsOokiO/sTUZQJTZw=",
         "owner": "dfinity",
         "repo": "ic",
-        "rev": "861616d46ded00091fecbfe01f441b38b56b483c",
+        "rev": "f07e9896fef2c24db8d4d0bed3d3ed42f0934e2a",
         "type": "github"
       },
       "original": {
         "owner": "dfinity",
-        "ref": "master",
         "repo": "ic",
+        "rev": "f07e9896fef2c24db8d4d0bed3d3ed42f0934e2a",
         "type": "github"
       }
     },
@@ -260,7 +244,6 @@
         "candid-src": "candid-src",
         "esm": "esm",
         "flake-utils": "flake-utils",
-        "ic-src": "ic-src",
         "ic-wasm-src": "ic-wasm-src",
         "libtommath-src": "libtommath-src",
         "motoko-base-src": "motoko-base-src",
@@ -283,11 +266,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1761964689,
-        "narHash": "sha256-Zo3LQQDz+64EQ9zor/WmeNTFLoZkjmhp0UY3G0D3seE=",
+        "lastModified": 1764988672,
+        "narHash": "sha256-FIJtt3Zil89/hLy9i7f0R2xXcJDPc3CeqiiCLfsFV0Y=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "63d22578600f70d293aede6bc737efef60ebd97f",
+        "rev": "086fd19a68e80fcc8a298e9df4674982e4c498a6",
         "type": "github"
       },
       "original": {

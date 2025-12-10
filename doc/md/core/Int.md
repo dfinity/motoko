@@ -30,7 +30,7 @@ assert Int.abs(-12) == 12;
 
 ## Function `toText`
 ``` motoko no-repl
-func toText(x : Int) : Text
+func toText(self : Int) : Text
 ```
 
 Converts an integer number to its textual representation. Textual
@@ -57,9 +57,24 @@ Example:
 assert Int.fromText("-1234") == ?-1234;
 ```
 
+## Function `toInt`
+``` motoko no-repl
+func toInt(self : Text) : ?Int
+```
+
+Creates a integer from its textual representation. Returns `null`
+if the input is not a valid integer.
+
+This functions is meant to be used with contextual-dot notation.
+
+Example:
+```motoko include=import
+assert "-1234".toInt() == ?-1234;
+```
+
 ## Function `toNat`
 ``` motoko no-repl
-func toNat(int : Int) : Nat
+func toNat(self : Int) : Nat
 ```
 
 Converts an integer to a natural number. Traps if the integer is negative.
@@ -80,6 +95,126 @@ Converts a natural number to an integer.
 Example:
 ```motoko include=import
 assert Int.fromNat(1234 : Nat) == (1234 : Int);
+```
+
+## Function `toFloat`
+``` motoko no-repl
+func toFloat(self : Int) : Float
+```
+
+Conversion to Float. May result in `Inf`.
+
+Note: The floating point number may be imprecise for large or small Int values.
+Returns `inf` if the integer is greater than the maximum floating point number.
+Returns `-inf` if the integer is less than the minimum floating point number.
+
+Example:
+```motoko include=import
+assert Int.toFloat(-123) == -123.0;
+```
+
+## Function `toInt8`
+``` motoko no-repl
+func toInt8(self : Int) : Int8
+```
+
+Converts a signed integer with infinite precision to an 8-bit signed integer.
+
+Traps on overflow/underflow.
+
+Example:
+```motoko include=import
+assert Int.toInt8(123) == (123 : Int8);
+```
+
+## Function `toInt16`
+``` motoko no-repl
+func toInt16(self : Int) : Int16
+```
+
+Converts a signed integer with infinite precision to a 16-bit signed integer.
+
+Traps on overflow/underflow.
+
+Example:
+```motoko include=import
+assert Int.toInt16(12_345) == (12_345 : Int16);
+```
+
+## Function `toInt32`
+``` motoko no-repl
+func toInt32(self : Int) : Int32
+```
+
+Converts a signed integer with infinite precision to a 32-bit signed integer.
+
+Traps on overflow/underflow.
+
+Example:
+```motoko include=import
+assert Int.toInt32(123_456) == (123_456 : Int32);
+```
+
+## Function `toInt64`
+``` motoko no-repl
+func toInt64(self : Int) : Int64
+```
+
+Converts a signed integer with infinite precision to a 64-bit signed integer.
+
+Traps on overflow/underflow.
+
+Example:
+```motoko include=import
+assert Int.toInt64(123_456_789) == (123_456_789 : Int64);
+```
+
+## Function `fromInt8`
+``` motoko no-repl
+func fromInt8(x : Int8) : Int
+```
+
+Converts an 8-bit signed integer to a signed integer with infinite precision.
+
+Example:
+```motoko include=import
+assert Int.fromInt8(123 : Int8) == 123;
+```
+
+## Function `fromInt16`
+``` motoko no-repl
+func fromInt16(x : Int16) : Int
+```
+
+Converts a 16-bit signed integer to a signed integer with infinite precision.
+
+Example:
+```motoko include=import
+assert Int.fromInt16(12_345 : Int16) == 12_345;
+```
+
+## Function `fromInt32`
+``` motoko no-repl
+func fromInt32(x : Int32) : Int
+```
+
+Converts a 32-bit signed integer to a signed integer with infinite precision.
+
+Example:
+```motoko include=import
+assert Int.fromInt32(123_456 : Int32) == 123_456;
+```
+
+## Function `fromInt64`
+``` motoko no-repl
+func fromInt64(x : Int64) : Int
+```
+
+Converts a 64-bit signed integer to a signed integer with infinite precision.
+
+Example:
+```motoko include=import
+assert Int.fromInt64(123_456_789 : Int64) == 123_456_789;
 ```
 
 ## Function `min`

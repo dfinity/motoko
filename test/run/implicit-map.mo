@@ -4,7 +4,7 @@ module Map {
     public let u = u_;
   };
 
-  public func get<T, U>(self : Map<T, U>, x : T, compare : implicit (T, T) -> Int) : ?U {
+  public func get<T, U>(self : Map<T, U>, x : T, compare : (implicit : (T, T) -> Int)) : ?U {
     if (compare(self.k, x) == 0) ?self.u else null;
   };
 };
