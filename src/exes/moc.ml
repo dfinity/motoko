@@ -70,7 +70,8 @@ let argspec =
         | Flags.Warn -> "W"
         | Flags.Error -> "E"
       in
-      List.iter (fun (code, _, desc, lvl) ->
+      List.iter (fun (code, _, desc, _) ->
+        let lvl = Flags.get_warning_level code in
         printf "%s (%s) %s\n" code (string_of_level lvl) desc
       ) Error_codes.warning_codes;
       printf "\nLegend: A - allowed (warning disabled); W - warn (warning enabled); E - error (treated as error)\n";

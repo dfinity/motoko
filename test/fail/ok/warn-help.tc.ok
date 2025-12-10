@@ -3,7 +3,7 @@ M0061 (E) Comparing abstract type to itself at supertype
 M0062 (E) Comparing incompatible type at common supertype
 M0074 (E) Array elements have inconsistent types
 M0081 (E) If branches have inconsistent types
-M0089 (W) Redundant ignore
+M0089 (E) Redundant ignore
 M0101 (E) Switch with inconsistent branch types
 M0128 (W) Function with system function name but wrong visibility
 M0135 (W) Actor class has non-async return type
@@ -16,7 +16,7 @@ M0166 (E) Type intersection results in abstract type
 M0167 (E) Type union results in bottom type
 M0190 (E) Types inconsistent for alternative pattern variables, losing information
 M0191 (W) Code requires Wasm features ... to execute
-M0194 (W) Unused identifier warning
+M0194 (E) Unused identifier warning
 M0195 (W) warn that `system` capability is implicitly supplied
 M0198 (W) Unused field pattern warning
 M0199 (W) Deprecate experimental stable memory
@@ -27,8 +27,8 @@ M0211 (W) Parenthetical note has no attributes
 M0212 (W) Unrecognised attribute in parenthetical note
 M0215 (W) Field is lost in record used at supertype
 M0217 (W) Redundant `persistent`
-M0218 (W) Redundant `stable`
-M0222 (W) Ignored `async*`
+M0218 (A) Redundant `stable`
+M0222 (A) Ignored `async*`
 M0223 (A) Redundant type instantiation
 M0235 (A) Deprecate for caffeine
 M0236 (A) Suggest contextual dot notation
