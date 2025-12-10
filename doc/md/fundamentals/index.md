@@ -27,3 +27,5 @@ The fundamentals section introduces the core building blocks of Motoko, includin
 13. [Orthogonal persistence](../fundamentals/2-actors/6-orthogonal-persistence/index.md)
 
 14. [Contextual dot notations](../fundamentals/10-contextual-dot)
+
+14. [Implicit parameters](../fundamentals/11-implicit-parameters)

@@ -1,4 +1,4 @@
-# Contextual Dot Notation
+# Contextual dot notation
 
 Contextual dot notation is a language feature that allows you to call functions from modules using object-oriented style syntax, where a value appears as the receiver of a method call. This feature bridges the gap between Motoko's procedural and object-oriented programming styles.
 
