@@ -2716,9 +2716,9 @@ and infer_callee env exp =
   | _ ->
      infer_exp_promote env exp, None
 and as_implicit = function
+(* disable wildcard patterns
   | T.Named ("implicit", T.Named (arg_name, t)) ->
     Some arg_name
-(* disable wildcard patterns
   | T.Named ("implicit", t) ->
     Some "_" *)
   | T.Named (_inf_arg_name, (T.Named ("implicit", T.Named (arg_name, t)))) ->
