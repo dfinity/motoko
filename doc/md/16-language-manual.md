@@ -589,7 +589,7 @@ Type expressions are used to specify the types of arguments, constraints on type
   <shared>? <typ-params>? <typ> -> <typ>        Function
   async <typ>                                   Future
   async* <typ>                                  Delayed, asynchronous computation
-  ( <typ-item>,* )                            Tuple
+  ( <typ-item>,* )                              Tuple
   Any                                           Top
   None                                          Bottom
   <typ> and <typ>                               Intersection
@@ -614,7 +614,7 @@ Type expressions are used to specify the types of arguments, constraints on type
 An absent `<sort>?` abbreviates `object`.
 
 Let <implicit> be the special identifier `implicit`.
-Type items of the form `<id> (<implicit> : <typ>)` and `<id0> : (<implicit> (<id> : <typ>))` are used to indicate implicit and re-named implicit parameters should.  The second form is used to override the parameter named `<id0>` as implicit parameter named `<id>`.
+Type items of the form `<id> (<implicit> : <typ>)` and `<id0> : (<implicit> (<id> : <typ>))` are used to indicate implicit and re-named implicit parameters.  The second form is used to override the parameter named `<id0>` as implicit parameter named `<id>`.
 These special type items are only meaningful in parameter positions of function types and have no significance elsewhere.
 
 ### Primitive types
@@ -2306,15 +2306,15 @@ the expanded function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <
     * `a = arity(F) - implicit_arity(F)`; and
     * `<exp3> = ( insert_holes(0 ; U1 ; (exp21,...,exp2a)) )`;
 
-    where `insert_holes` extends the actual arguments list with placeholders `hole(i, o, U)` for missing implicit parameters:
+    where `insert_holes` extends the actual arguments list with placeholders `hole(i, <id>, U)` for missing implicit parameters:
 
     ```
     insert_holes(n ; <empty> ; <exps>) =
       <exps>
     insert_holes(n ; ( (<id0> : (<implicit> : (<id> : U))), Us) ; <exps>) =
-      hole(n, null, U), insert_holes(n + 1 ; Us ; exps)
+      hole(n, <id>, U), insert_holes(n + 1 ; Us ; exps)
     insert_holes(n ; ( (<id> : (<implicit> : U)), Us) ; <exps>) =
-      hole(n, ?<id>, U), insert_holes(n + 1 ; Us ; exps)
+      hole(n, <id>, U), insert_holes(n + 1 ; Us ; exps)
     insert_holes(n ; (U, Us);  (<exp>, <exps>)) =
       <exp>, insert_holes(n ; Us ; <exps>)
     ```
@@ -2331,25 +2331,23 @@ the expanded function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <
 
 -   For each `i` in `(0..implicit_arity(F)]`:
 
-      * `<id> : [T0/X0, …​, Tn/Xn]Ui`, for some `<id>`; and
-      * `hole(i, o, Ui) = <id>`; and
-      * `o != null` implies `o = ?<id>`;
+      * `<idi> : [T0/X0, …​, Tn/Xn]Ui`; and
+      * `hole(i, <idi>, Ui) = <idi>`; and
 
       Otherwise:
 
-      * Cs = { `(<mid>.<id>, V)` | `<mid>` has type `module {}` and `<mid>.<id>` has type `V` and `V <: [T0/X0, …​, Tn/Xn]U1` }; and
-      * Ds = { `(<mid>.<id>, V)`  in Cs | for all `(_, W)` in Cs, `W <: V` }; and
-      * { `(<mid>.<id>, _)` } = Ds; and
-      * `hole(i, o, Ui) = <mid>.<id>`; and
-      *	`o != null` implies `o = ?<id>`.
+      * Cs = { `(<mid>, V)` | `<mid>` has type `module {}` and `<mid>.<idi>` has type `V` and `V <: [T0/X0, …​, Tn/Xn]U1` }; and
+      * Ds = { `(<mid>, V)`  in Cs | for all `(_, W)` in Cs, `W <: V` }; and
+      * { `(<mid>, _)` } = Ds; and
+      * `hole(i, <idi>, Ui) = <mid>.<idi>`.
 
     Here:
 
-    * `hole(i, o, Ui)` is the description of the `ith` hole, a placeholder for an expression `<id>` or `<mid>.<id>`.
+    * `hole(i, <idi>, Ui)` is the description of the `ith` hole, a placeholder for an expression `<idi>` or `<mid>.<idi>`.
     *  `<id>` is the resolution of the hole from the local context, if any;
-    *  Cs is the set of candidate values `<mid>.<id>` in modules named `<mid>`, with type `V` that matches hole type `Ui` (after type instantiation).
+    *  Cs is the set of candidate module `<mid>` named `<mid>`, with type `V` whose field `<mid>.<idi>` matches hole type `Ui` (after type instantiation).
     *  Ds is the disambiguated set of candidates, filtered by generality.
-    * `<mid>.<id>` is the name of the unique disambiguation, if one exists (that is, when Ds is a singleton set).
+    * `<mid>.<idi>` is the name of the unique disambiguation, if one exists (that is, when Ds is a singleton set).
 
 The call expression `<exp1> <T0,…​,Tn>? <exp2>` evaluates `<exp1>` to a result `r1`. If `r1` is `trap`, then the result is `trap`.
 
