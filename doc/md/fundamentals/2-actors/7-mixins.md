@@ -8,7 +8,7 @@ Inside an actor a mixin can then be included with the `include` keyword while pa
 
 As an example we'll consider a logging mixin that makes a `logError` function available inside the actor and exposes a `collectLogs` endpoint from the canister. It also allows prefixing any collected log messages.
 
-```motoko
+```motoko no-repl
 // Logger.mo
 import List "mo:core/List";
 
@@ -30,7 +30,7 @@ mixin(prefix : Text) {
 
 We can then use it inside our main actor
 
-```motoko
+```motoko no-repl
 // main.mo
 import Logger "Logger";
 actor {

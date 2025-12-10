@@ -89,11 +89,12 @@ All comments are treated as whitespace.
 The following keywords are reserved and may not be used as identifiers:
 
 ``` bnf
-actor and assert async async* await await? await* break case catch class
-composite continue debug debug_show do else false flexible finally for
-from_candid func if ignore import in label let loop module not null
-object or persistent private public query return shared stable switch system throw
-to_candid true transient try type var weak while with
+actor and assert async async* await await? await* break case
+catch class composite continue debug debug_show do else false flexible
+finally for from_candid func if ignore import in include label let
+loop mixin module not null object or persistent private public query
+return shared stable switch system throw to_candid true transient try
+type var weak while with
 ```
 
 ### Identifiers
@@ -407,6 +408,8 @@ The syntax of a declaration is as follows:
   type <id> <type-typ-params>? = <typ>                                    Type
   <parenthetical>? <shared-pat>? <sort>? class                            Class
     <id>? <typ-params>? <pat> (: <typ>)? <class-body>
+  mixin <pat> <obj-body>                                                  Mixin
+  include <id> <exp>                                                      Mixin inlusion
 
 <obj-body> ::=           Object body
   { <dec-field>;* }       Field declarations
@@ -1928,6 +1931,21 @@ If `sort` is `persistent? actor`, then:
 If `(: <typ>)` is present, then the type `<async?> <typ-sort> {  <typ_field>;* }` must be a subtype of the annotation `<typ>`. In particular, the annotation is used only to check, but not affect, the inferred type of function `<id>`. `<typ-sort>` is just `<sort>` erasing any `persistent?` modifier.
 
 The class declaration has the same type as function `<id>` and evaluates to the function value `<id>`.
+
+### Mixin declaration
+
+The mixin declaration `mixin <pat> <obj-body>` declares a mixin and has no effect.
+It can only occur in the body of a library.
+
+### Mixin declaration
+
+The mixin inclusion `include <id> <exp>` instantiates a copy of the (imported) mixin `<id>`
+with the value of argument `<exp`.
+
+A mixin declaration can only occur in the body of an actor or another mixin.
+
+The inclusion extends the environment with all the declarations of the mixin body
+(with their declared visibility).
 
 ### Identifiers
 
