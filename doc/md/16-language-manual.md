@@ -91,7 +91,7 @@ The following keywords are reserved and may not be used as identifiers:
 ``` bnf
 actor and assert async async* await await? await* break case catch class
 composite continue debug debug_show do else false flexible finally for
-from_candid func if ignore implicit import in label let loop module not null
+from_candid func if ignore import in label let loop module not null
 object or persistent private public query return shared stable switch system throw
 to_candid true transient try type var weak while with
 ```
@@ -566,24 +566,12 @@ The syntax of a pattern is as follows:
   ? <pat>                                        Option
   <pat> : <typ>                                  Type annotation
   <pat> or <pat>                                 Disjunctive pattern
-  implicit <id> : <typ>                          implicit named parameter
-  implicit <id> : <typ> = <pat>                  implicit named parameter
-  implicit _ : <typ> = <pat>                     implicit wildcard parameter 
-
 
 <pat-field> ::=                                Object pattern fields
   <id> (: <typ>)? = <pat>                        Field
   <id> (: <typ>)?                                Punned field
   type <id>                                      Type field
 ```
-
-`implicit` patterns may only appear in function or class argument positions to declare implicit parameters that can be omitted at calls.
-<!-- what about mixins? -->
-The pattern `implict <id> : <typ>` is sugar for `<id> : (implicit <id> : <typ>)`.
-The named implicit pattern `implict <id> : <typ> = <pat>` is sugar for `<pat> : (implicit <id> : <typ>)`.
-The wildcard implicit pattern `implicit _ : <typ> = <pat>` is sugar for `<pat> : (implicit _ : <typ>)`.
-
-
 
 ## Type syntax
 
@@ -601,15 +589,17 @@ Type expressions are used to specify the types of arguments, constraints on type
   <shared>? <typ-params>? <typ> -> <typ>        Function
   async <typ>                                   Future
   async* <typ>                                  Delayed, asynchronous computation
-  ( ((<id> :)? <typ>),* )                       Tuple
+  ( <typ-item>,* )                            Tuple
   Any                                           Top
   None                                          Bottom
   <typ> and <typ>                               Intersection
   <typ> or <typ>                                Union
   Error                                         Errors/exceptions
-  implicit <id> : <typ>                         Implicit named parameter
-  implicit _ : <typ>                            Implicit wildcard parameter
   ( <typ> )                                     Parenthesized type
+
+<typ-item>                                    Type item
+  <id> : <typ>                                  Named type
+  <typ>                                         type
 
 <typ-sort> ::= (actor | module | object)
 
@@ -623,7 +613,9 @@ Type expressions are used to specify the types of arguments, constraints on type
 
 An absent `<sort>?` abbreviates `object`.
 
-`implicit <id> : <typ>` and `implicit _ : <typ>`, used to indicate named and wildcard implicit parameters, may only appear in parameter positions of function types.
+Type items of the form `implicit : <typ>` and `implicit (<id> : <typ>)` and
+used to indicate implicit and re-named implicit parameters should
+only appear in parameter positions of function types and have no effect elsewhere.
 
 ### Primitive types
 
@@ -1113,8 +1105,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 16.   `T` (respectively `U`) is a constructed type `C<V0, …​, Vn>` that is equal, by definition of type constructor `C`, to `W`, and `W <: U` (respectively `U <: W`).
 
-17.   `T` (respectively `U`) is an implicit type `implicit (<id>|_) : W` that is equal, by definition, to `W`, and `W <: U` (respectively `U <: W`).
-<!-- to be reviewed - does this make sense? -->
+17.   `T` (respectively `U`) is an named type typ item `(<id> : W)` that is equal, by definition, to `W`, and `W <: U` (respectively `U <: W`).
 
 18.   For some type `V`, `T <: V` and `V <: U` (*transitivity*).
 
@@ -2320,9 +2311,9 @@ the expanded function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <
     ```
     insert_holes(n ; <empty> ; <exps>) =
       <exps>
-    insert_holes(n ; (implict <id> : U, Us) ; <exps>) =
+    insert_holes(n ; (<id> : (implicit : U)) , Us) ; <exps>) =
       hole(n, ?<id>, U), insert_holes(n + 1, Us, exps)
-    insert_holes(n ; (implict _ : U, Us) ; <exps>) =
+    insert_holes(n ; (implicit : (<id> : U)), Us) ; <exps>) =
       hole(n, null, U), insert_holes(n + 1, Us, exps)
     insert_holes(n , (U, Us),  (<exp>, <exps>)) =
       <exp>, insert_holes(n, Us, <exps>)
