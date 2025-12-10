@@ -91,8 +91,8 @@ The following keywords are reserved and may not be used as identifiers:
 ``` bnf
 actor and assert async async* await await? await* break case catch class
 composite continue debug debug_show do else false flexible finally for
-from_candid func if ignore import in module not null persistent object or label
-let loop private public query return shared stable switch system throw
+from_candid func if ignore import in label let loop module not null
+object or persistent private public query return shared stable switch system throw
 to_candid true transient try type var weak while with
 ```
 
@@ -568,8 +568,8 @@ The syntax of a pattern is as follows:
   <pat> or <pat>                                 Disjunctive pattern
 
 <pat-field> ::=                                Object pattern fields
-  <id> (: <typ>) = <pat>                         Field
-  <id> (: <typ>)                                 Punned field
+  <id> (: <typ>)? = <pat>                        Field
+  <id> (: <typ>)?                                Punned field
   type <id>                                      Type field
 ```
 
@@ -589,7 +589,7 @@ Type expressions are used to specify the types of arguments, constraints on type
   <shared>? <typ-params>? <typ> -> <typ>        Function
   async <typ>                                   Future
   async* <typ>                                  Delayed, asynchronous computation
-  ( ((<id> :)? <typ>),* )                       Tuple
+  ( <typ-item>,* )                              Tuple
   Any                                           Top
   None                                          Bottom
   <typ> and <typ>                               Intersection
@@ -597,6 +597,9 @@ Type expressions are used to specify the types of arguments, constraints on type
   Error                                         Errors/exceptions
   ( <typ> )                                     Parenthesized type
 
+<typ-item>                                    Type item
+  <id> : <typ>                                  Named type
+  <typ>                                         type
 
 <typ-sort> ::= (actor | module | object)
 
@@ -609,6 +612,10 @@ Type expressions are used to specify the types of arguments, constraints on type
 ```
 
 An absent `<sort>?` abbreviates `object`.
+
+Let `<implicit>` be the distinguished identifier `implicit`.
+Type items of the form `<id> (<implicit> : <typ>)` and `<id0> : (<implicit> (<id> : <typ>))` are used to indicate implicit and re-named implicit parameters.  The second form is used to override the parameter named `<id0>` as implicit parameter named `<id>`.
+These special type items are only meaningful in parameter positions of function types and have no significance elsewhere.
 
 ### Primitive types
 
@@ -1098,7 +1105,9 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 16.   `T` (respectively `U`) is a constructed type `C<V0, …​, Vn>` that is equal, by definition of type constructor `C`, to `W`, and `W <: U` (respectively `U <: W`).
 
-17.   For some type `V`, `T <: V` and `V <: U` (*transitivity*).
+17.   `T` (respectively `U`) is an named type typ item `(<id> : W)` that is equal, by definition, to `W`, and `W <: U` (respectively `U <: W`).
+
+18.   For some type `V`, `T <: V` and `V <: U` (*transitivity*).
 
 #### Stable Subtyping
 
@@ -2276,21 +2285,73 @@ as its expanded function call expression `<parenthetical>? <exp3> <T0,…​,Tn>
 
 ### Function calls
 
-The function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <exp2>` has type `T` provided:
 
--   The function `<exp1>` has function type `<shared>? < X0 <: V0, ..., Xn <: Vn > U1-> U2`.
+Function types can specify `implicit` parameters.
+The _arity_ of a function is its number of parameters.
+The _implicit arity_ of a function is its number of `implicit` parameters.
 
--   If `<T0,…​,Tn>?` is absent but n > 0 then there exists minimal `T0, …​, Tn` inferred by the compiler such that:
+An argument expression has arity n if it is a parenthesized sequence of `n` arguments, and arity 1 otherwise.
 
--   Each type argument satisfies the corresponding type parameter’s bounds: for each `1 <= i <= n`, `Ti <: [T0/X0, …​, Tn/Xn]Vi`.
+A function call can either supply a tuple for all parameters, one argument per parameter, or one argument per non-implicit parameter, omitting arguments for all implicit parameters.
+The values of omitted arguments are inferred statically from the context.
 
--   The argument `<exp2>` has type `[T0/X0, …​, Tn/Xn]U1`.
+The function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <exp2>` has type `T` provided the
+the expanded function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <exp3>` has type `T` where:
+
+-   The function `<exp1>` has function type `F = <shared>? < X0 <: V0, ..., Xn <: Vn > U1 -> U2`.
+
+-   If `F` has implicit arity 0 then `<exp3> = <exp2>`, otherwise:
+
+    * `<exp2> = ( exp21, ..., exp2a )`; and
+    * `a = arity(F) - implicit_arity(F)`; and
+    * `<exp3> = ( insert_holes(0 ; U1 ; (exp21,...,exp2a)) )`;
+
+    where `insert_holes` extends the actual arguments list with placeholders `hole(i, <id>, U)` for missing implicit parameters:
+
+    ```
+    insert_holes(n ; <empty> ; <exps>) =
+      <exps>
+    insert_holes(n ; ( (<id0> : (<implicit> : (<id> : U))), Us) ; <exps>) =
+      hole(n, <id>, U), insert_holes(n + 1 ; Us ; exps)
+    insert_holes(n ; ( (<id> : (<implicit> : U)), Us) ; <exps>) =
+      hole(n, <id>, U), insert_holes(n + 1 ; Us ; exps)
+    insert_holes(n ; (U, Us);  (<exp>, <exps>)) =
+      <exp>, insert_holes(n ; Us ; <exps>)
+    ```
+
+    (These equations are applied in order; semicolon is just as argument separator.)
+
+-   If `<T0,…​,Tn>?` is absent but `n > 0` then there exists minimal `T0, …​, Tn` inferred by the compiler such that:
+
+-   Each type argument satisfies the corresponding type parameter's bounds: for each `1 <= i <= n`, `Ti <: [T0/X0, …​, Tn/Xn]Vi`.
+
+-   The argument `<exp3>` has type `[T0/X0, …​, Tn/Xn]U1`, and
 
 -   `T == [T0/X0, …​, Tn/Xn]U2`.
 
+-   For each `i` in `(0..implicit_arity(F)]`:
+
+      * `<idi> : [T0/X0, …​, Tn/Xn]Ui`; and
+      * `hole(i, <idi>, Ui) = <idi>`; and
+
+      Otherwise:
+
+      * Cs = { `(<mid>, V)` | `<mid>` has type `module {}` and `<mid>.<idi>` has type `V` and `V <: [T0/X0, …​, Tn/Xn]U1` }; and
+      * Ds = { `(<mid>, V)`  in Cs | for all `(_, W)` in Cs, `W <: V` }; and
+      * { `(<mid>, _)` } = Ds; and
+      * `hole(i, <idi>, Ui) = <mid>.<idi>`.
+
+    Here:
+
+    * `hole(i, <idi>, Ui)` is the description of the `ith` hole, a placeholder for an expression `<idi>` or `<mid>.<idi>`.
+    *  `<idi>` is the resolution of the hole from the local context, if any;
+    *  Cs is the set of candidate module `<mid>` named `<mid>`, with type `V` whose field `<mid>.<idi>` matches hole type `Ui` (after type instantiation).
+    *  Ds is the disambiguated set of candidates, filtered by generality.
+    * `<mid>.<idi>` is the name of the unique disambiguation, if one exists (that is, when Ds is a singleton set).
+
 The call expression `<exp1> <T0,…​,Tn>? <exp2>` evaluates `<exp1>` to a result `r1`. If `r1` is `trap`, then the result is `trap`.
 
-Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
+Otherwise, `<exp3>` (the hole expansion of `<exp2>`) is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
 Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, …​, n <: Vn> <pat1> { <exp> }` (for some implicit environment), and `r2` is a value `v2`. If `<shared-pat>` is present and of the form `shared <query>? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p` is the [`Principal`](./core/Principal.md) invoking the function, typically a user or canister. Matching continues by matching `v1` against `<pat1>`. If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value not shown extended with those bindings. Otherwise, some pattern match has failed and the call results in `trap`.
 
