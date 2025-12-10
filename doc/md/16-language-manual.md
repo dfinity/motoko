@@ -613,9 +613,9 @@ Type expressions are used to specify the types of arguments, constraints on type
 
 An absent `<sort>?` abbreviates `object`.
 
-Type items of the form `implicit : <typ>` and `implicit (<id> : <typ>)` and
-used to indicate implicit and re-named implicit parameters should
-only appear in parameter positions of function types and have no effect elsewhere.
+Let <implicit> be the special identifier `implicit`.
+Type items of the form `<id> (<implicit> : <typ>)` and `<id0> : (<implicit> (<id> : <typ>))` are used to indicate implicit and re-named implicit parameters should.  The second form is used to override the parameter named `<id0>` as implicit parameter named `<id>`.
+These special type items are only meaningful in parameter positions of function types and have no significance elsewhere.
 
 ### Primitive types
 
@@ -2304,20 +2304,22 @@ the expanded function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <
 
     * `<exp2> = ( exp21, ..., exp2a )`; and
     * `a = arity(F) - implicit_arity(F)`; and
-    * `<exp3> = ( insert_holes(0;  U1 ; (exp21,...,exp2a)) )`;
+    * `<exp3> = ( insert_holes(0 ; U1 ; (exp21,...,exp2a)) )`;
 
     where `insert_holes` extends the actual arguments list with placeholders `hole(i, o, U)` for missing implicit parameters:
 
     ```
     insert_holes(n ; <empty> ; <exps>) =
       <exps>
-    insert_holes(n ; (<id> : (implicit : U)) , Us) ; <exps>) =
-      hole(n, ?<id>, U), insert_holes(n + 1, Us, exps)
-    insert_holes(n ; (implicit : (<id> : U)), Us) ; <exps>) =
-      hole(n, null, U), insert_holes(n + 1, Us, exps)
-    insert_holes(n , (U, Us),  (<exp>, <exps>)) =
-      <exp>, insert_holes(n, Us, <exps>)
+    insert_holes(n ; ( (<id0> : (<implicit> : (<id> : U))), Us) ; <exps>) =
+      hole(n, null, U), insert_holes(n + 1 ; Us ; exps)
+    insert_holes(n ; ( (<id> : (<implicit> : U)), Us) ; <exps>) =
+      hole(n, ?<id>, U), insert_holes(n + 1 ; Us ; exps)
+    insert_holes(n ; (U, Us);  (<exp>, <exps>)) =
+      <exp>, insert_holes(n ; Us ; <exps>)
     ```
+
+    (These equations are applied in order; semicolon is just as argument separator.)
 
 -   If `<T0,…​,Tn>?` is absent but `n > 0` then there exists minimal `T0, …​, Tn` inferred by the compiler such that:
 
