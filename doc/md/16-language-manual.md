@@ -613,7 +613,7 @@ Type expressions are used to specify the types of arguments, constraints on type
 
 An absent `<sort>?` abbreviates `object`.
 
-Let <implicit> be the special identifier `implicit`.
+Let `<implicit>` be the distinguished identifier `implicit`.
 Type items of the form `<id> (<implicit> : <typ>)` and `<id0> : (<implicit> (<id> : <typ>))` are used to indicate implicit and re-named implicit parameters.  The second form is used to override the parameter named `<id0>` as implicit parameter named `<id>`.
 These special type items are only meaningful in parameter positions of function types and have no significance elsewhere.
 
@@ -2344,7 +2344,7 @@ the expanded function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <
     Here:
 
     * `hole(i, <idi>, Ui)` is the description of the `ith` hole, a placeholder for an expression `<idi>` or `<mid>.<idi>`.
-    *  `<id>` is the resolution of the hole from the local context, if any;
+    *  `<idi>` is the resolution of the hole from the local context, if any;
     *  Cs is the set of candidate module `<mid>` named `<mid>`, with type `V` whose field `<mid>.<idi>` matches hole type `Ui` (after type instantiation).
     *  Ds is the disambiguated set of candidates, filtered by generality.
     * `<mid>.<idi>` is the name of the unique disambiguation, if one exists (that is, when Ds is a singleton set).
