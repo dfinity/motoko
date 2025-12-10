@@ -45,7 +45,7 @@ Contextual dot notation works by allowing a module function to be called using d
 For a function to be usable with contextual dot notation, it must:
 
 1. be defined in a module (not a class method or object method),
-2. have at least one parameter with first parameter named `self` parameter, and
+2. have the first parameter named `self`
 3. be publicly exported from its module.
 
 The self parameter is indicated by its position as the first parameter and its type matching the value it's called on.
@@ -131,10 +131,10 @@ let uppercased = texts.map(func(t) { /* convert to uppercase */ });
 
 ## Compiler warnings and best practices
 
-The Motoko compiler can optionally warn you about opportunities to use contextual dot notation. You can enable this with the `-W 0236` flag:
+The Motoko compiler can optionally warn you about opportunities to use contextual dot notation. You can enable this with the `-W M0236` flag:
 
 ```bash
-moc -W 0236 myfile.mo
+moc -W M0236 myfile.mo
 ```
 
 This helps you maintain consistent coding style across your project.
@@ -152,30 +152,9 @@ Contextual dot notation has some intentional limitations:
 
 - It requires the receiving value to be the first parameter, named `self`.
 - Any function must be declared in a module that is imported or otherwise in scope: function in object, actors or nested modules are not considered.
-- It does not affect the representation of self values.
 - If there is more than one available module function, and none is more general than all the others, the call is considered ambigious and rejected at compile-time.
 - The feature is purely syntactic - there is no runtime overhead
 
-## Comparison with object-oriented styles
-
-Contextual dot notation provides a familiar syntax without the overhead or restrictions of true object-oriented programming. Here's how different styles compare:
-
-```motoko
-// Functional style (traditional)
-let result1 = Array.filter(numbers, func(n) { n > 5 });
-
-// Contextual dot notation (improved readability)
-let result2 = numbers.filter(func(n) { n > 5 });
-
-// Object-oriented style (using classes)
-class IntArray(arr : [Nat]) {
-  public func filter(predicate : Nat -> Bool) : [Nat] {
-    // Implementation
-  };
-};
-```
-
-Each style has its place. Contextual dot notation offers a good balance between the clarity of object-oriented syntax and the flexibility of functional programming.
 
 ## See also
 
