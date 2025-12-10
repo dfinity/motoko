@@ -83,26 +83,7 @@ let experimental_stable_memory = ref experimental_stable_memory_default
 let typechecker_combine_srcs = ref false (* useful for the language server *)
 let blob_import_placeholders = ref false (* when enabled, blob:file imports resolve as empty blobs *)
 
-let default_errors = [
-  (* Inconsistent types: Typing messages about Any/Non types *)
-  "M0061";
-  "M0062";
-  "M0074";
-  "M0081";
-  "M0101";
-  "M0166";
-  "M0167";
-  "M0190"
-]
-
-let default_warning_levels = M.empty
-  |> M.add_seq (Seq.map (fun c -> c, (Error : lint_level)) (List.to_seq default_errors))
-  |> M.add "M0223" Allow (* don't report redundant instantions *)
-  |> M.add "M0235" Allow (* don't deprecate for non-caffeine *)
-  |> M.add "M0236" Allow (* don't suggest contextual dot notation *)
-  |> M.add "M0237" Allow (* don't report redundant explicit arguments *)
-
-let warning_levels = ref default_warning_levels
+let warning_levels = ref (M.empty)
 
 let set_warning_level code level =
   warning_levels := M.add code level !warning_levels
