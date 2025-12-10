@@ -252,6 +252,7 @@ and exp' at note = function
   | S.AndE (e1, e2) -> (andE (exp e1) (exp e2)).it
   | S.OrE (e1, e2) -> (orE (exp e1) (exp e2)).it
   | S.NullCoalesceE (e1, e2) ->
+    (* TODO: just a draft, update once typing allows more, e.g. missing Null type case *)
     (* Desugar e1 ?? e2 to: switch e1 { case null { e2 }; case (?v) { v } } *)
     let t1 = e1.note.S.note_typ in
     let t_inner = match T.promote t1 with

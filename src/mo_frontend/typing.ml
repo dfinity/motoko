@@ -1994,6 +1994,8 @@ and infer_exp'' env exp : T.typ =
   | NullCoalesceE (e1, e2) ->
     let t1 = infer_exp env e1 in
     (match T.promote t1 with
+    (* TODO: Allow both (?T, ?T) -> ?T and (?T, T) -> T *)
+    (* TODO: T.Null case missing *)
     | T.Opt t_inner ->
       if not env.pre then
         check_exp_strong env t_inner e2;
