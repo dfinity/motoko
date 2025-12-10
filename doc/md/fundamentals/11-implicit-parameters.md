@@ -1,13 +1,13 @@
-# Implicit Parameters
+# Implicit parameters
 
 ## Overview
 
 Implicit parameters allow you to omit frequently-used function arguments at call sites when the compiler can infer them from context. This feature is particularly useful when working with ordered collections like `Map` and `Set` from the `core` library, which require comparison functions but where the comparison logic is usually obvious from the key type.
 Other exampes are `equal` and `toText` functions.
 
-## Basic Usage
+## Basic usage
 
-### Declaring Implicit Parameters
+### Declaring implicit parameters
 
 When declaring a function, any function parameter can be declared implicit using the `implicit` type constructor:
 
@@ -37,7 +37,7 @@ In these cases, you can add an inner name to indicate the external names of the 
 them from the names used with the function body, `toTextT` and `toTextU`: these need to be distinct so that the body can call them.
 The inner name (under `implicit`) overrides the local name of the parameter in the body.
 
-### Calling Functions with Implicit Arguments
+### Calling functions with implicit arguments
 
 When calling a function with implicit parameters, you can omit the implicit arguments if the compiler can infer them:
 
@@ -86,7 +86,7 @@ map.add(5, "five");
 ```
 
 
-## Working with Ordered Collections
+## Working with ordered collections
 
 The primary use case for implicit arguments is simplifying code that uses maps and sets from the `core` library.
 
@@ -114,7 +114,7 @@ let item2 = inventory.get(102);
 ```
 
 
-### Set Example
+### Set example
 
 The core `Set` type also takes advantage of implicit `compare` parameters.
 ```motoko
@@ -134,7 +134,7 @@ tags.add("reviewed");
 let hasTag2 = tags.contains("urgent");
 ```
 
-### Building Collections Incrementally
+### Building collections incrementally
 
 Implicit arguments make imperative collection operations much cleaner:
 
@@ -161,7 +161,7 @@ if (scores.containsKey("Alice")) {
 let playerCount = scores.size()
 ```
 
-## How Inference Works
+## How inference works
 
 The compiler infers an implicit argument by:
 
@@ -174,7 +174,7 @@ If there is no unique best candidate the compiler rejects the call as ambiguous.
 If a callee takes several implicits parameter, either all implicit arguments must be omitted, or all explicit and implicit arguments must be provided at the call site,
 in their declared order.
 
-### Supported Types
+### Supported types
 
 The core library provides comparison functions for common types:
 
@@ -188,7 +188,7 @@ The core library provides comparison functions for common types:
 
 Other implicit parameters declared by the core library are `equals : (implicit : (T, T) -> Bool)` and `toText: (implicit : T -> Text)`.
 
-## Explicitly Providing Implicit Arguments
+## Explicitly providing implicit arguments
 
 You can always provide implicit arguments explicitly when needed:
 
@@ -213,7 +213,7 @@ This is useful when:
 - Working with custom types that have multiple possible orderings
 - Improving code clarity in complex scenarios
 
-## Custom Types
+## Custom types
 
 To use implicit arguments with your own custom types, define a comparison function:
 
@@ -241,7 +241,7 @@ directory.add({ name = "Bob"; age = 25 }, "bob@example.com");
 let email = directory.get({ name = "Alice"; age = 30 });
 ```
 
-## Best Practices
+## Best practices
 
 1. **Use implicits for standard types**: When working with `Nat`, `Text`, `Int`, `Principal`, and other primitive types, let the compiler infer the comparison function.
 
@@ -255,7 +255,7 @@ let email = directory.get({ name = "Alice"; age = 30 });
 
 6. Don't go wild with implicit parameters. Use them sparingly.
 
-## Migration from Explicit Arguments
+## Migration from explicit arguments
 
 Existing code with explicit comparison functions will continue to work. You can adopt implicit arguments gradually:
 
@@ -273,6 +273,10 @@ Map.add(data, 3, "three");              // Implicit
 
 There is no need to update existing code unless you want to take advantage of the cleaner syntax.
 
-## Performance Considerations
+## Performance considerations
 
 Implicit arguments have no runtime overhead. The comparison function is resolved at compile time, so there is no performance difference between using implicit and explicit arguments. The resulting code is identical.
+
+## See also
+
+- [Language reference](../language-manual#function-calls)
