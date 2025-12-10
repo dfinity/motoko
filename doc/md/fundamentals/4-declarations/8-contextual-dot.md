@@ -11,7 +11,7 @@ In Motoko, there are two main approaches to organizing and calling related funct
 Consider a common operation on data structures. Without contextual dot notation, you would write:
 
 ```motoko
-import Array "mo:base/Array";
+import Array "mo:core/Array";
 
 let numbers = [1, 2, 3, 4, 5];
 let doubled = Array.map(numbers, func(n) { n * 2 });
@@ -28,7 +28,7 @@ This functional style, while powerful, has some drawbacks:
 With contextual dot notation, you can rewrite the same code as:
 
 ```motoko
-import Array "mo:base/Array";
+import Array "mo:core/Array";
 
 let numbers = [1, 2, 3, 4, 5];
 let doubled = numbers.map(func(n) { n * 2 });
@@ -44,10 +44,9 @@ Contextual dot notation works by allowing a module function to be called using d
 
 For a function to be usable with contextual dot notation, it must:
 
-1. Be defined in a module (not a class method or object method)
-2. Have at least one parameter
-3. The first parameter is designated as the "self" parameter
-4. Be publicly exported from its module
+1. be defined in a module (not a class method or object method),
+2. have at least one parameter with first parameter named `self` parameter, and
+3. be publicly exported from its module.
 
 The self parameter is indicated by its position as the first parameter and its type matching the value it's called on.
 
@@ -56,7 +55,8 @@ The self parameter is indicated by its position as the first parameter and its t
 Here's a more comprehensive example using the `Array` module:
 
 ```motoko
-import Array "mo:base/Array";
+import Array "mo:core/Array";
+import Nat "mo:core/Nat";
 
 let numbers = [1, 2, 3, 4];
 
@@ -78,18 +78,18 @@ When defining your own modules, you can make functions available through context
 
 Here's how to define a module that supports contextual dot notation:
 
-```motoko
-module Text {
+```motoko no-repl
+module TextExt {
   // This function can be called as "str.uppercase()" due to contextual dot notation
-  public func uppercase(text : Text) : Text {
+  public func uppercase(self : Text) : Text {
     // Implementation here
   };
 
-  public func lowercase(text : Text) : Text {
+  public func lowercase(self : Text) : Text {
     // Implementation here
   };
 
-  public func contains(text : Text, substring : Text) : Bool {
+  public func contains(self : Text, substring : Text) : Bool {
     // Implementation here
   };
 }
@@ -97,8 +97,8 @@ module Text {
 
 You would then use these functions as:
 
-```motoko
-import Text "mo:text-utils/Text";
+```motoko no-repl
+import TextExt "mo:text-utils/TextExt";
 
 let message = "Hello World";
 let upper = message.uppercase();
@@ -119,7 +119,7 @@ While any function can use contextual dot notation based on its first parameter 
 Contextual dot notation works seamlessly with generic types:
 
 ```motoko
-import Array "mo:base/Array";
+import Array "mo:core/Array";
 
 // These work with any type T
 let naturals : [Nat] = [1, 2, 3];
@@ -150,9 +150,10 @@ This helps you maintain consistent coding style across your project.
 
 Contextual dot notation has some intentional limitations:
 
-- It only applies to module functions, not to binary operations like `Nat.compare(a, b)`
-- It requires the receiving value to be the first parameter
-- It does not create true extension methods or modify the actual type of values
+- It requires the receiving value to be the first parameter, named `self`.
+- Any function must be declared in a module that is imported or otherwise in scope: function in object, actors or nested modules are not considered.
+- It does not affect the representation of self values.
+- If there is more than one available module function, and none is more general than all the others, the call is considered ambigious and rejected at compile-time.
 - The feature is purely syntactic - there is no runtime overhead
 
 ## Comparison with object-oriented styles
@@ -161,10 +162,10 @@ Contextual dot notation provides a familiar syntax without the overhead or restr
 
 ```motoko
 // Functional style (traditional)
-let result = Array.filter(numbers, func(n) { n > 5 });
+let result1 = Array.filter(numbers, func(n) { n > 5 });
 
 // Contextual dot notation (improved readability)
-let result = numbers.filter(func(n) { n > 5 });
+let result2 = numbers.filter(func(n) { n > 5 });
 
 // Object-oriented style (using classes)
 class IntArray(arr : [Nat]) {
@@ -178,6 +179,5 @@ Each style has its place. Contextual dot notation offers a good balance between 
 
 ## See also
 
-- [Modules and imports](modules-and-imports.html)
-- [Local objects and classes](local-objects-classes.html)
-- [Language reference](language-manual.html)
+- [Modules and imports](../../modules-imports)
+- [Language reference](../../language-manual)
