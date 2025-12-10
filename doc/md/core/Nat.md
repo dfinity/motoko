@@ -18,7 +18,7 @@ Infinite precision natural numbers.
 
 ## Function `toText`
 ``` motoko no-repl
-func toText(_ : Nat) : Text
+func toText(self : Nat) : Text
 ```
 
 Converts a natural number to its textual representation. Textual
@@ -44,6 +44,23 @@ Example:
 assert Nat.fromText("1234") == ?1234;
 ```
 
+## Function `toNat`
+``` motoko no-repl
+func toNat(self : Text) : ?Nat
+```
+
+Creates a natural number from its textual representation. Returns `null`
+if the input is not a valid natural number.
+
+The textual representation _must not_ contain underscores.
+
+This functions is meant to be used with contextual-dot notation.
+
+Example:
+```motoko include=import
+assert "1234".toNat() == ?1234;
+```
+
 ## Function `fromInt`
 ``` motoko no-repl
 func fromInt(int : Int) : Nat
@@ -55,10 +72,26 @@ Example:
 ```motoko include=import
 assert Nat.fromInt(1234) == (1234 : Nat);
 ```
+@deprecated M0235
+
+## Function `toFloat`
+``` motoko no-repl
+func toFloat(self : Nat) : Float
+```
+
+Conversion to Float. May result in `Inf`.
+
+Note: The floating point number may be imprecise for large Nat values.
+Returns `inf` if the integer is greater than the maximum floating point number.
+
+Example:
+```motoko include=import
+assert Nat.toFloat(123) == 123.0;
+```
 
 ## Function `toInt`
 ``` motoko no-repl
-func toInt(nat : Nat) : Int
+func toInt(self : Nat) : Int
 ```
 
 Converts a natural number to an integer.
@@ -66,6 +99,110 @@ Converts a natural number to an integer.
 Example:
 ```motoko include=import
 assert Nat.toInt(1234) == 1234;
+```
+
+## Function `toNat8`
+``` motoko no-repl
+func toNat8(self : Nat) : Nat8
+```
+
+Converts an unsigned integer with infinite precision to an 8-bit unsigned integer.
+
+Traps on overflow.
+
+Example:
+```motoko include=import
+assert Nat.toNat8(123) == (123 : Nat8);
+```
+
+## Function `toNat16`
+``` motoko no-repl
+func toNat16(self : Nat) : Nat16
+```
+
+Converts an unsigned integer with infinite precision to a 16-bit unsigned integer.
+
+Traps on overflow.
+
+Example:
+```motoko include=import
+assert Nat.toNat16(123) == (123 : Nat16);
+```
+
+## Function `toNat32`
+``` motoko no-repl
+func toNat32(self : Nat) : Nat32
+```
+
+Converts an unsigned integer with infinite precision to a 32-bit unsigned integer.
+
+Traps on overflow.
+
+Example:
+```motoko include=import
+assert Nat.toNat32(123) == (123 : Nat32);
+```
+
+## Function `toNat64`
+``` motoko no-repl
+func toNat64(self : Nat) : Nat64
+```
+
+Converts an unsigned integer with infinite precision to a 64-bit unsigned integer.
+
+Traps on overflow.
+
+Example:
+```motoko include=import
+assert Nat.toNat64(123) == (123 : Nat64);
+```
+
+## Function `fromNat8`
+``` motoko no-repl
+func fromNat8(_ : Nat8) : Nat
+```
+
+Converts an 8-bit unsigned integer to an unsigned integer with infinite precision.
+
+Example:
+```motoko include=import
+assert Nat.fromNat8(123) == (123 : Nat);
+```
+
+## Function `fromNat16`
+``` motoko no-repl
+func fromNat16(_ : Nat16) : Nat
+```
+
+Converts a 16-bit unsigned integer to an unsigned integer with infinite precision.
+
+Example:
+```motoko include=import
+assert Nat.fromNat16(123) == (123 : Nat);
+```
+
+## Function `fromNat32`
+``` motoko no-repl
+func fromNat32(_ : Nat32) : Nat
+```
+
+Converts a 32-bit unsigned integer to an unsigned integer with infinite precision.
+
+Example:
+```motoko include=import
+assert Nat.fromNat32(123) == (123 : Nat);
+```
+
+## Function `fromNat64`
+``` motoko no-repl
+func fromNat64(_ : Nat64) : Nat
+```
+
+Converts a 64-bit unsigned integer to an unsigned integer with infinite precision.
+
+Example:
+```motoko include=import
+assert Nat.fromNat64(123) == (123 : Nat);
 ```
 
 ## Function `min`
