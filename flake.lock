@@ -106,13 +106,13 @@
       "locked": {
         "lastModified": 1759588547,
         "narHash": "sha256-p7Z+cy9F0abuCWh4hvUpoOROhIPiYJfAO3f4hTXMKow=",
-        "owner": "dfinity",
+        "owner": "caffeinelabs",
         "repo": "motoko-base",
         "rev": "15f79638ab493b985f9a0c45d62460781a728d33",
         "type": "github"
       },
       "original": {
-        "owner": "dfinity",
+        "owner": "caffeinelabs",
         "ref": "next-moc",
         "repo": "motoko-base",
         "type": "github"
