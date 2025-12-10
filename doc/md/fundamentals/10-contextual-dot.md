@@ -45,7 +45,7 @@ Contextual dot notation works by allowing a module function to be called using d
 For a function to be usable with contextual dot notation, it must:
 
 1. be defined in a module (not a class method or object method),
-2. have at least one parameter with first parameter named `self` parameter, and
+2. have the first parameter named `self`
 3. be publicly exported from its module.
 
 The self parameter is indicated by its position as the first parameter and its type matching the value it's called on.
