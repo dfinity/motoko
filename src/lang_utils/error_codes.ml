@@ -258,7 +258,7 @@ let try_find_explanation code =
     |> Option.map (fun (c, e, _, _) -> (c, e))
   | o -> o
 
-let default_warning_levels =
+let default_warning_level_overrides =
   List.fold_left (fun acc (code, _, _, level) ->
-    M.add code level acc
+    if level = Warn then acc else M.add code level acc
   ) M.empty warning_codes

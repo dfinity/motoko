@@ -377,7 +377,7 @@ let () =
   (useful for debugging infinite loops)
   *)
   Internal_error.setup_handler ();
-  Flags.warning_levels := Error_codes.default_warning_levels;
+  Flags.warning_levels := Error_codes.default_warning_level_overrides;
   Arg.parse_expand argspec add_arg usage;
   if !mode = Default then mode := (if !args = [] then Interact else Compile);
   Flags.compiled := !mode = Compile;
