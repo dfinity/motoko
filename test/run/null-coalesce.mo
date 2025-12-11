@@ -28,3 +28,16 @@ assert (w4 == ?1);
 
 let q1 = nn0 ?? n2 ?? 42;
 assert (q1 == 42);
+
+module WithDo {
+  func f(n : Nat) : ?Int { ?(n + 1) };
+  public func app(m : Nat) : Int {
+    (do ? {
+      let y = f(m)!;
+      let z = f(m + 1)!;
+      y + z
+    }) ?? 0;
+  }
+};
+
+assert (WithDo.app(1) == 5);
