@@ -666,7 +666,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       match v1 with
       | V.Null -> interpret_exp env e2 k
       | V.Opt v -> k v
-      | _ -> k v1  (* Should not happen with proper type checking *)
+      | _ -> assert false
     )
   | ImpliesE (exp1, exp2) ->
     interpret_exp env exp1 (fun v1 ->
