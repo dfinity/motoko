@@ -40,6 +40,8 @@ pkgs: let
       
       # Make it executable
       chmod +x $out/bin/pocket-ic-server
+
+      exit 1;
     '';
   };
 
