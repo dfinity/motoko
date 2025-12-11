@@ -72,7 +72,7 @@ Note: Limited precision.
 
 ## Function `isNaN`
 ``` motoko no-repl
-func isNaN(number : Float) : Bool
+func isNaN(self : Float) : Bool
 ```
 
 Determines whether the `number` is a `NaN` ("not a number" in the floating point representation).
@@ -391,7 +391,7 @@ assert Float.equal(Float.arctan(1.0), Float.pi / 4, epsilon);
 
 ## Function `arctan2`
 ``` motoko no-repl
-func arctan2(y : Float, x : Float) : Float
+func arctan2(x : Float, y : Float) : Float
 ```
 
 Given `(y,x)`, returns the arc tangent in radians of `y/x` based on the signs of both values to determine the correct quadrant.
@@ -460,7 +460,7 @@ assert Float.equal(Float.log(Float.e), 1.0, epsilon);
 
 ## Function `format`
 ``` motoko no-repl
-func format(fmt : {#fix : Nat8; #exp : Nat8; #gen : Nat8; #exact}, x : Float) : Text
+func format(self : Float, fmt : {#fix : Nat8; #exp : Nat8; #gen : Nat8; #exact}) : Text
 ```
 
 Formatting. `format(fmt, x)` formats `x` to `Text` according to the
@@ -486,7 +486,7 @@ assert Float.format(#exp 3, 123.0) == "1.230e+02";
 
 ## Function `toText`
 ``` motoko no-repl
-func toText(_ : Float) : Text
+func toText(self : Float) : Text
 ```
 
 Conversion to Text. Use `format(fmt, x)` for more detailed control.
@@ -507,7 +507,7 @@ assert Float.toText(1.2) == "1.2";
 
 ## Function `toInt64`
 ``` motoko no-repl
-func toInt64(_ : Float) : Int64
+func toInt64(self : Float) : Int64
 ```
 
 Conversion to Int64 by truncating Float, equivalent to `toInt64(trunc(f))`
@@ -522,7 +522,7 @@ assert Float.toInt64(-12.3) == -12;
 
 ## Function `fromInt64`
 ``` motoko no-repl
-func fromInt64(_ : Int64) : Float
+func fromInt64(x : Int64) : Float
 ```
 
 Conversion from Int64.
@@ -536,7 +536,7 @@ assert Float.fromInt64(-42) == -42.0;
 
 ## Function `toInt`
 ``` motoko no-repl
-func toInt(_ : Float) : Int
+func toInt(self : Float) : Int
 ```
 
 Conversion to Int.
@@ -550,7 +550,7 @@ assert Float.toInt(1.2e6) == +1_200_000;
 
 ## Function `fromInt`
 ``` motoko no-repl
-func fromInt(_ : Int) : Float
+func fromInt(x : Int) : Float
 ```
 
 Conversion from Int. May result in `Inf`.
@@ -563,6 +563,7 @@ Example:
 ```motoko include=import
 assert Float.fromInt(-123) == -123.0;
 ```
+@deprecated M0235
 
 ## Function `equal`
 ``` motoko no-repl
