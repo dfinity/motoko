@@ -153,7 +153,7 @@
       # Define test-runner package.
       test-runner = pkgs.rustPlatform-stable.buildRustPackage {
         pname = "test-runner";
-        version = "0.1.0";
+        version = "0.1.1"; # Incremented to force rebuild
         src = ./test-runner;
         cargoLock = test-runner-cargo-lock;
         buildInputs = [
