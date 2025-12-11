@@ -26,9 +26,19 @@ pkgs: let
     };
     nativeBuildInputs = [ pkgs.gzip ];
   } ''
+    echo "=== Building pocket-ic-server binary ==="
+    echo "Source archive: $src"
+    echo "Platform: ${binaryName}"
+    echo "Release: ${releaseTag}"
+    echo "Extracting binary..."
     mkdir -p $out/bin
     gunzip -c $src > $out/bin/pocket-ic-server
     chmod +x $out/bin/pocket-ic-server
+    echo "Binary created successfully:"
+    ls -lh $out/bin/pocket-ic-server
+    echo "Output directory contents:"
+    ls -la $out/bin
+    echo "=== pocket-ic-server build complete ==="
   '';
 
 in {
