@@ -4,6 +4,11 @@ on:
     branches: [ master ]
   pull_request: {}
 
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
 jobs:
   common-tests:
     strategy:
