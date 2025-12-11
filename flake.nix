@@ -159,6 +159,10 @@
         buildInputs = [
           pkgs.pocket-ic.server
         ];
+        # Make pocket-ic available during tests.
+        checkInputs = [ pkgs.pocket-ic.server pkgs.cacert ];
+        nativeCheckInputs = [ pkgs.pocket-ic.server ];
+        
         POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
         SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
         

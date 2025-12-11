@@ -20,7 +20,7 @@ pkgs: let
 
   server = pkgs.stdenv.mkDerivation rec {
     pname = "pocket-ic-server";
-    version = "0.1.0"; # Use a proper version
+    version = "10.0.0"; # This is the pocket-ic production version.
     
     src = pkgs.fetchurl {
       url = "${baseUrl}/${binaryName}.gz";
@@ -30,7 +30,14 @@ pkgs: let
     
     dontUnpack = true; 
     
-    nativeBuildInputs = [ pkgs.gzip ];
+    nativeBuildInputs = [ pkgs.gzip ]
+      ++ pkgs.lib.optional pkgs.stdenv.isLinux pkgs.autoPatchelfHook;
+
+    buildInputs = pkgs.lib.optionals pkgs.stdenv.isLinux [
+      pkgs.stdenv.cc.cc.lib
+      pkgs.zlib
+      pkgs.openssl
+    ];
     
     installPhase = ''
       mkdir -p $out/bin
@@ -40,8 +47,6 @@ pkgs: let
       
       # Make it executable
       chmod +x $out/bin/pocket-ic-server
-
-      exit 1;
     '';
   };
 
