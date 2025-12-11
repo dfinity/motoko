@@ -84,6 +84,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_IGNORE -> IGNORE
       | T_IF -> IF
       | T_ID -> ID "<id>"
+      | T_IMPLICIT -> IMPLICIT
       | T_HASH -> HASH
       | T_GTOP -> GTOP
       | T_GT -> GT

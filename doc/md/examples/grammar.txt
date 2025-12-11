@@ -7,8 +7,8 @@
     X
     X SEP <list(X, SEP)>
 
-<id_wild> ::= 
-    '_'
+<implicit> ::= 
+    'implicit'
 
 <typ_obj_sort> ::= 
     'object'
@@ -70,8 +70,8 @@
     <typ> 'or' <typ>
 
 <typ_item> ::= 
+    <implicit> ':' <typ>
     <id> ':' <typ>
-    <id_wild> ':' <typ>
     <typ>
 
 <typ_args> ::= 

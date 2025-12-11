@@ -51,7 +51,7 @@
     (self: super: {
       # When you change the rust-nightly version,
       # make sure to change the rustStdDepsHash in ./rts.nix accordingly.
-      rust-nightly = self.rust-bin.nightly."2025-04-19".default.override {
+      rust-nightly = self.rust-bin.nightly."2025-05-19".default.override {
         extensions = [ "rust-src" ];
         targets = [ "wasm32-wasip1" ];
       };
