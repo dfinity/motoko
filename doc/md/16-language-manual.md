@@ -91,7 +91,7 @@ The following keywords are reserved and may not be used as identifiers:
 ``` bnf
 actor and assert async async* await await? await* break case
 catch class composite continue debug debug_show do else false flexible
-finally for from_candid func if ignore import in include label let
+finally for from_candid func if ignore import implicit in include label let
 loop mixin module not null object or persistent private public query
 return shared stable switch system throw to_candid true transient try
 type var weak while with
@@ -604,8 +604,9 @@ Type expressions are used to specify the types of arguments, constraints on type
   ( <typ> )                                     Parenthesized type
 
 <typ-item>                                    Type item
-  <id> : <typ>                                  Named type
-  <typ>                                         type
+  <typ>                                         Simple item
+  <id> : <typ>                                  Named item
+  implicit : <typ>                              Implicit argument
 
 <typ-sort> ::= (actor | module | object)
 
@@ -619,8 +620,8 @@ Type expressions are used to specify the types of arguments, constraints on type
 
 An absent `<sort>?` abbreviates `object`.
 
-Let `<implicit>` be the distinguished identifier `implicit`.
-Type items of the form `<id> (<implicit> : <typ>)` and `<id0> : (<implicit> (<id> : <typ>))` are used to indicate implicit and re-named implicit parameters.  The second form is used to override the parameter named `<id0>` as implicit parameter named `<id>`.
+
+Type items of the form `<id> (implicit : <typ>)` and `<id0> : (implicit : (<id> : <typ>))` are used to indicate implicit and re-named implicit parameters.  The second form is used to override the parameter named `<id0>` as implicit parameter named `<id>`.
 These special type items are only meaningful in parameter positions of function types and have no significance elsewhere.
 
 ### Primitive types
@@ -2334,9 +2335,9 @@ the expanded function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <
     ```
     insert_holes(n ; <empty> ; <exps>) =
       <exps>
-    insert_holes(n ; ( (<id0> : (<implicit> : (<id> : U))), Us) ; <exps>) =
+    insert_holes(n ; ( (<id0> : (implicit : (<id> : U))), Us) ; <exps>) =
       hole(n, <id>, U), insert_holes(n + 1 ; Us ; exps)
-    insert_holes(n ; ( (<id> : (<implicit> : U)), Us) ; <exps>) =
+    insert_holes(n ; ( (<id> : (implicit : U)), Us) ; <exps>) =
       hole(n, <id>, U), insert_holes(n + 1 ; Us ; exps)
     insert_holes(n ; (U, Us);  (<exp>, <exps>)) =
       <exp>, insert_holes(n ; Us ; <exps>)
