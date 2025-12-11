@@ -11,6 +11,9 @@ let r2 = { a = "def"; var x = 10 };
 ignore (r1 == r2);
 ignore ((r1 : { a : Text }) == r2); // explicit annotation to suppress the message
 
+let ar = [r1, r2]; // array with a common type
+ignore (ar[0] == ar[1]); // no message here
+
 assert(10 == "hi");
 
 func myEq<A>(x : A, y : A) : Bool = x == y;

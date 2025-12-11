@@ -1,6 +1,6 @@
-array.mo:109.27-109.64: type error [M0074], this array has type
+array.mo:110.27-110.64: warning [M0074], this array has type
   [Any]
 because elements have inconsistent types
-array.mo:2.5-2.7: warning [M0194], unused identifier aa (delete or rename to wildcard `_` or `_aa`)
-array.mo:15.5-15.7: warning [M0194], unused identifier bb (delete or rename to wildcard `_` or `_bb`)
-array.mo:109.5-109.18: warning [M0194], unused identifier heterogeneous (delete or rename to wildcard `_` or `_heterogeneous`)
+array.mo:3.5-3.7: warning [M0194], unused identifier aa (delete or rename to wildcard `_` or `_aa`)
+array.mo:16.5-16.7: warning [M0194], unused identifier bb (delete or rename to wildcard `_` or `_bb`)
+array.mo:110.5-110.18: warning [M0194], unused identifier heterogeneous (delete or rename to wildcard `_` or `_heterogeneous`)

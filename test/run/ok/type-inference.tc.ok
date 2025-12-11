@@ -1,87 +1,87 @@
-type-inference.mo:5.9-5.28: type error [M0081], this if has type
+type-inference.mo:7.9-7.28: warning [M0081], this if has type
   Any
 because branches have inconsistent types,
 true produces
   Bool
 false produces
   Nat
-type-inference.mo:6.9-6.34: type error [M0081], this if has type
+type-inference.mo:8.9-8.34: warning [M0081], this if has type
   Any
 because branches have inconsistent types,
 true produces
   Bool
 false produces
   [var Nat]
-type-inference.mo:7.9-7.27: type error [M0081], this if has type
+type-inference.mo:9.9-9.27: warning [M0081], this if has type
   Any
 because branches have inconsistent types,
 true produces
   Nat
 false produces
   Float
-type-inference.mo:8.9-8.29: type error [M0081], this if has type
+type-inference.mo:10.9-10.29: warning [M0081], this if has type
   Any
 because branches have inconsistent types,
 true produces
   ()
 false produces
   {}
-type-inference.mo:13.33-13.41: type error [M0101], the switch has type
+type-inference.mo:15.33-15.41: warning [M0101], the switch has type
   Any
 because branches have inconsistent types,
 this case produces type
   Bool
 the previous produce type
   Nat
-type-inference.mo:14.33-14.47: type error [M0101], the switch has type
+type-inference.mo:16.33-16.47: warning [M0101], the switch has type
   Any
 because branches have inconsistent types,
 this case produces type
   Bool
 the previous produce type
   [var Nat]
-type-inference.mo:15.43-15.56: type error [M0101], the switch has type
+type-inference.mo:17.43-17.56: warning [M0101], the switch has type
   Any
 because branches have inconsistent types,
 this case produces type
   Int
 the previous produce type
   Text
-type-inference.mo:21.9-21.18: type error [M0074], this array has type
+type-inference.mo:23.9-23.18: warning [M0074], this array has type
   [Any]
 because elements have inconsistent types
-type-inference.mo:22.9-22.24: type error [M0074], this array has type
+type-inference.mo:24.9-24.24: warning [M0074], this array has type
   [Any]
 because elements have inconsistent types
-type-inference.mo:155.16-155.21: warning [M0155], operator may trap for inferred type
-  Nat
-type-inference.mo:156.16-156.21: warning [M0155], operator may trap for inferred type
-  Nat
 type-inference.mo:157.16-157.21: warning [M0155], operator may trap for inferred type
   Nat
-type-inference.mo:158.19-158.24: warning [M0155], operator may trap for inferred type
+type-inference.mo:158.16-158.21: warning [M0155], operator may trap for inferred type
   Nat
-type-inference.mo:159.19-159.24: warning [M0155], operator may trap for inferred type
+type-inference.mo:159.16-159.21: warning [M0155], operator may trap for inferred type
   Nat
-type-inference.mo:171.16-171.21: warning [M0155], operator may trap for inferred type
+type-inference.mo:160.19-160.24: warning [M0155], operator may trap for inferred type
   Nat
-type-inference.mo:172.16-172.21: warning [M0155], operator may trap for inferred type
+type-inference.mo:161.19-161.24: warning [M0155], operator may trap for inferred type
   Nat
 type-inference.mo:173.16-173.21: warning [M0155], operator may trap for inferred type
   Nat
-type-inference.mo:174.19-174.24: warning [M0155], operator may trap for inferred type
+type-inference.mo:174.16-174.21: warning [M0155], operator may trap for inferred type
   Nat
-type-inference.mo:175.19-175.24: warning [M0155], operator may trap for inferred type
+type-inference.mo:175.16-175.21: warning [M0155], operator may trap for inferred type
   Nat
-type-inference.mo:186.5-186.10: warning [M0155], operator may trap for inferred type
+type-inference.mo:176.19-176.24: warning [M0155], operator may trap for inferred type
   Nat
-type-inference.mo:43.5-43.6: warning [M0194], unused identifier z (delete or rename to wildcard `_` or `_z`)
-type-inference.mo:51.5-51.6: warning [M0194], unused identifier a (delete or rename to wildcard `_` or `_a`)
-type-inference.mo:61.6-61.9: warning [M0194], unused identifier top (delete or rename to wildcard `_` or `_top`)
-type-inference.mo:74.6-74.9: warning [M0194], unused identifier bot (delete or rename to wildcard `_` or `_bot`)
-type-inference.mo:76.7-76.8: warning [M0194], unused identifier b (delete or rename to wildcard `_` or `_b`)
-type-inference.mo:77.7-77.8: warning [M0194], unused identifier c (delete or rename to wildcard `_` or `_c`)
-type-inference.mo:78.7-78.8: warning [M0194], unused identifier d (delete or rename to wildcard `_` or `_d`)
-type-inference.mo:79.7-79.8: warning [M0194], unused identifier e (delete or rename to wildcard `_` or `_e`)
-type-inference.mo:149.6-149.9: warning [M0194], unused identifier sub (delete or rename to wildcard `_` or `_sub`)
-type-inference.mo:188.8-188.9: warning [M0194], unused identifier h (delete or rename to wildcard `_` or `_h`)
+type-inference.mo:177.19-177.24: warning [M0155], operator may trap for inferred type
+  Nat
+type-inference.mo:188.5-188.10: warning [M0155], operator may trap for inferred type
+  Nat
+type-inference.mo:45.5-45.6: warning [M0194], unused identifier z (delete or rename to wildcard `_` or `_z`)
+type-inference.mo:53.5-53.6: warning [M0194], unused identifier a (delete or rename to wildcard `_` or `_a`)
+type-inference.mo:63.6-63.9: warning [M0194], unused identifier top (delete or rename to wildcard `_` or `_top`)
+type-inference.mo:76.6-76.9: warning [M0194], unused identifier bot (delete or rename to wildcard `_` or `_bot`)
+type-inference.mo:78.7-78.8: warning [M0194], unused identifier b (delete or rename to wildcard `_` or `_b`)
+type-inference.mo:79.7-79.8: warning [M0194], unused identifier c (delete or rename to wildcard `_` or `_c`)
+type-inference.mo:80.7-80.8: warning [M0194], unused identifier d (delete or rename to wildcard `_` or `_d`)
+type-inference.mo:81.7-81.8: warning [M0194], unused identifier e (delete or rename to wildcard `_` or `_e`)
+type-inference.mo:151.6-151.9: warning [M0194], unused identifier sub (delete or rename to wildcard `_` or `_sub`)
+type-inference.mo:190.8-190.9: warning [M0194], unused identifier h (delete or rename to wildcard `_` or `_h`)

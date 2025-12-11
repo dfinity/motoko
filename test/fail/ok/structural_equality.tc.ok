@@ -22,17 +22,17 @@ and
   {a : Text; var x : Nat}
 at common supertype
   {a : Text}
-structural_equality.mo:14.8-14.18: type error [M0062], comparing incompatible types
+structural_equality.mo:16.8-16.18: type error [M0062], comparing incompatible types
   Nat
 and
   Text
 at common supertype
   Any
-structural_equality.mo:16.37-16.43: type error [M0061], comparing abstract type
+structural_equality.mo:18.37-18.43: type error [M0061], comparing abstract type
   A
 to itself at supertype
   Any
-structural_equality.mo:17.41-17.47: type error [M0062], comparing incompatible types
+structural_equality.mo:19.41-19.47: type error [M0062], comparing incompatible types
   A
 and
   B
