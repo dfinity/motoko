@@ -23,14 +23,14 @@ type ErrorCode = {
   #system_fatal;
   // Transient error.
   #system_transient;
-  // Response unknown due to missed deadline.
-  #system_unknown;
   // Destination invalid.
   #destination_invalid;
+  // Canister error (e.g., trap, no response).
+  #canister_error;
   // Explicit reject by canister code.
   #canister_reject;
-  // Canister trapped.
-  #canister_error;
+  // Response unknown; system stopped waiting for it (e.g., timed out, or system under high load).
+  #system_unknown;
   // Future error code (with unrecognized numeric code).
   #future : Nat32;
   // Error issuing inter-canister call
@@ -55,7 +55,7 @@ Error.reject("Example error") // can be used as throw argument
 
 ## Function `code`
 ``` motoko no-repl
-func code(error : Error) : ErrorCode
+func code(self : Error) : ErrorCode
 ```
 
 Returns the code of an error.
@@ -70,7 +70,7 @@ Error.code(error) // #canister_reject
 
 ## Function `message`
 ``` motoko no-repl
-func message(error : Error) : Text
+func message(self : Error) : Text
 ```
 
 Returns the message of an error.
@@ -83,9 +83,17 @@ let error = Error.reject("Example error");
 Error.message(error) // "Example error"
 ```
 
+## Function `isCleanReject`
+``` motoko no-repl
+func isCleanReject(self : Error) : Bool
+```
+
+Checks if the error is a clean reject.
+A clean reject means that there must be no state changes on the callee side.
+
 ## Function `isRetryPossible`
 ``` motoko no-repl
-func isRetryPossible(error : Error) : Bool
+func isRetryPossible(self : Error) : Bool
 ```
 
 Returns whether retrying to send a message may result in success.

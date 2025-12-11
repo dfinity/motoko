@@ -78,7 +78,7 @@ assert sum == 3;
 
 ## Function `forEach`
 ``` motoko no-repl
-func forEach<T>(iter : Iter<T>, f : (T) -> ())
+func forEach<T>(self : Iter<T>, f : (T) -> ())
 ```
 
 Calls a function `f` on every value produced by an iterator and discards
@@ -94,7 +94,7 @@ assert sum == 6;
 
 ## Function `enumerate`
 ``` motoko no-repl
-func enumerate<T>(iter : Iter<T>) : Iter<(Nat, T)>
+func enumerate<T>(self : Iter<T>) : Iter<(Nat, T)>
 ```
 
 Takes an iterator and returns a new iterator that pairs each element with its index.
@@ -109,7 +109,7 @@ assert result == [(0, "A"), (1, "B"), (2, "C")];
 
 ## Function `step`
 ``` motoko no-repl
-func step<T>(iter : Iter<T>, n : Nat) : Iter<T>
+func step<T>(self : Iter<T>, n : Nat) : Iter<T>
 ```
 
 Creates a new iterator that yields every nth element from the original iterator.
@@ -127,7 +127,7 @@ assert null == steppedIter.next();
 
 ## Function `size`
 ``` motoko no-repl
-func size<T>(iter : Iter<T>) : Nat
+func size<T>(self : Iter<T>) : Nat
 ```
 
 Consumes an iterator and counts how many elements were produced (discarding them in the process).
@@ -138,7 +138,7 @@ assert 3 == Iter.size(iter);
 
 ## Function `map`
 ``` motoko no-repl
-func map<T, R>(iter : Iter<T>, f : T -> R) : Iter<R>
+func map<T, R>(self : Iter<T>, f : T -> R) : Iter<R>
 ```
 
 Takes a function and an iterator and returns a new iterator that lazily applies
@@ -152,7 +152,7 @@ assert result == [2, 4, 6];
 
 ## Function `filter`
 ``` motoko no-repl
-func filter<T>(iter : Iter<T>, f : T -> Bool) : Iter<T>
+func filter<T>(self : Iter<T>, f : T -> Bool) : Iter<T>
 ```
 
 Creates a new iterator that only includes elements from the original iterator
@@ -167,7 +167,7 @@ assert result == [2, 4];
 
 ## Function `filterMap`
 ``` motoko no-repl
-func filterMap<T, R>(iter : Iter<T>, f : T -> ?R) : Iter<R>
+func filterMap<T, R>(self : Iter<T>, f : T -> ?R) : Iter<R>
 ```
 
 Creates a new iterator by applying a transformation function to each element
@@ -183,7 +183,7 @@ assert result == [2];
 
 ## Function `flatten`
 ``` motoko no-repl
-func flatten<T>(iter : Iter<Iter<T>>) : Iter<T>
+func flatten<T>(self : Iter<Iter<T>>) : Iter<T>
 ```
 
 Flattens an iterator of iterators into a single iterator by concatenating the inner iterators.
@@ -197,7 +197,7 @@ assert result == [1, 2, 3, 4, 5, 6];
 
 ## Function `flatMap`
 ``` motoko no-repl
-func flatMap<T, R>(iter : Iter<T>, f : T -> Iter<R>) : Iter<R>
+func flatMap<T, R>(self : Iter<T>, f : T -> Iter<R>) : Iter<R>
 ```
 
 Transforms every element of an iterator into an iterator and concatenates the results.
@@ -209,7 +209,7 @@ assert result == [1, 2, 3, 4, 5, 6];
 
 ## Function `take`
 ``` motoko no-repl
-func take<T>(iter : Iter<T>, n : Nat) : Iter<T>
+func take<T>(self : Iter<T>, n : Nat) : Iter<T>
 ```
 
 Returns a new iterator that yields at most, first `n` elements from the original iterator.
@@ -232,7 +232,7 @@ assert result == [1, 2, 3]; // only 3 elements in the original iterator
 
 ## Function `takeWhile`
 ``` motoko no-repl
-func takeWhile<T>(iter : Iter<T>, f : T -> Bool) : Iter<T>
+func takeWhile<T>(self : Iter<T>, f : T -> Bool) : Iter<T>
 ```
 
 Returns a new iterator that yields elements from the original iterator until the predicate function returns false.
@@ -247,7 +247,7 @@ assert array == [1, 2, 3]; // note the difference between `takeWhile` and `filte
 
 ## Function `drop`
 ``` motoko no-repl
-func drop<T>(iter : Iter<T>, n : Nat) : Iter<T>
+func drop<T>(self : Iter<T>, n : Nat) : Iter<T>
 ```
 
 Returns a new iterator that skips the first `n` elements from the original iterator.
@@ -262,7 +262,7 @@ assert result == [4, 5];
 
 ## Function `dropWhile`
 ``` motoko no-repl
-func dropWhile<T>(iter : Iter<T>, f : T -> Bool) : Iter<T>
+func dropWhile<T>(self : Iter<T>, f : T -> Bool) : Iter<T>
 ```
 
 Returns a new iterator that skips elements from the original iterator until the predicate function returns false.
@@ -277,7 +277,7 @@ assert array == [4, 5, 4, 3, 2, 1]; // notice that `takeWhile` and `dropWhile` a
 
 ## Function `zip`
 ``` motoko no-repl
-func zip<A, B>(a : Iter<A>, b : Iter<B>) : Iter<(A, B)>
+func zip<A, B>(self : Iter<A>, other : Iter<B>) : Iter<(A, B)>
 ```
 
 Zips two iterators into a single iterator that produces pairs of elements.
@@ -293,7 +293,7 @@ assert result == [(1, "A"), (2, "B")]; // note that the third element from iter1
 
 ## Function `zip3`
 ``` motoko no-repl
-func zip3<A, B, C>(a : Iter<A>, b : Iter<B>, c : Iter<C>) : Iter<(A, B, C)>
+func zip3<A, B, C>(self : Iter<A>, other1 : Iter<B>, other2 : Iter<C>) : Iter<(A, B, C)>
 ```
 
 Zips three iterators into a single iterator that produces triples of elements.
@@ -310,7 +310,7 @@ assert result == [("A", "1", "x"), ("B", "2", "y")]; // note that the unmatched 
 
 ## Function `zipWith`
 ``` motoko no-repl
-func zipWith<A, B, R>(a : Iter<A>, b : Iter<B>, f : (A, B) -> R) : Iter<R>
+func zipWith<A, B, R>(self : Iter<A>, other : Iter<B>, f : (A, B) -> R) : Iter<R>
 ```
 
 Zips two iterators into a single iterator by applying a function to zipped pairs of elements.
@@ -326,7 +326,7 @@ assert result == ["A1", "B2"]; // note that the third element from iter2 is not 
 
 ## Function `zipWith3`
 ``` motoko no-repl
-func zipWith3<A, B, C, R>(a : Iter<A>, b : Iter<B>, c : Iter<C>, f : (A, B, C) -> R) : Iter<R>
+func zipWith3<A, B, C, R>(self : Iter<A>, other1 : Iter<B>, other2 : Iter<C>, f : (A, B, C) -> R) : Iter<R>
 ```
 
 Zips three iterators into a single iterator by applying a function to zipped triples of elements.
@@ -343,7 +343,7 @@ assert result == ["A1x", "B2y"]; // note that the unmatched elements from iter2 
 
 ## Function `all`
 ``` motoko no-repl
-func all<T>(iter : Iter<T>, f : T -> Bool) : Bool
+func all<T>(self : Iter<T>, f : T -> Bool) : Bool
 ```
 
 Checks if a predicate function is true for all elements produced by an iterator.
@@ -356,7 +356,7 @@ assert not Iter.all<Nat>([1, 2, 3].values(), func (x) = x < 3);
 
 ## Function `any`
 ``` motoko no-repl
-func any<T>(iter : Iter<T>, f : T -> Bool) : Bool
+func any<T>(self : Iter<T>, f : T -> Bool) : Bool
 ```
 
 Checks if a predicate function is true for any element produced by an iterator.
@@ -369,7 +369,7 @@ assert not Iter.any<Nat>([1, 2, 3].values(), func (x) = x == 4);
 
 ## Function `find`
 ``` motoko no-repl
-func find<T>(iter : Iter<T>, f : T -> Bool) : ?T
+func find<T>(self : Iter<T>, f : T -> Bool) : ?T
 ```
 
 Finds the first element produced by an iterator for which a predicate function returns true.
@@ -383,7 +383,7 @@ assert ?2 == Iter.find<Nat>(iter, func (x) = x % 2 == 0);
 
 ## Function `findIndex`
 ``` motoko no-repl
-func findIndex<T>(iter : Iter<T>, predicate : T -> Bool) : ?Nat
+func findIndex<T>(self : Iter<T>, predicate : T -> Bool) : ?Nat
 ```
 
 Returns the first index in `array` for which `predicate` returns true.
@@ -402,7 +402,7 @@ Space: O(1)
 
 ## Function `contains`
 ``` motoko no-repl
-func contains<T>(iter : Iter<T>, equal : (T, T) -> Bool, value : T) : Bool
+func contains<T>(self : Iter<T>, equal : (implicit : (T, T) -> Bool), value : T) : Bool
 ```
 
 Checks if an element is produced by an iterator.
@@ -417,7 +417,7 @@ assert Iter.contains<Nat>(iter, Nat.equal, 2);
 
 ## Function `foldLeft`
 ``` motoko no-repl
-func foldLeft<T, R>(iter : Iter<T>, initial : R, combine : (R, T) -> R) : R
+func foldLeft<T, R>(self : Iter<T>, initial : R, combine : (R, T) -> R) : R
 ```
 
 Reduces an iterator to a single value by applying a function to each element and an accumulator.
@@ -432,7 +432,7 @@ assert result == "(((SA)B)C)";
 
 ## Function `foldRight`
 ``` motoko no-repl
-func foldRight<T, R>(iter : Iter<T>, initial : R, combine : (T, R) -> R) : R
+func foldRight<T, R>(self : Iter<T>, initial : R, combine : (T, R) -> R) : R
 ```
 
 Reduces an iterator to a single value by applying a function to each element in reverse order and an accumulator.
@@ -451,7 +451,7 @@ assert result == "(A(B(CS)))";
 
 ## Function `reduce`
 ``` motoko no-repl
-func reduce<T>(iter : Iter<T>, combine : (T, T) -> T) : ?T
+func reduce<T>(self : Iter<T>, combine : (T, T) -> T) : ?T
 ```
 
 Reduces an iterator to a single value by applying a function to each element, starting with the first elements.
@@ -467,7 +467,7 @@ assert ?6 == Iter.reduce<Nat>(iter, Nat.add);
 
 ## Function `scanLeft`
 ``` motoko no-repl
-func scanLeft<T, R>(iter : Iter<T>, initial : R, combine : (R, T) -> R) : Iter<R>
+func scanLeft<T, R>(self : Iter<T>, initial : R, combine : (R, T) -> R) : Iter<R>
 ```
 
 Produces an iterator containing cumulative results of applying the `combine` operator going left to right, including the `initial` value.
@@ -483,7 +483,7 @@ assert result == [0, 1, 3, 6];
 
 ## Function `scanRight`
 ``` motoko no-repl
-func scanRight<T, R>(iter : Iter<T>, initial : R, combine : (T, R) -> R) : Iter<R>
+func scanRight<T, R>(self : Iter<T>, initial : R, combine : (T, R) -> R) : Iter<R>
 ```
 
 Produces an iterator containing cumulative results of applying the `combine` operator going right to left, including the `initial` value.
@@ -517,7 +517,7 @@ assert result == [1, 2, 3];
 
 ## Function `max`
 ``` motoko no-repl
-func max<T>(iter : Iter<T>, compare : (T, T) -> Order.Order) : ?T
+func max<T>(self : Iter<T>, compare : (implicit : (T, T) -> Order.Order)) : ?T
 ```
 
 Consumes an iterator and returns the first maximum element produced by the iterator.
@@ -532,7 +532,7 @@ assert ?3 == Iter.max<Nat>(iter, Nat.compare);
 
 ## Function `min`
 ``` motoko no-repl
-func min<T>(iter : Iter<T>, compare : (T, T) -> Order.Order) : ?T
+func min<T>(self : Iter<T>, compare : (implicit : (T, T) -> Order.Order)) : ?T
 ```
 
 Consumes an iterator and returns the first minimum element produced by the iterator.
@@ -561,7 +561,7 @@ assert ?10 == iter.next();
 
 ## Function `concat`
 ``` motoko no-repl
-func concat<T>(a : Iter<T>, b : Iter<T>) : Iter<T>
+func concat<T>(self : Iter<T>, other : Iter<T>) : Iter<T>
 ```
 
 Takes two iterators and returns a new iterator that produces
@@ -599,7 +599,7 @@ further modifications won't be reflected in the iterator.
 
 ## Function `toArray`
 ``` motoko no-repl
-func toArray<T>(iter : Iter<T>) : [T]
+func toArray<T>(self : Iter<T>) : [T]
 ```
 
 Consumes an iterator and collects its produced elements in an Array.
@@ -610,14 +610,14 @@ assert [1, 2, 3] == Iter.toArray(iter);
 
 ## Function `toVarArray`
 ``` motoko no-repl
-func toVarArray<T>(iter : Iter<T>) : [var T]
+func toVarArray<T>(self : Iter<T>) : [var T]
 ```
 
 Like `toArray` but for Arrays with mutable elements.
 
 ## Function `sort`
 ``` motoko no-repl
-func sort<T>(iter : Iter<T>, compare : (T, T) -> Order.Order) : Iter<T>
+func sort<T>(self : Iter<T>, compare : (implicit : (T, T) -> Order.Order)) : Iter<T>
 ```
 
 Sorted iterator.  Will iterate over *all* elements to sort them, necessarily.
@@ -641,7 +641,7 @@ Space: O(1)
 
 ## Function `reverse`
 ``` motoko no-repl
-func reverse<T>(iter : Iter<T>) : Iter<T>
+func reverse<T>(self : Iter<T>) : Iter<T>
 ```
 
 Creates a new iterator that produces elements from the original iterator in reverse order.
