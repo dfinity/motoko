@@ -165,8 +165,25 @@
         # Enable tests when building the package.
         doCheck = true;
         preCheck = ''
+          echo "=== Checking pocket-ic binary accessibility ==="
+          echo "Expected path: ${pkgs.pocket-ic.server}/bin/pocket-ic-server"
+          if [ -f "${pkgs.pocket-ic.server}/bin/pocket-ic-server" ]; then
+            echo "Binary file exists"
+            ls -lh "${pkgs.pocket-ic.server}/bin/pocket-ic-server"
+          else
+            echo "Binary file NOT found!"
+            echo "Contents of ${pkgs.pocket-ic.server}/bin:"
+            ls -la "${pkgs.pocket-ic.server}/bin" || echo "Directory not accessible"
+          fi
+          if [ -x "${pkgs.pocket-ic.server}/bin/pocket-ic-server" ]; then
+            echo "Binary is executable"
+          else
+            echo "Binary is NOT executable"
+          fi
           export POCKET_IC_BIN="${pkgs.pocket-ic.server}/bin/pocket-ic-server"
           export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+          echo "POCKET_IC_BIN=$POCKET_IC_BIN"
+          echo "=== End accessibility check ==="
         '';
       };
 
