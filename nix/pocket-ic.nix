@@ -18,28 +18,30 @@ pkgs: let
   releaseTag = "release-2025-10-02_03-13-base";
   baseUrl = "https://github.com/dfinity/ic/releases/download/${releaseTag}";
 
-  # Pocket-ic server package - downloads binary instead of building from source
-  server = pkgs.runCommand "pocket-ic-server" {
+  server = pkgs.stdenv.mkDerivation rec {
+    pname = "pocket-ic-server";
+    version = "0.1.0"; # Use a proper version
+    
     src = pkgs.fetchurl {
       url = "${baseUrl}/${binaryName}.gz";
       sha256 = sha256Map.${binaryName};
+      name = "pocket-ic-server.gz"; 
     };
+    
+    dontUnpack = true; 
+    
     nativeBuildInputs = [ pkgs.gzip ];
-  } ''
-    echo "=== Building pocket-ic-server binary ==="
-    echo "Source archive: $src"
-    echo "Platform: ${binaryName}"
-    echo "Release: ${releaseTag}"
-    echo "Extracting binary..."
-    mkdir -p $out/bin
-    gunzip -c $src > $out/bin/pocket-ic-server
-    chmod +x $out/bin/pocket-ic-server
-    echo "Binary created successfully:"
-    ls -lh $out/bin/pocket-ic-server
-    echo "Output directory contents:"
-    ls -la $out/bin
-    echo "=== pocket-ic-server build complete ==="
-  '';
+    
+    installPhase = ''
+      mkdir -p $out/bin
+      
+      # Decompress the file into the final binary path
+      gunzip -c $src > $out/bin/pocket-ic-server
+      
+      # Make it executable
+      chmod +x $out/bin/pocket-ic-server
+    '';
+  };
 
 in {
   inherit server;
