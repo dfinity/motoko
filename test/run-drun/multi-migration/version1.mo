@@ -1,3 +1,5 @@
+//MOC-FLAG --enhanced-orthogonal-persistence --default-persistent-actors
+
 import Prim "mo:prim";
 import Migration1 "Migration1";
 import Migration2 "Migration2";
@@ -16,19 +18,15 @@ import Migration6 "Migration4";
   )
 )
 actor {
+  var zero : Nat = 0;
 
-  Prim.debugPrint("Version 1");
+  var three : [var (Nat, Text)] = [var];
 
-  stable var zero : Nat = 0;
-  assert zero == 0;
+  var four : Text = "";
 
-  stable var three : [var (Nat, Text)] = [var];
+  var five : Text = "";
 
-  stable var four : Text = "";
-
-  stable var five : Text = "";
-
-  stable var six : Text = "";
+  var six : Text = "";
 
   public func check() : async () {
     Prim.debugPrint(debug_show { zero; three; four; five; six });

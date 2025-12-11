@@ -3718,49 +3718,23 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
     if s = T.Module then Static.dec_fields env.msgs dec_fields;
     check_system_fields env s scope tfs dec_fields;
     let stab_tfs = check_stab env obj_sort scope dec_fields in
-    (* Warn if multi_migration is used with non-trivial constructor *)
+    (* Disallow non-variable declarations when multi_migration is used *)
     (match exp_opt with
      | Some exp ->
        (match exp.it with
         | ObjE(_, flds) when List.exists (fun ({it = {id; _}; _} : exp_field) -> 
             id.it = T.multi_migration_lab) flds ->
-          (* Has multi_migration - check for constructor side-effects *)
-          (* Collect stable variable names *)
-          let stable_vars = List.filter_map (fun df ->
-            match df.it.dec.it, df.it.stab with
-            | VarD (id, _), Some {it = Stable; _} -> Some id.it
-            | _ -> None
-          ) dec_fields in
-          
-          (* Check if any constructor code modifies stable variables *)
-          let lexp_is_stable lexp = match lexp.it with
-            | VarE id when List.mem id.it stable_vars -> true
-            | DotE ({it = VarE id; _}, _, _) when List.mem id.it stable_vars -> true
-            | IdxE ({it = VarE id; _}, _) when List.mem id.it stable_vars -> true
-            | _ -> false
-          in
-          let rec exp_modifies_stable e = match e.it with
-            | AssignE (lexp, _) when lexp_is_stable lexp -> true
-            | BlockE ds -> List.exists dec_modifies_stable ds
-            | IfE (_, e1, e2) -> exp_modifies_stable e1 || exp_modifies_stable e2
-            | SwitchE (_, cases) -> List.exists (fun (c : case) -> exp_modifies_stable c.it.exp) cases
-            | _ -> false
-          and dec_modifies_stable d = match d.it with
-            | ExpD e -> exp_modifies_stable e
-            | LetD (_, e, _) -> exp_modifies_stable e
-            | _ -> false
-          in
-          
-          let modifies_stable = List.exists (fun df ->
+          (* Has multi_migration - only allow variable declarations, mixins, and class definitions *)
+          List.iter (fun df ->
             match df.it.dec.it with
-            | ExpD e -> exp_modifies_stable e
-            | LetD (_, e, _) -> exp_modifies_stable e
-            | _ -> false
-          ) dec_fields in
-          
-          if modifies_stable then
-            error env exp.at "M0244"
-              "actor uses `multi_migration` with constructor code that modifies stable variables.\nIf you fast-forward (using multi-migration) versions during upgrade, intermediate constructor modifications will not run, which may cause data inconsistencies.\nConsider moving all stable variable initialization into migration functions."
+            | VarD _ | LetD _ -> () (* Allow variable declarations *)
+            | MixinD _ | IncludeD _ -> () (* Allow mixins and includes *)
+            | ClassD _ -> () (* Allow class definitions *)
+            | ExpD e ->
+              error env e.at "M0244"
+                "actor uses `multi_migration` with constructor code that has side effects.\nExpression statements are not allowed when using `multi_migration`.\nIf you fast-forward (using multi-migration) versions during upgrade, intermediate constructor code will not run, which may cause data inconsistencies.\nConsider moving all initialization logic into migration functions."
+            | TypD _ -> () (* Allow type declarations *)
+          ) dec_fields
         | _ -> ())
      | None -> ());
     check_migration env stab_tfs exp_opt

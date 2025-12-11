@@ -17,6 +17,7 @@ module {
       var six = old.five # old.four;
     };
     Prim.debugPrint(debug_show { migration = { old; new } });
+    Prim.debugPrint(debug_show "Migration4");
     new;
   }
 

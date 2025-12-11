@@ -24,6 +24,7 @@ module {
       var three = zip(old.one, old.two);
     };
     Prim.debugPrint(debug_show { migration = { old; new } });
+    Prim.debugPrint(debug_show ("Migration1"));
     new;
   }
 

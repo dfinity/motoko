@@ -13,6 +13,7 @@ module {
       var four = "4";
     };
     Prim.debugPrint(debug_show { migration = { old; new } });
+    Prim.debugPrint(debug_show ("Migration2"));
     new;
   }
 
