@@ -36,7 +36,7 @@ type Map<K, V> = Types.Map<K, V>
 
 ## Function `toPure`
 ``` motoko no-repl
-func toPure<K, V>(map : Map<K, V>, compare : (K, K) -> Order.Order) : PureMap.Map<K, V>
+func toPure<K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Order.Order)) : PureMap.Map<K, V>
 ```
 
 Convert the mutable key-value map to an immutable key-value map.
@@ -62,10 +62,11 @@ where `n` denotes the number of key-value entries stored in the map and
 assuming that the `compare` function implements an `O(1)` comparison.
 
 Note: Creates `O(n * log(n))` temporary objects that will be collected as garbage.
+@deprecated M0235
 
 ## Function `fromPure`
 ``` motoko no-repl
-func fromPure<K, V>(map : PureMap.Map<K, V>, compare : (K, K) -> Order.Order) : Map<K, V>
+func fromPure<K, V>(map : PureMap.Map<K, V>, compare : (implicit : (K, K) -> Order.Order)) : Map<K, V>
 ```
 
 Convert an immutable key-value map to a mutable key-value map.
@@ -89,10 +90,11 @@ Runtime: `O(n * log(n))`.
 Space: `O(n)`.
 where `n` denotes the number of key-value entries stored in the map and
 assuming that the `compare` function implements an `O(1)` comparison.
+@deprecated M0235
 
 ## Function `clone`
 ``` motoko no-repl
-func clone<K, V>(map : Map<K, V>) : Map<K, V>
+func clone<K, V>(self : Map<K, V>) : Map<K, V>
 ```
 
 Create a copy of the mutable key-value map.
@@ -159,7 +161,7 @@ Space: `O(1)`.
 
 ## Function `clear`
 ``` motoko no-repl
-func clear<K, V>(map : Map<K, V>)
+func clear<K, V>(self : Map<K, V>)
 ```
 
 Delete all the entries in the key-value map.
@@ -186,7 +188,7 @@ Space: `O(1)`.
 
 ## Function `isEmpty`
 ``` motoko no-repl
-func isEmpty<K, V>(map : Map<K, V>) : Bool
+func isEmpty<K, V>(self : Map<K, V>) : Bool
 ```
 
 Determines whether a key-value map is empty.
@@ -212,7 +214,7 @@ Space: `O(1)`.
 
 ## Function `size`
 ``` motoko no-repl
-func size<K, V>(map : Map<K, V>) : Nat
+func size<K, V>(self : Map<K, V>) : Nat
 ```
 
 Return the number of entries in a key-value map.
@@ -238,7 +240,7 @@ Space: `O(1)`.
 
 ## Function `equal`
 ``` motoko no-repl
-func equal<K, V>(map1 : Map<K, V>, map2 : Map<K, V>, compareKey : (K, K) -> Types.Order, equalValue : (V, V) -> Bool) : Bool
+func equal<K, V>(self : Map<K, V>, other : Map<K, V>, compare : (implicit : (K, K) -> Types.Order), equal : (implicit : (V, V) -> Bool)) : Bool
 ```
 
 Test whether two imperative maps have equal entries.
@@ -267,7 +269,7 @@ Space: `O(1)`.
 
 ## Function `containsKey`
 ``` motoko no-repl
-func containsKey<K, V>(map : Map<K, V>, compare : (K, K) -> Order.Order, key : K) : Bool
+func containsKey<K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Order.Order), key : K) : Bool
 ```
 
 Tests whether the map contains the provided key.
@@ -294,7 +296,7 @@ assuming that the `compare` function implements an `O(1)` comparison.
 
 ## Function `get`
 ``` motoko no-repl
-func get<K, V>(map : Map<K, V>, compare : (K, K) -> Order.Order, key : K) : ?V
+func get<K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Order.Order), key : K) : ?V
 ```
 
 Get the value associated with key in the given map if present and `null` otherwise.
@@ -321,7 +323,7 @@ assuming that the `compare` function implements an `O(1)` comparison.
 
 ## Function `insert`
 ``` motoko no-repl
-func insert<K, V>(map : Map<K, V>, compare : (K, K) -> Order.Order, key : K, value : V) : Bool
+func insert<K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Order.Order), key : K, value : V) : Bool
 ```
 
 Given `map` ordered by `compare`, insert a new mapping from `key` to `value`.
@@ -348,10 +350,11 @@ Runtime: `O(log(n))`.
 Space: `O(log(n))`.
 where `n` denotes the number of key-value entries stored in the map and
 assuming that the `compare` function implements an `O(1)` comparison.
+@deprecated M0235
 
 ## Function `add`
 ``` motoko no-repl
-func add<K, V>(map : Map<K, V>, compare : (K, K) -> Order.Order, key : K, value : V)
+func add<K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Order.Order), key : K, value : V)
 ```
 
 Given `map` ordered by `compare`, add a mapping from `key` to `value` to `map`.
@@ -381,7 +384,7 @@ assuming that the `compare` function implements an `O(1)` comparison.
 
 ## Function `swap`
 ``` motoko no-repl
-func swap<K, V>(map : Map<K, V>, compare : (K, K) -> Order.Order, key : K, value : V) : ?V
+func swap<K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Order.Order), key : K, value : V) : ?V
 ```
 
 Associates the value with the key in the map.
@@ -409,10 +412,11 @@ Runtime: `O(log(n))`.
 Space: `O(log(n))`.
 where `n` denotes the number of key-value entries stored in the map and
 assuming that the `compare` function implements an `O(1)` comparison.
+@deprecated M0235
 
 ## Function `replace`
 ``` motoko no-repl
-func replace<K, V>(map : Map<K, V>, compare : (K, K) -> Order.Order, key : K, value : V) : ?V
+func replace<K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Order.Order), key : K, value : V) : ?V
 ```
 
 Overwrites the value of an existing key and returns the previous value.
@@ -440,10 +444,11 @@ Runtime: `O(log(n))`.
 Space: `O(log(n))`.
 where `n` denotes the number of key-value entries stored in the map and
 assuming that the `compare` function implements an `O(1)` comparison.
+@deprecated M0235
 
 ## Function `remove`
 ``` motoko no-repl
-func remove<K, V>(map : Map<K, V>, compare : (K, K) -> Order.Order, key : K)
+func remove<K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Order.Order), key : K)
 ```
 
 Delete an entry by its key in the map.
@@ -475,7 +480,7 @@ Note: Creates `O(log(n))` objects that will be collected as garbage.
 
 ## Function `delete`
 ``` motoko no-repl
-func delete<K, V>(map : Map<K, V>, compare : (K, K) -> Order.Order, key : K) : Bool
+func delete<K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Order.Order), key : K) : Bool
 ```
 
 Delete an existing entry by its key in the map.
@@ -505,10 +510,11 @@ where `n` denotes the number of key-value entries stored in the map and
 assuming that the `compare` function implements an `O(1)` comparison.
 
 Note: Creates `O(log(n))` objects that will be collected as garbage.
+@deprecated M0235
 
 ## Function `take`
 ``` motoko no-repl
-func take<K, V>(map : Map<K, V>, compare : (K, K) -> Order.Order, key : K) : ?V
+func take<K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Order.Order), key : K) : ?V
 ```
 
 Removes any existing entry by its key in the map.
@@ -538,10 +544,23 @@ where `n` denotes the number of key-value entries stored in the map and
 assuming that the `compare` function implements an `O(1)` comparison.
 
 Note: Creates `O(log(n))` objects that will be collected as garbage.
+@deprecated M0235
+
+## Function `toArray`
+``` motoko no-repl
+func toArray<K, V>(self : Map<K, V>) : [(K, V)]
+```
+
+
+## Function `toVarArray`
+``` motoko no-repl
+func toVarArray<K, V>(self : Map<K, V>) : [var (K, V)]
+```
+
 
 ## Function `maxEntry`
 ``` motoko no-repl
-func maxEntry<K, V>(map : Map<K, V>) : ?(K, V)
+func maxEntry<K, V>(self : Map<K, V>) : ?(K, V)
 ```
 
 Retrieves the key-value pair from the map with the maximum key.
@@ -571,7 +590,7 @@ where `n` denotes the number of key-value entries stored in the map.
 
 ## Function `minEntry`
 ``` motoko no-repl
-func minEntry<K, V>(map : Map<K, V>) : ?(K, V)
+func minEntry<K, V>(self : Map<K, V>) : ?(K, V)
 ```
 
 Retrieves the key-value pair from the map with the minimum key.
@@ -601,7 +620,7 @@ where `n` denotes the number of key-value entries stored in the map.
 
 ## Function `entries`
 ``` motoko no-repl
-func entries<K, V>(map : Map<K, V>) : Types.Iter<(K, V)>
+func entries<K, V>(self : Map<K, V>) : Types.Iter<(K, V)>
 ```
 
 Returns an iterator over the key-value pairs in the map,
@@ -633,7 +652,7 @@ Note: Creates `O(log(n))` temporary objects that will be collected as garbage.
 
 ## Function `entriesFrom`
 ``` motoko no-repl
-func entriesFrom<K, V>(map : Map<K, V>, compare : (K, K) -> Order.Order, key : K) : Types.Iter<(K, V)>
+func entriesFrom<K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Order.Order), key : K) : Types.Iter<(K, V)>
 ```
 
 Returns an iterator over the key-value pairs in the map,
@@ -660,7 +679,7 @@ Note: Creates `O(log(n))` temporary objects that will be collected as garbage.
 
 ## Function `reverseEntries`
 ``` motoko no-repl
-func reverseEntries<K, V>(map : Map<K, V>) : Types.Iter<(K, V)>
+func reverseEntries<K, V>(self : Map<K, V>) : Types.Iter<(K, V)>
 ```
 
 Returns an iterator over the key-value pairs in the map,
@@ -692,7 +711,7 @@ Note: Creates `O(log(n))` temporary objects that will be collected as garbage.
 
 ## Function `reverseEntriesFrom`
 ``` motoko no-repl
-func reverseEntriesFrom<K, V>(map : Map<K, V>, compare : (K, K) -> Order.Order, key : K) : Types.Iter<(K, V)>
+func reverseEntriesFrom<K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Order.Order), key : K) : Types.Iter<(K, V)>
 ```
 
 Returns an iterator over the key-value pairs in the map,
@@ -719,7 +738,7 @@ Note: Creates `O(log(n))` temporary objects that will be collected as garbage.
 
 ## Function `keys`
 ``` motoko no-repl
-func keys<K, V>(map : Map<K, V>) : Types.Iter<K>
+func keys<K, V>(self : Map<K, V>) : Types.Iter<K>
 ```
 
 Returns an iterator over the keys in the map,
@@ -743,7 +762,7 @@ Space: `O(1)`.
 
 ## Function `values`
 ``` motoko no-repl
-func values<K, V>(map : Map<K, V>) : Types.Iter<V>
+func values<K, V>(self : Map<K, V>) : Types.Iter<V>
 ```
 
 Returns an iterator over the values in the map,
@@ -767,7 +786,7 @@ Space: `O(1)`.
 
 ## Function `fromIter`
 ``` motoko no-repl
-func fromIter<K, V>(iter : Types.Iter<(K, V)>, compare : (K, K) -> Order.Order) : Map<K, V>
+func fromIter<K, V>(iter : Types.Iter<(K, V)>, compare : (implicit : (K, K) -> Order.Order)) : Map<K, V>
 ```
 
 Create a mutable key-value map with the entries obtained from an iterator.
@@ -784,7 +803,7 @@ persistent actor {
 
   let map = Map.fromIter<Nat, Text>(iter, Nat.compare);
 
-   assert Iter.toArray(Map.entries(map)) == [(0, "Zero"), (1, "One"), (2, "Two")];
+  assert Iter.toArray(Map.entries(map)) == [(0, "Zero"), (1, "One"), (2, "Two")];
 }
 ```
 
@@ -793,9 +812,49 @@ Space: `O(n)`.
 where `n` denotes the number of key-value entries returned by the iterator and
 assuming that the `compare` function implements an `O(1)` comparison.
 
+## Function `toMap`
+``` motoko no-repl
+func toMap<K, V>(self : Types.Iter<(K, V)>, compare : (implicit : (K, K) -> Order.Order)) : Map<K, V>
+```
+
+Converts an iterator of entries into a Map.
+
+Example:
+```motoko
+import Map "mo:core/Map";
+import Nat "mo:core/Nat";
+import Iter "mo:core/Iter";
+
+persistent actor {
+  transient let iter =
+    Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]);
+
+  let map = iter.toMap(Nat.compare);
+
+  assert Iter.toArray(Map.entries(map)) == [(0, "Zero"), (1, "One"), (2, "Two")];
+}
+```
+
+Runtime: `O(n * log(n))`.
+Space: `O(n)`.
+where `n` denotes the number of key-value entries returned by the iterator and
+assuming that the `compare` function implements an `O(1)` comparison.
+
+## Function `fromArray`
+``` motoko no-repl
+func fromArray<K, V>(array : [(K, V)], compare : (implicit : (K, K) -> Order.Order)) : Map<K, V>
+```
+
+
+## Function `fromVarArray`
+``` motoko no-repl
+func fromVarArray<K, V>(array : [var (K, V)], compare : (implicit : (K, K) -> Order.Order)) : Map<K, V>
+```
+
+
 ## Function `forEach`
 ``` motoko no-repl
-func forEach<K, V>(map : Map<K, V>, operation : (K, V) -> ())
+func forEach<K, V>(self : Map<K, V>, operation : (K, V) -> ())
 ```
 
 Apply an operation on each key-value pair contained in the map.
@@ -827,7 +886,7 @@ Note: Creates `O(log(n))` temporary objects that will be collected as garbage.
 
 ## Function `filter`
 ``` motoko no-repl
-func filter<K, V>(map : Map<K, V>, compare : (K, K) -> Order.Order, criterion : (K, V) -> Bool) : Map<K, V>
+func filter<K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Order.Order), criterion : (K, V) -> Bool) : Map<K, V>
 ```
 
 Filter entries in a new map.
@@ -858,7 +917,7 @@ assuming that the `compare` function implements an `O(1)` comparison.
 
 ## Function `map`
 ``` motoko no-repl
-func map<K, V1, V2>(map : Map<K, V1>, project : (K, V1) -> V2) : Map<K, V2>
+func map<K, V1, V2>(self : Map<K, V1>, project : (K, V1) -> V2) : Map<K, V2>
 ```
 
 Project all values of the map in a new map.
@@ -891,7 +950,7 @@ Note: Creates `O(log(n))` temporary objects that will be collected as garbage.
 
 ## Function `foldLeft`
 ``` motoko no-repl
-func foldLeft<K, V, A>(map : Map<K, V>, base : A, combine : (A, K, V) -> A) : A
+func foldLeft<K, V, A>(self : Map<K, V>, base : A, combine : (A, K, V) -> A) : A
 ```
 
 Iterate all entries in ascending order of the keys,
@@ -920,7 +979,7 @@ Note: Creates `O(log(n))` temporary objects that will be collected as garbage.
 
 ## Function `foldRight`
 ``` motoko no-repl
-func foldRight<K, V, A>(map : Map<K, V>, base : A, combine : (K, V, A) -> A) : A
+func foldRight<K, V, A>(self : Map<K, V>, base : A, combine : (K, V, A) -> A) : A
 ```
 
 Iterate all entries in descending order of the keys,
@@ -949,7 +1008,7 @@ Note: Creates `O(log(n))` temporary objects that will be collected as garbage.
 
 ## Function `all`
 ``` motoko no-repl
-func all<K, V>(map : Map<K, V>, predicate : (K, V) -> Bool) : Bool
+func all<K, V>(self : Map<K, V>, predicate : (K, V) -> Bool) : Bool
 ```
 
 Check whether all entries in the map fulfil a predicate function, i.e.
@@ -977,7 +1036,7 @@ Note: Creates `O(log(n))` temporary objects that will be collected as garbage.
 
 ## Function `any`
 ``` motoko no-repl
-func any<K, V>(map : Map<K, V>, predicate : (K, V) -> Bool) : Bool
+func any<K, V>(self : Map<K, V>, predicate : (K, V) -> Bool) : Bool
 ```
 
 Test if any key-value pair in `map` satisfies the given predicate `pred`.
@@ -1003,7 +1062,7 @@ Note: Creates `O(log(n))` temporary objects that will be collected as garbage.
 
 ## Function `filterMap`
 ``` motoko no-repl
-func filterMap<K, V1, V2>(map : Map<K, V1>, compare : (K, K) -> Order.Order, project : (K, V1) -> ?V2) : Map<K, V2>
+func filterMap<K, V1, V2>(self : Map<K, V1>, compare : (implicit : (K, K) -> Order.Order), project : (K, V1) -> ?V2) : Map<K, V2>
 ```
 
 Filter all entries in the map by also applying a projection to the value.
@@ -1039,16 +1098,17 @@ Note: Creates `O(log(n))` temporary objects that will be collected as garbage.
 
 ## Function `assertValid`
 ``` motoko no-repl
-func assertValid<K, V>(map : Map<K, V>, compare : (K, K) -> Order.Order)
+func assertValid<K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Order.Order))
 ```
 
 Internal sanity check function.
 Can be used to check that key/value pairs have been inserted with a consistent key comparison function.
 Traps if the internal map structure is invalid.
+@deprecated M0235
 
 ## Function `toText`
 ``` motoko no-repl
-func toText<K, V>(map : Map<K, V>, keyFormat : K -> Text, valueFormat : V -> Text) : Text
+func toText<K, V>(self : Map<K, V>, keyFormat : (implicit : (toText : K -> Text)), valueFormat : (implicit : (toText : V -> Text))) : Text
 ```
 
 Generate a textual representation of all the entries in the map.
@@ -1075,7 +1135,7 @@ Note: Creates `O(log(n))` temporary objects that will be collected as garbage.
 
 ## Function `compare`
 ``` motoko no-repl
-func compare<K, V>(map1 : Map<K, V>, map2 : Map<K, V>, compareKey : (K, K) -> Order.Order, compareValue : (V, V) -> Order.Order) : Order.Order
+func compare<K, V>(self : Map<K, V>, other : Map<K, V>, compareKey : (implicit : (compare : (K, K) -> Order.Order)), compareValue : (implicit : (compare : (V, V) -> Order.Order))) : Order.Order
 ```
 
 Compare two maps by primarily comparing keys and secondarily values.

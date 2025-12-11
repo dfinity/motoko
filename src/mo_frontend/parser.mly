@@ -226,7 +226,7 @@ and objblock eo s id ty dec_fields =
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token AWAIT AWAITSTAR AWAITQUEST ASYNC ASYNCSTAR BREAK CASE CATCH CONTINUE DO LABEL DEBUG
-%token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW FINALLY WITH
+%token IF IGNORE IN IMPLICIT ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW FINALLY WITH
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
@@ -372,9 +372,12 @@ seplist1(X, SEP) :
 
 %inline implicit :
   | IMPLICIT { "implicit" @@ at $sloc }
+<<<<<<< HEAD
 
 %inline id_wild :
   | UNDERSCORE { "_" @@ at $sloc }
+=======
+>>>>>>> 5198962a9ab70b4bbfc81dc9aa8a6761e22dc4d7
 
 %inline typ_id :
   | id=ID { id @= at $sloc }
@@ -462,7 +465,6 @@ typ_un :
   | WEAK t=typ_un
     { WeakT(t) @! at $sloc }
 
-
 typ_pre :
   | t=typ_un
     { t }
@@ -492,9 +494,13 @@ typ :
     { OrT(t1, t2) @! at $sloc }
 
 typ_item :
+  | i=implicit COLON t = typ { Some i, t }
   | i=id COLON t=typ { Some i, t }
+<<<<<<< HEAD
   | i=implicit COLON t=typ { Some i, t }
   | i=id_wild COLON t=typ { Some i, t }
+=======
+>>>>>>> 5198962a9ab70b4bbfc81dc9aa8a6761e22dc4d7
   | t=typ { None, t }
 
 typ_args :

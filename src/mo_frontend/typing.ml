@@ -1422,8 +1422,13 @@ type hole_error =
 let resolve_hole env at hole_sort typ =
   let is_matching_lab candidate =
     match hole_sort with
+<<<<<<< HEAD
     | Named lab1 -> String.equal lab1 (Option.value ~default:candidate.id candidate.implicit_id)
     | Anon _ -> true
+=======
+    | Named lab1 -> lab = lab1
+    | Anon _ -> not (Syntax.is_privileged lab) (* fix from 5659 *)
+>>>>>>> 5198962a9ab70b4bbfc81dc9aa8a6761e22dc4d7
   in
 
   let is_matching_typ typ1 = T.sub typ1 typ
@@ -2735,10 +2740,11 @@ and infer_callee env exp =
   | _ ->
      infer_exp_promote env exp, None
 and as_implicit = function
+(* disable wildcard patterns
   | T.Named ("implicit", T.Named (arg_name, t)) ->
     Some arg_name
   | T.Named ("implicit", t) ->
-    Some "_"
+    Some "_" *)
   | T.Named (_inf_arg_name, (T.Named ("implicit", T.Named (arg_name, t)))) ->
     (* override inferred arg_name *)
     Some arg_name

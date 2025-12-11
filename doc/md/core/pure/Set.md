@@ -43,10 +43,11 @@ Ordered collection of unique elements of the generic type `T`.
 If type `T` is stable then `Set<T>` is also stable.
 To ensure that property the `Set<T>` does not have any methods,
 instead they are gathered in the functor-like class `Operations` (see example there).
+@deprecated M0235
 
 ## Function `fromIter`
 ``` motoko no-repl
-func fromIter<T>(iter : Iter.Iter<T>, compare : (T, T) -> Order.Order) : Set<T>
+func fromIter<T>(iter : Iter.Iter<T>, compare : (implicit : (T, T) -> Order.Order)) : Set<T>
 ```
 
 Create a set with the elements obtained from an iterator.
@@ -72,9 +73,40 @@ assuming that the `compare` function implements an `O(1)` comparison.
 
 Note: Creates `O(n * log(n))` temporary objects that will be collected as garbage.
 
+## Function `toSet`
+``` motoko no-repl
+func toSet<T>(self : Iter.Iter<T>, compare : (implicit : (T, T) -> Order.Order)) : Set<T>
+```
+
+Convert an iterator into a set.
+Potential duplicate elements in the iterator are ignored, i.e.
+multiple occurrences of an equal element only occur once in the set.
+
+Example:
+```motoko
+import Set "mo:core/pure/Set";
+import Nat "mo:core/Nat";
+import Iter "mo:core/Iter";
+
+persistent actor {
+  transient let iter = [3, 1, 2, 1].values();
+
+  let set = iter.toSet(Nat.compare);
+
+  assert Iter.toArray(Set.values(set)) == [1, 2, 3];
+}
+```
+
+Runtime: `O(n * log(n))`.
+Space: `O(n)`.
+where `n` denotes the number of elements returned by the iterator and
+assuming that the `compare` function implements an `O(1)` comparison.
+
+Note: Creates `O(n * log(n))` temporary objects that will be collected as garbage.
+
 ## Function `add`
 ``` motoko no-repl
-func add<T>(set : Set<T>, compare : (T, T) -> Order.Order, elem : T) : Set<T>
+func add<T>(self : Set<T>, compare : (implicit : (T, T) -> Order.Order), elem : T) : Set<T>
 ```
 
 Given a `set` ordered by `compare`, insert the new `element`,
@@ -111,7 +143,7 @@ causes collecting `O(log(n))` nodes.
 
 ## Function `insert`
 ``` motoko no-repl
-func insert<T>(set : Set<T>, compare : (T, T) -> Order.Order, elem : T) : (Set<T>, Bool)
+func insert<T>(self : Set<T>, compare : (implicit : (T, T) -> Order.Order), elem : T) : (Set<T>, Bool)
 ```
 
 Given `set` ordered by `compare`, insert the new `element`,
@@ -149,7 +181,7 @@ causes collecting `O(log(n))` nodes.
 
 ## Function `remove`
 ``` motoko no-repl
-func remove<T>(set : Set<T>, compare : (T, T) -> Order.Order, element : T) : Set<T>
+func remove<T>(self : Set<T>, compare : (implicit : (T, T) -> Order.Order), element : T) : Set<T>
 ```
 
 Given `set` ordered by `compare` return the set with `element` removed.
@@ -181,7 +213,7 @@ causes collecting `O(log(n))` nodes.
 
 ## Function `delete`
 ``` motoko no-repl
-func delete<T>(set : Set<T>, compare : (T, T) -> Order.Order, element : T) : (Set<T>, Bool)
+func delete<T>(self : Set<T>, compare : (implicit : (T, T) -> Order.Order), element : T) : (Set<T>, Bool)
 ```
 
 Given `set` ordered by `compare`, delete `element` from the set, returning
@@ -218,7 +250,7 @@ causes collecting `O(log(n))` nodes.
 
 ## Function `contains`
 ``` motoko no-repl
-func contains<T>(set : Set<T>, compare : (T, T) -> Order.Order, element : T) : Bool
+func contains<T>(self : Set<T>, compare : (implicit : (T, T) -> Order.Order), element : T) : Bool
 ```
 
 Tests whether the set contains the provided element.
@@ -244,7 +276,7 @@ assuming that the `compare` function implements an `O(1)` comparison.
 
 ## Function `max`
 ``` motoko no-repl
-func max<T>(s : Set<T>) : ?T
+func max<T>(self : Set<T>) : ?T
 ```
 
 Get the maximal element of the set `set` if it is not empty, otherwise returns `null`
@@ -268,7 +300,7 @@ where `n` denotes the number of elements in the set
 
 ## Function `min`
 ``` motoko no-repl
-func min<T>(s : Set<T>) : ?T
+func min<T>(self : Set<T>) : ?T
 ```
 
 Retrieves the minimum element from the set.
@@ -293,7 +325,7 @@ where `n` denotes the number of elements stored in the set.
 
 ## Function `union`
 ``` motoko no-repl
-func union<T>(set1 : Set<T>, set2 : Set<T>, compare : (T, T) -> Order.Order) : Set<T>
+func union<T>(self : Set<T>, other : Set<T>, compare : (implicit : (T, T) -> Order.Order)) : Set<T>
 ```
 
 Returns a new set that is the union of `set1` and `set2`,
@@ -324,7 +356,7 @@ Note: Creates `O(m * log(n))` temporary objects that will be collected as garbag
 
 ## Function `intersection`
 ``` motoko no-repl
-func intersection<T>(set1 : Set<T>, set2 : Set<T>, compare : (T, T) -> Order.Order) : Set<T>
+func intersection<T>(self : Set<T>, other : Set<T>, compare : (implicit : (T, T) -> Order.Order)) : Set<T>
 ```
 
 Returns a new set that is the intersection of `set1` and `set2`,
@@ -353,10 +385,10 @@ Note: Creates `O(m)` temporary objects that will be collected as garbage.
 
 ## Function `difference`
 ``` motoko no-repl
-func difference<T>(set1 : Set<T>, set2 : Set<T>, compare : (T, T) -> Order.Order) : Set<T>
+func difference<T>(self : Set<T>, other : Set<T>, compare : (implicit : (T, T) -> Order.Order)) : Set<T>
 ```
 
-Returns a new set that is the difference between `set1` and `set2` (`set1` minus `set2`),
+Returns a new set that is the difference between `set1` and `other` (`set1` minus `set2`),
 i.e. a new set that contains all the elements of `set1` that do not exist in `set2`.
 
 Example:
@@ -382,7 +414,7 @@ Note: Creates `O(m * log(n))` temporary objects that will be collected as garbag
 
 ## Function `map`
 ``` motoko no-repl
-func map<T1, T2>(s : Set<T1>, compare : (T2, T2) -> Order.Order, project : T1 -> T2) : Set<T2>
+func map<T1, T2>(self : Set<T1>, compare : (implicit : (T2, T2) -> Order.Order), project : T1 -> T2) : Set<T2>
 ```
 
 Project all elements of the set in a new set.
@@ -414,7 +446,7 @@ Note: Creates `O(n * log(n))` temporary objects that will be collected as garbag
 
 ## Function `forEach`
 ``` motoko no-repl
-func forEach<T>(set : Set<T>, operation : T -> ())
+func forEach<T>(self : Set<T>, operation : T -> ())
 ```
 
 Apply an operation on each element contained in the set.
@@ -443,7 +475,7 @@ where `n` denotes the number of elements stored in the set.
 
 ## Function `filter`
 ``` motoko no-repl
-func filter<T>(set : Set<T>, compare : (T, T) -> Order.Order, criterion : T -> Bool) : Set<T>
+func filter<T>(self : Set<T>, compare : (implicit : (T, T) -> Order.Order), criterion : T -> Bool) : Set<T>
 ```
 
 Filter elements in a new set.
@@ -473,7 +505,7 @@ assuming that the `compare` function implements an `O(1)` comparison.
 
 ## Function `filterMap`
 ``` motoko no-repl
-func filterMap<T1, T2>(set : Set<T1>, compare : (T2, T2) -> Order.Order, project : T1 -> ?T2) : Set<T2>
+func filterMap<T1, T2>(self : Set<T1>, compare : (implicit : (T2, T2) -> Order.Order), project : T1 -> ?T2) : Set<T2>
 ```
 
 Filter all elements in the set by also applying a projection to the elements.
@@ -516,7 +548,7 @@ Note: Creates `O(n * log(n))` temporary objects that will be collected as garbag
 
 ## Function `isSubset`
 ``` motoko no-repl
-func isSubset<T>(s1 : Set<T>, s2 : Set<T>, compare : (T, T) -> Order.Order) : Bool
+func isSubset<T>(self : Set<T>, other : Set<T>, compare : (implicit : (T, T) -> Order.Order)) : Bool
 ```
 
 Test whether `set1` is a sub-set of `set2`, i.e. each element in `set1` is
@@ -543,7 +575,7 @@ and assuming that the `compare` function implements an `O(1)` comparison.
 
 ## Function `equal`
 ``` motoko no-repl
-func equal<T>(set1 : Set<T>, set2 : Set<T>, compare : (T, T) -> Order.Order) : Bool
+func equal<T>(self : Set<T>, other : Set<T>, compare : (implicit : (T, T) -> Order.Order)) : Bool
 ```
 
 Test whether two sets are equal.
@@ -570,7 +602,7 @@ and assuming that the `compare` function implements an `O(1)` comparison.
 
 ## Function `compare`
 ``` motoko no-repl
-func compare<T>(set1 : Set<T>, set2 : Set<T>, compare : (T, T) -> Order.Order) : Order.Order
+func compare<T>(self : Set<T>, other : Set<T>, compare : (implicit : (T, T) -> Order.Order)) : Order.Order
 ```
 
 Compare two sets by comparing the elements.
@@ -612,7 +644,7 @@ Note: Creates `O(log(n))` temporary objects that will be collected as garbage.
 
 ## Function `values`
 ``` motoko no-repl
-func values<T>(set : Set<T>) : Iter.Iter<T>
+func values<T>(self : Set<T>) : Iter.Iter<T>
 ```
 
 Returns an iterator over the elements in the set,
@@ -642,7 +674,7 @@ Note: Creates `O(log(n))` temporary objects that will be collected as garbage.
 
 ## Function `reverseValues`
 ``` motoko no-repl
-func reverseValues<T>(set : Set<T>) : Iter.Iter<T>
+func reverseValues<T>(self : Set<T>) : Iter.Iter<T>
 ```
 
 Returns an iterator over the elements in the set,
@@ -716,7 +748,7 @@ Space: `O(1)`.
 
 ## Function `size`
 ``` motoko no-repl
-func size<T>(set : Set<T>) : Nat
+func size<T>(self : Set<T>) : Nat
 ```
 
 Return the number of elements in a set.
@@ -738,7 +770,7 @@ Space: `O(1)`.
 
 ## Function `foldLeft`
 ``` motoko no-repl
-func foldLeft<T, A>(set : Set<T>, base : A, combine : (A, T) -> A) : A
+func foldLeft<T, A>(self : Set<T>, base : A, combine : (A, T) -> A) : A
 ```
 
 Iterate all elements in ascending order,
@@ -769,7 +801,7 @@ where `n` denotes the number of elements stored in the set.
 
 ## Function `foldRight`
 ``` motoko no-repl
-func foldRight<T, A>(set : Set<T>, base : A, combine : (T, A) -> A) : A
+func foldRight<T, A>(self : Set<T>, base : A, combine : (T, A) -> A) : A
 ```
 
 Iterate all elements in descending order,
@@ -800,7 +832,7 @@ where `n` denotes the number of elements stored in the set.
 
 ## Function `isEmpty`
 ``` motoko no-repl
-func isEmpty<T>(set : Set<T>) : Bool
+func isEmpty<T>(self : Set<T>) : Bool
 ```
 
 Determines whether a set is empty.
@@ -824,7 +856,7 @@ Space: `O(1)`.
 
 ## Function `all`
 ``` motoko no-repl
-func all<T>(set : Set<T>, predicate : T -> Bool) : Bool
+func all<T>(self : Set<T>, predicate : T -> Bool) : Bool
 ```
 
 Check whether all element in the set satisfy a predicate, i.e.
@@ -852,7 +884,7 @@ where `n` denotes the number of elements stored in the set.
 
 ## Function `any`
 ``` motoko no-repl
-func any<T>(s : Set<T>, pred : T -> Bool) : Bool
+func any<T>(self : Set<T>, pred : T -> Bool) : Bool
 ```
 
 Check whether at least one element in the set satisfies a predicate, i.e.
@@ -879,7 +911,7 @@ Space: `O(1)`.
 
 ## Function `assertValid`
 ``` motoko no-repl
-func assertValid<T>(set : Set<T>, compare : (T, T) -> Order.Order) : ()
+func assertValid<T>(self : Set<T>, compare : (implicit : (T, T) -> Order.Order)) : ()
 ```
 
 Test helper that check internal invariant for the given set `s`.
@@ -887,7 +919,7 @@ Raise an error (for a stack trace) if invariants are violated.
 
 ## Function `toText`
 ``` motoko no-repl
-func toText<T>(set : Set<T>, elementFormat : T -> Text) : Text
+func toText<T>(self : Set<T>, elementFormat : (implicit : (toText : T -> Text))) : Text
 ```
 
 Generate a textual representation of all the elements in the set.
@@ -916,7 +948,7 @@ Note: Creates `O(log(n))` temporary objects that will be collected as garbage.
 
 ## Function `flatten`
 ``` motoko no-repl
-func flatten<T>(setOfSets : Set<Set<T>>, compare : (T, T) -> Order.Order) : Set<T>
+func flatten<T>(self : Set<Set<T>>, compare : (implicit : (T, T) -> Order.Order)) : Set<T>
 ```
 
 Construct the union of a set of element sets, i.e. all elements of
@@ -954,7 +986,7 @@ and assuming that the `compare` function implements an `O(1)` comparison.
 
 ## Function `join`
 ``` motoko no-repl
-func join<T>(setIterator : Iter.Iter<Set<T>>, compare : (T, T) -> Order.Order) : Set<T>
+func join<T>(self : Iter.Iter<Set<T>>, compare : (implicit : (T, T) -> Order.Order)) : Set<T>
 ```
 
 Construct the union of a series of sets, i.e. all elements of

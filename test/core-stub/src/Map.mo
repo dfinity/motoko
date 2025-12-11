@@ -22,6 +22,7 @@ module {
     }
   };
 
+
   public func get<K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Types.Order), key : K) : ?V {
     switch (self.root) {
       case (#internal _) { null };
@@ -31,6 +32,7 @@ module {
        }
     }
   };
+
 
   public func add<K, V>(self : Map<K, V>, compare : (implicit : (K, K) -> Types.Order), key : K, value : V) {
     switch (self.root) {

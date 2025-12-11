@@ -41,7 +41,7 @@ assert Int64.maxValue == +9_223_372_036_854_775_807;
 
 ## Function `toInt`
 ``` motoko no-repl
-func toInt(_ : Int64) : Int
+func toInt(self : Int64) : Int
 ```
 
 Converts a 64-bit signed integer to a signed integer with infinite precision.
@@ -53,7 +53,7 @@ assert Int64.toInt(123_456) == (123_456 : Int);
 
 ## Function `fromInt`
 ``` motoko no-repl
-func fromInt(_ : Int) : Int64
+func fromInt(x : Int) : Int64
 ```
 
 Converts a signed integer with infinite precision to a 64-bit signed integer.
@@ -67,7 +67,7 @@ assert Int64.fromInt(123_456) == (+123_456 : Int64);
 
 ## Function `fromInt32`
 ``` motoko no-repl
-func fromInt32(_ : Int32) : Int64
+func fromInt32(x : Int32) : Int64
 ```
 
 Converts a 32-bit signed integer to a 64-bit signed integer.
@@ -79,9 +79,33 @@ Example:
 assert Int64.fromInt32(-123_456) == (-123_456 : Int64);
 ```
 
+## Function `fromInt16`
+``` motoko no-repl
+func fromInt16(x : Int16) : Int64
+```
+
+Converts a 16-bit signed integer to a 64-bit signed integer.
+
+Example:
+```motoko include=import
+assert Int64.fromInt16(-123) == (-123 : Int64);
+```
+
+## Function `fromInt8`
+``` motoko no-repl
+func fromInt8(x : Int8) : Int64
+```
+
+Converts an 8-bit signed integer to a 64-bit signed integer.
+
+Example:
+```motoko include=import
+assert Int64.fromInt8(-123) == (-123 : Int64);
+```
+
 ## Function `toInt32`
 ``` motoko no-repl
-func toInt32(_ : Int64) : Int32
+func toInt32(self : Int64) : Int32
 ```
 
 Converts a 64-bit signed integer to a 32-bit signed integer.
@@ -91,6 +115,34 @@ Wraps on overflow/underflow.
 Example:
 ```motoko include=import
 assert Int64.toInt32(-123_456) == (-123_456 : Int32);
+```
+
+## Function `toInt16`
+``` motoko no-repl
+func toInt16(self : Int64) : Int16
+```
+
+Converts a 64-bit signed integer to a 16-bit signed integer.
+
+Traps on overflow/underflow.
+
+Example:
+```motoko include=import
+assert Int64.toInt16(-123) == (-123 : Int16);
+```
+
+## Function `toInt8`
+``` motoko no-repl
+func toInt8(self : Int64) : Int8
+```
+
+Converts a 64-bit signed integer to an 8-bit signed integer.
+
+Traps on overflow/underflow.
+
+Example:
+```motoko include=import
+assert Int64.toInt8(-123) == (-123 : Int8);
 ```
 
 ## Function `fromIntWrap`
@@ -123,7 +175,7 @@ assert Int64.fromNat64(123_456) == (+123_456 : Int64);
 
 ## Function `toNat64`
 ``` motoko no-repl
-func toNat64(_ : Int64) : Nat64
+func toNat64(self : Int64) : Nat64
 ```
 
 Converts a signed 64-bit integer to an unsigned 64-bit integer.
@@ -137,7 +189,7 @@ assert Int64.toNat64(-1) == (18_446_744_073_709_551_615 : Nat64); // underflow
 
 ## Function `toText`
 ``` motoko no-repl
-func toText(x : Int64) : Text
+func toText(self : Int64) : Text
 ```
 
 Returns the Text representation of `x`. Textual representation _do not_
@@ -595,7 +647,7 @@ func bitrotLeft(x : Int64, y : Int64) : Int64
 
 Returns the bitwise left rotatation of `x` by `y`, `x <<> y`.
 Each left-overflowing bit is inserted again on the right side.
-The sign bit is rotated like other bits, i.e. the rotation interprets the number as unsigned.
+The sign bit is rotated like y bits, i.e. the rotation interprets the number as unsigned.
 
 Changes the direction of rotation for negative `y`.
 For `y >= 64`, the semantics is the same as for `bitrotLeft(x, y % 64)`.
@@ -618,7 +670,7 @@ func bitrotRight(x : Int64, y : Int64) : Int64
 
 Returns the bitwise right rotation of `x` by `y`, `x <>> y`.
 Each right-underflowing bit is inserted again on the right side.
-The sign bit is rotated like other bits, i.e. the rotation interprets the number as unsigned.
+The sign bit is rotated like y bits, i.e. the rotation interprets the number as unsigned.
 
 Changes the direction of rotation for negative `y`.
 For `y >= 64`, the semantics is the same as for `bitrotRight(x, y % 64)`.

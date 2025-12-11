@@ -35,7 +35,7 @@ type Stack<T> = Types.Stack<T>
 
 ## Function `toPure`
 ``` motoko no-repl
-func toPure<T>(stack : Stack<T>) : PureList.List<T>
+func toPure<T>(self : Stack<T>) : PureList.List<T>
 ```
 
 Convert a mutable stack to an immutable, purely functional list.
@@ -60,6 +60,19 @@ persistent actor {
 Runtime: `O(1)`.
 Space: `O(1)`.
 where `n` denotes the number of elements stored in the stack.
+@deprecated M0235
+
+## Function `toArray`
+``` motoko no-repl
+func toArray<T>(self : Stack<T>) : [T]
+```
+
+
+## Function `toVarArray`
+``` motoko no-repl
+func toVarArray<T>(self : Stack<T>) : [var T]
+```
+
 
 ## Function `fromPure`
 ``` motoko no-repl
@@ -85,6 +98,19 @@ persistent actor {
 Runtime: `O(n)`.
 Space: `O(n)`.
 where `n` denotes the number of elements stored in the queue.
+@deprecated M0235
+
+## Function `fromVarArray`
+``` motoko no-repl
+func fromVarArray<T>(array : [var T]) : Stack<T>
+```
+
+
+## Function `fromArray`
+``` motoko no-repl
+func fromArray<T>(array : [T]) : Stack<T>
+```
+
 
 ## Function `empty`
 ``` motoko no-repl
@@ -154,7 +180,7 @@ Space: O(1)
 
 ## Function `clear`
 ``` motoko no-repl
-func clear<T>(stack : Stack<T>)
+func clear<T>(self : Stack<T>)
 ```
 
 Removes all elements from the stack.
@@ -175,7 +201,7 @@ Space: O(1)
 
 ## Function `clone`
 ``` motoko no-repl
-func clone<T>(stack : Stack<T>) : Stack<T>
+func clone<T>(self : Stack<T>) : Stack<T>
 ```
 
 Creates a deep copy of the stack with the same elements in the same order.
@@ -198,7 +224,7 @@ where `n` denotes the number of elements stored on the stack.
 
 ## Function `isEmpty`
 ``` motoko no-repl
-func isEmpty<T>(stack : Stack<T>) : Bool
+func isEmpty<T>(self : Stack<T>) : Bool
 ```
 
 Returns true if the stack contains no elements.
@@ -218,7 +244,7 @@ Space: O(1)
 
 ## Function `size`
 ``` motoko no-repl
-func size<T>(stack : Stack<T>) : Nat
+func size<T>(self : Stack<T>) : Nat
 ```
 
 Returns the number of elements on the stack.
@@ -238,7 +264,7 @@ Space: O(1)
 
 ## Function `contains`
 ``` motoko no-repl
-func contains<T>(stack : Stack<T>, equal : (T, T) -> Bool, element : T) : Bool
+func contains<T>(self : Stack<T>, equal : (implicit : (T, T) -> Bool), element : T) : Bool
 ```
 
 Returns true if the stack contains the specified element.
@@ -260,9 +286,15 @@ Space: O(1)
 where `n` denotes the number of elements stored on the stack and assuming
 that `equal` has O(1) costs.
 
+## Function `reverseValues`
+``` motoko no-repl
+func reverseValues<T>(self : Stack<T>) : Iter.Iter<T>
+```
+
+
 ## Function `push`
 ``` motoko no-repl
-func push<T>(stack : Stack<T>, value : T)
+func push<T>(self : Stack<T>, value : T)
 ```
 
 Pushes a new element onto the top of the stack.
@@ -283,7 +315,7 @@ Space: O(1)
 
 ## Function `peek`
 ``` motoko no-repl
-func peek<T>(stack : Stack<T>) : ?T
+func peek<T>(self : Stack<T>) : ?T
 ```
 
 Returns the top element of the stack without removing it.
@@ -307,7 +339,7 @@ Space: O(1)
 
 ## Function `pop`
 ``` motoko no-repl
-func pop<T>(stack : Stack<T>) : ?T
+func pop<T>(self : Stack<T>) : ?T
 ```
 
 Removes and returns the top element of the stack.
@@ -334,7 +366,7 @@ Space: O(1)
 
 ## Function `get`
 ``` motoko no-repl
-func get<T>(stack : Stack<T>, position : Nat) : ?T
+func get<T>(self : Stack<T>, position : Nat) : ?T
 ```
 
 Returns the element at the specified position from the top of the stack.
@@ -363,7 +395,7 @@ where `n` denotes the number of elements stored on the stack.
 
 ## Function `reverse`
 ``` motoko no-repl
-func reverse<T>(stack : Stack<T>)
+func reverse<T>(self : Stack<T>)
 ```
 
 Reverses the order of elements in the stack.
@@ -391,7 +423,7 @@ where `n` denotes the number of elements stored on the stack.
 
 ## Function `values`
 ``` motoko no-repl
-func values<T>(stack : Stack<T>) : Types.Iter<T>
+func values<T>(self : Stack<T>) : Types.Iter<T>
 ```
 
 Returns an iterator over the elements in the stack, from top to bottom.
@@ -417,7 +449,7 @@ where `n` denotes the number of elements stored on the stack.
 
 ## Function `all`
 ``` motoko no-repl
-func all<T>(stack : Stack<T>, predicate : T -> Bool) : Bool
+func all<T>(self : Stack<T>, predicate : T -> Bool) : Bool
 ```
 
 Returns true if all elements in the stack satisfy the predicate.
@@ -439,7 +471,7 @@ assuming that `predicate` has O(1) costs.
 
 ## Function `any`
 ``` motoko no-repl
-func any<T>(stack : Stack<T>, predicate : T -> Bool) : Bool
+func any<T>(self : Stack<T>, predicate : T -> Bool) : Bool
 ```
 
 Returns true if any element in the stack satisfies the predicate.
@@ -461,7 +493,7 @@ assuming `predicate` has O(1) costs.
 
 ## Function `forEach`
 ``` motoko no-repl
-func forEach<T>(stack : Stack<T>, operation : T -> ())
+func forEach<T>(self : Stack<T>, operation : T -> ())
 ```
 
 Applies the operation to each element in the stack, from top to bottom.
@@ -490,7 +522,7 @@ assuming that `operation` has O(1) costs.
 
 ## Function `map`
 ``` motoko no-repl
-func map<T, U>(stack : Stack<T>, project : T -> U) : Stack<U>
+func map<T, U>(self : Stack<T>, project : T -> U) : Stack<U>
 ```
 
 Creates a new stack by applying the projection function to each element.
@@ -521,7 +553,7 @@ assuming that `project` has O(1) costs.
 
 ## Function `filter`
 ``` motoko no-repl
-func filter<T>(stack : Stack<T>, predicate : T -> Bool) : Stack<T>
+func filter<T>(self : Stack<T>, predicate : T -> Bool) : Stack<T>
 ```
 
 Creates a new stack containing only elements that satisfy the predicate.
@@ -551,7 +583,7 @@ assuming `predicate` has O(1) costs.
 
 ## Function `filterMap`
 ``` motoko no-repl
-func filterMap<T, U>(stack : Stack<T>, project : T -> ?U) : Stack<U>
+func filterMap<T, U>(self : Stack<T>, project : T -> ?U) : Stack<U>
 ```
 
 Creates a new stack by applying the projection function to each element
@@ -586,9 +618,58 @@ Space: O(n)
 where `n` denotes the number of elements stored on the stack and
 assuming that `project` has O(1) costs.
 
+## Function `find`
+``` motoko no-repl
+func find<T>(self : Stack<T>, predicate : T -> Bool) : ?T
+```
+
+Return the first element for which the given `predicate` is true,
+if such an element exists.
+
+Example:
+```motoko
+import Stack "mo:core/Stack";
+
+persistent actor {
+  let stack = Stack.fromPure<Nat>(?(1, ?(2, ?(3, null))));
+  assert Stack.find<Nat>(stack, func n = n > 1) == ?2;
+}
+```
+
+Runtime: O(size)
+
+Space: O(1)
+
+*Runtime and space assumes that `predicate` runs in O(1) time and space.
+
+## Function `findIndex`
+``` motoko no-repl
+func findIndex<T>(self : Stack<T>, predicate : T -> Bool) : ?Nat
+```
+
+Return the first index for which the given `predicate` is true.
+If no element satisfies the predicate, returns null.
+
+Example:
+```motoko
+import Stack "mo:core/Stack";
+
+persistent actor {
+  let stack = Stack.fromPure(?('A', ?('B', ?('C', ?('D', null)))));
+  let found = Stack.findIndex<Char>(stack, func x = x == 'C');
+  assert found == ?2;
+}
+```
+
+Runtime: O(size)
+
+Space: O(1)
+
+*Runtime and space assumes that `predicate` runs in O(1) time and space.
+
 ## Function `equal`
 ``` motoko no-repl
-func equal<T>(stack1 : Stack<T>, stack2 : Stack<T>, equal : (T, T) -> Bool) : Bool
+func equal<T>(self : Stack<T>, other : Stack<T>, equal : (implicit : (T, T) -> Bool)) : Bool
 ```
 
 Compares two stacks for equality using the provided equality function.
@@ -634,9 +715,36 @@ Runtime: O(n)
 Space: O(n)
 where `n` denotes the number of iterated elements.
 
+## Function `toStack`
+``` motoko no-repl
+func toStack<T>(self : Types.Iter<T>) : Stack<T>
+```
+
+Convert an iterator into a stack.
+Elements are pushed in iteration order. Which means that the last element
+of the iterator will be the first element on top of the stack.
+
+Example:
+```motoko
+import Stack "mo:core/Stack";
+import Iter "mo:core/Iter";
+
+persistent actor {
+  transient let iter = [3, 2, 1].values();
+
+  let stack = iter.toStack();
+
+  assert Iter.toArray(Stack.values(stack)) == [1, 2, 3];
+}
+```
+
+Runtime: O(n)
+Space: O(n)
+where `n` denotes the number of iterated elements.
+
 ## Function `toText`
 ``` motoko no-repl
-func toText<T>(stack : Stack<T>, format : T -> Text) : Text
+func toText<T>(self : Stack<T>, format : (implicit : (toText : T -> Text))) : Text
 ```
 
 Converts the stack to its string representation using the provided
@@ -660,7 +768,7 @@ assuming that `format` has O(1) costs.
 
 ## Function `compare`
 ``` motoko no-repl
-func compare<T>(stack1 : Stack<T>, stack2 : Stack<T>, compare : (T, T) -> Order.Order) : Order.Order
+func compare<T>(self : Stack<T>, other : Stack<T>, compare : (implicit : (T, T) -> Order.Order)) : Order.Order
 ```
 
 Compares two stacks lexicographically using the provided comparison function.

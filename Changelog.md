@@ -1,5 +1,7 @@
 # Motoko compiler changelog
 
+## 1.0.0 (2025-12-11)
+
 * motoko (`moc`)
 
   * Shorter, simpler error messages for generic functions (#5650).

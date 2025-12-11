@@ -28,6 +28,7 @@ type token =
   | IF
   | IGNORE
   | IN
+  | IMPLICIT
   | ELSE
   | SWITCH
   | LOOP
@@ -165,6 +166,7 @@ let to_parser_token :
   | IF -> Ok Parser.IF
   | IGNORE -> Ok Parser.IGNORE
   | IN -> Ok Parser.IN
+  | IMPLICIT -> Ok Parser.IMPLICIT
   | ELSE -> Ok Parser.ELSE
   | SWITCH -> Ok Parser.SWITCH
   | LOOP -> Ok Parser.LOOP
@@ -302,6 +304,7 @@ let string_of_parser_token = function
   | Parser.IF -> "IF"
   | Parser.IGNORE -> "IGNORE"
   | Parser.IN -> "IN"
+  | Parser.IMPLICIT -> "IMPLICIT"
   | Parser.ELSE -> "ELSE"
   | Parser.SWITCH -> "SWITCH"
   | Parser.LOOP -> "LOOP"

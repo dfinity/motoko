@@ -41,7 +41,7 @@ assert Int16.maxValue == (+32_767 : Int16);
 
 ## Function `toInt`
 ``` motoko no-repl
-func toInt(_ : Int16) : Int
+func toInt(self : Int16) : Int
 ```
 
 Converts a 16-bit signed integer to a signed integer with infinite precision.
@@ -93,7 +93,7 @@ assert Int16.fromInt8(-123) == (-123 : Int16);
 
 ## Function `toInt8`
 ``` motoko no-repl
-func toInt8(_ : Int16) : Int8
+func toInt8(self : Int16) : Int8
 ```
 
 Converts a 16-bit signed integer to a 8-bit signed integer.
@@ -121,7 +121,7 @@ assert Int16.fromInt32(-12_345) == (-12_345 : Int16);
 
 ## Function `toInt32`
 ``` motoko no-repl
-func toInt32(_ : Int16) : Int32
+func toInt32(self : Int16) : Int32
 ```
 
 Converts a 16-bit signed integer to a 32-bit signed integer.
@@ -129,6 +129,32 @@ Converts a 16-bit signed integer to a 32-bit signed integer.
 Example:
 ```motoko include=import
 assert Int16.toInt32(-12_345) == (-12_345 : Int32);
+```
+
+## Function `fromInt64`
+``` motoko no-repl
+func fromInt64(x : Int64) : Int16
+```
+
+Converts a 64-bit signed integer to a 16-bit signed integer.
+
+Traps on overflow/underflow.
+
+Example:
+```motoko include=import
+assert Int16.fromInt64(-12_345) == (-12_345 : Int16);
+```
+
+## Function `toInt64`
+``` motoko no-repl
+func toInt64(self : Int16) : Int64
+```
+
+Converts a 16-bit signed integer to a 64-bit signed integer.
+
+Example:
+```motoko include=import
+assert Int16.toInt64(-12_345) == (-12_345 : Int64);
 ```
 
 ## Function `fromNat16`
@@ -147,7 +173,7 @@ assert Int16.fromNat16(12_345) == (+12_345 : Int16);
 
 ## Function `toNat16`
 ``` motoko no-repl
-func toNat16(_ : Int16) : Nat16
+func toNat16(self : Int16) : Nat16
 ```
 
 Converts a signed 16-bit integer to an unsigned 16-bit integer.
@@ -161,7 +187,7 @@ assert Int16.toNat16(-1) == (65_535 : Nat16); // underflow
 
 ## Function `toText`
 ``` motoko no-repl
-func toText(x : Int16) : Text
+func toText(self : Int16) : Text
 ```
 
 Returns the Text representation of `x`. Textual representation _do not_
@@ -606,7 +632,7 @@ func bitrotLeft(x : Int16, y : Int16) : Int16
 
 Returns the bitwise left rotatation of `x` by `y`, `x <<> y`.
 Each left-overflowing bit is inserted again on the right side.
-The sign bit is rotated like other bits, i.e. the rotation interprets the number as unsigned.
+The sign bit is rotated like y bits, i.e. the rotation interprets the number as unsigned.
 
 Changes the direction of rotation for negative `y`.
 For `y >= 16`, the semantics is the same as for `bitrotLeft(x, y % 16)`.
@@ -628,7 +654,7 @@ func bitrotRight(x : Int16, y : Int16) : Int16
 
 Returns the bitwise right rotation of `x` by `y`, `x <>> y`.
 Each right-underflowing bit is inserted again on the right side.
-The sign bit is rotated like other bits, i.e. the rotation interprets the number as unsigned.
+The sign bit is rotated like y bits, i.e. the rotation interprets the number as unsigned.
 
 Changes the direction of rotation for negative `y`.
 For `y >= 16`, the semantics is the same as for `bitrotRight(x, y % 16)`.

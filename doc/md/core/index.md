@@ -27,6 +27,7 @@
 * [Option](Option.md) Typesafe nullable values.
 * [Order](Order.md) Utilities for `Order` (comparison between two values).
 * [Principal](Principal.md) Module for interacting with Principals (users and canisters).
+* [PriorityQueue](PriorityQueue.md) A mutable priority queue of elements.
 * [Queue](Queue.md) A mutable double-ended queue of elements.
 * [Random](Random.md) Random number generation.
 * [Region](Region.md) Byte-level access to isolated, virtual stable memory regions.
