@@ -38,7 +38,7 @@ type Queue<T> = Types.Queue.Queue<T>
 
 ## Function `toPure`
 ``` motoko no-repl
-func toPure<T>(queue : Queue<T>) : PureQueue.Queue<T>
+func toPure<T>(self : Queue<T>) : PureQueue.Queue<T>
 ```
 
 Converts a mutable queue to an immutable, purely functional queue.
@@ -56,6 +56,7 @@ persistent actor {
 Runtime: O(n)
 Space: O(n)
 `n` denotes the number of elements stored in the queue.
+@deprecated M0235
 
 ## Function `fromPure`
 ``` motoko no-repl
@@ -78,6 +79,7 @@ persistent actor {
 Runtime: O(n)
 Space: O(n)
 `n` denotes the number of elements stored in the queue.
+@deprecated M0235
 
 ## Function `empty`
 ``` motoko no-repl
@@ -121,7 +123,7 @@ Space: O(1)
 
 ## Function `clear`
 ``` motoko no-repl
-func clear<T>(queue : Queue<T>)
+func clear<T>(self : Queue<T>)
 ```
 
 Removes all elements from the queue.
@@ -142,7 +144,7 @@ Space: O(1)
 
 ## Function `clone`
 ``` motoko no-repl
-func clone<T>(queue : Queue<T>) : Queue<T>
+func clone<T>(self : Queue<T>) : Queue<T>
 ```
 
 Creates a deep copy of the queue.
@@ -166,7 +168,7 @@ Space: O(n)
 
 ## Function `size`
 ``` motoko no-repl
-func size<T>(queue : Queue<T>) : Nat
+func size<T>(self : Queue<T>) : Nat
 ```
 
 Returns the number of elements in the queue.
@@ -186,7 +188,7 @@ Space: O(1)
 
 ## Function `isEmpty`
 ``` motoko no-repl
-func isEmpty<T>(queue : Queue<T>) : Bool
+func isEmpty<T>(self : Queue<T>) : Bool
 ```
 
 Returns `true` if the queue contains no elements.
@@ -206,7 +208,7 @@ Space: O(1)
 
 ## Function `contains`
 ``` motoko no-repl
-func contains<T>(queue : Queue<T>, equal : (T, T) -> Bool, element : T) : Bool
+func contains<T>(self : Queue<T>, equal : (implicit : (T, T) -> Bool), element : T) : Bool
 ```
 
 Checks if an element exists in the queue using the provided equality function.
@@ -228,7 +230,7 @@ Space: O(1)
 
 ## Function `peekFront`
 ``` motoko no-repl
-func peekFront<T>(queue : Queue<T>) : ?T
+func peekFront<T>(self : Queue<T>) : ?T
 ```
 
 Returns the first element in the queue without removing it.
@@ -249,7 +251,7 @@ Space: O(1)
 
 ## Function `peekBack`
 ``` motoko no-repl
-func peekBack<T>(queue : Queue<T>) : ?T
+func peekBack<T>(self : Queue<T>) : ?T
 ```
 
 Returns the last element in the queue without removing it.
@@ -270,7 +272,7 @@ Space: O(1)
 
 ## Function `pushFront`
 ``` motoko no-repl
-func pushFront<T>(queue : Queue<T>, element : T)
+func pushFront<T>(self : Queue<T>, element : T)
 ```
 
 Adds an element to the front of the queue.
@@ -291,7 +293,7 @@ Space: O(1)
 
 ## Function `pushBack`
 ``` motoko no-repl
-func pushBack<T>(queue : Queue<T>, element : T)
+func pushBack<T>(self : Queue<T>, element : T)
 ```
 
 Adds an element to the back of the queue.
@@ -312,7 +314,7 @@ Space: O(1)
 
 ## Function `popFront`
 ``` motoko no-repl
-func popFront<T>(queue : Queue<T>) : ?T
+func popFront<T>(self : Queue<T>) : ?T
 ```
 
 Removes and returns the first element in the queue.
@@ -334,7 +336,7 @@ Space: O(1)
 
 ## Function `popBack`
 ``` motoko no-repl
-func popBack<T>(queue : Queue<T>) : ?T
+func popBack<T>(self : Queue<T>) : ?T
 ```
 
 Removes and returns the last element in the queue.
@@ -375,6 +377,30 @@ Runtime: O(n)
 Space: O(n)
 `n` denotes the number of elements stored in the queue.
 
+## Function `toQueue`
+``` motoko no-repl
+func toQueue<T>(self : Iter.Iter<T>) : Queue<T>
+```
+
+Converts an iterator to a queue.
+
+Example:
+```motoko
+import Queue "mo:core/Queue";
+
+persistent actor {
+  transient let iter = ["A", "B", "C"].values();
+
+  let queue = iter.toQueue<Text>();
+
+  assert Queue.size(queue) == 3;
+}
+```
+
+Runtime: O(n)
+Space: O(n)
+`n` denotes the number of elements stored in the queue.
+
 ## Function `fromArray`
 ``` motoko no-repl
 func fromArray<T>(array : [T]) : Queue<T>
@@ -398,9 +424,15 @@ Runtime: O(n)
 Space: O(n)
 `n` denotes the number of elements stored in the array.
 
+## Function `fromVarArray`
+``` motoko no-repl
+func fromVarArray<T>(array : [var T]) : Queue<T>
+```
+
+
 ## Function `toArray`
 ``` motoko no-repl
-func toArray<T>(queue : Queue<T>) : [T]
+func toArray<T>(self : Queue<T>) : [T]
 ```
 
 Creates a new immutable array containing all elements from the queue.
@@ -422,9 +454,15 @@ Runtime: O(n)
 Space: O(n)
 `n` denotes the number of elements stored in the queue.
 
+## Function `toVarArray`
+``` motoko no-repl
+func toVarArray<T>(self : Queue<T>) : [var T]
+```
+
+
 ## Function `values`
 ``` motoko no-repl
-func values<T>(queue : Queue<T>) : Iter.Iter<T>
+func values<T>(self : Queue<T>) : Iter.Iter<T>
 ```
 
 Returns an iterator over the elements in the queue.
@@ -446,9 +484,15 @@ persistent actor {
 Runtime: O(1) for iterator creation, O(n) for full iteration
 Space: O(1)
 
+## Function `reverseValues`
+``` motoko no-repl
+func reverseValues<T>(self : Queue<T>) : Iter.Iter<T>
+```
+
+
 ## Function `all`
 ``` motoko no-repl
-func all<T>(queue : Queue<T>, predicate : T -> Bool) : Bool
+func all<T>(self : Queue<T>, predicate : T -> Bool) : Bool
 ```
 
 Tests whether all elements in the queue satisfy the given predicate.
@@ -468,7 +512,7 @@ Space: O(1)
 
 ## Function `any`
 ``` motoko no-repl
-func any<T>(queue : Queue<T>, predicate : T -> Bool) : Bool
+func any<T>(self : Queue<T>, predicate : T -> Bool) : Bool
 ```
 
 Tests whether any element in the queue satisfies the given predicate.
@@ -489,7 +533,7 @@ Space: O(1)
 
 ## Function `forEach`
 ``` motoko no-repl
-func forEach<T>(queue : Queue<T>, operation : T -> ())
+func forEach<T>(self : Queue<T>, operation : T -> ())
 ```
 
 Applies the given operation to all elements in the queue.
@@ -512,7 +556,7 @@ Space: O(1)
 
 ## Function `map`
 ``` motoko no-repl
-func map<T, U>(queue : Queue<T>, project : T -> U) : Queue<U>
+func map<T, U>(self : Queue<T>, project : T -> U) : Queue<U>
 ```
 
 Creates a new queue by applying the given function to all elements.
@@ -534,7 +578,7 @@ Space: O(n)
 
 ## Function `filter`
 ``` motoko no-repl
-func filter<T>(queue : Queue<T>, criterion : T -> Bool) : Queue<T>
+func filter<T>(self : Queue<T>, criterion : T -> Bool) : Queue<T>
 ```
 
 Creates a new queue containing only elements that satisfy the given predicate.
@@ -556,7 +600,7 @@ Space: O(n)
 
 ## Function `filterMap`
 ``` motoko no-repl
-func filterMap<T, U>(queue : Queue<T>, project : T -> ?U) : Queue<U>
+func filterMap<T, U>(self : Queue<T>, project : T -> ?U) : Queue<U>
 ```
 
 Creates a new queue by applying the given function to all elements
@@ -584,7 +628,7 @@ Space: O(n)
 
 ## Function `equal`
 ``` motoko no-repl
-func equal<T>(queue1 : Queue<T>, queue2 : Queue<T>, equal : (T, T) -> Bool) : Bool
+func equal<T>(self : Queue<T>, other : Queue<T>, equal : (implicit : (T, T) -> Bool)) : Bool
 ```
 
 Compares two queues for equality using the provided equality function.
@@ -607,7 +651,7 @@ Space: O(1)
 
 ## Function `toText`
 ``` motoko no-repl
-func toText<T>(queue : Queue<T>, format : T -> Text) : Text
+func toText<T>(self : Queue<T>, format : (implicit : (toText : T -> Text))) : Text
 ```
 
 Converts a queue to its string representation using the provided element formatter.
@@ -629,7 +673,7 @@ Space: O(n)
 
 ## Function `compare`
 ``` motoko no-repl
-func compare<T>(queue1 : Queue<T>, queue2 : Queue<T>, compare : (T, T) -> Order.Order) : Order.Order
+func compare<T>(self : Queue<T>, other : Queue<T>, compare : (implicit : (T, T) -> Order.Order)) : Order.Order
 ```
 
 Compares two queues using the provided comparison function.
