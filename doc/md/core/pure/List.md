@@ -15,6 +15,7 @@ import List "mo:core/pure/List";
 type List<T> = Types.Pure.List<T>
 ```
 
+@deprecated M0235
 
 ## Function `empty`
 ``` motoko no-repl
@@ -38,7 +39,7 @@ Space: O(1)
 
 ## Function `isEmpty`
 ``` motoko no-repl
-func isEmpty<T>(list : List<T>) : Bool
+func isEmpty<T>(self : List<T>) : Bool
 ```
 
 Check whether a list is empty and return true if the list is empty.
@@ -59,7 +60,7 @@ Space: O(1)
 
 ## Function `size`
 ``` motoko no-repl
-func size<T>(list : List<T>) : Nat
+func size<T>(self : List<T>) : Nat
 ```
 
 Return the length of the list.
@@ -80,7 +81,7 @@ Space: O(1)
 
 ## Function `contains`
 ``` motoko no-repl
-func contains<T>(list : List<T>, equal : (T, T) -> Bool, item : T) : Bool
+func contains<T>(self : List<T>, equal : (implicit : (T, T) -> Bool), item : T) : Bool
 ```
 
 Check whether the list contains a given value. Uses the provided equality function to compare values.
@@ -104,7 +105,7 @@ Space: O(1)
 
 ## Function `get`
 ``` motoko no-repl
-func get<T>(list : List<T>, n : Nat) : ?T
+func get<T>(self : List<T>, n : Nat) : ?T
 ```
 
 Access any item in a list, zero-based.
@@ -129,7 +130,7 @@ Space: O(1)
 
 ## Function `pushFront`
 ``` motoko no-repl
-func pushFront<T>(list : List<T>, item : T) : List<T>
+func pushFront<T>(self : List<T>, item : T) : List<T>
 ```
 
 Add `item` to the head of `list`, and return the new list.
@@ -149,7 +150,7 @@ Space: O(1)
 
 ## Function `last`
 ``` motoko no-repl
-func last<T>(list : List<T>) : ?T
+func last<T>(self : List<T>) : ?T
 ```
 
 Return the last element of the list, if present.
@@ -169,7 +170,7 @@ Space: O(1)
 
 ## Function `popFront`
 ``` motoko no-repl
-func popFront<T>(list : List<T>) : (?T, List<T>)
+func popFront<T>(self : List<T>) : (?T, List<T>)
 ```
 
 Remove the head of the list, returning the optioned head and the tail of the list in a pair.
@@ -191,7 +192,7 @@ Space: O(1)
 
 ## Function `reverse`
 ``` motoko no-repl
-func reverse<T>(list : List<T>) : List<T>
+func reverse<T>(self : List<T>) : List<T>
 ```
 
 Reverses the list.
@@ -212,7 +213,7 @@ Space: O(size)
 
 ## Function `forEach`
 ``` motoko no-repl
-func forEach<T>(list : List<T>, f : T -> ())
+func forEach<T>(self : List<T>, f : T -> ())
 ```
 
 Call the given function for its side effect, with each list element in turn.
@@ -237,7 +238,7 @@ Space: O(size)
 
 ## Function `map`
 ``` motoko no-repl
-func map<T1, T2>(list : List<T1>, f : T1 -> T2) : List<T2>
+func map<T1, T2>(self : List<T1>, f : T1 -> T2) : List<T2>
 ```
 
 Call the given function `f` on each list element and collect the results
@@ -261,7 +262,7 @@ Space: O(size)
 
 ## Function `filter`
 ``` motoko no-repl
-func filter<T>(list : List<T>, f : T -> Bool) : List<T>
+func filter<T>(self : List<T>, f : T -> Bool) : List<T>
 ```
 
 Create a new list with only those elements of the original list for which
@@ -283,7 +284,7 @@ Space: O(size)
 
 ## Function `filterMap`
 ``` motoko no-repl
-func filterMap<T, R>(list : List<T>, f : T -> ?R) : List<R>
+func filterMap<T, R>(self : List<T>, f : T -> ?R) : List<R>
 ```
 
 Call the given function on each list element, and collect the non-null results
@@ -310,7 +311,7 @@ Space: O(size)
 
 ## Function `mapResult`
 ``` motoko no-repl
-func mapResult<T, R, E>(list : List<T>, f : T -> Result.Result<R, E>) : Result.Result<List<R>, E>
+func mapResult<T, R, E>(self : List<T>, f : T -> Result.Result<R, E>) : Result.Result<List<R>, E>
 ```
 
 Maps a `Result`-returning function `f` over a `List` and returns either
@@ -337,7 +338,7 @@ Space: O(size)
 
 ## Function `partition`
 ``` motoko no-repl
-func partition<T>(list : List<T>, f : T -> Bool) : (List<T>, List<T>)
+func partition<T>(self : List<T>, f : T -> Bool) : (List<T>, List<T>)
 ```
 
 Create two new lists from the results of a given function (`f`).
@@ -363,7 +364,7 @@ Space: O(size)
 
 ## Function `concat`
 ``` motoko no-repl
-func concat<T>(list1 : List<T>, list2 : List<T>) : List<T>
+func concat<T>(self : List<T>, other : List<T>) : List<T>
 ```
 
 Append the elements from one list to another list.
@@ -408,7 +409,7 @@ Space: O(size*size)
 
 ## Function `flatten`
 ``` motoko no-repl
-func flatten<T>(list : List<List<T>>) : List<T>
+func flatten<T>(self : List<List<T>>) : List<T>
 ```
 
 Flatten, or repatedly concatenate, a list of lists as a list.
@@ -431,7 +432,7 @@ Space: O(size*size)
 
 ## Function `take`
 ``` motoko no-repl
-func take<T>(list : List<T>, n : Nat) : List<T>
+func take<T>(self : List<T>, n : Nat) : List<T>
 ```
 
 Returns the first `n` elements of the given list.
@@ -454,7 +455,7 @@ Space: O(n)
 
 ## Function `drop`
 ``` motoko no-repl
-func drop<T>(list : List<T>, n : Nat) : List<T>
+func drop<T>(self : List<T>, n : Nat) : List<T>
 ```
 
 Drop the first `n` elements from the given list.
@@ -475,7 +476,7 @@ Space: O(1)
 
 ## Function `foldLeft`
 ``` motoko no-repl
-func foldLeft<T, A>(list : List<T>, base : A, combine : (A, T) -> A) : A
+func foldLeft<T, A>(self : List<T>, base : A, combine : (A, T) -> A) : A
 ```
 
 Collapses the elements in `list` into a single value by starting with `base`
@@ -505,7 +506,7 @@ Space: O(1) heap, O(1) stack
 
 ## Function `foldRight`
 ``` motoko no-repl
-func foldRight<T, A>(list : List<T>, base : A, combine : (T, A) -> A) : A
+func foldRight<T, A>(self : List<T>, base : A, combine : (T, A) -> A) : A
 ```
 
 Collapses the elements in `buffer` into a single value by starting with `base`
@@ -535,7 +536,7 @@ Space: O(1) heap, O(size(list)) stack
 
 ## Function `find`
 ``` motoko no-repl
-func find<T>(list : List<T>, f : T -> Bool) : ?T
+func find<T>(self : List<T>, f : T -> Bool) : ?T
 ```
 
 Return the first element for which the given predicate `f` is true,
@@ -559,7 +560,7 @@ Space: O(1)
 
 ## Function `findIndex`
 ``` motoko no-repl
-func findIndex<T>(list : List<T>, f : T -> Bool) : ?Nat
+func findIndex<T>(self : List<T>, f : T -> Bool) : ?Nat
 ```
 
 Return the first index for which the given predicate `f` is true.
@@ -584,7 +585,7 @@ Space: O(1)
 
 ## Function `all`
 ``` motoko no-repl
-func all<T>(list : List<T>, f : T -> Bool) : Bool
+func all<T>(self : List<T>, f : T -> Bool) : Bool
 ```
 
 Return true if the given predicate `f` is true for all list
@@ -608,7 +609,7 @@ Space: O(1)
 
 ## Function `any`
 ``` motoko no-repl
-func any<T>(list : List<T>, f : T -> Bool) : Bool
+func any<T>(self : List<T>, f : T -> Bool) : Bool
 ```
 
 Return true if there exists a list element for which
@@ -632,7 +633,7 @@ Space: O(1)
 
 ## Function `merge`
 ``` motoko no-repl
-func merge<T>(list1 : List<T>, list2 : List<T>, compare : (T, T) -> Order.Order) : List<T>
+func merge<T>(self : List<T>, other : List<T>, compare : (implicit : (T, T) -> Order.Order)) : List<T>
 ```
 
 Merge two ordered lists into a single ordered list.
@@ -659,7 +660,7 @@ Space: O(size(l1) + size(l2))
 
 ## Function `equal`
 ``` motoko no-repl
-func equal<T>(list1 : List<T>, list2 : List<T>, equalItem : (T, T) -> Bool) : Bool
+func equal<T>(self : List<T>, other : List<T>, equalItem : (implicit : (equal : (T, T) -> Bool))) : Bool
 ```
 
 Check if two lists are equal using the given equality function to compare elements.
@@ -684,7 +685,7 @@ Space: O(1)
 
 ## Function `compare`
 ``` motoko no-repl
-func compare<T>(list1 : List<T>, list2 : List<T>, compareItem : (T, T) -> Order.Order) : Order.Order
+func compare<T>(self : List<T>, other : List<T>, compareItem : (implicit : (compare : (T, T) -> Order.Order))) : Order.Order
 ```
 
 Compare two lists using lexicographic ordering specified by argument function `compareItem`.
@@ -774,7 +775,7 @@ Space: O(n)
 
 ## Function `zip`
 ``` motoko no-repl
-func zip<T, U>(list1 : List<T>, list2 : List<U>) : List<(T, U)>
+func zip<T, U>(self : List<T>, other : List<U>) : List<(T, U)>
 ```
 
 Create a list of pairs from a pair of lists.
@@ -799,7 +800,7 @@ Space: O(min(size(xs), size(ys)))
 
 ## Function `zipWith`
 ``` motoko no-repl
-func zipWith<T, U, V>(list1 : List<T>, list2 : List<U>, f : (T, U) -> V) : List<V>
+func zipWith<T, U, V>(self : List<T>, other : List<U>, f : (T, U) -> V) : List<V>
 ```
 
 Create a list in which elements are created by applying function `f` to each pair `(x, y)` of elements
@@ -833,7 +834,7 @@ Space: O(min(size(xs), size(ys)))
 
 ## Function `split`
 ``` motoko no-repl
-func split<T>(list : List<T>, n : Nat) : (List<T>, List<T>)
+func split<T>(self : List<T>, n : Nat) : (List<T>, List<T>)
 ```
 
 Split the given list at the given zero-based index.
@@ -854,7 +855,7 @@ Space: O(n)
 
 ## Function `chunks`
 ``` motoko no-repl
-func chunks<T>(list : List<T>, n : Nat) : List<List<T>>
+func chunks<T>(self : List<T>, n : Nat) : List<List<T>>
 ```
 
 Split the given list into chunks of length `n`.
@@ -877,7 +878,7 @@ Space: O(size)
 
 ## Function `values`
 ``` motoko no-repl
-func values<T>(list : List<T>) : Iter.Iter<T>
+func values<T>(self : List<T>) : Iter.Iter<T>
 ```
 
 Returns an iterator to the elements in the list.
@@ -899,7 +900,7 @@ persistent actor {
 
 ## Function `enumerate`
 ``` motoko no-repl
-func enumerate<T>(list : List<T>) : Iter.Iter<(Nat, T)>
+func enumerate<T>(self : List<T>) : Iter.Iter<(Nat, T)>
 ```
 
 Returns an iterator to the `(index, element)` pairs in the list.
@@ -963,7 +964,7 @@ Space: O(size)
 
 ## Function `toArray`
 ``` motoko no-repl
-func toArray<T>(list : List<T>) : [T]
+func toArray<T>(self : List<T>) : [T]
 ```
 
 Create an array from a list.
@@ -985,7 +986,7 @@ Space: O(size)
 
 ## Function `toVarArray`
 ``` motoko no-repl
-func toVarArray<T>(list : List<T>) : [var T]
+func toVarArray<T>(self : List<T>) : [var T]
 ```
 
 Create a mutable array from a list.
@@ -1010,7 +1011,7 @@ Space: O(size)
 func fromIter<T>(iter : Iter.Iter<T>) : List<T>
 ```
 
-Turn an iterator into a list, consuming it.
+Create a list from an iterator, consuming the iterator.
 Example:
 ```motoko
 import List "mo:core/pure/List";
@@ -1025,9 +1026,32 @@ Runtime: O(size)
 
 Space: O(size)
 
+## Function `toList`
+``` motoko no-repl
+func toList<T>(self : Iter.Iter<T>) : List<T>
+```
+
+Convert an iterator to a list, consuming the iterator.
+Example:
+```motoko
+import List "mo:core/pure/List";
+
+persistent actor {
+  transient let iter = [0, 1, 2, 3, 4].vals();
+
+  let list = iter.toList();
+
+  assert list == ?(0, ?(1, ?(2, ?(3, ?(4, null)))));
+}
+```
+
+Runtime: O(size)
+
+Space: O(size)
+
 ## Function `toText`
 ``` motoko no-repl
-func toText<T>(list : List<T>, f : T -> Text) : Text
+func toText<T>(self : List<T>, f : (implicit : T -> Text)) : Text
 ```
 
 Convert a list to a text representation using the provided function to convert each element to text.

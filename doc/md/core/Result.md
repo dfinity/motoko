@@ -44,10 +44,11 @@ assert validateEmail("invalid.email") == #err("Email must contain exactly one @ 
 assert validateEmail("@domain.com") == #err("Username cannot be empty");
 assert validateEmail("user@invalid") == #err("Invalid domain format");
 ```
+@deprecated M0235
 
 ## Function `equal`
 ``` motoko no-repl
-func equal<Ok, Err>(result1 : Result<Ok, Err>, result2 : Result<Ok, Err>, equalOk : (Ok, Ok) -> Bool, equalErr : (Err, Err) -> Bool) : Bool
+func equal<Ok, Err>(self : Result<Ok, Err>, other : Result<Ok, Err>, equalOk : (implicit : (equal : Ok, Ok) -> Bool), equalErr : (implicit : (equal : (Err, Err) -> Bool))) : Bool
 ```
 
 Compares two Results for equality.
@@ -67,7 +68,7 @@ assert not Result.equal<Nat, Text>(result1, result3, Nat.equal, Text.equal);
 
 ## Function `compare`
 ``` motoko no-repl
-func compare<Ok, Err>(result1 : Result<Ok, Err>, result2 : Result<Ok, Err>, compareOk : (Ok, Ok) -> Order.Order, compareErr : (Err, Err) -> Order.Order) : Order.Order
+func compare<Ok, Err>(self : Result<Ok, Err>, other : Result<Ok, Err>, compareOk : (implicit : (compare : (Ok, Ok) -> Order.Order)), compareErr : (implicit : (compare : (Err, Err) -> Order.Order))) : Order.Order
 ```
 
 Compares two Result values. `#ok` is larger than `#err`. This ordering is
@@ -89,7 +90,7 @@ assert Result.compare<Nat, Text>(result1, result3, Nat.compare, Text.compare) ==
 
 ## Function `chain`
 ``` motoko no-repl
-func chain<Ok1, Ok2, Err>(result : Result<Ok1, Err>, f : Ok1 -> Result<Ok2, Err>) : Result<Ok2, Err>
+func chain<Ok1, Ok2, Err>(self : Result<Ok1, Err>, f : Ok1 -> Result<Ok2, Err>) : Result<Ok2, Err>
 ```
 
 Allows sequencing of Result values and functions that return
@@ -112,7 +113,7 @@ assert between10And20(21) == #err("Not smaller than 20.");
 
 ## Function `flatten`
 ``` motoko no-repl
-func flatten<Ok, Err>(result : Result<Result<Ok, Err>, Err>) : Result<Ok, Err>
+func flatten<Ok, Err>(self : Result<Result<Ok, Err>, Err>) : Result<Ok, Err>
 ```
 
 Flattens a nested Result.
@@ -125,7 +126,7 @@ assert Result.flatten<Nat, Text>(#ok(#err("Wrong"))) == #err("Wrong");
 
 ## Function `mapOk`
 ``` motoko no-repl
-func mapOk<Ok1, Ok2, Err>(result : Result<Ok1, Err>, f : Ok1 -> Ok2) : Result<Ok2, Err>
+func mapOk<Ok1, Ok2, Err>(self : Result<Ok1, Err>, f : Ok1 -> Ok2) : Result<Ok2, Err>
 ```
 
 Maps the `Ok` type/value, leaving any `Err` type/value unchanged.
@@ -144,7 +145,7 @@ assert doubled2 == #err("error");
 
 ## Function `mapErr`
 ``` motoko no-repl
-func mapErr<Ok, Err1, Err2>(result : Result<Ok, Err1>, f : Err1 -> Err2) : Result<Ok, Err2>
+func mapErr<Ok, Err1, Err2>(self : Result<Ok, Err1>, f : Err1 -> Err2) : Result<Ok, Err2>
 ```
 
 Maps the `Err` type/value, leaving any `Ok` type/value unchanged.
@@ -174,7 +175,7 @@ assert Result.fromOption(null, "err") == #err("err");
 
 ## Function `toOption`
 ``` motoko no-repl
-func toOption<Ok, Err>(result : Result<Ok, Err>) : ?Ok
+func toOption<Ok, Err>(self : Result<Ok, Err>) : ?Ok
 ```
 
 Create an option from a result, turning all #err into `null`.
@@ -185,7 +186,7 @@ assert Result.toOption(#err("err")) == null;
 
 ## Function `forOk`
 ``` motoko no-repl
-func forOk<Ok, Err>(result : Result<Ok, Err>, f : Ok -> ())
+func forOk<Ok, Err>(self : Result<Ok, Err>, f : Ok -> ())
 ```
 
 Applies a function to a successful value and discards the result. Use
@@ -201,7 +202,7 @@ assert counter == 5;
 
 ## Function `forErr`
 ``` motoko no-repl
-func forErr<Ok, Err>(result : Result<Ok, Err>, f : Err -> ())
+func forErr<Ok, Err>(self : Result<Ok, Err>, f : Err -> ())
 ```
 
 Applies a function to an error value and discards the result. Use
@@ -217,7 +218,7 @@ assert counter == 1;
 
 ## Function `isOk`
 ``` motoko no-repl
-func isOk(result : Result<Any, Any>) : Bool
+func isOk(self : Result<Any, Any>) : Bool
 ```
 
 Whether this Result is an `#ok`.
@@ -230,7 +231,7 @@ assert not Result.isOk(#err("error"));
 
 ## Function `isErr`
 ``` motoko no-repl
-func isErr(result : Result<Any, Any>) : Bool
+func isErr(self : Result<Any, Any>) : Bool
 ```
 
 Whether this Result is an `#err`.
@@ -243,7 +244,7 @@ assert not Result.isErr(#ok(42));
 
 ## Function `assertOk`
 ``` motoko no-repl
-func assertOk(result : Result<Any, Any>)
+func assertOk(self : Result<Any, Any>)
 ```
 
 Asserts that its argument is an `#ok` result, traps otherwise.
@@ -256,7 +257,7 @@ Result.assertOk(#ok(42)); // succeeds
 
 ## Function `assertErr`
 ``` motoko no-repl
-func assertErr(result : Result<Any, Any>)
+func assertErr(self : Result<Any, Any>)
 ```
 
 Asserts that its argument is an `#err` result, traps otherwise.
@@ -285,7 +286,7 @@ assert lower == #ok(42);
 
 ## Function `toUpper`
 ``` motoko no-repl
-func toUpper<Ok, Err>(result : Result<Ok, Err>) : {#Ok : Ok; #Err : Err}
+func toUpper<Ok, Err>(self : Result<Ok, Err>) : {#Ok : Ok; #Err : Err}
 ```
 
 Converts a lower cased `#ok`, `#err` result type into an upper cased `#Ok`, `#Err` result type.

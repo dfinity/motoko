@@ -37,7 +37,7 @@ assert Tuple2.swap((1, "hello")) == ("hello", 1);
 
 ### Function `toText`
 ``` motoko no-repl
-func toText<A, B>(t : (A, B), toTextA : A -> Text, toTextB : B -> Text) : Text
+func toText<A, B>(self : (A, B), toTextA : A -> Text, toTextB : B -> Text) : Text
 ```
 
 Creates a textual representation of a tuple for debugging purposes.
@@ -52,7 +52,7 @@ assert Tuple2.toText((1, "hello"), Nat.toText, func (x: Text): Text = x) == "(1,
 
 ### Function `equal`
 ``` motoko no-repl
-func equal<A, B>(t1 : (A, B), t2 : (A, B), aEqual : (A, A) -> Bool, bEqual : (B, B) -> Bool) : Bool
+func equal<A, B>(self : (A, B), other : (A, B), aEqual : (A, A) -> Bool, bEqual : (B, B) -> Bool) : Bool
 ```
 
 Compares two tuples for equality.
@@ -68,7 +68,7 @@ assert Tuple2.equal((1, "hello"), (1, "hello"), Nat.equal, Text.equal);
 
 ### Function `compare`
 ``` motoko no-repl
-func compare<A, B>(t1 : (A, B), t2 : (A, B), aCompare : (A, A) -> Types.Order, bCompare : (B, B) -> Types.Order) : Types.Order
+func compare<A, B>(self : (A, B), other : (A, B), aCompare : (A, A) -> Types.Order, bCompare : (B, B) -> Types.Order) : Types.Order
 ```
 
 Compares two tuples lexicographically.
@@ -147,7 +147,7 @@ module Tuple3
 
 ### Function `toText`
 ``` motoko no-repl
-func toText<A, B, C>(t : (A, B, C), toTextA : A -> Text, toTextB : B -> Text, toTextC : C -> Text) : Text
+func toText<A, B, C>(self : (A, B, C), toTextA : A -> Text, toTextB : B -> Text, toTextC : C -> Text) : Text
 ```
 
 Creates a textual representation of a 3-tuple for debugging purposes.
@@ -162,7 +162,7 @@ assert Tuple3.toText((1, "hello", 2), Nat.toText, func (x: Text): Text = x, Nat.
 
 ### Function `equal`
 ``` motoko no-repl
-func equal<A, B, C>(t1 : (A, B, C), t2 : (A, B, C), aEqual : (A, A) -> Bool, bEqual : (B, B) -> Bool, cEqual : (C, C) -> Bool) : Bool
+func equal<A, B, C>(self : (A, B, C), other : (A, B, C), aEqual : (A, A) -> Bool, bEqual : (B, B) -> Bool, cEqual : (C, C) -> Bool) : Bool
 ```
 
 Compares two 3-tuples for equality.
@@ -178,7 +178,7 @@ assert Tuple3.equal((1, "hello", 2), (1, "hello", 2), Nat.equal, Text.equal, Nat
 
 ### Function `compare`
 ``` motoko no-repl
-func compare<A, B, C>(t1 : (A, B, C), t2 : (A, B, C), aCompare : (A, A) -> Types.Order, bCompare : (B, B) -> Types.Order, cCompare : (C, C) -> Types.Order) : Types.Order
+func compare<A, B, C>(self : (A, B, C), other : (A, B, C), aCompare : (A, A) -> Types.Order, bCompare : (B, B) -> Types.Order, cCompare : (C, C) -> Types.Order) : Types.Order
 ```
 
 Compares two 3-tuples lexicographically.
@@ -256,7 +256,7 @@ module Tuple4
 
 ### Function `toText`
 ``` motoko no-repl
-func toText<A, B, C, D>(t : (A, B, C, D), toTextA : A -> Text, toTextB : B -> Text, toTextC : C -> Text, toTextD : D -> Text) : Text
+func toText<A, B, C, D>(self : (A, B, C, D), toTextA : A -> Text, toTextB : B -> Text, toTextC : C -> Text, toTextD : D -> Text) : Text
 ```
 
 Creates a textual representation of a 4-tuple for debugging purposes.
@@ -271,7 +271,7 @@ assert Tuple4.toText((1, "hello", 2, 3), Nat.toText, func (x: Text): Text = x, N
 
 ### Function `equal`
 ``` motoko no-repl
-func equal<A, B, C, D>(t1 : (A, B, C, D), t2 : (A, B, C, D), aEqual : (A, A) -> Bool, bEqual : (B, B) -> Bool, cEqual : (C, C) -> Bool, dEqual : (D, D) -> Bool) : Bool
+func equal<A, B, C, D>(self : (A, B, C, D), other : (A, B, C, D), aEqual : (A, A) -> Bool, bEqual : (B, B) -> Bool, cEqual : (C, C) -> Bool, dEqual : (D, D) -> Bool) : Bool
 ```
 
 Compares two 4-tuples for equality.
@@ -287,7 +287,7 @@ assert Tuple4.equal((1, "hello", 2, 3), (1, "hello", 2, 3), Nat.equal, Text.equa
 
 ### Function `compare`
 ``` motoko no-repl
-func compare<A, B, C, D>(t1 : (A, B, C, D), t2 : (A, B, C, D), aCompare : (A, A) -> Types.Order, bCompare : (B, B) -> Types.Order, cCompare : (C, C) -> Types.Order, dCompare : (D, D) -> Types.Order) : Types.Order
+func compare<A, B, C, D>(self : (A, B, C, D), other : (A, B, C, D), aCompare : (A, A) -> Types.Order, bCompare : (B, B) -> Types.Order, cCompare : (C, C) -> Types.Order, dCompare : (D, D) -> Types.Order) : Types.Order
 ```
 
 Compares two 4-tuples lexicographically.

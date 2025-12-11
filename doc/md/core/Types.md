@@ -207,6 +207,25 @@ type Queue<T> = Queue.Queue<T>
 ```
 
 
+## Module `PriorityQueue`
+
+``` motoko no-repl
+module PriorityQueue
+```
+
+
+### Type `PriorityQueue`
+``` motoko no-repl
+type PriorityQueue<T> = { heap : List<T> }
+```
+
+
+## Type `PriorityQueue`
+``` motoko no-repl
+type PriorityQueue<T> = PriorityQueue.PriorityQueue<T>
+```
+
+
 ## Module `Set`
 
 ``` motoko no-repl

@@ -38,11 +38,11 @@
       flake = false;
     };
     motoko-base-src = {
-      url = "github:dfinity/motoko-base/next-moc";
+      url = "github:caffeinelabs/motoko-base/next-moc";
       flake = false;
     };
     motoko-core-src = {
-      url = "github:dfinity/motoko-core";
+      url = "github:caffeinelabs/motoko-core";
       flake = false;
     };
     motoko-matchers-src = {

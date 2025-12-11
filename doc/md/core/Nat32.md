@@ -29,7 +29,7 @@ assert Nat32.maxValue == (4294967295 : Nat32);
 
 ## Function `toNat`
 ``` motoko no-repl
-func toNat(_ : Nat32) : Nat
+func toNat(self : Nat32) : Nat
 ```
 
 Converts a 32-bit unsigned integer to an unsigned integer with infinite precision.
@@ -53,6 +53,33 @@ Example:
 assert Nat32.fromNat(123) == (123 : Nat32);
 ```
 
+## Function `toNat8`
+``` motoko no-repl
+func toNat8(self : Nat32) : Nat8
+```
+
+Converts a 32-bit unsigned integer to an 8-bit unsigned integer.
+
+Traps on overflow.
+
+Example:
+```motoko include=import
+assert Nat32.toNat8(123) == (123 : Nat8);
+```
+
+## Function `fromNat8`
+``` motoko no-repl
+func fromNat8(x : Nat8) : Nat32
+```
+
+Converts an 8-bit unsigned integer to a 32-bit unsigned integer.
+
+Example:
+```motoko include=import
+assert Nat32.fromNat8(123) == (123 : Nat32);
+```
+@deprecated M0235
+
 ## Function `fromNat16`
 ``` motoko no-repl
 func fromNat16(x : Nat16) : Nat32
@@ -64,10 +91,11 @@ Example:
 ```motoko include=import
 assert Nat32.fromNat16(123) == (123 : Nat32);
 ```
+@deprecated M0235
 
 ## Function `toNat16`
 ``` motoko no-repl
-func toNat16(x : Nat32) : Nat16
+func toNat16(self : Nat32) : Nat16
 ```
 
 Converts a 32-bit unsigned integer to a 16-bit unsigned integer.
@@ -92,10 +120,11 @@ Example:
 ```motoko include=import
 assert Nat32.fromNat64(123) == (123 : Nat32);
 ```
+@deprecated M0235
 
 ## Function `toNat64`
 ``` motoko no-repl
-func toNat64(x : Nat32) : Nat64
+func toNat64(self : Nat32) : Nat64
 ```
 
 Converts a 32-bit unsigned integer to a 64-bit unsigned integer.
@@ -119,9 +148,22 @@ Example:
 assert Nat32.fromIntWrap(123) == (123 : Nat32);
 ```
 
+## Function `toChar`
+``` motoko no-repl
+func toChar(self : Nat32) : Char
+```
+
+Convert a Nat32 `char` to a Char in its Unicode representation.
+
+Example:
+```motoko include=import
+let unicode = Nat32.toChar(65);
+assert unicode == 'A';
+```
+
 ## Function `toText`
 ``` motoko no-repl
-func toText(x : Nat32) : Text
+func toText(self : Nat32) : Text
 ```
 
 Converts `x` to its textual representation. Textual representation _do not_
