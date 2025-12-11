@@ -222,23 +222,6 @@
         "type": "github"
       }
     },
-    "pocket-ic-src": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1763769101,
-        "narHash": "sha256-/VaUL3Wu9NILofasZPTCtFVIoXmsOokiO/sTUZQJTZw=",
-        "owner": "dfinity",
-        "repo": "ic",
-        "rev": "f07e9896fef2c24db8d4d0bed3d3ed42f0934e2a",
-        "type": "github"
-      },
-      "original": {
-        "owner": "dfinity",
-        "repo": "ic",
-        "rev": "f07e9896fef2c24db8d4d0bed3d3ed42f0934e2a",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
         "candid-src": "candid-src",
@@ -253,7 +236,6 @@
         "nixpkgs": "nixpkgs",
         "ocaml-recovery-parser-src": "ocaml-recovery-parser-src",
         "ocaml-vlq-src": "ocaml-vlq-src",
-        "pocket-ic-src": "pocket-ic-src",
         "rust-overlay": "rust-overlay",
         "viper-server": "viper-server",
         "wasm-spec-src": "wasm-spec-src"

@@ -25,10 +25,6 @@
       url = "github:dfinity/candid";
       flake = false;
     };
-    pocket-ic-src = {
-      url = "github:dfinity/ic/f07e9896fef2c24db8d4d0bed3d3ed42f0934e2a";
-      flake = false;
-    };
     ic-wasm-src = {
       url = "github:dfinity/ic-wasm";
       flake = false;
@@ -72,7 +68,6 @@
     , esm
     , viper-server
     , candid-src
-    , pocket-ic-src
     , ic-wasm-src
     , libtommath-src
     , motoko-base-src
@@ -88,7 +83,6 @@
         sources = {
           inherit
             candid-src
-            pocket-ic-src
             ic-wasm-src
             libtommath-src
             motoko-base-src
@@ -170,6 +164,10 @@
         
         # Enable tests when building the package.
         doCheck = true;
+        preCheck = ''
+          export POCKET_IC_BIN="${pkgs.pocket-ic.server}/bin/pocket-ic-server"
+          export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+        '';
       };
 
       tests = import ./nix/tests.nix { 
