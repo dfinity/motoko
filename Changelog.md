@@ -2,6 +2,10 @@
 
 * motoko (`moc`)
 
+  * Add privileged primitive for setting Candid type table cutoff (#5642).
+
+* motoko (`moc`)
+
   * Shorter, simpler error messages for generic functions (#5650).
     The compiler now tries to point to the first problematic expression in the function call, rather than the entire function call with type inference details.
     Simple errors only mention closed types; verbose errors with unsolved type variables are only shown when necessary.
@@ -71,8 +75,6 @@
     Deprecates any public types and values with special doc comment
     `/// @deprecated M0235`.
     (allowed by default, warn with `-W 0235`).
-
-  * Add privileged primitive for setting Candid type table cutoff (#5642).
 
   * Experimental support for `implicit` argument declarations (#5517).
 
