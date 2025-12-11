@@ -1,10 +1,10 @@
 # Motoko compiler changelog
 
-## 1.0.0 (2025-12-11)
-
 * motoko (`moc`)
 
   * Add privileged primitive for setting Candid type table cutoff (#5642).
+
+## 1.0.0 (2025-12-11)
 
 * motoko (`moc`)
 
