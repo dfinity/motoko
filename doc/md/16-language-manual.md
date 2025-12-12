@@ -584,7 +584,6 @@ The syntax of a pattern is as follows:
 ```
 
 `implicit` patterns may only appear in function or class argument positions to declare implicit parameters that can be omitted at calls.
-<!-- what about mixins? -->
 The pattern `implict <id> : <typ>` is sugar for `<id> : (implicit <id> : <typ>)`.
 The named implicit pattern `implict <id> : <typ> = <pat>` is sugar for `<pat> : (implicit <id> : <typ>)`.
 The wildcard implicit pattern `implicit _ : <typ> = <pat>` is sugar for `<pat> : (implicit _ : <typ>)`.
