@@ -206,7 +206,7 @@ jobs:
           && gh pr review $PR --approve --body 'A change to `doc/docusaurus/package-lock.json`? I can handle that!' \
           && gh pr merge $PR --squash --auto
           ### Handles open PRs filed by the GH automation bot that carry the `automerge-squash` label. The single changed file must be `flake.lock`. If so, the PR gets approved with a comment, auto-merge activated and the label removed.
-          ${{ github.event.pull_request.user.login == 'pr-automation-bot-public[bot]' && contains(github.event.pull_request.labels.*.name, 'automerge-squash') }} \
+          ${{ github.event.pull_request.user.login == 'caffeine-ci-generic-rw[bot]' && contains(github.event.pull_request.labels.*.name, 'automerge-squash') }} \
           && [ $(gh pr diff $PR --name-only) == "flake.lock" ] \
           && gh pr review $PR --approve --body 'A change to `flake.lock`? I can handle that!' \
           && gh pr merge $PR --squash --auto \
