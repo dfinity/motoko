@@ -572,12 +572,23 @@ The syntax of a pattern is as follows:
   ? <pat>                                        Option
   <pat> : <typ>                                  Type annotation
   <pat> or <pat>                                 Disjunctive pattern
+  implicit <id> : <typ>                          implicit named parameter
+  implicit <id> : <typ> = <pat>                  implicit named parameter
+  implicit _ : <typ> = <pat>                     implicit wildcard parameter 
+
 
 <pat-field> ::=                                Object pattern fields
   <id> (: <typ>)? = <pat>                        Field
   <id> (: <typ>)?                                Punned field
   type <id>                                      Type field
 ```
+
+`implicit` patterns may only appear in function or class argument positions to declare implicit parameters that can be omitted at calls.
+The pattern `implict <id> : <typ>` is sugar for `<id> : (implicit <id> : <typ>)`.
+The named implicit pattern `implict <id> : <typ> = <pat>` is sugar for `<pat> : (implicit <id> : <typ>)`.
+The wildcard implicit pattern `implicit _ : <typ> = <pat>` is sugar for `<pat> : (implicit _ : <typ>)`.
+
+
 
 ## Type syntax
 
@@ -601,6 +612,8 @@ Type expressions are used to specify the types of arguments, constraints on type
   <typ> and <typ>                               Intersection
   <typ> or <typ>                                Union
   Error                                         Errors/exceptions
+  implicit <id> : <typ>                         Implicit named parameter
+  implicit _ : <typ>                            Implicit wildcard parameter
   ( <typ> )                                     Parenthesized type
 
 <typ-item>                                    Type item
@@ -620,8 +633,9 @@ Type expressions are used to specify the types of arguments, constraints on type
 
 An absent `<sort>?` abbreviates `object`.
 
+`implicit <id> : <typ>` and `implicit _ : <typ>`, used to indicate named and wildcard implicit parameters, may only appear in parameter positions of function types.
 
-Type items of the form `<id> (implicit : <typ>)` and `<id0> : (implicit : (<id> : <typ>))` are used to indicate implicit and re-named implicit parameters.  The second form is used to override the parameter named `<id0>` as implicit parameter named `<id>`.
+In addition, legacy type items of the form `<id> (implicit : <typ>)` and `<id0> : (implicit : (<id> : <typ>))` can also be used to indicate implicit and re-named implicit parameters.  The second form is used to override the parameter named `<id0>` as implicit parameter named `<id>`.
 These special type items are only meaningful in parameter positions of function types and have no significance elsewhere.
 
 ### Primitive types
@@ -1112,7 +1126,8 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 16.   `T` (respectively `U`) is a constructed type `C<V0, …​, Vn>` that is equal, by definition of type constructor `C`, to `W`, and `W <: U` (respectively `U <: W`).
 
-17.   `T` (respectively `U`) is an named type typ item `(<id> : W)` that is equal, by definition, to `W`, and `W <: U` (respectively `U <: W`).
+17.   `T` (respectively `U`) is an implicit type `implicit (<id>|_) : W`, type item `implicit : W`, or type item `<id> : W`  that is equal, by definition, to `W`, and `W <: U` (respectively `U <: W`).
+<!-- to be reviewed - does this make sense? -->
 
 18.   For some type `V`, `T <: V` and `V <: U` (*transitivity*).
 
@@ -2328,17 +2343,23 @@ the expanded function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <
 
     * `<exp2> = ( exp21, ..., exp2a )`; and
     * `a = arity(F) - implicit_arity(F)`; and
-    * `<exp3> = ( insert_holes(0 ; U1 ; (exp21,...,exp2a)) )`;
+    * `<exp3> = ( insert_holes(0;  U1 ; (exp21,...,exp2a)) )`;
 
-    where `insert_holes` extends the actual arguments list with placeholders `hole(i, <id>, U)` for missing implicit parameters:
+    where `insert_holes` extends the actual arguments list with placeholders `hole(i, o, U)` for missing implicit parameters:
 
     ```
     insert_holes(n ; <empty> ; <exps>) =
       <exps>
+    insert_holes(n ; (implict <id> : U, Us) ; <exps>) =
+      hole(n, ?<id>, U), insert_holes(n + 1, Us, exps)
+    insert_holes(n ; (implict _ : U, Us) ; <exps>) =
+      hole(n, null, U), insert_holes(n + 1, Us, exps)
+    (* legacy *)
     insert_holes(n ; ( (<id0> : (implicit : (<id> : U))), Us) ; <exps>) =
       hole(n, <id>, U), insert_holes(n + 1 ; Us ; exps)
     insert_holes(n ; ( (<id> : (implicit : U)), Us) ; <exps>) =
       hole(n, <id>, U), insert_holes(n + 1 ; Us ; exps)
+    (* explicit *)
     insert_holes(n ; (U, Us);  (<exp>, <exps>)) =
       <exp>, insert_holes(n ; Us ; <exps>)
     ```
@@ -2355,23 +2376,25 @@ the expanded function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <
 
 -   For each `i` in `(0..implicit_arity(F)]`:
 
-      * `<idi> : [T0/X0, …​, Tn/Xn]Ui`; and
-      * `hole(i, <idi>, Ui) = <idi>`; and
+      * `<id> : [T0/X0, …​, Tn/Xn]Ui`, for some `<id>`; and
+      * `hole(i, o, Ui) = <id>`; and
+      * `o != null` implies `o = ?<id>`;
 
       Otherwise:
 
-      * Cs = { `(<mid>, V)` | `<mid>` has type `module {}` and `<mid>.<idi>` has type `V` and `V <: [T0/X0, …​, Tn/Xn]U1` }; and
-      * Ds = { `(<mid>, V)`  in Cs | for all `(_, W)` in Cs, `W <: V` }; and
-      * { `(<mid>, _)` } = Ds; and
-      * `hole(i, <idi>, Ui) = <mid>.<idi>`.
+      * Cs = { `(<mid>.<id>, V)` | `<mid>` has type `module {}` and `<mid>.<id>` has type `V` and `V <: [T0/X0, …​, Tn/Xn]U1` }; and
+      * Ds = { `(<mid>.<id>, V)`  in Cs | for all `(_, W)` in Cs, `W <: V` }; and
+      * { `(<mid>.<id>, _)` } = Ds; and
+      * `hole(i, o, Ui) = <mid>.<id>`; and
+      *	`o != null` implies `o = ?<id>`.
 
     Here:
 
-    * `hole(i, <idi>, Ui)` is the description of the `ith` hole, a placeholder for an expression `<idi>` or `<mid>.<idi>`.
-    *  `<idi>` is the resolution of the hole from the local context, if any;
-    *  Cs is the set of candidate module `<mid>` named `<mid>`, with type `V` whose field `<mid>.<idi>` matches hole type `Ui` (after type instantiation).
+    * `hole(i, o, Ui)` is the description of the `ith` hole, a placeholder for an expression `<id>` or `<mid>.<id>`.
+    *  `<id>` is the resolution of the hole from the local context, if any;
+    *  Cs is the set of candidate values `<mid>.<id>` in modules named `<mid>`, with type `V` that matches hole type `Ui` (after type instantiation).
     *  Ds is the disambiguated set of candidates, filtered by generality.
-    * `<mid>.<idi>` is the name of the unique disambiguation, if one exists (that is, when Ds is a singleton set).
+    * `<mid>.<id>` is the name of the unique disambiguation, if one exists (that is, when Ds is a singleton set).
 
 The call expression `<exp1> <T0,…​,Tn>? <exp2>` evaluates `<exp1>` to a result `r1`. If `r1` is `trap`, then the result is `trap`.
 
