@@ -89,11 +89,12 @@ All comments are treated as whitespace.
 The following keywords are reserved and may not be used as identifiers:
 
 ``` bnf
-actor and assert async async* await await? await* break case catch class
-composite continue debug debug_show do else false flexible finally for
-from_candid func if ignore implicit import in label let loop module not null
-object or persistent private public query return shared stable switch system throw
-to_candid true transient try type var weak while with
+actor and assert async async* await await? await* break case
+catch class composite continue debug debug_show do else false flexible
+finally for from_candid func if ignore import implicit in include label let
+loop mixin module not null object or persistent private public query
+return shared stable switch system throw to_candid true transient try
+type var weak while with
 ```
 
 ### Identifiers
@@ -378,6 +379,7 @@ The syntax of a **library** that can be referenced in an import is as follows:
   <imp>;* module <id>? (: <typ>)? =? <obj-body>           Module
   <imp>;* <shared-pat>? actor <migration>? class          Actor class
     <id> <typ-params>? <pat> (: <typ>)? <class-body>
+  <imp>;* mixin <pat> <obj-body>                          Mixin
 ```
 
 A library `<lib>` is a sequence of imports `<imp>;*` followed by:
@@ -385,6 +387,8 @@ A library `<lib>` is a sequence of imports `<imp>;*` followed by:
 -   A named or anonymous module declaration, or
 
 -   A named actor class declaration.
+
+-   An anonymous mixin declaration.
 
 Libraries stored in `.mo` files may be referenced by `import` declarations.
 
@@ -407,6 +411,8 @@ The syntax of a declaration is as follows:
   type <id> <type-typ-params>? = <typ>                                    Type
   <parenthetical>? <shared-pat>? <sort>? class                            Class
     <id>? <typ-params>? <pat> (: <typ>)? <class-body>
+  mixin <pat> <obj-body>                                                  Mixin
+  include <id> <exp>                                                      Mixin inlusion
 
 <obj-body> ::=           Object body
   { <dec-field>;* }       Field declarations
@@ -601,7 +607,7 @@ Type expressions are used to specify the types of arguments, constraints on type
   <shared>? <typ-params>? <typ> -> <typ>        Function
   async <typ>                                   Future
   async* <typ>                                  Delayed, asynchronous computation
-  ( ((<id> :)? <typ>),* )                       Tuple
+  ( <typ-item>,* )                              Tuple
   Any                                           Top
   None                                          Bottom
   <typ> and <typ>                               Intersection
@@ -610,6 +616,11 @@ Type expressions are used to specify the types of arguments, constraints on type
   implicit <id> : <typ>                         Implicit named parameter
   implicit _ : <typ>                            Implicit wildcard parameter
   ( <typ> )                                     Parenthesized type
+
+<typ-item>                                    Type item
+  <typ>                                         Simple item
+  <id> : <typ>                                  Named item
+  implicit : <typ>                              Implicit argument
 
 <typ-sort> ::= (actor | module | object)
 
@@ -624,6 +635,9 @@ Type expressions are used to specify the types of arguments, constraints on type
 An absent `<sort>?` abbreviates `object`.
 
 `implicit <id> : <typ>` and `implicit _ : <typ>`, used to indicate named and wildcard implicit parameters, may only appear in parameter positions of function types.
+
+In addition, legacy type items of the form `<id> (implicit : <typ>)` and `<id0> : (implicit : (<id> : <typ>))` can also be used to indicate implicit and re-named implicit parameters.  The second form is used to override the parameter named `<id0>` as implicit parameter named `<id>`.
+These special type items are only meaningful in parameter positions of function types and have no significance elsewhere.
 
 ### Primitive types
 
@@ -1113,7 +1127,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 16.   `T` (respectively `U`) is a constructed type `C<V0, …​, Vn>` that is equal, by definition of type constructor `C`, to `W`, and `W <: U` (respectively `U <: W`).
 
-17.   `T` (respectively `U`) is an implicit type `implicit (<id>|_) : W` that is equal, by definition, to `W`, and `W <: U` (respectively `U <: W`).
+17.   `T` (respectively `U`) is an implicit type `implicit (<id>|_) : W`, type item `implicit : W`, or type item `<id> : W`  that is equal, by definition, to `W`, and `W <: U` (respectively `U <: W`).
 <!-- to be reviewed - does this make sense? -->
 
 18.   For some type `V`, `T <: V` and `V <: U` (*transitivity*).
@@ -1938,6 +1952,23 @@ If `(: <typ>)` is present, then the type `<async?> <typ-sort> {  <typ_field>;* }
 
 The class declaration has the same type as function `<id>` and evaluates to the function value `<id>`.
 
+### Mixin declaration
+
+The mixin declaration `mixin <pat> <obj-body>` declares a mixin and has no effect.
+It can only occur in the body of a library.
+
+The fields of a mixin are stable unless declared `transient`.
+
+### Mixin inclusion
+
+The mixin inclusion `include <id> <exp>` instantiates a copy of the (imported) mixin `<id>`
+with the value of argument `<exp>`.
+
+Mixin inclusion can only occur in the body of an actor, actor class, or another mixin.
+
+The inclusion extends the environment with all the declarations of the mixin body
+(with their declared visibility and stability modifiers).
+
 ### Identifiers
 
 The identifier expression `<id>` has type `T` provided `<id>` is in scope, defined and declared with explicit or inferred type `T`.
@@ -2324,9 +2355,17 @@ the expanded function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <
       hole(n, ?<id>, U), insert_holes(n + 1, Us, exps)
     insert_holes(n ; (implict _ : U, Us) ; <exps>) =
       hole(n, null, U), insert_holes(n + 1, Us, exps)
-    insert_holes(n , (U, Us),  (<exp>, <exps>)) =
-      <exp>, insert_holes(n, Us, <exps>)
+    (* legacy *)
+    insert_holes(n ; ( (<id0> : (implicit : (<id> : U))), Us) ; <exps>) =
+      hole(n, <id>, U), insert_holes(n + 1 ; Us ; exps)
+    insert_holes(n ; ( (<id> : (implicit : U)), Us) ; <exps>) =
+      hole(n, <id>, U), insert_holes(n + 1 ; Us ; exps)
+    (* explicit *)
+    insert_holes(n ; (U, Us);  (<exp>, <exps>)) =
+      <exp>, insert_holes(n ; Us ; <exps>)
     ```
+
+    (These equations are applied in order; semicolon is just as argument separator.)
 
 -   If `<T0,…​,Tn>?` is absent but `n > 0` then there exists minimal `T0, …​, Tn` inferred by the compiler such that:
 

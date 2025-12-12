@@ -32,7 +32,7 @@ module BreakingChange {
 
 module WithDot {
   func expected1Got0() {
-    map.get(); // produces: hole <: (compare : (implicit : (K, K) -> Order), key : K)
+    map.get(); // produces: hole <: (compare : (implicit : (K, K) -> Order)), key : K)
   };
   func missingValueCase() {
     let key = "abc";
