@@ -277,6 +277,10 @@ let rec check_typ env typ : unit =
     check env no_region env.flavor.Ir.has_typ_field
      "named type field in non-typ_field flavor";
     check_typ env typ1
+  | T.Implicit (_, typ1) ->
+    check env no_region env.flavor.Ir.has_typ_field
+     "implict in non-typ_field flavor";
+    check_typ env typ1
 
 
 and check_mut_typ env = function

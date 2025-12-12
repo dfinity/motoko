@@ -18,7 +18,7 @@ module Ok {
 };
 
 module BreakingChange {
-  func foo<K>(_ : Nat, compare : (implicit : (K, K) -> Types.Order)) {
+  func foo<K>(_ : Nat, implicit compare : (K, K) -> Types.Order) {
     ignore compare;
   };
   let arg = (1, Text.compare);
@@ -32,7 +32,7 @@ module BreakingChange {
 
 module WithDot {
   func expected1Got0() {
-    map.get(); // produces: hole <: (compare : (implicit : (K, K) -> Order)), key : K)
+    map.get(); // produces: hole <: (compare : implicit (K, K) -> Order), key : K)
   };
   func missingValueCase() {
     let key = "abc";
@@ -57,7 +57,7 @@ module WithoutDot {
 };
 
 module FuncWithSingleArgTuple {
-  func foo<K>(_ : (n : Nat, compare : (implicit : (K, K) -> Types.Order))) {};
+  func foo<K>(_ : (n : Nat, compare : (K, K) -> Types.Order)) {};
   func main() {
     let arg = (1, Text.compare);
     foo(arg);
@@ -65,7 +65,7 @@ module FuncWithSingleArgTuple {
 };
 
 module ImplicitTuple {
-  func foo(tup : (implicit : (Nat, ()))) {};
+  func foo(implicit tup : (Nat, ())) {};
   let tup = (1, ());
   func main() {
     foo(tup);

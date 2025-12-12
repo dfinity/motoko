@@ -20,11 +20,11 @@ module N {
 
 };
 
-func f1(n : Nat, m : Nat, c : (implicit : (Nat, Nat) -> Order)) {
+func f1(n : Nat, m : Nat, implicit c : (Nat, Nat) -> Order) {
   ignore c(n, m);
 };
 
-func f2<T>(n : T, m : T, c : (implicit : (T, T) -> Order)) {
+func f2<T>(n : T, m : T, implicit c : (T, T) -> Order) {
   ignore c(n, m);
 };
 
@@ -58,13 +58,13 @@ do {
 
 //f3(1, 1); // reject
 
-func unary<T>(c : (implicit : (T, T) -> Order), t : T) {
+func unary<T>(implicit c : (T, T) -> Order, t : T) {
   ignore c(t, t)
 };
 
 unary(10);
 
-func nullary<T>(c : (implicit : (T, T) -> Order)) {
+func nullary<T>(implicit c : (T, T) -> Order) {
   ignore c;
 };
 nullary<Nat>();
@@ -83,13 +83,13 @@ module Int {
   };
 };
 
-func isEq<T>(x : T, y : T, eq : (implicit : (T, T) -> Bool)) : Bool {
+func isEq<T>(x : T, y : T, implicit eq : (T, T) -> Bool) : Bool {
   eq(x, y)
 };
 
 assert isEq<Nat>(3, 3);
 
-func tuple(pair : (Nat, Nat), eq : (implicit : (Nat, Nat) -> Bool)) : Bool {
+func tuple(pair : (Nat, Nat), implicit eq : (Nat, Nat) -> Bool) : Bool {
   eq(pair.0, pair.1)
 };
 

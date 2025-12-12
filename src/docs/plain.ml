@@ -153,6 +153,7 @@ let rec plain_of_typ : Buffer.t -> render_functions -> Syntax.typ -> unit =
       bprintf buf "(";
       plain_of_typ_item buf rf (Some id, typ);
       bprintf buf ")"
+  | Syntax.ImplicitT (id_opt, typ) -> plain_of_implicit buf rf id_opt typ
   | Syntax.FuncT (func_sort, typ_binders, arg, res) ->
       plain_of_func_sort buf func_sort;
       plain_of_typ_binders buf rf typ_binders;
@@ -203,7 +204,17 @@ and plain_of_typ_field :
 and plain_of_typ_item : Buffer.t -> render_functions -> Syntax.typ_item -> unit
     =
  fun buf rf (oid, t) ->
-  Option.iter (fun id -> bprintf buf "%s : " id.it) oid;
+  match (oid, t.Source.it) with
+  | None, Syntax.ImplicitT (oid, t) -> plain_of_implicit buf rf oid t
+  | _ ->
+      Option.iter (fun id -> bprintf buf "%s : " id.it) oid;
+      plain_of_typ buf rf t
+
+and plain_of_implicit :
+    Buffer.t -> render_functions -> Syntax.id_opt -> Syntax.typ -> unit =
+ fun buf rf id_opt t ->
+  bprintf buf "implicit %s : "
+    (match id_opt.it with None -> "_" | Some id -> id);
   plain_of_typ buf rf t
 
 let opt_typ : Buffer.t -> Syntax.typ option -> unit =

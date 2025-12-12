@@ -242,7 +242,8 @@ let structural_equality t =
        | Tup [Blob _; Text _], Func _ -> assert false; (* mixed, cannot determine equality *)
        | Func _, Func _ -> Bool (v1 == v2)  (* both internal, HACK *)
        | _ -> failwith "illegal shared function")
-    | T.Named (n, t1) -> go t1
+    | T.Named (_, t1)
+    | T.Implicit (_, t1) -> go t1
   in
   go t
 

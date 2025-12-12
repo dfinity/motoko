@@ -157,6 +157,9 @@ module MakeState() = struct
        | _ -> assert false)
     | Named (n, t) ->
       (* drop name, Candid only allows names on function argument and return types *)
+       (typ t).it
+    | Implicit (_, t) ->
+      (* drop implicits, Candid has no implicits *) (* TBR *)
       (typ t).it
     | Func _
     | Async _
