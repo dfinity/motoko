@@ -76,6 +76,25 @@ module Main {
     let xs : [var (Nat, Text)] = [var];
     assert xs.append((3, "hello")).size() == 0
   };
+
+  public func localFunc() {
+    func thrice(self : Nat) : Nat {
+      self * 3;
+    };
+    func twice(self : Nat) : Nat {
+      self * 3;
+    };
+    assert (5).thrice() == 15;
+    // Local definition takes precedence
+    assert (5).twice() == 15;
+    do {
+      func twice(self : Nat) : Nat {
+        self * 4;
+      };
+      // Shadowing works as expected
+      assert (5).twice() == 20;
+    }
+  }
 };
 
 Main.vec();
@@ -83,3 +102,4 @@ Main.immutableArray();
 Main.mutableArray();
 Main.nat();
 Main.overlappingSelf();
+Main.localFunc();
