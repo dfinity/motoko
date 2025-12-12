@@ -835,7 +835,7 @@ func getCandidTypeLimits<system>() : {
   scalar : Nat32;
   bias : Nat32;
 } {
-  let (scaler, bias) = (prim "getCandidTypeLimits" : () -> (Nat32, Nat32))();
+  let (scalar, bias) = (prim "getCandidTypeLimits" : () -> (Nat32, Nat32))();
   {
     scalar;
     bias;
