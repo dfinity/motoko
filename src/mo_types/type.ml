@@ -1876,6 +1876,7 @@ module type PrettyConfig = sig
   val show_stamps : bool
   val show_scopes : bool
   val show_hash_suffix : bool (* TODO: remove once we pretty print stable sigs without hashes *)
+  val show_con_scopes : bool
   val con_sep : string
   val par_sep : string
   val max_list : int option
@@ -1885,6 +1886,7 @@ module ShowStamps = struct
   let show_stamps = true
   let show_scopes = true
   let show_hash_suffix = true
+  let show_con_scopes = false
   let con_sep = "__" (* TODO: revert to "/" *)
   let par_sep = "_"
   let max_list = None
@@ -1893,9 +1895,10 @@ end
 module ParseableStamps = struct
   let show_stamps = true
   let show_scopes = true (* false ok too *)
+  let show_hash_suffix = true
+  let show_con_scopes = false
   let con_sep = "__"
   let par_sep = "_"
-  let show_hash_suffix = true
   let max_list = None
 end
 
@@ -1903,6 +1906,7 @@ module ElideStamps = struct
   let show_stamps = false
   let show_scopes = true
   let show_hash_suffix = true
+  let show_con_scopes = false
   let con_sep = ShowStamps.con_sep
   let par_sep = ShowStamps.par_sep
   let max_list = None
@@ -1911,6 +1915,7 @@ end
 module ElideStampsAndHashes = struct
   include ElideStamps
   let show_hash_suffix = false
+  let show_con_scopes = true
   let max_list = Some 10
 end
 
@@ -1969,7 +1974,7 @@ let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s%s%d" x Cfg.par_sep i
 
 let string_of_con c =
-  let name = Cons.to_string Cfg.show_stamps Cfg.con_sep c in
+  let name = Cons.to_string Cfg.show_stamps Cfg.show_con_scopes Cfg.con_sep c in
   if Cfg.show_hash_suffix then name
   else remove_hash_suffix name
 
