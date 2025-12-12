@@ -38,6 +38,8 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
      f { exp with it = AndE (over_exp f exp1, over_exp f exp2) }
   | OrE (exp1, exp2) ->
      f { exp with it = OrE (over_exp f exp1, over_exp f exp2) }
+  | NullCoalesceE (exp1, exp2) ->
+     f { exp with it = NullCoalesceE (over_exp f exp1, over_exp f exp2) }
   | ImpliesE (exp1, exp2) ->
      f { exp with it = ImpliesE (over_exp f exp1, over_exp f exp2) }
   | OldE exp1 -> f { exp with it = OldE (over_exp f exp1) }

@@ -195,6 +195,7 @@ and exp' =
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)
   | OrE of exp * exp                           (* disjunction *)
+  | NullCoalesceE of exp * exp                 (* null coalescing *)
   | ImpliesE of exp * exp                      (* implication *)
   | OldE of exp                                (* old-expression *)
   | IfE of exp * exp * exp                     (* conditional *)

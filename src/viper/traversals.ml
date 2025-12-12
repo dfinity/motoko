@@ -40,6 +40,7 @@ let rec over_exp (v : visitor) (exp : exp) : exp =
   | CallE (exp_opt, exp1, inst, (s, exp2)) -> { exp with it = CallE (Option.map (over_exp v) exp_opt, over_exp v exp1, over_inst v inst, (s, ref (over_exp v (!exp2)))) }
   | AndE (exp1, exp2) -> { exp with it = AndE (over_exp v exp1, over_exp v exp2) }
   | OrE (exp1, exp2) -> { exp with it = OrE (over_exp v exp1, over_exp v exp2) }
+  | NullCoalesceE (exp1, exp2) -> { exp with it = NullCoalesceE (over_exp v exp1, over_exp v exp2) }
   | ImpliesE (exp1, exp2) -> { exp with it = ImpliesE (over_exp v exp1, over_exp v exp2) }
   | OldE exp1 -> { exp with it = OldE (over_exp v exp1) }
   | WhileE (exp1, exp2) -> { exp with it = WhileE (over_exp v exp1, over_exp v exp2) }

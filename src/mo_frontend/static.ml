@@ -89,6 +89,7 @@ let rec exp m e = match e.it with
   | ThrowE _
   | TryE _
   | BangE _
+  | NullCoalesceE _
   | ImpliesE _
   | OldE _
   -> err m e.at
