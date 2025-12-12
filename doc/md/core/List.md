@@ -6,7 +6,7 @@ Can be declared `stable` for orthogonal persistence.
 This implementation is adapted with permission from the `vector` Mops package created by Research AG.
 
 Copyright: 2023 MR Research AG
-Main author: Andrii Stepanov
+Main author: Andrii Stepanov (AStepanov25)
 Contributors: Timo Hanke (timohanke), Andy Gura (andygura), react0r-com
 
 ```motoko name=import
@@ -74,9 +74,27 @@ Runtime: `O(size)`
 
 Space: `O(size)`
 
+## Function `fill`
+``` motoko no-repl
+func fill<T>(self : List<T>, value : T)
+```
+
+Fills all elements in the list with the given value.
+
+Example:
+```motoko include=import
+let list = List.fromArray<Nat>([1, 2, 3]);
+List.fill(list, 0); // fills the list with 0
+assert List.toArray(list) == [0, 0, 0];
+```
+
+Runtime: `O(size)`
+
+Space: `O(1)`
+
 ## Function `toPure`
 ``` motoko no-repl
-func toPure<T>(list : List<T>) : PureList.List<T>
+func toPure<T>(self : List<T>) : PureList.List<T>
 ```
 
 Converts a mutable `List` to a purely functional `PureList`.
@@ -90,29 +108,31 @@ let pureList = List.toPure<Nat>(list); // converts to immutable PureList
 Runtime: `O(size)`
 
 Space: `O(size)`
+@deprecated M0235
 
 ## Function `fromPure`
 ``` motoko no-repl
 func fromPure<T>(pure : PureList.List<T>) : List<T>
 ```
 
-Converts a purely functional `List` to a mutable `List`.
+Converts a purely functional `PureList` to a `List`.
 
 Example:
 ```motoko include=import
 import PureList "mo:core/pure/List";
 
 let pureList = PureList.fromArray<Nat>([1, 2, 3]);
-let list = List.fromPure<Nat>(pureList); // converts to mutable List
+let list = List.fromPure<Nat>(pureList); // converts to List
 ```
 
 Runtime: `O(size)`
 
 Space: `O(size)`
+@deprecated M0235
 
 ## Function `addRepeat`
 ``` motoko no-repl
-func addRepeat<T>(list : List<T>, initValue : T, count : Nat)
+func addRepeat<T>(self : List<T>, initValue : T, count : Nat)
 ```
 
 Add to list `count` copies of the initial value.
@@ -126,9 +146,29 @@ The maximum number of elements in a `List` is 2^32.
 
 Runtime: `O(count)`
 
+## Function `truncate`
+``` motoko no-repl
+func truncate<T>(self : List<T>, newSize : Nat)
+```
+
+Truncates the list to the specified size.
+If the new size is larger than the current size, it will do nothing.
+If the new size is equal to the current list size, after the operation list will be equal to cloned version of itself.
+
+Example:
+```motoko include=import
+let list = List.fromArray<Nat>([1, 2, 3, 4, 5]);
+List.truncate(list, 3); // list is now [1, 2, 3]
+assert List.toArray(list) == [1, 2, 3];
+```
+
+Runtime: `O(size)`
+
+Space: `O(1)`
+
 ## Function `clear`
 ``` motoko no-repl
-func clear<T>(list : List<T>)
+func clear<T>(self : List<T>)
 ```
 
 Resets the list to size 0, de-referencing all elements.
@@ -145,9 +185,76 @@ assert List.toArray(list) == [];
 
 Runtime: `O(1)`
 
+## Function `tabulate`
+``` motoko no-repl
+func tabulate<T>(size : Nat, generator : Nat -> T) : List<T>
+```
+
+Creates a list of size `size`. Each element at index i
+is created by applying `generator` to i.
+
+```motoko include=import
+import Nat "mo:core/Nat";
+
+let list = List.tabulate<Nat>(4, func i = i * 2);
+assert List.toArray(list) == [0, 2, 4, 6];
+```
+
+Runtime: O(size)
+
+Space: O(size)
+
+*Runtime and space assumes that `generator` runs in O(1) time and space.
+
+## Function `flatten`
+``` motoko no-repl
+func flatten<T>(self : List<List<T>>) : List<T>
+```
+
+Combines a list of lists into a single list. Retains the original
+ordering of the elements.
+
+This has better performance compared to `List.join()`.
+
+```motoko include=import
+import Nat "mo:core/Nat";
+
+let lists = List.fromArray<List.List<Nat>>([
+  List.fromArray<Nat>([0, 1, 2]), List.fromArray<Nat>([2, 3]), List.fromArray<Nat>([]), List.fromArray<Nat>([4])
+]);
+let flatList = List.flatten<Nat>(lists);
+assert List.equal<Nat>(flatList, List.fromArray<Nat>([0, 1, 2, 2, 3, 4]), Nat.equal);
+```
+
+Runtime: O(number of elements in list)
+
+Space: O(number of elements in list)
+
+## Function `join`
+``` motoko no-repl
+func join<T>(self : Types.Iter<List<T>>) : List<T>
+```
+
+Combines an iterator of lists into a single list.
+Retains the original ordering of the elements.
+
+Consider using `List.flatten()` for better performance.
+
+```motoko include=import
+import Nat "mo:core/Nat";
+
+let lists = [List.fromArray<Nat>([0, 1, 2]), List.fromArray<Nat>([2, 3]), List.fromArray<Nat>([]), List.fromArray<Nat>([4])];
+let joinedList = List.join<Nat>(lists.vals());
+assert List.equal<Nat>(joinedList, List.fromArray<Nat>([0, 1, 2, 2, 3, 4]), Nat.equal);
+```
+
+Runtime: O(number of elements in list)
+
+Space: O(number of elements in list)
+
 ## Function `clone`
 ``` motoko no-repl
-func clone<T>(list : List<T>) : List<T>
+func clone<T>(self : List<T>) : List<T>
 ```
 
 Returns a copy of a List, with the same size.
@@ -165,7 +272,7 @@ Runtime: `O(size)`
 
 ## Function `map`
 ``` motoko no-repl
-func map<T, R>(list : List<T>, f : T -> R) : List<R>
+func map<T, R>(self : List<T>, f : T -> R) : List<R>
 ```
 
 Creates a new list by applying the provided function to each element in the input list.
@@ -182,9 +289,84 @@ assert List.toArray(textList) == ["123"];
 
 Runtime: `O(size)`
 
+## Function `mapInPlace`
+``` motoko no-repl
+func mapInPlace<T>(self : List<T>, f : T -> T)
+```
+
+Applies `f` to each element of `list` in place,
+retaining the original ordering of elements.
+This modifies the original list.
+
+```motoko include=import
+import Nat "mo:core/Nat";
+
+let list = List.fromArray<Nat>([0, 1, 2, 3]);
+List.mapInPlace<Nat>(list, func x = x * 3);
+assert List.equal(list, List.fromArray<Nat>([0, 3, 6, 9]), Nat.equal);
+```
+
+Runtime: O(size)
+
+Space: O(size)
+
+*Runtime and space assumes that `f` runs in O(1) time and space.
+
+## Function `mapEntries`
+``` motoko no-repl
+func mapEntries<T, R>(self : List<T>, f : (T, Nat) -> R) : List<R>
+```
+
+Creates a new list by applying `f` to each element in `list` and its index.
+Retains original ordering of elements.
+
+```motoko include=import
+import Nat "mo:core/Nat";
+
+let list = List.fromArray<Nat>([10, 10, 10, 10]);
+let newList = List.mapEntries<Nat, Nat>(list, func (x, i) = i * x);
+assert List.equal(newList, List.fromArray<Nat>([0, 10, 20, 30]), Nat.equal);
+```
+
+Runtime: O(size)
+
+Space: O(size)
+
+*Runtime and space assumes that `f` runs in O(1) time and space.
+
+## Function `mapResult`
+``` motoko no-repl
+func mapResult<T, R, E>(self : List<T>, f : T -> Types.Result<R, E>) : Types.Result<List<R>, E>
+```
+
+Creates a new list by applying `f` to each element in `list`.
+If any invocation of `f` produces an `#err`, returns an `#err`. Otherwise
+returns an `#ok` containing the new list.
+
+```motoko include=import
+import Result "mo:core/Result";
+
+let list = List.fromArray<Nat>([4, 3, 2, 1, 0]);
+// divide 100 by every element in the list
+let result = List.mapResult<Nat, Nat, Text>(list, func x {
+  if (x > 0) {
+    #ok(100 / x)
+  } else {
+    #err "Cannot divide by zero"
+  }
+});
+assert Result.isErr(result);
+```
+
+Runtime: O(size)
+
+Space: O(size)
+
+*Runtime and space assumes that `f` runs in O(1) time and space.
+
 ## Function `filter`
 ``` motoko no-repl
-func filter<T>(list : List<T>, predicate : T -> Bool) : List<T>
+func filter<T>(self : List<T>, predicate : T -> Bool) : List<T>
 ```
 
 Returns a new list containing only the elements from `list` for which the predicate returns true.
@@ -202,9 +384,28 @@ Space: `O(size)`
 
 *Runtime and space assumes that `predicate` runs in `O(1)` time and space.
 
+## Function `retain`
+``` motoko no-repl
+func retain<T>(self : List<T>, predicate : T -> Bool)
+```
+
+Retains only the elements in `list` for which the predicate returns true.
+Modifies the original list in place.
+
+Example:
+```motoko include=import
+let list = List.fromArray<Nat>([1, 2, 3, 4]);
+List.retain<Nat>(list, func x = x % 2 == 0);
+assert List.toArray(list) == [2, 4];
+```
+
+Runtime: `O(size)`
+
+Space: `O(sqrt(size))` if `list` was truncated otherwise `O(1)`
+
 ## Function `filterMap`
 ``` motoko no-repl
-func filterMap<T, R>(list : List<T>, f : T -> ?R) : List<R>
+func filterMap<T, R>(self : List<T>, f : T -> ?R) : List<R>
 ```
 
 Returns a new list containing all elements from `list` for which the function returns ?element.
@@ -223,9 +424,29 @@ Space: `O(size)`
 
 *Runtime and space assumes that `f` runs in `O(1)` time and space.
 
+## Function `flatMap`
+``` motoko no-repl
+func flatMap<T, R>(self : List<T>, k : T -> Types.Iter<R>) : List<R>
+```
+
+Creates a new list by applying `k` to each element in `list`,
+and concatenating the resulting iterators in order.
+
+```motoko include=import
+import Int "mo:core/Int"
+
+let list = List.fromArray<Nat>([1, 2, 3, 4]);
+let newList = List.flatMap<Nat, Int>(list, func x = [x, -x].vals());
+assert List.equal(newList, List.fromArray<Int>([1, -1, 2, -2, 3, -3, 4, -4]), Int.equal);
+```
+Runtime: O(size)
+
+Space: O(size)
+*Runtime and space assumes that `k` runs in O(1) time and space.
+
 ## Function `size`
 ``` motoko no-repl
-func size<T>(list : List<T>) : Nat
+func size<T>(self : List<T>) : Nat
 ```
 
 Returns the current number of elements in the list.
@@ -240,7 +461,7 @@ Runtime: `O(1)` (with some internal calculations)
 
 ## Function `add`
 ``` motoko no-repl
-func add<T>(list : List<T>, element : T)
+func add<T>(self : List<T>, element : T)
 ```
 
 Adds a single element to the end of a List,
@@ -263,7 +484,7 @@ Amortized Runtime: `O(1)`, Worst Case Runtime: `O(sqrt(n))`
 
 ## Function `removeLast`
 ``` motoko no-repl
-func removeLast<T>(list : List<T>) : ?T
+func removeLast<T>(self : List<T>) : ?T
 ```
 
 Removes and returns the last item in the list or `null` if
@@ -285,7 +506,7 @@ Amortized Space: `O(1)`, Worst Case Space: `O(sqrt(n))`
 
 ## Function `at`
 ``` motoko no-repl
-func at<T>(list : List<T>, index : Nat) : T
+func at<T>(self : List<T>, index : Nat) : T
 ```
 
 Returns the element at index `index`. Indexing is zero-based.
@@ -303,7 +524,7 @@ Runtime: `O(1)`
 
 ## Function `get`
 ``` motoko no-repl
-func get<T>(list : List<T>, index : Nat) : ?T
+func get<T>(self : List<T>, index : Nat) : ?T
 ```
 
 Returns the element at index `index` as an option.
@@ -321,14 +542,15 @@ assert List.get(list, 2) == null;
 Runtime: `O(1)`
 
 Space: `O(1)`
+@deprecated M0235
 
 ## Function `put`
 ``` motoko no-repl
-func put<T>(list : List<T>, index : Nat, value : T)
+func put<T>(self : List<T>, index : Nat, value : T)
 ```
 
 Overwrites the current element at `index` with `element`.
-Traps if `index` >= size. Indexing is zero-based.
+Traps if `index` >= size, error message may not be descriptive. Indexing is zero-based.
 
 Example:
 ```motoko include=import
@@ -340,9 +562,9 @@ assert List.toArray(list) == [20];
 
 Runtime: `O(1)`
 
-## Function `sort`
+## Function `sortInPlace`
 ``` motoko no-repl
-func sort<T>(list : List<T>, compare : (T, T) -> Order.Order)
+func sortInPlace<T>(self : List<T>, compare : (implicit : (T, T) -> Types.Order))
 ```
 
 Sorts the elements in the list according to `compare`.
@@ -356,7 +578,7 @@ let list = List.empty<Nat>();
 List.add(list, 3);
 List.add(list, 1);
 List.add(list, 2);
-List.sort(list, Nat.compare);
+List.sortInPlace(list, Nat.compare);
 assert List.toArray(list) == [1, 2, 3];
 ```
 
@@ -365,9 +587,73 @@ Runtime: O(size * log(size))
 Space: O(size)
 *Runtime and space assumes that `compare` runs in O(1) time and space.
 
+## Function `sort`
+``` motoko no-repl
+func sort<T>(self : List<T>, compare : (implicit : (T, T) -> Types.Order)) : List<T>
+```
+
+Sorts the elements in the list according to `compare`.
+Sort is deterministic, stable, and in-place.
+
+Example:
+```motoko include=import
+import Nat "mo:core/Nat";
+
+let list = List.empty<Nat>();
+List.add(list, 3);
+List.add(list, 1);
+List.add(list, 2);
+let sorted = List.sort(list, Nat.compare);
+assert List.toArray(sorted) == [1, 2, 3];
+```
+
+Runtime: O(size * log(size))
+
+Space: O(size)
+*Runtime and space assumes that `compare` runs in O(1) time and space.
+
+## Function `isSorted`
+``` motoko no-repl
+func isSorted<T>(self : List<T>, compare : (implicit : (T, T) -> Types.Order)) : Bool
+```
+
+Checks whether the `list` is sorted.
+
+Example:
+```
+import Nat "mo:core/Nat";
+
+let list = List.fromArray<Nat>([1, 2, 3]);
+assert List.isSorted(list, Nat.compare);
+```
+
+Runtime: O(size)
+
+Space: O(1)
+
+## Function `deduplicate`
+``` motoko no-repl
+func deduplicate<T>(self : List<T>, equal : (implicit : (T, T) -> Bool))
+```
+
+Remove adjacent duplicates from the `list`, if the `list` is sorted all elements will be unique.
+
+Example:
+```
+import Nat "mo:core/Nat";
+
+let list = List.fromArray<Nat>([1, 1, 2, 2, 3]);
+List.deduplicate(list, Nat.equal);
+assert List.equal(list, List.fromArray<Nat>([1, 2, 3]), Nat.equal);
+```
+
+Runtime: O(size)
+
+Space: O(1)
+
 ## Function `indexOf`
 ``` motoko no-repl
-func indexOf<T>(list : List<T>, equal : (T, T) -> Bool, element : T) : ?Nat
+func indexOf<T>(self : List<T>, equal : (implicit : (T, T) -> Bool), element : T) : ?Nat
 ```
 
 Finds the first index of `element` in `list` using equality of elements defined
@@ -391,9 +677,32 @@ Runtime: `O(size)`
 
 *Runtime and space assumes that `equal` runs in `O(1)` time and space.
 
+## Function `nextIndexOf`
+``` motoko no-repl
+func nextIndexOf<T>(self : List<T>, equal : (implicit : (T, T) -> Bool), element : T, fromInclusive : Nat) : ?Nat
+```
+
+Returns the index of the next occurence of `element` in the `list` starting from the `from` index (inclusive).
+
+```motoko include=import
+import Char "mo:core/Char";
+let list = List.fromArray<Char>(['c', 'o', 'f', 'f', 'e', 'e']);
+assert List.nextIndexOf<Char>(list, Char.equal, 'c', 0) == ?0;
+assert List.nextIndexOf<Char>(list, Char.equal, 'f', 0) == ?2;
+assert List.nextIndexOf<Char>(list, Char.equal, 'f', 2) == ?2;
+assert List.nextIndexOf<Char>(list, Char.equal, 'f', 3) == ?3;
+assert List.nextIndexOf<Char>(list, Char.equal, 'f', 4) == null;
+```
+
+Runtime: O(size)
+
+Space: O(1)
+
+*Runtime and space assumes that `equal` runs in O(1) time and space.
+
 ## Function `lastIndexOf`
 ``` motoko no-repl
-func lastIndexOf<T>(list : List<T>, equal : (T, T) -> Bool, element : T) : ?Nat
+func lastIndexOf<T>(self : List<T>, equal : (implicit : (T, T) -> Bool), element : T) : ?Nat
 ```
 
 Finds the last index of `element` in `list` using equality of elements defined
@@ -413,9 +722,29 @@ Runtime: `O(size)`
 
 *Runtime and space assumes that `equal` runs in `O(1)` time and space.
 
+## Function `prevIndexOf`
+``` motoko no-repl
+func prevIndexOf<T>(self : List<T>, equal : (implicit : (T, T) -> Bool), element : T, fromExclusive : Nat) : ?Nat
+```
+
+Returns the index of the previous occurence of `element` in the `list` starting from the `from` index (exclusive).
+
+```motoko include=import
+import Char "mo:core/Char";
+let list = List.fromArray<Char>(['c', 'o', 'f', 'f', 'e', 'e']);
+assert List.prevIndexOf<Char>(list, Char.equal, 'c', List.size(list)) == ?0;
+assert List.prevIndexOf<Char>(list, Char.equal, 'e', List.size(list)) == ?5;
+assert List.prevIndexOf<Char>(list, Char.equal, 'e', 5) == ?4;
+assert List.prevIndexOf<Char>(list, Char.equal, 'e', 4) == null;
+```
+
+Runtime: O(size)
+
+Space: O(1)
+
 ## Function `find`
 ``` motoko no-repl
-func find<T>(list : List<T>, predicate : T -> Bool) : ?T
+func find<T>(self : List<T>, predicate : T -> Bool) : ?T
 ```
 
 Returns the first value in `list` for which `predicate` returns true.
@@ -434,7 +763,7 @@ Space: O(1)
 
 ## Function `findIndex`
 ``` motoko no-repl
-func findIndex<T>(list : List<T>, predicate : T -> Bool) : ?Nat
+func findIndex<T>(self : List<T>, predicate : T -> Bool) : ?Nat
 ```
 
 Finds the index of the first element in `list` for which `predicate` is true.
@@ -458,7 +787,7 @@ Runtime: `O(size)`
 
 ## Function `findLastIndex`
 ``` motoko no-repl
-func findLastIndex<T>(list : List<T>, predicate : T -> Bool) : ?Nat
+func findLastIndex<T>(self : List<T>, predicate : T -> Bool) : ?Nat
 ```
 
 Finds the index of the last element in `list` for which `predicate` is true.
@@ -482,7 +811,7 @@ Runtime: `O(size)`
 
 ## Function `binarySearch`
 ``` motoko no-repl
-func binarySearch<T>(list : List<T>, compare : (T, T) -> Order.Order, element : T) : {#found : Nat; #insertionIndex : Nat}
+func binarySearch<T>(self : List<T>, compare : (implicit : (T, T) -> Types.Order), element : T) : {#found : Nat; #insertionIndex : Nat}
 ```
 
 Performs binary search on a sorted list to find the index of the `element`.
@@ -509,7 +838,7 @@ Space: `O(1)`
 
 ## Function `all`
 ``` motoko no-repl
-func all<T>(list : List<T>, predicate : T -> Bool) : Bool
+func all<T>(self : List<T>, predicate : T -> Bool) : Bool
 ```
 
 Returns true iff every element in `list` satisfies `predicate`.
@@ -533,7 +862,7 @@ Space: `O(1)`
 
 ## Function `any`
 ``` motoko no-repl
-func any<T>(list : List<T>, predicate : T -> Bool) : Bool
+func any<T>(self : List<T>, predicate : T -> Bool) : Bool
 ```
 
 Returns true iff some element in `list` satisfies `predicate`.
@@ -557,7 +886,7 @@ Space: `O(1)`
 
 ## Function `values`
 ``` motoko no-repl
-func values<T>(list : List<T>) : Iter.Iter<T>
+func values<T>(self : List<T>) : Types.Iter<T>
 ```
 
 Returns an Iterator (`Iter`) over the elements of a List.
@@ -585,7 +914,7 @@ Runtime: `O(1)`
 
 ## Function `enumerate`
 ``` motoko no-repl
-func enumerate<T>(list : List<T>) : Iter.Iter<(Nat, T)>
+func enumerate<T>(self : List<T>) : Types.Iter<(Nat, T)>
 ```
 
 Returns an Iterator (`Iter`) over the items (index-value pairs) in the list.
@@ -612,7 +941,7 @@ Warning: Allocates memory on the heap to store ?(Nat, T).
 
 ## Function `reverseValues`
 ``` motoko no-repl
-func reverseValues<T>(list : List<T>) : Iter.Iter<T>
+func reverseValues<T>(self : List<T>) : Types.Iter<T>
 ```
 
 Returns an Iterator (`Iter`) over the elements of the list in reverse order.
@@ -640,7 +969,7 @@ Runtime: `O(1)`
 
 ## Function `reverseEnumerate`
 ``` motoko no-repl
-func reverseEnumerate<T>(list : List<T>) : Iter.Iter<(Nat, T)>
+func reverseEnumerate<T>(self : List<T>) : Types.Iter<(Nat, T)>
 ```
 
 Returns an Iterator (`Iter`) over the items in reverse order, i.e. pairs of index and value.
@@ -667,7 +996,7 @@ Warning: Allocates memory on the heap to store ?(T, Nat).
 
 ## Function `keys`
 ``` motoko no-repl
-func keys<T>(list : List<T>) : Iter.Iter<Nat>
+func keys<T>(self : List<T>) : Types.Iter<Nat>
 ```
 
 Returns an Iterator (`Iter`) over the indices (keys) of the list.
@@ -692,7 +1021,7 @@ Runtime: `O(1)`
 
 ## Function `fromIter`
 ``` motoko no-repl
-func fromIter<T>(iter : Iter.Iter<T>) : List<T>
+func fromIter<T>(iter : Types.Iter<T>) : List<T>
 ```
 
 Creates a new List containing all elements from the provided iterator.
@@ -712,9 +1041,49 @@ assert Iter.toArray(List.values(list)) == [1, 1, 1];
 
 Runtime: `O(size)`
 
+## Function `toList`
+``` motoko no-repl
+func toList<T>(self : Types.Iter<T>) : List<T>
+```
+
+Convert an iterator to a new mutable List.
+Elements are added in the order they are returned by the iterator.
+
+Example:
+```motoko include=import
+import Nat "mo:core/Nat";
+import Iter "mo:core/Iter";
+
+let array = [1, 1, 1];
+let iter = array.vals();
+
+let list = iter.toList<Nat>();
+assert Iter.toArray(List.values(list)) == [1, 1, 1];
+```
+
+Runtime: `O(size)`
+
+## Function `append`
+``` motoko no-repl
+func append<T>(self : List<T>, added : List<T>)
+```
+
+Appends all elements from `added` to the end of `list`.
+Example:
+```motoko include=import
+let list = List.fromArray<Nat>([1, 2]);
+let added = List.fromArray<Nat>([3, 4]);
+List.append<Nat>(list, added);
+assert List.toArray(list) == [1, 2, 3, 4];
+```
+
+Runtime: `O(size(added))`
+
+Space: `O(size(added))`
+
 ## Function `addAll`
 ``` motoko no-repl
-func addAll<T>(list : List<T>, iter : Iter.Iter<T>)
+func addAll<T>(self : List<T>, iter : Types.Iter<T>)
 ```
 
 Adds all elements from the provided iterator to the end of the list.
@@ -739,7 +1108,7 @@ Runtime: `O(size)`, where n is the size of iter.
 
 ## Function `toArray`
 ``` motoko no-repl
-func toArray<T>(list : List<T>) : [T]
+func toArray<T>(self : List<T>) : [T]
 ```
 
 Creates a new immutable array containing all elements from the list.
@@ -775,7 +1144,7 @@ Runtime: `O(size)`
 
 ## Function `toVarArray`
 ``` motoko no-repl
-func toVarArray<T>(list : List<T>) : [var T]
+func toVarArray<T>(self : List<T>) : [var T]
 ```
 
 Creates a new mutable array containing all elements from the list.
@@ -815,7 +1184,7 @@ Runtime: `O(size)`
 
 ## Function `first`
 ``` motoko no-repl
-func first<T>(list : List<T>) : ?T
+func first<T>(self : List<T>) : ?T
 ```
 
 Returns the first element of `list`, or `null` if the list is empty.
@@ -832,7 +1201,7 @@ Space: `O(1)`
 
 ## Function `last`
 ``` motoko no-repl
-func last<T>(list : List<T>) : ?T
+func last<T>(self : List<T>) : ?T
 ```
 
 Returns the last element of `list`, or `null` if the list is empty.
@@ -849,7 +1218,7 @@ Space: `O(1)`
 
 ## Function `forEach`
 ``` motoko no-repl
-func forEach<T>(list : List<T>, f : T -> ())
+func forEach<T>(self : List<T>, f : T -> ())
 ```
 
 Applies `f` to each element in `list`.
@@ -874,7 +1243,7 @@ Space: `O(size)`
 
 ## Function `forEachEntry`
 ``` motoko no-repl
-func forEachEntry<T>(list : List<T>, f : (Nat, T) -> ())
+func forEachEntry<T>(self : List<T>, f : (Nat, T) -> ())
 ```
 
 Applies `f` to each item `(i, x)` in `list` where `i` is the key
@@ -899,9 +1268,87 @@ Space: `O(size)`
 
 *Runtime and space assumes that `f` runs in O(1) time and space.
 
+## Function `range`
+``` motoko no-repl
+func range<T>(self : List<T>, fromInclusive : Int, toExclusive : Int) : Types.Iter<T>
+```
+
+Returns an iterator over a slice of `list` starting at `fromInclusive` up to (but not including) `toExclusive`.
+
+Negative indices are relative to the end of the list. For example, `-1` corresponds to the last element in the list.
+
+If the indices are out of bounds, they are clamped to the list bounds.
+If the first index is greater than the second, the function returns an empty iterator.
+
+```motoko include=import
+let list = List.fromArray<Nat>([1, 2, 3, 4, 5]);
+let iter1 = List.range<Nat>(list, 3, List.size(list));
+assert iter1.next() == ?4;
+assert iter1.next() == ?5;
+assert iter1.next() == null;
+
+let iter2 = List.range<Nat>(list, 3, -1);
+assert iter2.next() == ?4;
+assert iter2.next() == null;
+
+let iter3 = List.range<Nat>(list, 0, 0);
+assert iter3.next() == null;
+```
+
+Runtime: O(1)
+
+Space: O(1)
+
+## Function `sliceToArray`
+``` motoko no-repl
+func sliceToArray<T>(self : List<T>, fromInclusive : Int, toExclusive : Int) : [T]
+```
+
+Returns a new array containing elements from `list` starting at index `fromInclusive` up to (but not including) index `toExclusive`.
+If the indices are out of bounds, they are clamped to the array bounds.
+
+```motoko include=import
+let array = List.fromArray<Nat>([1, 2, 3, 4, 5]);
+
+let slice1 = List.sliceToArray<Nat>(array, 1, 4);
+assert slice1 == [2, 3, 4];
+
+let slice2 = List.sliceToArray<Nat>(array, 1, -1);
+assert slice2 == [2, 3, 4];
+```
+
+Runtime: O(toExclusive - fromInclusive)
+
+Space: O(toExclusive - fromInclusive)
+
+## Function `sliceToVarArray`
+``` motoko no-repl
+func sliceToVarArray<T>(self : List<T>, fromInclusive : Int, toExclusive : Int) : [var T]
+```
+
+Returns a new var array containing elements from `list` starting at index `fromInclusive` up to (but not including) index `toExclusive`.
+If the indices are out of bounds, they are clamped to the array bounds.
+
+```motoko include=import
+import VarArray "mo:core/VarArray";
+import Nat "mo:core/Nat";
+
+let array = List.fromArray<Nat>([1, 2, 3, 4, 5]);
+
+let slice1 = List.sliceToVarArray<Nat>(array, 1, 4);
+assert VarArray.equal(slice1, [var 2, 3, 4], Nat.equal);
+
+let slice2 = List.sliceToVarArray<Nat>(array, 1, -1);
+assert VarArray.equal(slice2, [var 2, 3, 4], Nat.equal);
+```
+
+Runtime: O(toExclusive - fromInclusive)
+
+Space: O(toExclusive - fromInclusive)
+
 ## Function `reverseForEachEntry`
 ``` motoko no-repl
-func reverseForEachEntry<T>(list : List<T>, f : (Nat, T) -> ())
+func reverseForEachEntry<T>(self : List<T>, f : (Nat, T) -> ())
 ```
 
 Like `forEachEntryRev` but iterates through the list in reverse order,
@@ -928,7 +1375,7 @@ Space: `O(size)`
 
 ## Function `reverseForEach`
 ``` motoko no-repl
-func reverseForEach<T>(list : List<T>, f : T -> ())
+func reverseForEach<T>(self : List<T>, f : T -> ())
 ```
 
 Applies `f` to each element in `list` in reverse order.
@@ -951,9 +1398,28 @@ Space: `O(size)`
 
 *Runtime and space assumes that `f` runs in O(1) time and space.
 
+## Function `forEachInRange`
+``` motoko no-repl
+func forEachInRange<T>(self : List<T>, f : T -> (), fromInclusive : Nat, toExclusive : Nat)
+```
+
+Executes the closure over a slice of `list` starting at `fromInclusive` up to (but not including) `toExclusive`.
+
+```motoko include=import
+import Debug "mo:core/Debug";
+import Nat "mo:core/Nat";
+
+let list = List.fromArray<Nat>([1, 2, 3, 4, 5]);
+List.forEachInRange<Nat>(list, func x = Debug.print(Nat.toText(x)), 1, 2); // prints 2 and 3
+```
+
+Runtime: `O(toExclusive - fromExclusive)`
+
+Space: `O(1)`
+
 ## Function `contains`
 ``` motoko no-repl
-func contains<T>(list : List<T>, equal : (T, T) -> Bool, element : T) : Bool
+func contains<T>(self : List<T>, equal : (implicit : (T, T) -> Bool), element : T) : Bool
 ```
 
 Returns true if the list contains the specified element according to the provided
@@ -979,7 +1445,7 @@ Space: `O(1)`
 
 ## Function `max`
 ``` motoko no-repl
-func max<T>(list : List<T>, compare : (T, T) -> Order.Order) : ?T
+func max<T>(self : List<T>, compare : (implicit : (T, T) -> Types.Order)) : ?T
 ```
 
 Returns the greatest element in the list according to the ordering defined by `compare`.
@@ -1005,7 +1471,7 @@ Space: `O(1)`
 
 ## Function `min`
 ``` motoko no-repl
-func min<T>(list : List<T>, compare : (T, T) -> Order.Order) : ?T
+func min<T>(self : List<T>, compare : (implicit : (T, T) -> Types.Order)) : ?T
 ```
 
 Returns the least element in the list according to the ordering defined by `compare`.
@@ -1031,7 +1497,7 @@ Space: `O(1)`
 
 ## Function `equal`
 ``` motoko no-repl
-func equal<T>(list1 : List<T>, list2 : List<T>, equal : (T, T) -> Bool) : Bool
+func equal<T>(self : List<T>, other : List<T>, equal : (implicit : (T, T) -> Bool)) : Bool
 ```
 
 Tests if two lists are equal by comparing their elements using the provided `equal` function.
@@ -1058,7 +1524,7 @@ Space: `O(1)`
 
 ## Function `compare`
 ``` motoko no-repl
-func compare<T>(list1 : List<T>, list2 : List<T>, compare : (T, T) -> Order.Order) : Order.Order
+func compare<T>(self : List<T>, other : List<T>, compare : (implicit : (T, T) -> Types.Order)) : Types.Order
 ```
 
 Compares two lists lexicographically using the provided `compare` function.
@@ -1086,7 +1552,7 @@ Space: `O(1)`
 
 ## Function `toText`
 ``` motoko no-repl
-func toText<T>(list : List<T>, f : T -> Text) : Text
+func toText<T>(self : List<T>, toText : (implicit : T -> Text)) : Text
 ```
 
 Creates a textual representation of `list`, using `toText` to recursively
@@ -1109,7 +1575,7 @@ Space: `O(size)`
 
 ## Function `foldLeft`
 ``` motoko no-repl
-func foldLeft<A, T>(list : List<T>, base : A, combine : (A, T) -> A) : A
+func foldLeft<A, T>(self : List<T>, base : A, combine : (A, T) -> A) : A
 ```
 
 Collapses the elements in `list` into a single value by starting with `base`
@@ -1133,7 +1599,7 @@ Space: `O(1)`
 
 ## Function `foldRight`
 ``` motoko no-repl
-func foldRight<T, A>(list : List<T>, base : A, combine : (T, A) -> A) : A
+func foldRight<T, A>(self : List<T>, base : A, combine : (T, A) -> A) : A
 ```
 
 Collapses the elements in `list` into a single value by starting with `base`
@@ -1157,7 +1623,7 @@ Space: `O(1)`
 
 ## Function `reverseInPlace`
 ``` motoko no-repl
-func reverseInPlace<T>(list : List<T>)
+func reverseInPlace<T>(self : List<T>)
 ```
 
 Reverses the order of elements in `list` by overwriting in place.
@@ -1179,7 +1645,7 @@ Space: `O(1)`
 
 ## Function `reverse`
 ``` motoko no-repl
-func reverse<T>(list : List<T>) : List<T>
+func reverse<T>(self : List<T>) : List<T>
 ```
 
 Returns a new List with the elements from `list` in reverse order.
@@ -1201,7 +1667,7 @@ Space: `O(1)`
 
 ## Function `isEmpty`
 ``` motoko no-repl
-func isEmpty<T>(list : List<T>) : Bool
+func isEmpty<T>(self : List<T>) : Bool
 ```
 
 Returns true if and only if the list is empty.
@@ -1211,6 +1677,26 @@ Example:
 let list = List.fromArray<Nat>([2,0,3]);
 assert not List.isEmpty<Nat>(list);
 assert List.isEmpty<Nat>(List.empty<Nat>());
+```
+
+Runtime: `O(1)`
+
+Space: `O(1)`
+
+## Function `reader`
+``` motoko no-repl
+func reader<T>(self : List<T>, start : Nat) : () -> T
+```
+
+Unsafe iterator starting from `start`.
+
+Example:
+```
+let list = List.fromArray<Nat>([1, 2, 3, 4, 5]);
+let reader = List.reader<Nat>(list, 2);
+assert reader() == 3;
+assert reader() == 4;
+assert reader() == 5;
 ```
 
 Runtime: `O(1)`
