@@ -26,7 +26,7 @@
       flake = false;
     };
     pocket-ic-src = {
-      url = "github:dfinity/ic/master";
+      url = "github:dfinity/ic/f07e9896fef2c24db8d4d0bed3d3ed42f0934e2a";
       flake = false;
     };
     ic-wasm-src = {
@@ -38,11 +38,11 @@
       flake = false;
     };
     motoko-base-src = {
-      url = "github:dfinity/motoko-base/next-moc";
+      url = "github:caffeinelabs/motoko-base/next-moc";
       flake = false;
     };
     motoko-core-src = {
-      url = "github:dfinity/motoko-core";
+      url = "github:caffeinelabs/motoko-core";
       flake = false;
     };
     motoko-matchers-src = {

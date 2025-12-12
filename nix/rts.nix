@@ -13,7 +13,7 @@ let
   vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
   # SHA256 of Rust std deps
-  rustStdDepsHash = "sha256-BMcUE0OFcKxl8tD5+GQLO5v9/Ke7G1o1jJosHnWO8LA=";
+  rustStdDepsHash = "sha256-lfgB6wxBaFkt0EGJnvYTs8m2fDra3Tpdnvqlnj8KI3Y=";
 
   # Vendor directory for Rust std deps
   rustStdDeps = pkgs.stdenvNoCC.mkDerivation {

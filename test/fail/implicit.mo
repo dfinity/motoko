@@ -65,7 +65,7 @@ func f4(n : Nat, m : Nat, bogus : (implicit : (Nat, Nat) -> Order)) {
 f4(1, 1); // reject
 
 // retype f4 with as f4 with different implicit name
-let f5 : (Nat, Nat, (c : (implicit : (Nat, Nat) -> Order))) -> () = f4;
+let f5 : (Nat, Nat, c : (implicit : (Nat, Nat) -> Order)) -> () = f4;
 
 f5(1, 1); // accept
 
