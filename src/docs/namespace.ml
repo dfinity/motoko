@@ -11,6 +11,7 @@ let rec idents_in_pattern : Syntax.pat -> string list =
  fun pat ->
   match pat.it with
   | Syntax.VarP id -> [ id.it ]
+  | Syntax.ImplicitP imp -> [ imp.Mo_def.Syntax.id.it ]
   | Syntax.TupP ps -> List.concat_map idents_in_pattern ps
   | Syntax.ObjP pfs ->
       List.concat_map idents_in_pattern (List.filter_map Syntax.pf_pattern pfs)

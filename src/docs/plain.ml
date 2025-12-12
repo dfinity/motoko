@@ -190,7 +190,8 @@ and plain_of_typ_field :
     Buffer.t -> render_functions -> Syntax.typ_field -> unit =
  fun buf rf field ->
   match field.Source.it with
-  | Syntax.ValF (id, typ, mut) ->
+  (* TODO display implicit name *)
+  | Syntax.ValF (id, _, typ, mut) ->
       plain_of_mut buf mut;
       bprintf buf "%s : " id.it;
       plain_of_typ buf rf typ

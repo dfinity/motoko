@@ -294,6 +294,8 @@
 <pat_plain> ::= 
     '_'
     <id>
+    <implicit> <id>
+    <implicit> '(' <id> ')' <id>
     <lit>
     '(' <list(<pat_bin>, ',')> ')'
 
@@ -323,6 +325,8 @@
 
 <func_pat> ::= 
     <id>? <typ_params_opt> <pat_plain>
+    <implicit> <id> <typ_params_opt> <pat_plain>
+    <implicit> '(' <id> ')' <id> <typ_params_opt> <pat_plain>
 
 <dec_var> ::= 
     'var' <id> (':' <typ>)? '=' <exp>

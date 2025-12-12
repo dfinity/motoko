@@ -66,7 +66,7 @@ and typ' =
 and scope = typ
 and typ_field = typ_field' Source.phrase
 and typ_field' =
-  | ValF of id * typ * mut
+  | ValF of id * id option * typ * mut
   | TypF of typ_id * typ_bind list * typ
 
 and typ_tag = typ_tag' Source.phrase
@@ -107,6 +107,7 @@ type pat = (pat', Type.typ) Source.annotated_phrase
 and pat' =
   | WildP                                      (* wildcard *)
   | VarP of id                                 (* variable *)
+  | ImplicitP of given                            (* implicit *)
   | LitP of lit ref                            (* literal *)
   | SignP of unop * lit ref                    (* signed literal *)
   | TupP of pat list                           (* tuple *)
@@ -119,6 +120,8 @@ and pat' =
 (*
   | AsP of pat * pat                           (* conjunctive *)
 *)
+
+and given = { implicit : id; id : id }
 
 and pat_field = pat_field' Source.phrase
 and pat_field' =

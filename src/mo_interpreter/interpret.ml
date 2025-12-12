@@ -827,7 +827,7 @@ and declare_id id =
 and declare_pat pat : val_env =
   match pat.it with
   | WildP | LitP _ | SignP _ ->  V.Env.empty
-  | VarP id -> declare_id id
+  | VarP id | ImplicitP { id; _ } -> declare_id id
   | TupP pats -> declare_pats pats V.Env.empty
   | ObjP pfs -> declare_pat_fields pfs V.Env.empty
   | OptP pat1
@@ -896,7 +896,7 @@ and match_lit lit v : bool =
 and match_pat pat v : val_env option =
   match pat.it with
   | WildP -> Some V.Env.empty
-  | VarP id -> Some (V.Env.singleton id.it (Lib.Promise.make_fulfilled v))
+  | VarP id | ImplicitP { id; _ } -> Some (V.Env.singleton id.it (Lib.Promise.make_fulfilled v))
   | LitP lit ->
     if match_lit lit v
     then Some V.Env.empty
