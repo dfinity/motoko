@@ -159,7 +159,7 @@ no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not 
     forall : <T>(f : T -> Bool) -> Bool;
     getCandidLimits :
       <system>() -> {bias : Nat32; denominator : Nat32; numerator : Nat32};
-    getCandidTypeLimits : <system>() -> {bias : Nat32; scaler : Nat32};
+    getCandidTypeLimits : <system>() -> {bias : Nat32; scalar : Nat32};
     getCertificate : () -> ?Blob;
     getDeadBlobs : () -> ?[Blob];
     getSelfPrincipal : <system>() -> Principal;
@@ -272,7 +272,7 @@ no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not 
     rts_version : () -> Text;
     setCandidLimits :
       <system>{bias : Nat32; denominator : Nat32; numerator : Nat32} -> ();
-    setCandidTypeLimits : <system>{bias : Nat32; scaler : Nat32} -> ();
+    setCandidTypeLimits : <system>{bias : Nat32; scalar : Nat32} -> ();
     setCertifiedData : (data : Blob) -> ();
     shiftLeft : (x : Nat, shift : Nat32) -> Nat;
     shiftRight : (x : Nat, shift : Nat32) -> Nat;

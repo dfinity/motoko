@@ -213,7 +213,7 @@ unsafe fn parse_idl_header<M: Memory>(
     let typtbl: *mut *mut u8 = alloc(mem, Words(n_types as usize)) as *mut _;
 
     // Set up a limited buffer to detect absurd type tables
-    let full_end = buf.limit_size(typtbl_max);
+    let full_end = if extended  { buf.end } else { buf.limit_size(typtbl_max) };
 
     // Go through the table
     for i in 0..n_types {

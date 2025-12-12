@@ -825,19 +825,19 @@ func getCandidLimits<system>() : {
 };
 
 func setCandidTypeLimits<system>({
-  scaler : Nat32;
+  scalar : Nat32;
   bias : Nat32;
 }) {
-  (prim "setCandidTypeLimits" : (Nat32, Nat32) -> ())(scaler, bias);
+  (prim "setCandidTypeLimits" : (Nat32, Nat32) -> ())(scalar, bias);
 };
 
 func getCandidTypeLimits<system>() : {
-  scaler : Nat32;
+  scalar : Nat32;
   bias : Nat32;
 } {
   let (scaler, bias) = (prim "getCandidTypeLimits" : () -> (Nat32, Nat32))();
   {
-    scaler;
+    scalar;
     bias;
   };
 };
