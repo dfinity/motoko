@@ -5,7 +5,7 @@ include Args
 (* Warning and diagnostic levels *)
 let validate_warning_code code =
   code <> "" &&
-  List.exists (fun (c, _, _) -> String.equal c code) Error_codes.warning_codes
+  List.exists (fun (c, _, _, _) -> String.equal c code) Error_codes.warning_codes
 
 let modify_warning_levels level s =
   let codes = String.split_on_char ',' s in
