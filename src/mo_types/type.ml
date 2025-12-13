@@ -1,5 +1,8 @@
 open Field_sources
 
+(* Field maps *)
+module F = Env.Make(String)
+
 (* Representation *)
 type lab = string
 type var = string
@@ -50,8 +53,8 @@ and typ =
   | Var of var * int                          (* variable *)
   | Con of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
-  | Obj of obj_sort * field list              (* object *)
-  | Variant of field list                     (* variant *)
+  | Obj of obj_sort * fields                  (* object *)
+  | Variant of field F.t                    (* variant *)
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
@@ -66,11 +69,16 @@ and typ =
   | Pre                                       (* pre-type *)
 
 and scope = typ
+and fields = {
+    vals : field F.t;
+    typs : typ_field F.t;
+}
 and bind_sort = Scope | Type
 
 and bind = {var : var; sort: bind_sort; bound : typ}
 and src = {depr : string option; track_region : Source.region; region : Source.region}
 and field = {lab : lab; typ : typ; src : src}
+and typ_field = {lab : lab; typ : con; src : src}
 
 and con = kind Cons.t
 and kind =
@@ -78,6 +86,23 @@ and kind =
   | Abs of bind list * typ
 
 let empty_src = {depr = None; track_region = Source.no_region; region = Source.no_region}
+
+let val_fields fs = F.values fs.vals
+let typ_fields fs = F.values fs.typs
+let match_fields fs1 fs2 =
+  let dom1_v = F.dom fs1.vals in
+  let dom2_v = F.dom fs2.vals in
+  let both_v = F.Dom.inter dom1_v dom2_v in
+  let only1_v = F.Dom.diff dom1_v dom2_v in
+  let only2_v = F.Dom.diff dom2_v dom1_v in
+
+  let dom1_t = F.dom fs1.typs in
+  let dom2_t = F.dom fs2.typs in
+  let both_t = F.Dom.inter dom1_t dom2_t in
+  let only1_t = F.Dom.diff dom1_t dom2_t in
+  let only2_t = F.Dom.diff dom2_t dom1_t in
+
+  both_v, only1_v, only2_v, both_t, only1_t, only2_t
 
 (* Stable signatures *)
 type stab_sig =
@@ -220,7 +245,7 @@ let rec compare_typ (t1 : typ) (t2 : typ) =
      | ord -> ord)
   | Obj (s1, fs1), Obj (s2, fs2) ->
     (match compare_obj_sort s1 s2 with
-     | 0 -> compare_flds fs1 fs2
+     | 0 -> compare_obj_flds fs1 fs2
      | ord -> ord)
   | Variant fs1, Variant fs2 ->
     compare_flds fs1 fs2
@@ -254,23 +279,22 @@ and compare_tbs tbs1 tbs2 =
      | 0 -> compare_tbs tbs1 tbs2
      | ord -> ord)
 
-and compare_fld fld1 fld2 =
-  match String.compare fld1.lab fld2.lab with
-  | 0 ->
-    (match compare_typ fld1.typ fld2.typ with
-     | 0 -> compare_src fld1.src fld2.src
-     | ord -> ord)
-  | ord -> ord
+and compare_flds fs1 fs2 =
+  let compare_fld (f1 : field) (f2 : field) = match compare_typ f1.typ f2.typ with
+    | 0 -> compare_src f1.src f2.src
+    | ord -> ord in
+  F.compare compare_fld fs1 fs2
 
-and compare_flds flds1 flds2 =
-  match (flds1, flds2) with
-  | [], [] -> 0
-  | [], (_::_) -> -1
-  | (_::_, []) -> 1
-  | (fld1::flds1, fld2 :: flds2) ->
-    (match compare_fld fld1 fld2 with
-     | 0 -> compare_flds flds1 flds2
-     | ord -> ord)
+and compare_typ_flds fs1 fs2 =
+  let compare_fld (f1 : typ_field) (f2 : typ_field) = match Cons.compare f1.typ f2.typ with
+    | 0 -> compare_src f1.src f2.src
+    | ord -> ord in
+  F.compare compare_fld fs1 fs2
+
+and compare_obj_flds flds1 flds2 =
+  match compare_flds flds1.vals flds2.vals with
+  | 0 -> compare_typ_flds flds1.typs flds2.typs
+  | ord -> ord
 
 and compare_typs ts1 ts2 =
   match (ts1, ts2) with
@@ -315,7 +339,6 @@ module ConEnv = Env.Make(struct type t = con let compare = Cons.compare end)
 
 module ConSet = ConEnv.Dom
 
-
 (* Field ordering
 
    NOTE: Keep in sync with mo_frontend/typing.ml:compare_pat_field *)
@@ -345,11 +368,10 @@ let region = Prim Region
 
 
 let fields flds =
-  List.sort compare_field
-    (List.map (fun (lab, typ) -> {lab; typ; src = empty_src}) flds)
+  F.of_seq (Seq.map (fun (lab, typ) -> (lab, ({lab; typ; src = empty_src} : field))) (List.to_seq flds))
 
 let obj sort flds =
-  Obj (sort, fields flds)
+  Obj (sort, { vals = fields flds; typs = F.empty } )
 
 let sum flds =
   Variant (fields flds)
@@ -358,7 +380,7 @@ let throwErrorCodes = List.sort compare_field [
   { lab = "canister_reject"; typ = unit; src = empty_src}
 ]
 
-let call_error = Obj(Object,[{ lab = "err_code"; typ = Prim Nat32; src = empty_src}])
+let call_error = obj Object [("err_code", Prim Nat32)]
 
 let catchErrorCodes = List.sort compare_field (
   throwErrorCodes @ [
@@ -377,7 +399,7 @@ let catch = Prim Error
 (* Shared call context *)
 
 let caller = principal
-let ctxt = Obj (Object,[{ lab = "caller"; typ = caller; src = empty_src}])
+let ctxt = obj Object [("caller", caller)]
 
 let prim = function
   | "Null" -> Null
@@ -411,9 +433,7 @@ let codom c to_scope ts2 =  match c with
 (* Coercions *)
 
 let iter_obj t =
-  Obj (Object,
-    [{lab = "next"; typ = Func (Local, Returns, [], [], [Opt t]); src = empty_src}])
-
+  obj Object [("next", Func (Local, Returns, [], [], [Opt t]))]
 
 (* Shifting *)
 
@@ -429,8 +449,8 @@ let rec shift i n t =
     Func (s, c, List.map (shift_bind i' n) tbs, List.map (shift i' n) ts1, List.map (shift i' n) ts2)
   | Opt t -> Opt (shift i n t)
   | Async (s, t1, t2) -> Async (s, shift i n t1, shift i n t2)
-  | Obj (s, fs) -> Obj (s, List.map (shift_field n i) fs)
-  | Variant fs -> Variant (List.map (shift_field n i) fs)
+  | Obj (s, fs) -> Obj (s, { fs with vals = F.map (shift_field n i) fs.vals })
+  | Variant fs -> Variant (F.map (shift_field n i) fs)
   | Mut t -> Mut (shift i n t)
   | Any -> Any
   | Non -> Non
@@ -477,8 +497,8 @@ let rec subst sigma t =
           List.map (subst sigma') ts1, List.map (subst sigma') ts2)
   | Opt t -> Opt (subst sigma t)
   | Async (s, t1, t2) -> Async (s, subst sigma t1, subst sigma t2)
-  | Obj (s, fs) -> Obj (s, List.map (subst_field sigma) fs)
-  | Variant fs -> Variant (List.map (subst_field sigma) fs)
+  | Obj (s, fs) -> Obj (s, { fs with vals = F.map (subst_field sigma) fs.vals })
+  | Variant fs -> Variant (F.map (subst_field sigma) fs)
   | Mut t -> Mut (subst sigma t)
   | Any -> Any
   | Non -> Non
@@ -533,8 +553,8 @@ let rec open' i ts t =
     Func (s, c, List.map (open_bind i' ts) tbs, List.map (open' i' ts) ts1, List.map (open' i' ts) ts2)
   | Opt t -> Opt (open' i ts t)
   | Async (s, t1, t2) -> Async (s, open' i ts t1, open' i ts t2)
-  | Obj (s, fs) -> Obj (s, List.map (open_field i ts) fs)
-  | Variant fs -> Variant (List.map (open_field i ts) fs)
+  | Obj (s, fs) -> Obj (s, { fs with vals = F.map (open_field i ts) fs.vals })
+  | Variant fs -> Variant (F.map (open_field i ts) fs)
   | Mut t -> Mut (open' i ts t)
   | Any -> Any
   | Non -> Non
@@ -655,11 +675,13 @@ let as_prim_sub p t = match promote t with
   | _ -> invalid "as_prim_sub"
 let as_obj_sub ls t = match promote t with
   | Obj (s, tfs) -> s, tfs
-  | Non -> Object, List.map (fun l -> {lab = l; typ = Non; src = empty_src}) ls
+  | Non ->
+    let Obj(s, tfs) = obj Object (List.map (fun l -> l, Non) ls)
+    in s, tfs
   | _ -> invalid "as_obj_sub"
 let as_variant_sub l t = match promote t with
   | Variant tfs -> tfs
-  | Non -> [{lab = l; typ = Non; src = empty_src}]
+  | Non -> F.singleton l ({lab = l; typ = Non; src = empty_src} : field)
   | _ -> invalid "as_variant_sub"
 let as_array_sub t = match promote t with
   | Array t -> t
@@ -703,13 +725,10 @@ let as_weak_sub t = match promote t with
 
 let is_immutable_obj obj_type =
   let _, fields = as_obj_sub [] obj_type in
-  List.for_all (fun f -> not (is_mut f.typ)) fields
+  F.for_all (fun _ (f : field) -> not (is_mut f.typ)) fields.vals
 
-let find_val_field_opt l tfs =
-  let is_lab = function {typ = Typ _; _} -> false | {lab; _} -> lab = l in
-  match List.find_opt is_lab tfs with
-  | Some tf -> Some tf
-  | None -> None
+let find_val_field_opt l tfs = F.find_opt l tfs.vals
+let find_typ_field_opt l tfs = F.find_opt l tfs.typs
 
 let lookup_val_field_opt l tfs =
   match find_val_field_opt l tfs with
@@ -717,10 +736,9 @@ let lookup_val_field_opt l tfs =
   | None -> None
 
 let lookup_typ_field_opt l tfs =
-  let is_lab = function {typ = Typ _; lab; _} -> lab = l | _ -> false in
-  match List.find_opt is_lab tfs with
-  | Some {lab = _; typ = Typ c; src} -> Some c
-  | _ -> None
+  match find_typ_field_opt l tfs with
+  | Some tf -> Some tf.typ
+  | None -> None
 
 let lookup_val_field l tfs =
   match lookup_val_field_opt l tfs with
@@ -732,16 +750,13 @@ let lookup_typ_field l tfs =
   | Some c -> c
   | _ -> invalid "lookup_typ_field"
 
-
 let lookup_val_deprecation l tfs =
-  let is_lab = function {typ = Typ _; _} -> false | {lab; _} -> lab = l in
-  match List.find_opt is_lab tfs with
+  match find_val_field_opt l tfs with
   | Some {src = {depr; _}; _} -> depr
   | None -> invalid "lookup_val_deprecation"
 
 let lookup_typ_deprecation l tfs =
-  let is_lab = function {typ = Typ _; lab; _} -> lab = l | _ -> false in
-  match List.find_opt is_lab tfs with
+  match find_typ_field_opt l tfs with
   | Some {src = {depr; _}; _} -> depr
   | _ -> invalid "lookup_typ_deprecation"
 
@@ -758,7 +773,7 @@ let rec span = function
   | Prim (Nat16 | Int16) -> Some 0x10000
   | Prim (Nat32 | Int32 | Nat64 | Int64 | Char) -> None  (* for all practical purposes *)
   | Obj _ | Tup _ | Async _ -> Some 1
-  | Variant fs -> Some (List.length fs)
+  | Variant fs -> Some (F.cardinal fs)
   | Array _ | Func _ | Any -> None
   | Opt _ -> Some 2
   | Mut t -> span t
@@ -789,8 +804,11 @@ let rec cons' inTyp t cs =
     let cs = List.fold_right (cons_bind inTyp) tbs cs in
     let cs = List.fold_right (cons' inTyp) ts1 cs in
     List.fold_right (cons' inTyp) ts2 cs
-  | Obj (_, fs) | Variant fs ->
-    List.fold_right (cons_field inTyp) fs cs
+  | Obj (_, fs) ->
+    let cs = List.fold_right (cons_field inTyp) (F.values fs.vals) cs in
+    List.fold_right (cons_typ_field inTyp) (F.values fs.typs) cs
+  | Variant fs ->
+    List.fold_right (cons_field inTyp) (F.values fs) cs
   | Typ c ->
     if inTyp then
       cons_con inTyp c cs
@@ -810,6 +828,14 @@ and cons_bind inTyp tb cs =
 
 and cons_field inTyp {lab; typ; src} cs =
   cons' inTyp typ cs
+
+(* TODO: Discuss with Claudio, I just copied this from above *)
+and cons_typ_field inTyp {lab; typ; src} cs =
+  if inTyp then
+    cons_con inTyp typ cs
+  else
+    (* don't add c unless mentioned in Cons.kind c *)
+    cons_kind' inTyp (Cons.kind typ) cs
 
 and cons_kind' inTyp k cs =
   match k with
@@ -847,7 +873,8 @@ let concrete t =
       | Array t | Opt t | Mut t -> go t
       | Async (s, t1, t2) -> go t2 (* t1 is a phantom type *)
       | Tup ts -> List.for_all go ts
-      | Obj (_, fs) | Variant fs -> List.for_all (fun f -> go f.typ) fs
+      | Obj (_, fs) -> F.for_all (fun _ (f : field) -> go f.typ) fs.vals
+      | Variant fs -> F.for_all (fun _ (f : field) -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) ->
         let ts = open_binds tbs in
         List.for_all go (List.map (open_ ts) ts1) &&
@@ -889,8 +916,8 @@ let serializable allow_mut t =
         (match s with
          | Actor -> true
          | Module | Mixin -> false (* TODO(1452) make modules sharable *)
-         | Object | Memory -> List.for_all (fun f -> go f.typ) fs)
-      | Variant fs -> List.for_all (fun f -> go f.typ) fs
+         | Object | Memory -> List.for_all (fun (f : field) -> go f.typ) (F.values fs.vals))
+      | Variant fs -> List.for_all (fun (f : field) -> go f.typ) (F.values fs)
       | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
       | Named (n, t) -> go t
     end
@@ -920,9 +947,9 @@ let find_unshared t =
          | Actor | Mixin -> None
          | Module -> Some t (* TODO(1452) make modules sharable *)
          | Object ->
-           List.find_map (fun f -> go f.typ) fs
+           List.find_map (fun (f : field) -> go f.typ) (F.values fs.vals)
          | Memory -> assert false)
-      | Variant fs -> List.find_map (fun f -> go f.typ) fs
+      | Variant fs -> List.find_map (fun (f : field) -> go f.typ) (F.values fs)
       | Func (s, c, tbs, ts1, ts2) ->
         if is_shared_sort s
         then None
@@ -1234,34 +1261,36 @@ let rec rel_typ d rel eq t1 t2 =
   end
 
 and rel_fields t2 d rel eq tfs1 tfs2 =
-  (* Assume that tfs1 and tfs2 are sorted. *)
-  match tfs1, tfs2 with
-  | [], [] ->
-    true
-  | tf1::_, [] when rel != eq && not (RelArg.is_stable_sub d) ->
-    true
-  | tf1::tfs1', tf2::tfs2' ->
-    (match compare_field tf1 tf2 with
-    | 0 ->
-      let d' = RelArg.push (Field tf2.lab) d in
-      let is_rel =
-        rel_typ d' rel eq tf1.typ tf2.typ &&
-        rel_fields t2 d rel eq tfs1' tfs2'
-      in
-      add_src_field_update is_rel rel eq tf1 tf2;
-      is_rel
-    | -1 when rel != eq && not (RelArg.is_stable_sub d) ->
-      rel_fields t2 d rel eq tfs1' tfs2
-    | result ->
-      if result > 0 then
-        unexpected_field d tf2.lab t2
-      else
-        missing_field d tf1.lab t2
-    )
-  | [], tf2::_ ->
-    unexpected_field d tf2.lab t2
-  | tf1::_, [] ->
-    missing_field d tf1.lab t2
+  let require_equal_fields = rel == eq || RelArg.is_stable_sub d in
+  let both_vals, only_fs1_vals, only_fs2_vals,
+      both_typs, only_fs1_typs, only_fs2_typs = match_fields tfs1 tfs2 in
+
+  let res1 = F.Dom.for_all (fun l ->
+    let f1 = F.find l tfs1.vals in
+    let f2 = F.find l tfs2.vals in
+    let d' = RelArg.push (Field l) d in
+    rel_typ d' rel eq f1.typ f2.typ) both_vals in
+  let res2 = match F.Dom.choose_opt only_fs1_vals with
+  | Some l when require_equal_fields -> missing_field d l t2
+  | _ -> true in
+  let res3 = match F.Dom.choose_opt only_fs2_vals with
+  | None -> true
+  | Some l -> unexpected_field d l t2 in
+
+  let res4 = F.Dom.for_all (fun l ->
+    let t1 = (F.find l tfs1.typs).typ in
+    let t2 = (F.find l tfs2.typs).typ in
+    let d' = RelArg.push (Field l) d in
+    eq_con d eq t1 t2 || incompatible_types d (Typ t1) (Typ t2)) both_typs in
+  let res5 = match F.Dom.choose_opt only_fs1_typs with
+  | Some l when require_equal_fields -> missing_field d l t2
+  | _ -> true in
+  let res6 = match F.Dom.choose_opt only_fs2_typs with
+  | None -> true
+  | Some l -> unexpected_field d l t2 in
+
+  (* TODO restore calls to `add_src_field_update` *)
+  res1 && res2 && res3 && res4 && res5 && res6
 
 and rel_tags t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
