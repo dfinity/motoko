@@ -1082,7 +1082,7 @@ module RTS = struct
   let system_imports env =
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
-    E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "idl_sub_buf_words" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "idl_sub_buf_init" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "idl_sub"
@@ -6776,6 +6776,8 @@ module MakeSerialization (Strm : Stream) = struct
     let idl_value_numerator = 1l
     let idl_value_denominator = 1l
     let idl_value_bias = 1024l
+    let idl_typetbl_scaler = 16l
+    let idl_typetbl_bias = 1024l
 
     let register_globals env =
       E.add_global32 env "@@rel_buf_opt" Mutable 0l;
@@ -6787,7 +6789,9 @@ module MakeSerialization (Strm : Stream) = struct
       E.add_global32 env "@@value_denominator" Mutable idl_value_denominator;
       E.add_global32 env "@@value_numerator" Mutable idl_value_numerator;
       E.add_global32 env "@@value_bias" Mutable idl_value_bias;
-      E.add_global64 env "@@value_quota" Mutable 0L
+      E.add_global64 env "@@value_quota" Mutable 0L;
+      E.add_global32 env "@@type_scaler" Mutable idl_typetbl_scaler;
+      E.add_global32 env "@@type_bias" Mutable idl_typetbl_bias
 
     let get_rel_buf_opt env =
       G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
@@ -6838,6 +6842,16 @@ module MakeSerialization (Strm : Stream) = struct
       G.i (GlobalGet (nr (E.get_global env "@@value_bias")))
     let set_value_bias env =
       G.i (GlobalSet (nr (E.get_global env "@@value_bias")))
+
+    let get_type_scaler env =
+      G.i (GlobalGet (nr (E.get_global env "@@type_scaler")))
+    let set_type_scaler env =
+      G.i (GlobalSet (nr (E.get_global env "@@type_scaler")))
+
+    let get_type_bias env =
+      G.i (GlobalGet (nr (E.get_global env "@@type_bias")))
+    let set_type_bias env =
+      G.i (GlobalSet (nr (E.get_global env "@@type_bias")))
 
     let reset_value_limit env get_blob get_rel_buf_opt =
       get_rel_buf_opt ^^
@@ -7465,7 +7479,7 @@ module MakeSerialization (Strm : Stream) = struct
      comparison.
   *)
   let coercion_error_value env : int32 =
-    Tagged.shared_static_obj env Tagged.CoercionFailure []
+    Tagged.(shared_static_obj env CoercionFailure [])
 
   (* See Note [Candid subtype checks] *)
   let with_rel_buf_opt env extended get_typtbl_size1 f =
@@ -8277,10 +8291,11 @@ module MakeSerialization (Strm : Stream) = struct
     let name =
       (* TODO(#3185): this specialization on `extended` seems redundant,
          removing it might simplify things *and* share more code in binaries.
-         The only tricky bit might be the conditional Stack.dynamic_with_words bit... *)
-      if extended
-      then "@deserialize_extended<" ^ ts_name ^ ">"
-      else "@deserialize<" ^ ts_name ^ ">" in
+         The only tricky bit might be the conditional Stack.dynamic_with_words bit...
+         Also consider #5642! OTOH, I expect the `ts` of stable data to be well apart
+         from messages', so sharing would be very rare, if at all.
+      *)
+      "@deserialize" ^ (if extended then "_extended<" else "<") ^ ts_name ^ ">" in
     Func.share_code2 Func.Always env name (("blob", I32Type), ("can_recover", I32Type)) (List.map (fun _ -> I32Type) ts) (fun env get_blob get_can_recover ->
       let (set_data_size, get_data_size) = new_local env "data_size" in
       let (set_refs_size, get_refs_size) = new_local env "refs_size" in
@@ -8309,7 +8324,13 @@ module MakeSerialization (Strm : Stream) = struct
       ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
 
       (* Go! *)
-      Bool.lit extended ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
+      let tydesc, _, _ = type_desc env ts in
+      let tydesc_len = Int32.of_int (String.length tydesc) in
+      let tydesc_tolerance =
+        compile_unboxed_const tydesc_len ^^
+        Registers.get_type_scaler env ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
+        Registers.get_type_bias env ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) in
+      Bool.lit extended ^^ get_data_buf ^^ tydesc_tolerance ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
       E.call_import env "rts" "parse_idl_header" ^^
 
       (* Allocate memo table, if necessary *)
@@ -12374,6 +12395,20 @@ and compile_prim_invocation (env : E.t) ae p es at =
     Serialization.Registers.get_value_denominator env ^^
     BoxedSmallWord.box env Type.Nat32 ^^
     Serialization.Registers.get_value_bias env ^^
+    BoxedSmallWord.box env Type.Nat32
+
+  | OtherPrim "setCandidTypeLimits", [e1; e2] ->
+    SR.unit,
+    compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e1 ^^
+    Serialization.Registers.set_type_scaler env ^^
+    compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e2 ^^
+    Serialization.Registers.set_type_bias env
+
+  | OtherPrim "getCandidTypeLimits", [] ->
+    SR.UnboxedTuple 2,
+    Serialization.Registers.get_type_scaler env ^^
+    BoxedSmallWord.box env Type.Nat32 ^^
+    Serialization.Registers.get_type_bias env ^^
     BoxedSmallWord.box env Type.Nat32
 
   (* Coercions for abstract types *)

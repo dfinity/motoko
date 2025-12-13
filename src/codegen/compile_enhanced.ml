@@ -1155,7 +1155,7 @@ module RTS = struct
     E.add_func_import env "rts" "get_upgrade_instructions" [] [I64Type];
     E.add_func_import env "rts" "memcmp" [I64Type; I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I64Type];
-    E.add_func_import env "rts" "parse_idl_header" [I32Type; I64Type; I64Type; I64Type; I64Type] [];
+    E.add_func_import env "rts" "parse_idl_header" [I32Type; I64Type; I64Type; I64Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "idl_alloc_typtbl" [I64Type; I64Type; I64Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "idl_sub_buf_words" [I64Type; I64Type] [I64Type];
     E.add_func_import env "rts" "idl_sub_buf_init" [I64Type; I64Type; I64Type] [];
@@ -7097,6 +7097,8 @@ module Serialization = struct
     let idl_value_numerator = 1L
     let idl_value_denominator = 1L
     let idl_value_bias = 1024L
+    let idl_typetbl_scaler = 16L
+    let idl_typetbl_bias = 1024L
 
     let register_globals env =
       E.add_global64 env "@@rel_buf_opt" Mutable 0L;
@@ -7111,7 +7113,9 @@ module Serialization = struct
       E.add_global64 env "@@value_denominator" Mutable idl_value_denominator;
       E.add_global64 env "@@value_numerator" Mutable idl_value_numerator;
       E.add_global64 env "@@value_bias" Mutable idl_value_bias;
-      E.add_global64 env "@@value_quota" Mutable 0L
+      E.add_global64 env "@@value_quota" Mutable 0L;
+      E.add_global64 env "@@type_scaler" Mutable idl_typetbl_scaler;
+      E.add_global64 env "@@type_bias" Mutable idl_typetbl_bias
 
     let get_rel_buf_opt env =
       G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
@@ -7243,6 +7247,16 @@ module Serialization = struct
       begin (* Extended candid/ Destabilization *)
         G.nop
       end
+
+    let get_type_scaler env =
+      G.i (GlobalGet (nr (E.get_global env "@@type_scaler")))
+    let set_type_scaler env =
+      G.i (GlobalSet (nr (E.get_global env "@@type_scaler")))
+
+    let get_type_bias env =
+      G.i (GlobalGet (nr (E.get_global env "@@type_bias")))
+    let set_type_bias env =
+      G.i (GlobalSet (nr (E.get_global env "@@type_bias")))
 
     let define_idl_limit_check env =
       Func.define_built_in env "idl_limit_check"
@@ -8785,10 +8799,16 @@ module Serialization = struct
       ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
 
       (* Go! *)
-      Bool.lit extended ^^ Bool.to_rts_int32 ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
+      let tydesc, _, _ = type_desc env Candid ts in
+      let tydesc_len = Int64.of_int (String.length tydesc) in
+      let tydesc_tolerance =
+        compile_unboxed_const tydesc_len ^^
+        Registers.get_type_scaler env ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
+        Registers.get_type_bias env ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) in
+      Bool.(lit extended ^^ to_rts_int32) ^^ get_data_buf ^^ tydesc_tolerance ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
       E.call_import env "rts" "parse_idl_header" ^^
 
-      (* Allocate global type type, if necessary for subtype checks *)
+      (* Allocate global type table, if necessary for subtype checks *)
       (if extended then
          G.nop
        else begin
@@ -12696,6 +12716,24 @@ and compile_prim_invocation (env : E.t) ae p es at =
     TaggedSmallWord.msb_adjust Type.Nat32 ^^
     TaggedSmallWord.tag env Type.Nat32 ^^
     Serialization.Registers.get_value_bias env ^^
+    TaggedSmallWord.msb_adjust Type.Nat32 ^^
+    TaggedSmallWord.tag env Type.Nat32
+
+  | OtherPrim "setCandidTypeLimits", [e1; e2] ->
+    SR.unit,
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e1 ^^
+    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
+    Serialization.Registers.set_type_scaler env ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e2 ^^
+    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
+    Serialization.Registers.set_type_bias env
+
+  | OtherPrim "getCandidTypeLimits", [] ->
+    SR.UnboxedTuple 2,
+    Serialization.Registers.get_type_scaler env ^^
+    TaggedSmallWord.msb_adjust Type.Nat32 ^^
+    TaggedSmallWord.tag env Type.Nat32 ^^
+    Serialization.Registers.get_type_bias env ^^
     TaggedSmallWord.msb_adjust Type.Nat32 ^^
     TaggedSmallWord.tag env Type.Nat32
 
