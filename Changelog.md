@@ -1,5 +1,18 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Allows resolving local definitions for context-dot
+
+  Extends contextual-dot resolution to consider local definitions first, to make the following snippet type check. Local definitions take precedence over definitions that are in scope via modules.
+
+  ```motoko
+  func first<A>(self : [A]) : A {
+    return self[0]
+  };
+  assert [1, 2, 3].first() == 1
+  ```
+
 ## 1.0.0 (2025-12-11)
 
 * motoko (`moc`)
