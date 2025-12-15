@@ -176,6 +176,7 @@ unsafe fn parse_idl_header<M: Memory>(
     mem: &mut M,
     extended: bool,
     buf: *mut Buf,
+    typtbl_max: usize,
     typtbl_out: *mut *mut *mut u8,
     typtbl_size_out: *mut usize,
     main_types_out: *mut *mut u8,
@@ -210,6 +211,13 @@ unsafe fn parse_idl_header<M: Memory>(
 
     // Allocate the type table to be passed out
     let typtbl: *mut *mut u8 = alloc(mem, Words(n_types as usize)) as *mut _;
+
+    // Set up a limited buffer to detect absurd type tables
+    let full_end = if extended {
+        (*buf).end
+    } else {
+        buf.limit_size(typtbl_max)
+    };
 
     // Go through the table
     for i in 0..n_types {
@@ -293,6 +301,9 @@ unsafe fn parse_idl_header<M: Memory>(
             buf.advance(n as usize);
         }
     }
+
+    // Restore limit
+    (*buf).end = full_end;
 
     // Now that we have the indices, we can go through it again
     // and validate that all service method types are really function types
@@ -1258,7 +1269,7 @@ pub(crate) unsafe fn sub(
 
 #[no_mangle]
 unsafe extern "C" fn idl_sub_buf_words(typtbl_size1: usize, typtbl_size2: usize) -> usize {
-    return BitRel::words(typtbl_size1, typtbl_size2);
+    BitRel::words(typtbl_size1, typtbl_size2)
 }
 
 #[no_mangle]
@@ -1306,11 +1317,11 @@ unsafe extern "C" fn idl_sub(
     t1: i32,
     t2: i32,
 ) -> bool {
-    debug_assert!(rel_buf != (0 as *mut usize));
-    debug_assert!(typtbl1 != (0 as *mut *mut u8));
-    debug_assert!(typtbl2 != (0 as *mut *mut u8));
-    debug_assert!(typtbl_end1 != (0 as *mut u8));
-    debug_assert!(typtbl_end2 != (0 as *mut u8));
+    debug_assert!(rel_buf != 0 as *mut usize);
+    debug_assert!(typtbl1 != 0 as *mut *mut u8);
+    debug_assert!(typtbl2 != 0 as *mut *mut u8);
+    debug_assert!(typtbl_end1 != 0 as *mut u8);
+    debug_assert!(typtbl_end2 != 0 as *mut u8);
 
     let rel = BitRel {
         ptr: rel_buf,
@@ -1318,7 +1329,7 @@ unsafe extern "C" fn idl_sub(
         size1: typtbl_size1,
         size2: typtbl_size2,
     };
-    debug_assert!(t1 < (typtbl_size1 as i32) && t2 < (typtbl_size2 as i32));
+    debug_assert!(t1 < typtbl_size1 as i32 && t2 < typtbl_size2 as i32);
     return sub(
         &rel,
         true,
