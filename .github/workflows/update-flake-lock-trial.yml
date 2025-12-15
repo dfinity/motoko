@@ -14,6 +14,10 @@ on:
     # * is a special character in YAML so you have to quote this string
     # Run every Sunday at midnight
     - cron: "0 0 * * 0"
+
+permissions:
+  contents: read
+
 jobs:
   flake-updater:
     name: "Update flake.lock"
