@@ -13,10 +13,14 @@ on:
   schedule:
     # * is a special character in YAML so you have to quote this string
     # Run every Sunday at midnight
-    - cron: '0 0 * * 0'
+    - cron: "0 0 * * 0"
+
+permissions:
+  contents: read
+
 jobs:
   flake-updater:
-    name: 'Update flake.lock'
+    name: "Update flake.lock"
     timeout-minutes: 2 # if this takes more than 2 minutes then something's wrong
     runs-on: ubuntu-latest
     steps:
@@ -36,7 +40,6 @@ jobs:
           branch: "update_flake_lock_action_trial"
           inputs: |
             nixpkgs
-            pocket-ic-src
             rust-overlay
           pr-title: "chore: weekly `flake.lock` update"
           pr-labels: |
