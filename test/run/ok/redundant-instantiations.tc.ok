@@ -1,4 +1,9 @@
-redundant-instantiations.mo:20.18-20.23: warning [M0223], redundant type instantiation
-redundant-instantiations.mo:29.18-29.23: warning [M0223], redundant type instantiation
-redundant-instantiations.mo:36.18-36.25: warning [M0223], redundant type instantiation
-redundant-instantiations.mo:43.18-43.24: warning [M0223], redundant type instantiation
+redundant-instantiations.mo:22.18-22.23: warning [M0223], redundant type instantiation
+redundant-instantiations.mo:31.18-31.23: warning [M0223], redundant type instantiation
+redundant-instantiations.mo:38.18-38.25: warning [M0223], redundant type instantiation
+redundant-instantiations.mo:45.18-45.24: warning [M0223], redundant type instantiation
+redundant-instantiations.mo:52.24-52.30: warning [M0223], redundant type instantiation
+redundant-instantiations.mo:54.26-54.32: warning [M0223], redundant type instantiation
+redundant-instantiations.mo:56.28-56.34: warning [M0223], redundant type instantiation
+redundant-instantiations.mo:66.35-66.45: warning [M0223], redundant type instantiation
+redundant-instantiations.mo:68.38-68.42: warning [M0223], redundant type instantiation

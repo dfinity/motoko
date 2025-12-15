@@ -35,6 +35,7 @@ ECHO=echo
 MOC_ARGS="--legacy-persistence --legacy-actors"
 
 export WASMTIME_NEW_CLI=1
+export OCAMLRUNPARAM=b
 
 while getopts "adpstirv" o; do
     case "${o}" in
@@ -69,8 +70,7 @@ failures=()
 function normalize () {
   if [ -e "$1" ]
   then
-    grep -a -E -v '^Raised by|^Raised at|^Re-raised at|^Re-Raised at|^Called from|^ +at ' $1 |
-    grep -a -E -v 'note: using the' |
+    grep -a -E -v 'note: using the' $1 |
     sed -e 's/\x00//g' \
         -e 's/\x1b\[[0-9;]*[a-zA-Z]//g' \
         -e 's/^.*[IW], hypervisor:/hypervisor:/g' \
