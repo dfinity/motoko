@@ -2,7 +2,7 @@
 
 * motoko (`moc`)
 
-  * Allows resolving local definitions for context-dot
+  * Allows resolving local definitions for context-dot (#5731).
 
   Extends contextual-dot resolution to consider local definitions first, to make the following snippet type check. Local definitions take precedence over definitions that are in scope via modules.
 
@@ -12,6 +12,8 @@
   };
   assert [1, 2, 3].first() == 1
   ```
+
+  * Add privileged primitive for setting Candid type table cutoff (#5642).
 
 ## 1.0.0 (2025-12-11)
 
