@@ -27,7 +27,7 @@ with optionals that can be more succinct than using pattern matching.
 
 ## Function `get`
 ``` motoko no-repl
-func get<T>(x : ?T, default : T) : T
+func get<T>(self : ?T, default : T) : T
 ```
 
 Unwraps an optional value, with a default value, i.e. `get(?x, d) = x` and
@@ -35,7 +35,7 @@ Unwraps an optional value, with a default value, i.e. `get(?x, d) = x` and
 
 ## Function `getMapped`
 ``` motoko no-repl
-func getMapped<A, B>(x : ?A, f : A -> B, default : B) : B
+func getMapped<T, R>(self : ?T, f : T -> R, default : R) : R
 ```
 
 Unwraps an optional value using a function, or returns the default, i.e.
@@ -43,7 +43,7 @@ Unwraps an optional value using a function, or returns the default, i.e.
 
 ## Function `map`
 ``` motoko no-repl
-func map<A, B>(x : ?A, f : A -> B) : ?B
+func map<T, R>(self : ?T, f : T -> R) : ?R
 ```
 
 Applies a function to the wrapped value. `null`'s are left untouched.
@@ -55,7 +55,7 @@ assert Option.map<Nat, Nat>(null, func x = x + 1) == null;
 
 ## Function `forEach`
 ``` motoko no-repl
-func forEach<A>(x : ?A, f : A -> ())
+func forEach<T>(self : ?T, f : T -> ())
 ```
 
 Applies a function to the wrapped value, but discards the result. Use
@@ -72,7 +72,7 @@ assert counter == 5;
 
 ## Function `apply`
 ``` motoko no-repl
-func apply<A, B>(x : ?A, f : ?(A -> B)) : ?B
+func apply<T, R>(self : ?T, f : ?(T -> R)) : ?R
 ```
 
 Applies an optional function to an optional value. Returns `null` if at
@@ -80,7 +80,7 @@ least one of the arguments is `null`.
 
 ## Function `chain`
 ``` motoko no-repl
-func chain<A, B>(x : ?A, f : A -> ?B) : ?B
+func chain<T, R>(self : ?T, f : T -> ?R) : ?R
 ```
 
 Applies a function to an optional value. Returns `null` if the argument is
@@ -88,7 +88,7 @@ Applies a function to an optional value. Returns `null` if the argument is
 
 ## Function `flatten`
 ``` motoko no-repl
-func flatten<A>(x : ??A) : ?A
+func flatten<T>(self : ??T) : ?T
 ```
 
 Given an optional optional value, removes one layer of optionality.
@@ -101,7 +101,7 @@ assert Option.flatten(null) == null;
 
 ## Function `some`
 ``` motoko no-repl
-func some<A>(x : A) : ?A
+func some<T>(self : T) : ?T
 ```
 
 Creates an optional value from a definite value.
@@ -112,28 +112,28 @@ assert Option.some(42) == ?42;
 
 ## Function `isSome`
 ``` motoko no-repl
-func isSome(x : ?Any) : Bool
+func isSome(self : ?Any) : Bool
 ```
 
 Returns true if the argument is not `null`, otherwise returns false.
 
 ## Function `isNull`
 ``` motoko no-repl
-func isNull(x : ?Any) : Bool
+func isNull(self : ?Any) : Bool
 ```
 
 Returns true if the argument is `null`, otherwise returns false.
 
 ## Function `equal`
 ``` motoko no-repl
-func equal<A>(x : ?A, y : ?A, eq : (A, A) -> Bool) : Bool
+func equal<T>(self : ?T, other : ?T, eq : (implicit : (equal : (T, T) -> Bool))) : Bool
 ```
 
 Returns true if the optional arguments are equal according to the equality function provided, otherwise returns false.
 
 ## Function `compare`
 ``` motoko no-repl
-func compare<A>(x : ?A, y : ?A, cmp : (A, A) -> Types.Order) : Types.Order
+func compare<T>(self : ?T, other : ?T, compare : (implicit : (T, T) -> Types.Order)) : Types.Order
 ```
 
 Compares two optional values using the provided comparison function.
@@ -146,7 +146,7 @@ Returns:
 
 ## Function `unwrap`
 ``` motoko no-repl
-func unwrap<T>(x : ?T) : T
+func unwrap<T>(self : ?T) : T
 ```
 
 Unwraps an optional value, i.e. `unwrap(?x) = x`.
@@ -155,7 +155,7 @@ Unwraps an optional value, i.e. `unwrap(?x) = x`.
 
 ## Function `toText`
 ``` motoko no-repl
-func toText<A>(x : ?A, toText : A -> Text) : Text
+func toText<T>(self : ?T, toText : (implicit : T -> Text)) : Text
 ```
 
 Returns the textural representation of an optional value for debugging purposes.

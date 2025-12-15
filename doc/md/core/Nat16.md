@@ -29,7 +29,7 @@ assert Nat16.maxValue == (65535 : Nat16);
 
 ## Function `toNat`
 ``` motoko no-repl
-func toNat(_ : Nat16) : Nat
+func toNat(self : Nat16) : Nat
 ```
 
 Converts a 16-bit unsigned integer to an unsigned integer with infinite precision.
@@ -64,10 +64,11 @@ Example:
 ```motoko include=import
 assert Nat16.fromNat8(123) == (123 : Nat16);
 ```
+@deprecated M0235
 
 ## Function `toNat8`
 ``` motoko no-repl
-func toNat8(x : Nat16) : Nat8
+func toNat8(self : Nat16) : Nat8
 ```
 
 Converts a 16-bit unsigned integer to an 8-bit unsigned integer.
@@ -92,10 +93,11 @@ Example:
 ```motoko include=import
 assert Nat16.fromNat32(123) == (123 : Nat16);
 ```
+@deprecated M0235
 
 ## Function `toNat32`
 ``` motoko no-repl
-func toNat32(x : Nat16) : Nat32
+func toNat32(self : Nat16) : Nat32
 ```
 
 Converts a 16-bit unsigned integer to a 32-bit unsigned integer.
@@ -103,6 +105,33 @@ Converts a 16-bit unsigned integer to a 32-bit unsigned integer.
 Example:
 ```motoko include=import
 assert Nat16.toNat32(123) == (123 : Nat32);
+```
+
+## Function `fromNat64`
+``` motoko no-repl
+func fromNat64(x : Nat64) : Nat16
+```
+
+Converts a 64-bit unsigned integer to a 16-bit unsigned integer.
+
+Traps on overflow.
+
+Example:
+```motoko include=import
+assert Nat16.fromNat64(123) == (123 : Nat16);
+```
+@deprecated M0235
+
+## Function `toNat64`
+``` motoko no-repl
+func toNat64(self : Nat16) : Nat64
+```
+
+Converts a 16-bit unsigned integer to a 64-bit unsigned integer.
+
+Example:
+```motoko include=import
+assert Nat16.toNat64(123) == (123 : Nat64);
 ```
 
 ## Function `fromIntWrap`
@@ -121,7 +150,7 @@ assert Nat16.fromIntWrap(123 : Int) == (123 : Nat16);
 
 ## Function `toText`
 ``` motoko no-repl
-func toText(x : Nat16) : Text
+func toText(self : Nat16) : Text
 ```
 
 Converts `x` to its textual representation. Textual representation _do not_

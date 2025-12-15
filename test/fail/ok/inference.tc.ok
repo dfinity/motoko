@@ -7,95 +7,96 @@ inference.mo:62.13-62.44: type error [M0096], expression of type
 cannot produce expected type
   Any -> Any
 inference.mo:67.1-67.40: type error [M0098], cannot apply function of type
-  (f : T -> T) -> ()
+  <T>(f : T -> T) -> ()
 to argument of type
   (x : None) -> Any
-to produce result of expected type
-  ()
+because there is no way to satisfy subtyping
+  (x : None) -> Any  <:  T -> T  (for argument `f`) 
 inference.mo:87.20-87.27: warning [M0146], this pattern is never matched
 inference.mo:94.8-94.20: type error [M0098], cannot apply function of type
-  (x : T, y : T) -> (U, U)
+  <T <: U, U>(x : T, y : T) -> (U, U)
 to argument of type
   (Nat, Nat)
-to produce result of expected type
-  Any
+because type parameter `T` has a bound 
+  U
+involving another type parameter. Please provide an explicit instantiation.
 inference.mo:95.8-95.26: type error [M0098], cannot apply function of type
-  (x : T, y : T) -> (U, U)
+  <T <: U, U>(x : T, y : T) -> (U, U)
 to argument of type
   (Nat, Int)
-to produce result of expected type
-  Any
+because type parameter `T` has a bound 
+  U
+involving another type parameter. Please provide an explicit instantiation.
 inference.mo:96.8-96.23: type error [M0098], cannot apply function of type
-  (x : T, y : T) -> (U, U)
+  <T <: U, U>(x : T, y : T) -> (U, U)
 to argument of type
   (Nat, Bool)
-to produce result of expected type
-  Any
+because type parameter `T` has a bound 
+  U
+involving another type parameter. Please provide an explicit instantiation.
 inference.mo:111.8-111.17: type error [M0098], cannot apply function of type
-  (x : T) -> T
+  <T <: Int>(x : T) -> T
 to argument of type
   Bool
-to produce result of expected type
-  Any
+because there is no way to satisfy subtyping
+  Bool  <:  T  (for argument `x`) 
 inference.mo:112.1-112.10: type error [M0098], cannot apply function of type
-  (x : T) -> T
+  <T <: Int>(x : T) -> T
 to argument of type
   Bool
-to produce result of expected type
-  ()
+because there is no way to satisfy subtyping
+  Bool  <:  T  (for argument `x`) 
 inference.mo:116.1-116.27: type error [M0098], cannot apply function of type
-  (f : <U>T -> U) -> ()
+  <T>(f : <U>T -> U) -> ()
 to argument of type
   <V>(x : V) -> V
-to produce result of expected type
-  ()
+because there is no way to satisfy subtyping
+  <V>(x : V) -> V  <:  <U>T -> U  (for argument `f`) 
 inference.mo:118.1-118.31: type error [M0098], cannot apply function of type
-  (f : <U>U -> T) -> ()
+  <T>(f : <U>U -> T) -> ()
 to argument of type
   <V>(x : V) -> V
-to produce result of expected type
-  ()
+because there is no way to satisfy subtyping
+  <V>(x : V) -> V  <:  <U>U -> T  (for argument `f`) 
 inference.mo:127.8-127.20: type error [M0098], cannot apply function of type
-  (x : [T]) -> T
+  <T>(x : [T]) -> T
 to argument of type
   [var Nat]
-to produce result of expected type
-  Any
+because there is no way to satisfy subtyping
+  [var Nat]  <:  [T]  (for argument `x`) 
 inference.mo:130.1-130.13: type error [M0098], cannot apply function of type
-  (x : [var T]) -> T
+  <T>(x : [var T]) -> T
 to argument of type
   [Nat]
-to produce result of expected type
-  ()
+because there is no way to satisfy subtyping
+  [Nat]  <:  [var T]  (for argument `x`) 
 inference.mo:132.1-132.17: type error [M0098], cannot apply function of type
-  (x : [var T]) -> T
+  <T>(x : [var T]) -> T
 to argument of type
   [var Nat]
-to produce result of expected type
-  ()
+because there is no way to satisfy subtyping
+  [var Nat]  <:  [var T]  (for argument `x`) 
 inference.mo:137.4-137.8: type error [M0098], cannot apply function of type
-  (y : U) -> ()
+  <U <: {}>(y : U) -> ()
 to argument of type
   T
-to produce result of expected type
-  ()
+because there is no way to satisfy subtyping
+  T  <:  U  (for argument `y`) 
 inference.mo:152.11-152.15: type error [M0098], cannot apply function of type
-  (y : U) -> U
+  <U <: T>(y : U) -> U
 to argument of type
   T
-to produce result of expected type
-  None
-inference.mo:172.8-172.54: type error [M0098], cannot apply function of type
-  (b : Bool, x : [var T], y : [var T]) -> [var T]
-to argument of type
-  (Bool, [var Nat], [var Int])
-to produce result of expected type
-  Any
+because there is no way to satisfy subtyping
+  T  <:  U  (for argument `y`) 
+inference.mo:172.40-172.53: type error [M0096], expression of type
+  [var Int]
+cannot produce expected type
+  [var Nat]
 inference.mo:177.8-177.44: type error [M0098], cannot apply function of type
-  (o : {x : T}) -> T
+  <T>(o : {x : T}) -> T
 to argument of type
   {type x = Nat}
-to produce result of expected type
-  Any
+because there is no way to satisfy subtyping
+  {type x = Nat}  <:  {x : T}  (for argument `o`) 
 inference.mo:183.8-183.21: type error [M0045], wrong number of type arguments: expected 2 but got 0
 inference.mo:186.8-186.15: type error [M0045], wrong number of type arguments: expected 1 but got 0

@@ -1,13 +1,13 @@
 # ICP features
 
-1. [Randomness](/docs/motoko/icp-features/randomness)
+1. [Randomness](./1-randomness.md)
 
-2. [Timers](/docs/motoko/icp-features/timers)
+2. [Timers](./2-timers.md)
 
-3. [Caller identification](/docs/motoko/icp-features/caller-identification)
+3. [Caller identification](./3-caller-identification.md)
 
-4. [Candid serialization](/docs/motoko/icp-features/candid-serialization)
+4. [Candid serialization](./4-candid-serialization.md)
 
-5. [Stable memory and regions](/docs/motoko/icp-features/stable-memory)
+5. [Stable memory and regions](./5-stable-memory.md)
 
-6. [System functions](/docs/motoko/icp-features/system-functions)
+6. [System functions](./6-system-functions.md)

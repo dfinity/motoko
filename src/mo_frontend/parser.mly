@@ -223,7 +223,7 @@ and objblock eo s id ty dec_fields =
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token AWAIT AWAITSTAR AWAITQUEST ASYNC ASYNCSTAR BREAK CASE CATCH CONTINUE DO LABEL DEBUG
-%token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW FINALLY WITH
+%token IF IGNORE IN IMPLICIT ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW FINALLY WITH
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
@@ -246,6 +246,7 @@ and objblock eo s id ty dec_fields =
 %token TRANSIENT PERSISTENT
 %token<string> DOT_NUM
 %token<string> NAT
+%token<string * string> NUM_DOT_ID
 %token<string> FLOAT
 %token<Mo_values.Value.unicode> CHAR
 %token<bool> BOOL
@@ -356,11 +357,6 @@ seplist1(X, SEP) :
   | x=X { [x] }
   | x=X SEP xs=seplist(X, SEP) { x::xs }
 
-seplist_er(X, E, SEP) :
-  | (* empty *) { [] }
-  | x=X { [x] } [@recover.cost inf]
-  | E { [] }
-  | x=X SEP xs=seplist_er(X, E, SEP) { x::xs }
 
 (* Basics *)
 
@@ -371,8 +367,8 @@ seplist_er(X, E, SEP) :
 %inline id :
   | id=ID { id @@ at $sloc }
 
-%inline id_wild :
-  | UNDERSCORE { "_" @@ at $sloc }
+%inline implicit :
+  | IMPLICIT { "implicit" @@ at $sloc }
 
 %inline typ_id :
   | id=ID { id @= at $sloc }
@@ -460,7 +456,6 @@ typ_un :
   | WEAK t=typ_un
     { WeakT(t) @! at $sloc }
 
-
 typ_pre :
   | t=typ_un
     { t }
@@ -490,8 +485,8 @@ typ :
     { OrT(t1, t2) @! at $sloc }
 
 typ_item :
+  | i=implicit COLON t = typ { Some i, t }
   | i=id COLON t=typ { Some i, t }
-  | i=id_wild COLON t=typ { Some i, t }
   | t=typ { None, t }
 
 typ_args :
@@ -623,12 +618,8 @@ exp_obj :
     { ObjE ([], efs) @? at $sloc }
   | LCURLY base=exp_post(ob) AND bases=separated_nonempty_list(AND, exp_post(ob)) RCURLY
     { ObjE (base :: bases, []) @? at $sloc }
-  | LCURLY bases=separated_nonempty_list(AND, exp_post(ob)) efs=with_exp_fields RCURLY
+  | LCURLY bases=separated_nonempty_list(AND, exp_post(ob)) WITH efs=seplist1(exp_field, semicolon) RCURLY
     { ObjE (bases, efs) @? at $sloc }
-
-%inline with_exp_fields :
-  | WITH efs=seplist1(exp_field, semicolon)
-    { efs }
 
 exp_plain :
   | l=lit
@@ -673,6 +664,20 @@ exp_post(B) :
     { ProjE (e, int_of_string s) @? at $sloc }
   | e=exp_post(B) DOT x=id
     { DotE(e, x, ref None) @? at $sloc }
+  | nid = NUM_DOT_ID
+    { let (num, id) = nid in
+      let {left; right} = at $sloc in
+      let e =
+	LitE(ref (PreLit (num, Type.Nat))) @?
+	{ left;
+	  right = { right with column = left.column + String.length num }}
+      in
+      let x =
+	id @@
+	{ left = { left with column = right.column - String.length id };
+	  right } in
+      DotE(e, x, ref None) @? at $sloc
+    }
   | e1=exp_post(B) inst=inst e2=exp_arg
     {
       let e2, sugar = e2 in
@@ -832,16 +837,8 @@ exp [@recover.expr mk_stub_expr loc] (B) :
     { e }
 
 block :
-  | LCURLY ds=seplist_er(dec, block_dec_error, semicolon) RCURLY
+  | LCURLY ds=seplist(dec, semicolon) RCURLY
     { BlockE(ds) @? at $sloc }
-
-// When block is actually a record, emit custom errors
-// Idea: `id EQ` and `id WITH` indicate a record, continue parsing as it was a record `exp_obj`
-block_dec_error :
-  | id EQ exp(ob) [@recover.cost inf]
-  | id EQ exp(ob) semicolon seplist(exp_field, semicolon)
-  | id with_exp_fields
-    { syntax_error (at $sloc) "M0001" "expected block but got record; wrap the record in braces: { { … } }" }
 
 case :
   | CASE p=pat_nullary e=exp_nest

@@ -1,4 +1,4 @@
-
+//MOC-FLAG --error-recovery
 func _m1() {
   let _r = { var x = 1 }; // record with var field
   let _b = do { var x = 1 }; // block with var definition, same syntax...
@@ -69,4 +69,21 @@ func _conds() {
 func _weird() : async () {
   ignore { var x = 1; y = 2; z = 3; w = 4 };
   async { var x = 1; y = 2; z = 3; w = 4 };
+};
+
+module ActuallyBlock {
+  func _letFirst() {
+    let x = 1;
+    x = 2;
+    ignore x;
+  };
+  func _varFirst() {
+    var x = 1;
+    x = 2;
+    ignore x;
+  };
+  func _base() {
+    x = 2; // Missing let/var? Or assignment := operator? Or meant a record?
+    ignore x; // Actually a block
+  }
 }

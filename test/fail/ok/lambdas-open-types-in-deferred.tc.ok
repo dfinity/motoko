@@ -1,8 +1,10 @@
 lambdas-open-types-in-deferred.mo:4.11-4.30: type error [M0098], cannot apply function of type
-  (t : T, f : I -> T) -> ()
+  <T, I>(t : T, f : I -> T) -> ()
 to argument of type
   (Nat, f : I -> T)
+because `I` cannot be inferred.
 lambdas-open-types-in-deferred.mo:8.11-11.5: type error [M0098], cannot apply function of type
-  (t : T, f : I -> T) -> ()
+  <T, I>(t : T, f : I -> T) -> ()
 to argument of type
   (Nat, f : I -> T)
+because `I` cannot be inferred.

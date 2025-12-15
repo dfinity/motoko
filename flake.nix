@@ -2,7 +2,7 @@
   description = "The Motoko compiler";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
 
     flake-utils.url = "github:numtide/flake-utils";
 
@@ -25,12 +25,8 @@
       url = "github:dfinity/candid";
       flake = false;
     };
-    ic-src = {
-      url = "github:dfinity/ic";
-      flake = false;
-    };
     pocket-ic-src = {
-      url = "github:dfinity/ic/master";
+      url = "github:dfinity/ic/f07e9896fef2c24db8d4d0bed3d3ed42f0934e2a";
       flake = false;
     };
     ic-wasm-src = {
@@ -42,11 +38,11 @@
       flake = false;
     };
     motoko-base-src = {
-      url = "github:dfinity/motoko-base/next-moc";
+      url = "github:caffeinelabs/motoko-base/next-moc";
       flake = false;
     };
     motoko-core-src = {
-      url = "github:dfinity/motoko-core";
+      url = "github:caffeinelabs/motoko-core";
       flake = false;
     };
     motoko-matchers-src = {
@@ -76,7 +72,6 @@
     , esm
     , viper-server
     , candid-src
-    , ic-src
     , pocket-ic-src
     , ic-wasm-src
     , libtommath-src
@@ -93,7 +88,6 @@
         sources = {
           inherit
             candid-src
-            ic-src
             pocket-ic-src
             ic-wasm-src
             libtommath-src
@@ -109,17 +103,17 @@
       llvmEnv = ''
         # When compiling to wasm, we want to have more control over the flags,
         # so we do not use the nix-provided wrapper in clang
-        export WASM_CLANG="clang-18"
+        export WASM_CLANG="clang-19"
         export WASM_LD=wasm-ld
         # because we use the unwrapped clang, we have to pass in some flags/paths
         # that otherwise the wrapped clang would take care for us
-        export WASM_CLANG_LIB="${pkgs.llvmPackages_18.clang-unwrapped.lib}"
+        export WASM_CLANG_LIB="${pkgs.llvmPackages_19.clang-unwrapped.lib}"
 
         # When compiling natively, we want to use `clang` (which is a nixpkgs
         # provided wrapper that sets various include paths etc).
         # But for some reason it does not handle building for Wasm well, so
-        # there we use plain clang-18. There is no stdlib there anyways.
-        export CLANG="${pkgs.clang_18}/bin/clang"
+        # there we use plain clang-19. There is no stdlib there anyways.
+        export CLANG="${pkgs.clang_19}/bin/clang"
       '';
 
       rts = import ./nix/rts.nix { inherit pkgs llvmEnv; };
@@ -259,7 +253,7 @@
         # Platform-specific release files.
         release-files-ubuntu-latest = import ./nix/release-files-ubuntu-latest.nix { inherit self pkgs; };
         "release-files-ubuntu-24.04-arm" = import ./nix/release-files-ubuntu-24.04-arm.nix { inherit self pkgs; };
-        release-files-macos-13 = import ./nix/release-files-macos-13.nix { inherit self pkgs; };
+        release-files-macos-15-intel = import ./nix/release-files-macos-15-intel.nix { inherit self pkgs; };
         release-files-macos-latest = import ./nix/release-files-macos-latest.nix { inherit self pkgs; };
 
         # Common tests version - includes non-GC, non-release/debug specific tests.

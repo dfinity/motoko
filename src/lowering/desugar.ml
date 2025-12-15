@@ -56,7 +56,12 @@ and exp e =
 
 and exp' at note = function
   | S.HoleE (_, e) -> (exp !e).it
-  | S.VarE i -> I.VarE ((match i.note with Var -> I.Var | Const -> I.Const), i.it)
+  | S.VarE i ->
+    (match i.note with
+     | (mut, None) ->
+       I.VarE ((match mut with Var -> I.Var | Const -> I.Const), i.it)
+     | (_, Some e) -> (* auto-import *)
+       (exp e).it)
   | S.ActorUrlE e ->
     I.(PrimE (ActorOfIdBlob note.Note.typ, [url e at]))
   | S.LitE l -> I.LitE (lit !l)
@@ -1215,9 +1220,13 @@ and transform_import (i : S.import) : Ir.dec list =
     | S.IDLPath (fp, canister_id) ->
       primE (I.ActorOfIdBlob t) [blobE canister_id]
     | S.ImportedValuePath path ->
-       let contents = Lib.FilePath.contents path in
-       assert T.(t = Prim Blob);
-       blobE contents
+       if !Mo_config.Flags.blob_import_placeholders then
+         raise (Invalid_argument ("blob import placeholder"))
+       else begin
+         let contents = Lib.FilePath.contents path in
+         assert T.(t = Prim Blob);
+         blobE contents
+       end
   in [ letP (pat p) rhs ]
 
 type import_declaration = Ir.dec list

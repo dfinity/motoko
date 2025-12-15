@@ -28,6 +28,7 @@ type token =
   | IF
   | IGNORE
   | IN
+  | IMPLICIT
   | ELSE
   | SWITCH
   | LOOP
@@ -116,6 +117,7 @@ type token =
   | ROTRASSIGN
   | NULL
   | DOT_NUM of string
+  | NUM_DOT_ID of string * string
   | NAT of string
   | FLOAT of string
   | CHAR of Mo_values.Value.unicode
@@ -163,6 +165,7 @@ let to_parser_token :
   | IF -> Ok Parser.IF
   | IGNORE -> Ok Parser.IGNORE
   | IN -> Ok Parser.IN
+  | IMPLICIT -> Ok Parser.IMPLICIT
   | ELSE -> Ok Parser.ELSE
   | SWITCH -> Ok Parser.SWITCH
   | LOOP -> Ok Parser.LOOP
@@ -251,6 +254,7 @@ let to_parser_token :
   | ROTLASSIGN -> Ok Parser.ROTLASSIGN
   | ROTRASSIGN -> Ok Parser.ROTRASSIGN
   | NULL -> Ok Parser.NULL
+  | NUM_DOT_ID (ns, id) -> Ok (Parser.NUM_DOT_ID (ns, id))
   | DOT_NUM s -> Ok (Parser.DOT_NUM s)
   | NAT s -> Ok (Parser.NAT s)
   | FLOAT s -> Ok (Parser.FLOAT s)
@@ -298,6 +302,7 @@ let string_of_parser_token = function
   | Parser.IF -> "IF"
   | Parser.IGNORE -> "IGNORE"
   | Parser.IN -> "IN"
+  | Parser.IMPLICIT -> "IMPLICIT"
   | Parser.ELSE -> "ELSE"
   | Parser.SWITCH -> "SWITCH"
   | Parser.LOOP -> "LOOP"
@@ -388,6 +393,7 @@ let string_of_parser_token = function
   | Parser.ROTLASSIGN -> "ROTLASSIGN"
   | Parser.ROTRASSIGN -> "ROTRASSIGN"
   | Parser.NULL -> "NULL"
+  | Parser.NUM_DOT_ID _ -> "NUM_DOT_IDENT of string * string"
   | Parser.DOT_NUM _ -> "DOT_NUM of string"
   | Parser.NAT _ -> "NAT of string"
   | Parser.FLOAT _ -> "FLOAT of string"

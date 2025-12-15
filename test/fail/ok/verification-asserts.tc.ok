@@ -9,9 +9,3 @@ verification-asserts.mo:7.8-7.17: syntax error [M0001], unexpected token 'invari
   func <exp_nest>
   <nat> : async <exp_nest>
   loop : invariant <exp_nest>
-verification-asserts.mo:7.1-7.8: verification syntax error [M0181], verification assertions not permitted in normal mode
-verification-asserts.mo:7.1-7.22: verification syntax error [M0181], verification assertions not permitted in normal mode
-verification-asserts.mo:8.13-8.22: syntax error [M0001], unexpected token 'invariant', expected one of token or <phrase> sequence:
-  invariant <exp_nest>
-verification-asserts.mo:8.1-8.13: verification syntax error [M0181], verification assertions not permitted in normal mode
-verification-asserts.mo:8.1-8.27: verification syntax error [M0181], verification assertions not permitted in normal mode

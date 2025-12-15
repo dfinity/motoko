@@ -35,6 +35,8 @@ variance.mo:82.11-82.18: type error [M0096], expression of type
 cannot produce expected type
   {get : () -> ?Any; put : (i : Any) -> ()}
 variance.mo:84.15-84.20: type error [M0098], cannot apply function of type
-  () -> Inv<A>
+  <A>() -> Inv<A>
 to argument of type
   ()
+because there is no "best" choice for type parameter `A`.
+Hint: Add explicit type instantiation, e.g. <Any>

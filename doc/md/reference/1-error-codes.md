@@ -17,15 +17,15 @@ sidebar_position: 1
 | M0030 | Type field does not exist in type. | ```type Person = { name : Text }; func getName(p : Person) : Nat { p.age }``` | The field `age` doesn't exist in the `Person` type. |
 | M0031 | Shared function has non-shared parameter type. | ```public shared func process(obj : { var count : Nat }) { ... }``` | Shared functions cannot have mutable types as parameters. |
 | M0032 | Shared function has non-shared return type. | ```public shared func getData() : { var data : [Nat] } { ... }``` | Shared functions cannot return mutable types. |
-| M0033 | Async has non-shared content type. | ```async { var counter = 0 }``` | Async blocks cannot contain mutable [state](https://internetcomputer.org/docs/motoko/fundamentals/state). |
+| M0033 | Async has non-shared content type. | ```async { var counter = 0 }``` | Async blocks cannot contain mutable [state](../fundamentals/2-actors/2-state.md). |
 | M0036 | Invalid return type for shared query function. | ```public shared query func getUsers() : async [User] { ... }``` | Query functions cannot return async types. |
 | M0038 | Misplaced await. | ```func compute() { let x = await promise; }``` | `await` can only be used in an async function or block. |
 | M0045 | Wrong number of type arguments. | ```func process<T>(x : Array<T, Nat>) { ... }``` | `Array` type expects one type parameter, not two. |
 | M0047 | Send capability required. | ```actor { public func send() { IC.call(...); } }``` | Functions calling IC management require explicit capability declarations. |
-| M0050 | Literal does not have expected type. | ```let x : Text = 42;``` | Cannot assign a number literal to a variable of type [`Text`](https://internetcomputer.org/docs/motoko/core/Text). |
+| M0050 | Literal does not have expected type. | ```let x : Text = 42;``` | Cannot assign a number literal to a variable of type [`Text`](../core/Text.md). |
 | M0055 | Cannot infer type of forward variable. | ```func process() { x := 10; var x = 0; }``` | Variable `x` is used before its declaration. |
 | M0057 | Unbound variable. | ```func calculate() { return result; }``` | The variable `result` is used but hasn't been defined. |
-| M0060 | Operator is not defined for operand types. | ```let result = "text" - 5;``` | The subtraction operator isn't defined for [`Text`](https://internetcomputer.org/docs/motoko/core/Text) and [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) types. |
+| M0060 | Operator is not defined for operand types. | ```let result = "text" - 5;``` | The subtraction operator isn't defined for [`Text`](../core/Text.md) and [`Nat`](../core/Nat.md) types. |
 | M0064 | Misplaced '!' without enclosing do block | ```func test() { someFunction!(); }``` | The `!` operator must be used within a `do` block. |
 | M0070 | Expected object type. | ```let name = person.name;``` (where `person` is not an object) | Trying to access a field on a non-object type. |
 | M0072 | Field does not exist in type. | ```type User = { id : Nat }; func getName(u : User) { u.name }``` | The field `name` doesn't exist in the `User` type. |
@@ -33,8 +33,8 @@ sidebar_position: 1
 | M0082 | Expected iterable type. | ```for (item in 42) { ... }``` | The value `42` is not an iterable type for a for-loop. |
 | M0088 | Expected async type. | ```let result = await 42;``` | Cannot `await` on a non-async value. |
 | M0089 | Redundant ignore. | ```ignore (5);``` | The `ignore` is unnecessary for a value that doesn't need to be ignored. |
-| M0090 | Actor reference must have an [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) type .| ```let a = actor { ... }; a.someMethod();``` | The variable `a` must have an explicit [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) type to call its methods. |
-| M0096 | Expression can't produce expected type. | ```func getValue() : Bool { return "true"; }``` | String cannot be returned where a [`Bool`](https://internetcomputer.org/docs/motoko/core/Bool) is expected. |
+| M0090 | Actor reference must have an [actor](../fundamentals/2-actors/1-actors-async.md) type .| ```let a = actor { ... }; a.someMethod();``` | The variable `a` must have an explicit [actor](../fundamentals/2-actors/1-actors-async.md) type to call its methods. |
+| M0096 | Expression can't produce expected type. | ```func getValue() : Bool { return "true"; }``` | String cannot be returned where a [`Bool`](../core/Bool.md) is expected. |
 | M0097 | Expected function type. | ```let x = 5; x();``` | Cannot call a non-function value. |
 | M0098 | Cannot instantiate function type. | ```type Func = (Nat) -> Nat; let f = Func();``` | Function types cannot be instantiated directly. |
 | M0112 | Tuple pattern cannot consume type. | ```let (x, y) = { a = 1; b = 2 };``` | Cannot destructure an object using tuple pattern. |
@@ -44,12 +44,12 @@ sidebar_position: 1
 | M0139 | Inner actor classes are not supported. | ```class Outer() { actor class Inner() { ... } }``` | Actor classes cannot be nested inside other classes. |
 | M0141 | Forbidden declaration in program. | ```import Prim "mo:prim";``` | Certain imports/declarations are not allowed in normal user code. |
 | M0145 | Pattern does not cover value. | ```switch (option) { case (null) { ... } };``` (missing `?some` case) | Switch statement doesn't handle all possible values. |
-| M0149 | An immutable [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) field (declared without `var`) was supplied where a mutable [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) field (specified with `var`), was expected. | ```type Mutable = { var x : Nat }; func set(r : Mutable) { ... }; set({ x = 10 });``` | Immutable [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) provided where mutable was expected. |
-| M0150 | A mutable [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) field (declared with `var`) was supplied where an immutable [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) field (specified without `var`) was expected. | ```type Immutable = { x : Nat }; let record : Immutable = { var x = 10 };``` | Mutable field provided where immutable was expected. |
+| M0149 | An immutable [record](../fundamentals/3-types/5-records.md) field (declared without `var`) was supplied where a mutable [record](../fundamentals/3-types/5-records.md) field (specified with `var`), was expected. | ```type Mutable = { var x : Nat }; func set(r : Mutable) { ... }; set({ x = 10 });``` | Immutable [record](../fundamentals/3-types/5-records.md) provided where mutable was expected. |
+| M0150 | A mutable [record](../fundamentals/3-types/5-records.md) field (declared with `var`) was supplied where an immutable [record](../fundamentals/3-types/5-records.md) field (specified without `var`) was expected. | ```type Immutable = { x : Nat }; let record : Immutable = { var x = 10 };``` | Mutable field provided where immutable was expected. |
 | M0151 | A object literal is missing some fields. | ```type Person = { name : Text; age : Nat }; let p : Person = { name = "John" };``` | The `age` field is missing from the object literal. |
 | M0153 | An imported Candid file (.did) mentions types that cannot be represented in Motoko. | ```import Types from "types.did";``` (where `types.did` contains incompatible types) | The imported Candid file contains types that don't map to Motoko types. |
 | M0154 | Deprecation annotation. | ```@deprecated("Use newFunction instead") func oldFunction() { ... }``` | Using a deprecated function or feature that has been marked with `@deprecated`. |
-| M0155 | Inferred type [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) for subtraction. | ```let x = 5 - 10;``` | Subtraction with natural numbers can underflow without type annotation. |
+| M0155 | Inferred type [`Nat`](../core/Nat.md) for subtraction. | ```let x = 5 - 10;``` | Subtraction with natural numbers can underflow without type annotation. |
 | M0156 | A parameterized type definition, or set of type definitions, is too complicated for Motoko to accept. | ```type Complex<A,B,C,D,E,F> = ... (extremely nested recursive types)``` | Type definition too complex for the compiler to process. |
 | M0157 | A type definition, or set of type definitions, is ill-defined. | ```type RecursiveType = RecursiveType;``` | A type directly references itself without proper indirection. |
 | M0158 | A public class was declared without providing it with a name. | ```public class<T>() { ... }``` | Public parameterized classes must be named explicitly. |

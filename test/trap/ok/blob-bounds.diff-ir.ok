@@ -17,7 +17,7 @@
 -@cleanup = <func>
 -@create_actor_helper = <func>
 -@cycles = 0
--@dedup2 = <func>
+-@dedup = <func>
 -@digits_dec = <func>
 -@digits_hex = <func>
 -@equal_array = <func>

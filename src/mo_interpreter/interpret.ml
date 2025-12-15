@@ -449,19 +449,27 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
        Prim.prim { Prim.trap = trap exp.at "%s" } s
     ))
   | VarE id ->
-    begin match Lib.Promise.value_opt (find id.it env.vals) with
-    | Some v -> k v
-    | None -> trap exp.at "accessing identifier before its definition"
-    end
+    (match id.note with
+    | (_, None) ->
+      begin match Lib.Promise.value_opt (find id.it env.vals) with
+      | Some v -> k v
+      | None -> trap exp.at "accessing identifier before its definition"
+      end
+    | (_, Some exp) ->
+    interpret_exp_mut env exp k)
   | ImportE (f, ri) ->
     (match !ri with
     | Unresolved -> assert false
     | LibPath {path; _} ->
       k (find path env.libs)
     | ImportedValuePath path ->
-      let contents = Lib.FilePath.contents path in
-      assert T.(exp.note.note_typ = Prim Blob);
-      k (V.Blob contents)
+      if !Mo_config.Flags.blob_import_placeholders then
+        trap exp.at "blob import placeholder"
+      else begin
+        let contents = Lib.FilePath.contents path in
+        assert T.(exp.note.note_typ = Prim Blob);
+        k (V.Blob contents)
+      end
     | IDLPath _ -> trap exp.at "actor import"
     | PrimPath -> k (find "@prim" env.libs)
     )

@@ -17,7 +17,7 @@ let symbol : Char = '✮';
 ```
 
 
-:::info [Iter](https://internetcomputer.org/docs/motoko/core/Iter)
+:::info [Iter](../../core/Iter.md)
 An `Iter<T>` is an object that sequentially produces values of specified type `T` until no more values remain.
 :::
 ``` motoko
@@ -79,7 +79,7 @@ persistent actor Alternator {
 
 ## Text
 
-Strings of characters, familiar from other languages, are called **text** in Motoko, and represented using the [`Text`](https://internetcomputer.org/docs/motoko/core/Text) type. A text value is an immutable sequence of Unicode characters delimited with a double quotation mark (`"`).
+Strings of characters, familiar from other languages, are called **text** in Motoko, and represented using the [`Text`](../../core/Text.md) type. A text value is an immutable sequence of Unicode characters delimited with a double quotation mark (`"`).
 
 ```motoko
 let greeting : Text = "Hello, world!";
@@ -114,7 +114,7 @@ Text values can be compared using "==", "<" and all the other relational operato
 
 ## Resources
 
-- [`Char`](https://internetcomputer.org/docs/motoko/core/Char)
-- [`Text`](https://internetcomputer.org/docs/motoko/core/Text)
-- [`Iter`](https://internetcomputer.org/docs/motoko/core/Iter)
+- [`Char`](../../core/Char.md)
+- [`Text`](../../core/Text.md)
+- [`Iter`](../../core/Iter.md)
 

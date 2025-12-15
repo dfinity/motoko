@@ -1,1 +1,2 @@
+issue904.mo:1.1-1.9: warning [M0239], Avoid binding a unit `()` result; remove `var` and keep the expression
 issue904.mo:2.6-2.15: warning [M0089], redundant ignore, operand already has type ()

@@ -37,7 +37,6 @@ type func_sort = Type.func_sort Source.phrase
 
 type mut = mut' Source.phrase
 and mut' = Const | Var
-and id_ref = (string, mut') Source.annotated_phrase
 
 and path = (path', Type.typ) Source.annotated_phrase
 and path' =
@@ -163,8 +162,9 @@ type sugar = bool (* Is the source of a function body a block `<block>`,
                      This flag is used to correctly desugar an actor's
                      public functions as oneway, shared functions *)
 
-type exp = (exp', typ_note) Source.annotated_phrase
+type id_ref = (string, mut' * exp option) Source.annotated_phrase
 and hole_sort = Named of string | Anon of int
+and exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
   | HoleE of hole_sort * exp ref
   | PrimE of string                            (* primitive *)
@@ -233,7 +233,7 @@ and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}
 
 (* When `Some`, this holds the expression that produces the function to apply to the receiver.
-   eg. when `f.x(args...)` desugars to `M.f(x, args...)` the note will hold `M.f` *)
+   eg. when `x.f(args...)` desugars to `M.f(x, args...)` the note will hold `M.f` *)
 and contextual_dot_note = exp option ref
 
 (* Declarations *)
@@ -293,7 +293,7 @@ type lib = comp_unit
 (* Helpers *)
 
 let (@@) = Source.(@@)
-let (@~) it at = Source.annotate Const it at
+let (@~) it at = Source.annotate (Const, None) it at
 let (@?) it at = Source.annotate empty_typ_note it at
 let (@!) it at = Source.annotate Type.Pre it at
 let (@=) it at = Source.annotate None it at
@@ -391,11 +391,16 @@ let contextual_dot_args e1 e2 dot_note =
   let arity = match dot_note.note.note_typ with
     | T.Func(_, _, _, args, _) -> List.length args
     | _ -> raise (Invalid_argument "non-function type in contextual dot note") in
+  let effect eff =
+    match (e1.note.note_eff, eff) with
+    | T.Triv, T.Triv -> T.Triv
+    | _, _ -> T.Await
+  in
   let args = match e2 with
     | { it = TupE []; at; note = { note_eff;_ } } ->
-       { it = e1.it; at; note = { note_eff; note_typ = e1.note.note_typ } }
+       { it = e1.it; at; note = { note_eff = effect note_eff; note_typ = e1.note.note_typ } }
     | { it = TupE exps; at; note = { note_eff; note_typ = T.Tup ts } } when arity <> 2 ->
-       { it = TupE (e1::exps); at; note = { note_eff; note_typ = T.Tup (e1.note.note_typ::ts) } }
+       { it = TupE (e1::exps); at; note = { note_eff = effect note_eff; note_typ = T.Tup (e1.note.note_typ::ts) } }
     | { at; note = { note_eff; _ }; _ } ->
-       { it = TupE ([e1; e2]); at; note = { note_eff; note_typ = T.Tup ([e1.note.note_typ; e2.note.note_typ]) } }
+       { it = TupE ([e1; e2]); at; note = { note_eff = effect note_eff; note_typ = T.Tup ([e1.note.note_typ; e2.note.note_typ]) } }
   in args

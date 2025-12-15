@@ -358,6 +358,7 @@ let encode (em : extended_module) =
 
     let table_type = function
       | TableType (lim, t) -> elem_type t; limits vu32 lim I32IndexType
+      | HugeTableType (lim, t) -> elem_type t; limits vu64 lim I64IndexType
 
     let memory_type = function
       | MemoryType (lim, it) -> limits vu64 lim it

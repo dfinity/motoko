@@ -57,7 +57,7 @@ Space: `O(1)`.
 
 ## Function `isEmpty`
 ``` motoko no-repl
-func isEmpty<T>(queue : Queue<T>) : Bool
+func isEmpty<T>(self : Queue<T>) : Bool
 ```
 
 Determine whether a queue is empty.
@@ -96,7 +96,7 @@ Space: `O(1)`.
 
 ## Function `size`
 ``` motoko no-repl
-func size<T>(queue : Queue<T>) : Nat
+func size<T>(self : Queue<T>) : Nat
 ```
 
 Determine the number of elements contained in a queue.
@@ -115,7 +115,7 @@ Space: `O(1)`.
 
 ## Function `contains`
 ``` motoko no-repl
-func contains<T>(queue : Queue<T>, equal : (T, T) -> Bool, item : T) : Bool
+func contains<T>(self : Queue<T>, equal : (implicit : (T, T) -> Bool), item : T) : Bool
 ```
 
 Check if a queue contains a specific element.
@@ -140,7 +140,7 @@ Space: `O(1)`
 
 ## Function `peekFront`
 ``` motoko no-repl
-func peekFront<T>(queue : Queue<T>) : ?T
+func peekFront<T>(self : Queue<T>) : ?T
 ```
 
 Inspect the optional element on the front end of a queue.
@@ -160,7 +160,7 @@ Space: `O(1)`.
 
 ## Function `peekBack`
 ``` motoko no-repl
-func peekBack<T>(queue : Queue<T>) : ?T
+func peekBack<T>(self : Queue<T>) : ?T
 ```
 
 Inspect the optional element on the back end of a queue.
@@ -180,7 +180,7 @@ Space: `O(1)`.
 
 ## Function `pushFront`
 ``` motoko no-repl
-func pushFront<T>(queue : Queue<T>, element : T) : Queue<T>
+func pushFront<T>(self : Queue<T>, element : T) : Queue<T>
 ```
 
 Insert a new element on the front end of a queue.
@@ -206,7 +206,7 @@ Space: `O(size)` worst-case, amortized to `O(1)`.
 
 ## Function `pushBack`
 ``` motoko no-repl
-func pushBack<T>(queue : Queue<T>, element : T) : Queue<T>
+func pushBack<T>(self : Queue<T>, element : T) : Queue<T>
 ```
 
 Insert a new element on the back end of a queue.
@@ -231,7 +231,7 @@ Space: `O(size)` worst-case, amortized to `O(1)`.
 
 ## Function `popFront`
 ``` motoko no-repl
-func popFront<T>(queue : Queue<T>) : ?(T, Queue<T>)
+func popFront<T>(self : Queue<T>) : ?(T, Queue<T>)
 ```
 
 Remove the element on the front end of a queue.
@@ -265,7 +265,7 @@ Space: `O(size)` worst-case, amortized to `O(1)`.
 
 ## Function `popBack`
 ``` motoko no-repl
-func popBack<T>(queue : Queue<T>) : ?(Queue<T>, T)
+func popBack<T>(self : Queue<T>) : ?(Queue<T>, T)
 ```
 
 Remove the element on the back end of a queue.
@@ -319,6 +319,26 @@ Runtime: O(size)
 
 Space: O(size)
 
+## Function `toQueue`
+``` motoko no-repl
+func toQueue<T>(self : Iter.Iter<T>) : Queue<T>
+```
+
+Convert an iterator to a queue, consuming it.
+Example:
+```motoko include=import
+persistent actor {
+  transient let iter = [0, 1, 2, 3, 4].values();
+
+  let queue = iter.toQeuue();
+  assert Queue.size(queue) == 5;
+}
+```
+
+Runtime: O(size)
+
+Space: O(size)
+
 ## Function `fromArray`
 ``` motoko no-repl
 func fromArray<T>(array : [T]) : Queue<T>
@@ -342,7 +362,7 @@ Space: O(size)
 
 ## Function `toArray`
 ``` motoko no-repl
-func toArray<T>(queue : Queue<T>) : [T]
+func toArray<T>(self : Queue<T>) : [T]
 ```
 
 Create an immutable array from a queue.
@@ -365,7 +385,7 @@ Space: O(size)
 
 ## Function `values`
 ``` motoko no-repl
-func values<T>(queue : Queue<T>) : Iter.Iter<T>
+func values<T>(self : Queue<T>) : Iter.Iter<T>
 ```
 
 Convert a queue to an iterator of its elements in front-to-back order.
@@ -388,7 +408,7 @@ Space: O(size)
 
 ## Function `equal`
 ``` motoko no-repl
-func equal<T>(queue1 : Queue<T>, queue2 : Queue<T>, equal : (T, T) -> Bool) : Bool
+func equal<T>(self : Queue<T>, other : Queue<T>, equal : (implicit : (T, T) -> Bool)) : Bool
 ```
 
 Compare two queues for equality using the provided equality function.
@@ -412,7 +432,7 @@ Space: O(size)
 
 ## Function `all`
 ``` motoko no-repl
-func all<T>(queue : Queue<T>, predicate : T -> Bool) : Bool
+func all<T>(self : Queue<T>, predicate : T -> Bool) : Bool
 ```
 
 Return true if the given predicate `f` is true for all queue
@@ -435,7 +455,7 @@ Space: `O(size)` as the current implementation uses `values` to iterate over the
 
 ## Function `any`
 ``` motoko no-repl
-func any<T>(queue : Queue<T>, predicate : T -> Bool) : Bool
+func any<T>(self : Queue<T>, predicate : T -> Bool) : Bool
 ```
 
 Return true if there exists a queue element for which
@@ -458,7 +478,7 @@ Space: `O(size)` as the current implementation uses `values` to iterate over the
 
 ## Function `forEach`
 ``` motoko no-repl
-func forEach<T>(queue : Queue<T>, f : T -> ())
+func forEach<T>(self : Queue<T>, f : T -> ())
 ```
 
 Call the given function for its side effect, with each queue element in turn.
@@ -482,7 +502,7 @@ Space: `O(size)`
 
 ## Function `map`
 ``` motoko no-repl
-func map<T1, T2>(queue : Queue<T1>, f : T1 -> T2) : Queue<T2>
+func map<T1, T2>(self : Queue<T1>, f : T1 -> T2) : Queue<T2>
 ```
 
 Call the given function `f` on each queue element and collect the results
@@ -510,7 +530,7 @@ Space: `O(size)`
 
 ## Function `filter`
 ``` motoko no-repl
-func filter<T>(queue : Queue<T>, predicate : T -> Bool) : Queue<T>
+func filter<T>(self : Queue<T>, predicate : T -> Bool) : Queue<T>
 ```
 
 Create a new queue with only those elements of the original queue for which
@@ -535,7 +555,7 @@ Space: `O(size)`
 
 ## Function `filterMap`
 ``` motoko no-repl
-func filterMap<T, U>(queue : Queue<T>, f : T -> ?U) : Queue<U>
+func filterMap<T, U>(self : Queue<T>, f : T -> ?U) : Queue<U>
 ```
 
 Call the given function on each queue element, and collect the non-null results
@@ -563,7 +583,7 @@ Space: `O(size)`
 
 ## Function `toText`
 ``` motoko no-repl
-func toText<T>(queue : Queue<T>, f : T -> Text) : Text
+func toText<T>(self : Queue<T>, f : (implicit : (toText : T -> Text))) : Text
 ```
 
 Convert a queue to its text representation using the provided conversion function.
@@ -585,7 +605,7 @@ Space: `O(size)`
 
 ## Function `compare`
 ``` motoko no-repl
-func compare<T>(queue1 : Queue<T>, queue2 : Queue<T>, compareItem : (T, T) -> Order.Order) : Order.Order
+func compare<T>(self : Queue<T>, other : Queue<T>, compareItem : (implicit : (compare : (T, T) -> Order.Order))) : Order.Order
 ```
 
 Compare two queues using lexicographic ordering specified by argument function `compareItem`.
@@ -609,7 +629,7 @@ Space: `O(size)`
 
 ## Function `reverse`
 ``` motoko no-repl
-func reverse<T>(queue : Queue<T>) : Queue<T>
+func reverse<T>(self : Queue<T>) : Queue<T>
 ```
 
 Reverse the order of elements in a queue.

@@ -701,7 +701,7 @@ func @cancelTimer(id : Nat) {
 func @set_global_timer(time : Nat64) = ignore (prim "global_timer_set" : Nat64 -> Nat64) time;
 
 // Function that deduplicates a blob.
-func @dedup2(b : Blob) : Blob {
+func @dedup(b : Blob) : Blob {
   // WeakRef type.
   type WeakRef = {
     ref : weak Blob;

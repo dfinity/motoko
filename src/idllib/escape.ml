@@ -50,6 +50,7 @@ let is_candid_keyword = function
   | "empty"
   | "oneway"
   | "query"
+  | "composite_query"
   -> true
   | _
   -> false
@@ -80,8 +81,11 @@ let is_motoko_keyword = function
   | "func"
   | "if"
   | "ignore"
-  | "in"
+  | "implicit"
   | "import"
+  | "in"
+  | "include"
+  | "mixin"
   | "module"
   | "not"
   | "null"

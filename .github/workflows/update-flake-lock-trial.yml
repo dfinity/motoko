@@ -2,7 +2,7 @@ name: Update flake.lock (trial)
 on:
   # Manual override, one can start the workflow by running:
   # curl -H "Accept: application/vnd.github.everest-preview+json" \
-  #  -H "Authorization: token <your-token-here>" \
+  #  -H "Authorization: token $(gh auth token)" \
   #  --request POST \
   #  --data '{"event_type": "flake-updater-nudge", "client_payload": {}}' \
   #  https://api.github.com/repos/dfinity/motoko/dispatches
@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Install Determinate Nix
         uses: DeterminateSystems/nix-installer-action@main
       - name: Create GitHub App Token
@@ -36,7 +36,7 @@ jobs:
           branch: "update_flake_lock_action_trial"
           inputs: |
             nixpkgs
-            ic-src
+            pocket-ic-src
             rust-overlay
           pr-title: "chore: weekly `flake.lock` update"
           pr-labels: |
@@ -51,6 +51,6 @@ jobs:
             ```
 
             This PR is just to test if the above dependency bumps cause issues.
-            If checks fail this PR remains open so we can investigate.
+            If checks fail, this PR remains open so we can investigate.
             If all checks succeed this PR is automatically closed.
           token: ${{ steps.app-token.outputs.token }}

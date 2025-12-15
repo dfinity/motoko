@@ -72,9 +72,7 @@ fn grant_stable_space(byte_size: u64) {
         debug_assert_ne!(additional_pages, u64::MAX);
         let result = stable_memory_physical_grow(additional_pages);
         if result == u64::MAX {
-            unsafe {
-                rts_trap_with("Insufficient stable memory");
-            }
+            rts_trap_with("Insufficient stable memory");
         }
     }
 }

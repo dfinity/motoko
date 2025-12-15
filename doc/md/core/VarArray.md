@@ -50,7 +50,7 @@ Space: O(size)
 
 ## Function `clone`
 ``` motoko no-repl
-func clone<T>(array : [var T]) : [var T]
+func clone<T>(self : [var T]) : [var T]
 ```
 
 Duplicates `array`, returning a shallow copy of the original.
@@ -92,7 +92,7 @@ Space: O(size)
 
 ## Function `equal`
 ``` motoko no-repl
-func equal<T>(array1 : [var T], array2 : [var T], equal : (T, T) -> Bool) : Bool
+func equal<T>(self : [var T], other : [var T], equal : (implicit : (T, T) -> Bool)) : Bool
 ```
 
 Tests if two arrays contain equal values (i.e. they represent the same
@@ -115,7 +115,7 @@ Space: O(1)
 
 ## Function `find`
 ``` motoko no-repl
-func find<T>(array : [var T], predicate : T -> Bool) : ?T
+func find<T>(self : [var T], predicate : T -> Bool) : ?T
 ```
 
 Returns the first value in `array` for which `predicate` returns true.
@@ -134,7 +134,7 @@ Space: O(1)
 
 ## Function `findIndex`
 ``` motoko no-repl
-func findIndex<T>(array : [var T], predicate : T -> Bool) : ?Nat
+func findIndex<T>(self : [var T], predicate : T -> Bool) : ?Nat
 ```
 
 Returns the first index in `array` for which `predicate` returns true.
@@ -153,7 +153,7 @@ Space: O(1)
 
 ## Function `concat`
 ``` motoko no-repl
-func concat<T>(array1 : [var T], array2 : [var T]) : [var T]
+func concat<T>(self : [var T], other : [var T]) : [var T]
 ```
 
 Create a new mutable array by concatenating the values of `array1` and `array2`.
@@ -173,7 +173,7 @@ Space: O(size1 + size2)
 
 ## Function `sort`
 ``` motoko no-repl
-func sort<T>(array : [var T], compare : (T, T) -> Order.Order) : [var T]
+func sort<T>(self : [var T], compare : (implicit : (T, T) -> Order.Order)) : [var T]
 ```
 
 Creates a new sorted copy of the mutable array according to `compare`.
@@ -193,7 +193,7 @@ Space: O(size)
 
 ## Function `sortInPlace`
 ``` motoko no-repl
-func sortInPlace<T>(array : [var T], compare : (T, T) -> Order.Order) : ()
+func sortInPlace<T>(self : [var T], compare : (implicit : (T, T) -> Order.Order)) : ()
 ```
 
 Sorts the elements in a mutable array in place according to `compare`.
@@ -213,7 +213,7 @@ Space: O(size)
 
 ## Function `reverse`
 ``` motoko no-repl
-func reverse<T>(array : [var T]) : [var T]
+func reverse<T>(self : [var T]) : [var T]
 ```
 
 Creates a new mutable array by reversing the order of elements in `array`.
@@ -233,7 +233,7 @@ Space: O(1)
 
 ## Function `reverseInPlace`
 ``` motoko no-repl
-func reverseInPlace<T>(array : [var T]) : ()
+func reverseInPlace<T>(self : [var T]) : ()
 ```
 
 Reverses the order of elements in a mutable array in place.
@@ -253,7 +253,7 @@ Space: O(1)
 
 ## Function `forEach`
 ``` motoko no-repl
-func forEach<T>(array : [var T], f : T -> ())
+func forEach<T>(self : [var T], f : T -> ())
 ```
 
 Calls `f` with each element in `array`.
@@ -276,7 +276,7 @@ Space: O(size)
 
 ## Function `map`
 ``` motoko no-repl
-func map<T, R>(array : [var T], f : T -> R) : [var R]
+func map<T, R>(self : [var T], f : T -> R) : [var R]
 ```
 
 Creates a new mutable array by applying `f` to each element in `array`. `f` "maps"
@@ -299,7 +299,7 @@ Space: O(size)
 
 ## Function `mapInPlace`
 ``` motoko no-repl
-func mapInPlace<T>(array : [var T], f : T -> T)
+func mapInPlace<T>(self : [var T], f : T -> T)
 ```
 
 Applies `f` to each element of `array` in place,
@@ -322,7 +322,7 @@ Space: O(size)
 
 ## Function `filter`
 ``` motoko no-repl
-func filter<T>(array : [var T], f : T -> Bool) : [var T]
+func filter<T>(self : [var T], f : T -> Bool) : [var T]
 ```
 
 Creates a new mutable array by applying `predicate` to every element
@@ -342,7 +342,7 @@ Space: O(size)
 
 ## Function `filterMap`
 ``` motoko no-repl
-func filterMap<T, R>(array : [var T], f : T -> ?R) : [var R]
+func filterMap<T, R>(self : [var T], f : T -> ?R) : [var R]
 ```
 
 Creates a new mutable array by applying `f` to each element in `array`,
@@ -367,7 +367,7 @@ Space: O(size)
 
 ## Function `mapResult`
 ``` motoko no-repl
-func mapResult<T, R, E>(array : [var T], f : T -> Result.Result<R, E>) : Result.Result<[var R], E>
+func mapResult<T, R, E>(self : [var T], f : T -> Result.Result<R, E>) : Result.Result<[var R], E>
 ```
 
 Creates a new mutable array by applying `f` to each element in `array`.
@@ -394,10 +394,11 @@ Runtime: O(size)
 Space: O(size)
 
 *Runtime and space assumes that `f` runs in O(1) time and space.
+@deprecated M0235
 
 ## Function `mapEntries`
 ``` motoko no-repl
-func mapEntries<T, R>(array : [var T], f : (T, Nat) -> R) : [var R]
+func mapEntries<T, R>(self : [var T], f : (T, Nat) -> R) : [var R]
 ```
 
 Creates a new array by applying `f` to each element in `array` and its index.
@@ -419,7 +420,7 @@ Space: O(size)
 
 ## Function `flatMap`
 ``` motoko no-repl
-func flatMap<T, R>(array : [var T], k : T -> Types.Iter<R>) : [var R]
+func flatMap<T, R>(self : [var T], k : T -> Types.Iter<R>) : [var R]
 ```
 
 Creates a new mutable array by applying `k` to each element in `array`,
@@ -439,7 +440,7 @@ Space: O(size)
 
 ## Function `foldLeft`
 ``` motoko no-repl
-func foldLeft<T, A>(array : [var T], base : A, combine : (A, T) -> A) : A
+func foldLeft<T, A>(self : [var T], base : A, combine : (A, T) -> A) : A
 ```
 
 Collapses the elements in `array` into a single value by starting with `base`
@@ -467,7 +468,7 @@ Space: O(1)
 
 ## Function `foldRight`
 ``` motoko no-repl
-func foldRight<T, A>(array : [var T], base : A, combine : (T, A) -> A) : A
+func foldRight<T, A>(self : [var T], base : A, combine : (T, A) -> A) : A
 ```
 
 Collapses the elements in `array` into a single value by starting with `base`
@@ -490,7 +491,7 @@ Space: O(1)
 
 ## Function `join`
 ``` motoko no-repl
-func join<T>(arrays : Types.Iter<[var T]>) : [var T]
+func join<T>(self : Types.Iter<[var T]>) : [var T]
 ```
 
 Combines an iterator of mutable arrays into a single mutable array.
@@ -512,7 +513,7 @@ Space: O(number of elements in array)
 
 ## Function `flatten`
 ``` motoko no-repl
-func flatten<T>(arrays : [var [var T]]) : [var T]
+func flatten<T>(self : [var [var T]]) : [var T]
 ```
 
 Combines a mutable array of mutable arrays into a single mutable array. Retains the original
@@ -552,17 +553,34 @@ Space: O(1)
 
 ## Function `size`
 ``` motoko no-repl
-func size<T>(array : [var T]) : Nat
+func size<T>(self : [var T]) : Nat
 ```
 
 Returns the size of a mutable array. Equivalent to `array.size()`.
 
 ## Function `isEmpty`
 ``` motoko no-repl
-func isEmpty<T>(array : [var T]) : Bool
+func isEmpty<T>(self : [var T]) : Bool
 ```
 
 Returns whether a mutable array is empty, i.e. contains zero elements.
+
+## Function `fromArray`
+``` motoko no-repl
+func fromArray<T>(array : [T]) : [var T]
+```
+
+Transforms an immutable array into a mutable array.
+
+```motoko include=import
+let array = [0, 1, 2];
+let varArray = VarArray.fromArray<Nat>(array);
+assert varArray.size() == 3;
+```
+
+Runtime: O(size)
+
+Space: O(1)
 
 ## Function `fromIter`
 ``` motoko no-repl
@@ -573,7 +591,7 @@ Converts an iterator to a mutable array.
 
 ## Function `keys`
 ``` motoko no-repl
-func keys<T>(array : [var T]) : Types.Iter<Nat>
+func keys<T>(self : [var T]) : Types.Iter<Nat>
 ```
 
 Returns an iterator (`Iter`) over the indices of `array`.
@@ -599,7 +617,7 @@ Space: O(1)
 
 ## Function `values`
 ``` motoko no-repl
-func values<T>(array : [var T]) : Types.Iter<T>
+func values<T>(self : [var T]) : Types.Iter<T>
 ```
 
 Iterator provides a single method `next()`, which returns
@@ -624,7 +642,7 @@ Space: O(1)
 
 ## Function `enumerate`
 ``` motoko no-repl
-func enumerate<T>(array : [var T]) : Types.Iter<(Nat, T)>
+func enumerate<T>(self : [var T]) : Types.Iter<(Nat, T)>
 ```
 
 Returns an iterator that provides pairs of (index, element) in order, or `null`
@@ -646,7 +664,7 @@ Space: O(1)
 
 ## Function `all`
 ``` motoko no-repl
-func all<T>(array : [var T], predicate : T -> Bool) : Bool
+func all<T>(self : [var T], predicate : T -> Bool) : Bool
 ```
 
 Returns true if all elements in `array` satisfy the predicate function.
@@ -664,7 +682,7 @@ Space: O(1)
 
 ## Function `any`
 ``` motoko no-repl
-func any<T>(array : [var T], predicate : T -> Bool) : Bool
+func any<T>(self : [var T], predicate : T -> Bool) : Bool
 ```
 
 Returns true if any element in `array` satisfies the predicate function.
@@ -682,7 +700,7 @@ Space: O(1)
 
 ## Function `indexOf`
 ``` motoko no-repl
-func indexOf<T>(array : [var T], equal : (T, T) -> Bool, element : T) : ?Nat
+func indexOf<T>(self : [var T], equal : (implicit : (T, T) -> Bool), element : T) : ?Nat
 ```
 
 Returns the index of the first `element` in the `array`.
@@ -702,7 +720,7 @@ Space: O(1)
 
 ## Function `nextIndexOf`
 ``` motoko no-repl
-func nextIndexOf<T>(array : [var T], equal : (T, T) -> Bool, element : T, fromInclusive : Nat) : ?Nat
+func nextIndexOf<T>(self : [var T], equal : (implicit : (T, T) -> Bool), element : T, fromInclusive : Nat) : ?Nat
 ```
 
 Returns the index of the next occurence of `element` in the `array` starting from the `from` index (inclusive).
@@ -724,7 +742,7 @@ Space: O(1)
 
 ## Function `lastIndexOf`
 ``` motoko no-repl
-func lastIndexOf<T>(array : [var T], equal : (T, T) -> Bool, element : T) : ?Nat
+func lastIndexOf<T>(self : [var T], equal : (implicit : (T, T) -> Bool), element : T) : ?Nat
 ```
 
 Returns the index of the last `element` in the `array`.
@@ -745,7 +763,7 @@ Space: O(1)
 
 ## Function `prevIndexOf`
 ``` motoko no-repl
-func prevIndexOf<T>(array : [var T], equal : (T, T) -> Bool, element : T, fromExclusive : Nat) : ?Nat
+func prevIndexOf<T>(self : [var T], equal : (implicit : (T, T) -> Bool), element : T, fromExclusive : Nat) : ?Nat
 ```
 
 Returns the index of the previous occurence of `element` in the `array` starting from the `from` index (exclusive).
@@ -764,7 +782,7 @@ Space: O(1);
 
 ## Function `range`
 ``` motoko no-repl
-func range<T>(array : [var T], fromInclusive : Int, toExclusive : Int) : Types.Iter<T>
+func range<T>(self : [var T], fromInclusive : Int, toExclusive : Int) : Types.Iter<T>
 ```
 
 Returns an iterator over a slice of `array` starting at `fromInclusive` up to (but not including) `toExclusive`.
@@ -795,7 +813,7 @@ Space: O(1)
 
 ## Function `sliceToArray`
 ``` motoko no-repl
-func sliceToArray<T>(array : [var T], fromInclusive : Int, toExclusive : Int) : [T]
+func sliceToArray<T>(self : [var T], fromInclusive : Int, toExclusive : Int) : [T]
 ```
 
 Returns a new array containing elements from `array` starting at index `fromInclusive` up to (but not including) index `toExclusive`.
@@ -817,7 +835,7 @@ Space: O(toExclusive - fromInclusive)
 
 ## Function `sliceToVarArray`
 ``` motoko no-repl
-func sliceToVarArray<T>(array : [var T], fromInclusive : Int, toExclusive : Int) : [var T]
+func sliceToVarArray<T>(self : [var T], fromInclusive : Int, toExclusive : Int) : [var T]
 ```
 
 Returns a new mutable array containing elements from `array` starting at index `fromInclusive` up to (but not including) index `toExclusive`.
@@ -839,9 +857,27 @@ Runtime: O(toExclusive - fromInclusive)
 
 Space: O(toExclusive - fromInclusive)
 
+## Function `toArray`
+``` motoko no-repl
+func toArray<T>(self : [var T]) : [T]
+```
+
+Transforms a mutable array into an immutable array.
+
+```motoko include=import
+let varArray = [var 0, 1, 2];
+varArray[2] := 3;
+let array = VarArray.toArray<Nat>(varArray);
+assert array == [0, 1, 3];
+```
+
+Runtime: O(size)
+
+Space: O(1)
+
 ## Function `toText`
 ``` motoko no-repl
-func toText<T>(array : [var T], f : T -> Text) : Text
+func toText<T>(self : [var T], f : (implicit : (toText : T -> Text))) : Text
 ```
 
 Converts the mutable array to its textual representation using `f` to convert each element to `Text`.
@@ -861,7 +897,7 @@ Space: O(size)
 
 ## Function `compare`
 ``` motoko no-repl
-func compare<T>(array1 : [var T], array2 : [var T], compare : (T, T) -> Order.Order) : Order.Order
+func compare<T>(self : [var T], other : [var T], compare : (implicit : (T, T) -> Order.Order)) : Order.Order
 ```
 
 Compares two mutable arrays using the provided comparison function for elements.
@@ -890,7 +926,7 @@ Space: O(1)
 
 ## Function `binarySearch`
 ``` motoko no-repl
-func binarySearch<T>(array : [var T], compare : (T, T) -> Order.Order, element : T) : {#found : Nat; #insertionIndex : Nat}
+func binarySearch<T>(self : [var T], compare : (implicit : (T, T) -> Order.Order), element : T) : {#found : Nat; #insertionIndex : Nat}
 ```
 
 Performs binary search on a sorted mutable array to find the index of the `element`.
@@ -908,6 +944,26 @@ assert VarArray.binarySearch<Nat>(sorted, Nat.compare, 6) == #insertionIndex(3);
 ```
 
 Runtime: O(log(size))
+
+Space: O(1)
+
+*Runtime and space assumes that `compare` runs in O(1) time and space.
+
+## Function `isSorted`
+``` motoko no-repl
+func isSorted<T>(self : [var T], compare : (implicit : (T, T) -> Order.Order)) : Bool
+```
+
+Checks whether the mutable `array` is sorted according to the `compare` function.
+
+```motoko include=import
+import Nat "mo:core/Nat";
+
+let array = [var 1, 2, 3];
+assert VarArray.isSorted<Nat>(array, Nat.compare);
+```
+
+Runtime: O(size)
 
 Space: O(1)
 

@@ -344,22 +344,32 @@ struct
          grouping ((hd::l1)::acc) l2
     in grouping [] l
 
-  let rec take n xs =
+  let rec take n xs = (* present in OCaml 5.3 *)
     match n, xs with
     | _ when n <= 0 -> []
     | n, x::xs' when n > 0 -> x :: take (n - 1) xs'
     | _ -> failwith "take"
 
-  let rec drop n xs =
+  let rec drop n xs = (* present in OCaml 5.3 *)
     match n, xs with
     | 0, _ -> xs
     | n, _::xs' when n > 0 -> drop (n - 1) xs'
     | _ -> failwith "drop"
 
+  let rec replicate e = function
+    | 0 -> []
+    | n -> e :: replicate e (n - 1)
+
   let split_at n xs =
     if n <= List.length xs
     then (take n xs, drop n xs)
     else (xs, [])
+
+  let split3 l =
+    let rec loop (xs, ys, zs) = function
+      | [] -> (List.rev xs, List.rev ys, List.rev zs)
+      | (x, y, z) :: t -> loop (x :: xs, y :: ys, z :: zs) t
+    in loop ([], [], []) l
 
   let mapi2 f xs ys =
     let _, acc = List.fold_left2 (fun (i, acc) x y -> (1 + i, f i x y :: acc)) (0, []) xs ys in
