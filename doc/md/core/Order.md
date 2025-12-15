@@ -10,28 +10,28 @@ A type to represent an order.
 
 ## Function `isLess`
 ``` motoko no-repl
-func isLess(order : Order) : Bool
+func isLess(self : Order) : Bool
 ```
 
 Check if an order is #less.
 
 ## Function `isEqual`
 ``` motoko no-repl
-func isEqual(order : Order) : Bool
+func isEqual(self : Order) : Bool
 ```
 
 Check if an order is #equal.
 
 ## Function `isGreater`
 ``` motoko no-repl
-func isGreater(order : Order) : Bool
+func isGreater(self : Order) : Bool
 ```
 
 Check if an order is #greater.
 
 ## Function `equal`
 ``` motoko no-repl
-func equal(order1 : Order, order2 : Order) : Bool
+func equal(self : Order, other : Order) : Bool
 ```
 
 Returns true if only if  `order1` and `order2` are the same.

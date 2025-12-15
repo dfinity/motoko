@@ -26,7 +26,7 @@ let
 
   # extra deps for test/ld
   ldTestDeps =
-    with pkgs.llvmPackages_18; [ lld clang ];
+    with pkgs.llvmPackages_19; [ lld clang ];
 
   testDerivation = args:
     pkgs.stdenv.mkDerivation (testDerivationArgs // args);
@@ -243,7 +243,7 @@ fix_names
     trap-eop = enhanced_orthogonal_persistence_subdir "trap" [ moc ];
     run-deser = test_subdir "run-deser" [ deser ];
     perf = perf_subdir false "perf" [ moc test-runner pkgs.pocket-ic.server pkgs.cacert ];
-    viper = test_subdir "viper" [ moc pkgs.which pkgs.openjdk pkgs.z3_4_12 ];
+    viper = test_subdir "viper" [ moc pkgs.which pkgs.openjdk pkgs.z3 ];
     # TODO: profiling-graph is excluded because the underlying parity_wasm is deprecated and does not support passive data segments and memory64.
     inherit qc unit candid coverage;
   }

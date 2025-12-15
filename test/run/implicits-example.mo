@@ -12,7 +12,7 @@ module Int {
 
 module Array {
 
-  public func toText<T>(as : [T], toText: (implicit : T -> Text)) : Text {
+  public func toText<T>(as : [T], toText : (implicit : T -> Text)) : Text {
      var t = "";
      for (a in as.vals()) {
        t := t # (toText(a));

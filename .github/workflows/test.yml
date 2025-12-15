@@ -4,6 +4,11 @@ on:
     branches: [ master ]
   pull_request: {}
 
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
 jobs:
   common-tests:
     strategy:
@@ -12,7 +17,7 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Run Common Tests
         uses: ./.github/actions/test-blueprint
@@ -29,7 +34,7 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Run GC Tests
         uses: ./.github/actions/test-blueprint
@@ -47,7 +52,7 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           # fetch full history so that git merge-base works
           fetch-depth: 0
@@ -66,8 +71,8 @@ jobs:
         uses: actions/create-github-app-token@v2
         id: app-token
         with:
-          app-id: ${{ vars.PR_AUTOMATION_BOT_PUBLIC_APP_ID }}
-          private-key: ${{ secrets.PR_AUTOMATION_BOT_PUBLIC_PRIVATE_KEY }}
+          app-id: ${{ vars.GENERIC_CI_RW_APP_ID }}
+          private-key: ${{ secrets.GENERIC_CI_RW_APP_PRIVATE_KEY }}
 
       - name: Run Performance Tests
         if: github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' && runner.os == 'Linux' && runner.arch == 'X64' && matrix.build_type == 'release'
@@ -86,7 +91,7 @@ jobs:
     concurrency: ci-${{ github.ref }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: cachix/install-nix-action@v31
       - uses: cachix/cachix-action@v16
         with:
@@ -109,7 +114,7 @@ jobs:
         os: [ ubuntu-latest, ubuntu-24.04-arm, macos-latest ]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: cachix/install-nix-action@v31
       - uses: cachix/cachix-action@v16
         with:
@@ -121,7 +126,7 @@ jobs:
       # https://github.com/actions/upload-artifact/issues/92
       - run: echo "UPLOAD_PATH=$(readlink -f result)" >> $GITHUB_ENV
       - name: upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: moc-${{ matrix.os }}
           path: ${{ env.UPLOAD_PATH }}
@@ -169,7 +174,7 @@ jobs:
     needs: [verify-common-gc, verify-main-tests]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: 'master'
       - name: Automatically closing successful trials
@@ -183,7 +188,7 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.base.ref == 'master' && github.event.pull_request.changed_files == 1
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: 'master'
       - name: Hand out single-file review approvals
@@ -198,9 +203,10 @@ jobs:
           ### Handles open PRs filed by `dependabot[bot]` that carry the `dependencies` label. The single changed file must be `doc/docusaurus/package-lock.json`. If so, the PR gets approved with a comment.
           ${{ github.event.pull_request.user.login == 'dependabot[bot]' && contains(github.event.pull_request.labels.*.name, 'dependencies') }} \
           && [ $(gh pr diff $PR --name-only) == "doc/docusaurus/package-lock.json" ] \
-          && gh pr review $PR --approve --body 'A change to `doc/docusaurus/package-lock.json`? I can handle that!'
+          && gh pr review $PR --approve --body 'A change to `doc/docusaurus/package-lock.json`? I can handle that!' \
+          && gh pr merge $PR --squash --auto
           ### Handles open PRs filed by the GH automation bot that carry the `automerge-squash` label. The single changed file must be `flake.lock`. If so, the PR gets approved with a comment, auto-merge activated and the label removed.
-          ${{ github.event.pull_request.user.login == 'pr-automation-bot-public[bot]' && contains(github.event.pull_request.labels.*.name, 'automerge-squash') }} \
+          ${{ github.event.pull_request.user.login == 'caffeine-ci-generic-rw[bot]' && contains(github.event.pull_request.labels.*.name, 'automerge-squash') }} \
           && [ $(gh pr diff $PR --name-only) == "flake.lock" ] \
           && gh pr review $PR --approve --body 'A change to `flake.lock`? I can handle that!' \
           && gh pr merge $PR --squash --auto \

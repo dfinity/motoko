@@ -2,7 +2,7 @@ name: Update flake.lock (trial)
 on:
   # Manual override, one can start the workflow by running:
   # curl -H "Accept: application/vnd.github.everest-preview+json" \
-  #  -H "Authorization: token <your-token-here>" \
+  #  -H "Authorization: token $(gh auth token)" \
   #  --request POST \
   #  --data '{"event_type": "flake-updater-nudge", "client_payload": {}}' \
   #  https://api.github.com/repos/dfinity/motoko/dispatches
@@ -13,30 +13,33 @@ on:
   schedule:
     # * is a special character in YAML so you have to quote this string
     # Run every Sunday at midnight
-    - cron: '0 0 * * 0'
+    - cron: "0 0 * * 0"
+
+permissions:
+  contents: read
+
 jobs:
   flake-updater:
-    name: 'Update flake.lock'
+    name: "Update flake.lock"
     timeout-minutes: 2 # if this takes more than 2 minutes then something's wrong
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Install Determinate Nix
         uses: DeterminateSystems/nix-installer-action@main
       - name: Create GitHub App Token
         uses: actions/create-github-app-token@v2
         id: app-token
         with:
-          app-id: ${{ vars.PR_AUTOMATION_BOT_PUBLIC_APP_ID }}
-          private-key: ${{ secrets.PR_AUTOMATION_BOT_PUBLIC_PRIVATE_KEY }}
+          app-id: ${{ vars.GENERIC_CI_RW_APP_ID }}
+          private-key: ${{ secrets.GENERIC_CI_RW_APP_PRIVATE_KEY }}
       - name: Update flake.lock
         uses: DeterminateSystems/update-flake-lock@main
         with:
           branch: "update_flake_lock_action_trial"
           inputs: |
             nixpkgs
-            ic-src
             rust-overlay
           pr-title: "chore: weekly `flake.lock` update"
           pr-labels: |
@@ -51,6 +54,6 @@ jobs:
             ```
 
             This PR is just to test if the above dependency bumps cause issues.
-            If checks fail this PR remains open so we can investigate.
+            If checks fail, this PR remains open so we can investigate.
             If all checks succeed this PR is automatically closed.
           token: ${{ steps.app-token.outputs.token }}

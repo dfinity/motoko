@@ -50,8 +50,8 @@ method label_expressions($Self: Ref)
       label $lbl$simple;
       assert (simple_label == 42);
       implicit_leave := 42;
-      goto $lbl$implicit;
-      label $lbl$implicit;
+      goto $lbl$implicit_;
+      label $lbl$implicit_;
       assert (implicit_leave == 42);
       if (true)
          { 

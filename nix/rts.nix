@@ -13,7 +13,7 @@ let
   vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
   # SHA256 of Rust std deps
-  rustStdDepsHash = "sha256-U4BTr1CzFuOMdyLuhw5ry3/u8bkRiPmnMr4pLo3IdOQ=";
+  rustStdDepsHash = "sha256-kEj5g2v39atLfxuY8dmZ+9qdcJVNE8dwkaOghiLBhj0=";
 
   # Vendor directory for Rust std deps
   rustStdDeps = pkgs.stdenvNoCC.mkDerivation {
@@ -56,8 +56,8 @@ pkgs.stdenv.mkDerivation {
   nativeBuildInputs = [ pkgs.makeWrapper pkgs.removeReferencesTo pkgs.cacert ];
 
   buildInputs = with pkgs; [
-    llvmPackages_18.clang
-    llvmPackages_18.bintools
+    llvmPackages_19.clang
+    llvmPackages_19.bintools
     rust-nightly
     wasmtime
     rust-bindgen

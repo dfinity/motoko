@@ -117,6 +117,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (T T_LABEL) -> simple_token "label"
   | X (T T_IN) -> simple_token "in"
   | X (T T_IMPORT) -> simple_token "import"
+  | X (T T_IMPLICIT) -> simple_token "implicit"
   | X (T T_IGNORE) -> simple_token "ignore"
   | X (T T_IF) -> simple_token "if"
   | X (T T_ID) -> simple_token "<id>"
@@ -177,7 +178,6 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (N N_catch) -> "<catch>", "catch " ^ eg_pat ^ " {}"
   | X (N N_class_body) -> "<class_body>", "= {}"
   | X (N N_dec) -> "<dec>", eg_dec
-  | X (N N_block_dec_error) -> "<block_dec_error>", "x = 0"
   | X (N N_dec_field) -> "<dec_field>", eg_dec_field
   | X (N N_dec_nonvar) -> "<dec_nonvar>", eg_dec
   | X (N N_dec_var) -> "<dec_var>", "var x : Int = 0"
@@ -229,7 +229,6 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (N N_annot_opt) -> "<annot_opt>", eg_annot
   | X (N N_seplist_case_semicolon_) -> seplist ("<case>", eg_case) semi
   | X (N N_seplist_dec_SEMICOLON_) -> seplist ("<dec>", eg_dec) semi2
-  | X (N N_seplist_er_dec_block_dec_error_semicolon_)
   | X (N N_seplist_dec_semicolon_) -> seplist ("<dec>", eg_dec) semi
   | X (N N_seplist_typ_dec_semicolon_) -> seplist ("<typ_dec>", eg_typ_dec) semi
   | X (N N_seplist_dec_field_semicolon_) -> seplist ("<dec_field>", eg_dec_field) semi

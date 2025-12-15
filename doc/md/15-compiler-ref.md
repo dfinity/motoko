@@ -4,7 +4,7 @@ sidebar_position: 15
 
 # Compiler reference
 
-The Motoko compiler (`moc`) is the primary tool for compiling Motoko programs into executable WebAssembly (Wasm) modules. The compiler runs in the background when you build projects using the [IC SDK](https://internetcomputer.org/docs/current/developer-docs/setup/install). If you invoke the compiler directly on the command-line, you can press CTRL-C to exit.
+The Motoko compiler (`moc`) is the primary tool for compiling Motoko programs into executable WebAssembly (Wasm) modules. The compiler runs in the background when you build projects using the [IC SDK](https://github.com/dfinity/sdk). If you invoke the compiler directly on the command-line, you can press CTRL-C to exit.
 
 This section provides compiler command-line reference information.
 
@@ -67,7 +67,7 @@ You can use the following options with the `moc` command.
 | `--stable-types`                          | Compile binary and emit signature of stable types to `.most` file.                                                                                    |
 | `--stable-compatible <pre> <post>`        | Test upgrade compatibility between stable-type signatures `<pre>` and `<post>`.                                                                       |
 | `--rts-stack-pages <n>`                   | Set maximum number of pages available for runtime system stack (only supported with classical persistence, default 32).                               |
-| `--trap-on-call-error`                    | Trap, don't throw an [`Error`](https://internetcomputer.org/docs/motoko/core/Error), when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behavior of moc versions < 0.8.0.                                                                                                                                           |
+| `--trap-on-call-error`                    | Trap, don't throw an [`Error`](./core/Error), when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behavior of moc versions < 0.8.0.                                                                                                                                           |
 | `-t`                                      | Activates tracing in interpreter.                                                                                                                     |
 | `-v`                                      | Generates verbose output.                                                                                                                             |
 | `--version`                               | Displays version information.                                                                                                                         |

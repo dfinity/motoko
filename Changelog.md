@@ -2,6 +2,27 @@
 
 * motoko (`moc`)
 
+  * Allows resolving local definitions for context-dot (#5731).
+
+  Extends contextual-dot resolution to consider local definitions first, to make the following snippet type check. Local definitions take precedence over definitions that are in scope via modules.
+
+  ```motoko
+  func first<A>(self : [A]) : A {
+    return self[0]
+  };
+  assert [1, 2, 3].first() == 1
+  ```
+
+  * Add privileged primitive for setting Candid type table cutoff (#5642).
+
+## 1.0.0 (2025-12-11)
+
+* motoko (`moc`)
+
+  * Shorter, simpler error messages for generic functions (#5650).
+    The compiler now tries to point to the first problematic expression in the function call, rather than the entire function call with type inference details.
+    Simple errors only mention closed types; verbose errors with unsolved type variables are only shown when necessary.
+
   * Improved error messages for context dot: only the receiver type variables are solved, remaining type variables stay unsolved, not solved to `Any` or `Non` (#5634).
 
   * Fixed the type instantiation hint to have the correct arity (#5634).
@@ -51,10 +72,6 @@
   * Add warning `M0239` that warns when binding a unit `()` value by `let` or `var` (#5599).
 
   * Use `self` parameter, not `Self` type, to enable contextual dot notation (#5574).
-
-  * Enable parser recovery to gather more syntax errors at once (previously only enabled for `moc.js`) (#5589).
-
-  * Custom syntax error message when a record is provided where a block is expected (#5589).
 
   * Add (caffeine) warning `M0237` (#5588).
     Warns if explicit argument could have been inferred and omitted,

@@ -34,7 +34,7 @@ Characters represented as Unicode code points.
 
 ## Function `toNat32`
 ``` motoko no-repl
-func toNat32(char : Char) : Nat32
+func toNat32(self : Char) : Nat32
 ```
 
 Convert character `char` to a word containing its Unicode scalar value.
@@ -64,7 +64,7 @@ assert char == 'A';
 
 ## Function `toText`
 ``` motoko no-repl
-func toText(char : Char) : Text
+func toText(self : Char) : Text
 ```
 
 Convert character `char` to single character text.
@@ -78,7 +78,7 @@ assert text == "漢";
 
 ## Function `isDigit`
 ``` motoko no-repl
-func isDigit(char : Char) : Bool
+func isDigit(self : Char) : Bool
 ```
 
 Returns `true` when `char` is a decimal digit between `0` and `9`, otherwise `false`.
@@ -91,7 +91,7 @@ assert not Char.isDigit('A');
 
 ## Function `isWhitespace`
 ``` motoko no-repl
-func isWhitespace(char : Char) : Bool
+func isWhitespace(self : Char) : Bool
 ```
 
 Returns whether `char` is a whitespace character.
@@ -106,7 +106,7 @@ assert not Char.isWhitespace('A');
 
 ## Function `isLower`
 ``` motoko no-repl
-func isLower(char : Char) : Bool
+func isLower(self : Char) : Bool
 ```
 
 Returns whether `char` is a lowercase character.
@@ -119,7 +119,7 @@ assert not Char.isLower('A');
 
 ## Function `isUpper`
 ``` motoko no-repl
-func isUpper(char : Char) : Bool
+func isUpper(self : Char) : Bool
 ```
 
 Returns whether `char` is an uppercase character.
@@ -132,7 +132,7 @@ assert not Char.isUpper('a');
 
 ## Function `isAlphabetic`
 ``` motoko no-repl
-func isAlphabetic(char : Char) : Bool
+func isAlphabetic(self : Char) : Bool
 ```
 
 Returns whether `char` is an alphabetic character.
@@ -146,7 +146,7 @@ assert not Char.isAlphabetic('1');
 
 ## Function `equal`
 ``` motoko no-repl
-func equal(a : Char, b : Char) : Bool
+func equal(self : Char, other : Char) : Bool
 ```
 
 Returns `a == b`.
@@ -163,7 +163,7 @@ to pass to a higher order function.
 
 ## Function `notEqual`
 ``` motoko no-repl
-func notEqual(a : Char, b : Char) : Bool
+func notEqual(self : Char, other : Char) : Bool
 ```
 
 Returns `a != b`.
@@ -180,7 +180,7 @@ to pass to a higher order function.
 
 ## Function `less`
 ``` motoko no-repl
-func less(a : Char, b : Char) : Bool
+func less(self : Char, other : Char) : Bool
 ```
 
 Returns `a < b`.
@@ -197,7 +197,7 @@ to pass to a higher order function.
 
 ## Function `lessOrEqual`
 ``` motoko no-repl
-func lessOrEqual(a : Char, b : Char) : Bool
+func lessOrEqual(self : Char, other : Char) : Bool
 ```
 
 Returns `a <= b`.
@@ -215,7 +215,7 @@ to pass to a higher order function.
 
 ## Function `greater`
 ``` motoko no-repl
-func greater(a : Char, b : Char) : Bool
+func greater(self : Char, other : Char) : Bool
 ```
 
 Returns `a > b`.
@@ -232,7 +232,7 @@ to pass to a higher order function.
 
 ## Function `greaterOrEqual`
 ``` motoko no-repl
-func greaterOrEqual(a : Char, b : Char) : Bool
+func greaterOrEqual(self : Char, other : Char) : Bool
 ```
 
 Returns `a >= b`.
@@ -250,7 +250,7 @@ to pass to a higher order function.
 
 ## Function `compare`
 ``` motoko no-repl
-func compare(a : Char, b : Char) : {#less; #equal; #greater}
+func compare(self : Char, other : Char) : {#less; #equal; #greater}
 ```
 
 Returns the order of `a` and `b`.

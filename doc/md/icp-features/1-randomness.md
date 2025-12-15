@@ -17,7 +17,7 @@ Motoko provides multiple options for incorporating randomness into your code, ea
 | Method              | Functionality     | Security level      | Example use cases        | Key features |
 |--------------------|-------------------|---------------------|------------------|--------------|
 | `raw_rand` function    | Returns 32 bytes of cryptographic randomness from ICP’s VRF.   | Strong cryptographic guarantees, ensures unpredictability.  | Secure key generation, fairness-compliant applications, unpredictable randomness. | Directly retrieves randomness from the network’s consensus layer, 32-byte (256-bit) `Blob`s, asynchronous, returns fresh entropy each call. |
-| [`Random` module](https://internetcomputer.org/docs/motoko/core/Random)   | High-level wrapper for `raw_rand`, providing finite random pools.      | Uses `raw_rand`, but requires careful handling to avoid entropy reuse.  | Random number generation, shuffling, simulations. | Simplifies number generation, includes finite entropy pools, requires fresh `raw_rand` calls when exhausted. |
+| [`Random` module](../core/Random.md)   | High-level wrapper for `raw_rand`, providing finite random pools.      | Uses `raw_rand`, but requires careful handling to avoid entropy reuse.  | Random number generation, shuffling, simulations. | Simplifies number generation, includes finite entropy pools, requires fresh `raw_rand` calls when exhausted. |
 | [`fuzz` package](https://mops.one/fuzz)     | Pseudo-random generator that can be seeded with time, `Blob`s, or custom functions. | Security depends on the seed. | Fuzz testing, procedural generation, simulations, dynamic randomness. | Default seed is `Time.now` (low security), can be initialized with `raw_rand` for high security, supports custom generators. |
 | [`idempotency-keys` package](https://mops.one/idempotency-keys)  | Generates UUID v4 from a 16-byte random seed. | Security depends on the provided entropy.   | Unique transaction IDs, idempotency, database keys.   | Produces RFC4122-compliant UUIDs, requires secure entropy source, simple API `UUID.generateV4(seed)`. |
 
@@ -45,7 +45,7 @@ persistent actor {
 
 ## `Random`
 
-The [`Random` module](https://internetcomputer.org/docs/motoko/core/Random) provides an interface that wraps the `raw_rand` function. Since `raw_rand` returns raw bytes, the `Random` module simplifies working with this entropy by offering structured methods for consuming randomness efficiently. The module includes `Random.blob()` for fetching fresh 32-byte entropy and `Random.Finite`, which provides a finite source of randomness that can be used until exhausted. When entropy runs out, a new random `Blob` must be fetched asynchronously.
+The [`Random` module](../core/Random.md) provides an interface that wraps the `raw_rand` function. Since `raw_rand` returns raw bytes, the `Random` module simplifies working with this entropy by offering structured methods for consuming randomness efficiently. The module includes `Random.blob()` for fetching fresh 32-byte entropy and `Random.Finite`, which provides a finite source of randomness that can be used until exhausted. When entropy runs out, a new random `Blob` must be fetched asynchronously.
 
 Below is an example demonstrating how to generate a random boolean using `Random.Finite`.
 
@@ -105,6 +105,6 @@ persistent actor {
 ## Resources
 
 - [`raw_rand`](https://internetcomputer.org/docs/references/ic-interface-spec#ic-raw_rand)
-- [`Random`](https://internetcomputer.org/docs/motoko/core/Random)
+- [`Random`](../core/Random.md)
 - [`fuzz`](https://mops.one/fuzz)
 - [`idempotency-keys`](https://mops.one/idempotency-keys)
