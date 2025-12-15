@@ -1035,7 +1035,7 @@ and explanation =
   | MissingTag of context * lab * typ
   | UnexpectedTag of context * lab * typ
   | MissingField of context * lab * typ
-  | UnexpectedField of context * lab * typ
+  | UnexpectedField of context * context * field * typ
   | FewerItems of context * string
   | MoreItems of context * string
   | PromotionToAny of context * typ
@@ -1050,6 +1050,8 @@ and context_item =
   | NamedType of name
   | StableVariable of lab
   | Field of lab
+  (* Extra context items for pretty printing both types (Zipper idea) *)
+  | ArrayItem
 and context = context_item list
 let empty_context : context = []
 
@@ -1060,9 +1062,12 @@ module RelArg :
     val stable_sub : context -> arg (* stable subtyping, without loss of info*)
     val inc_depth : arg -> arg
     val push : context_item -> arg -> arg
+    val push1 : context_item -> arg -> arg
+    val push_both : context_item -> arg -> arg
     val is_stable_sub : arg -> bool
     val exceeds_max_depth : arg -> bool
     val context : arg -> context
+    val context1 : arg -> context
     val false_with : arg -> explanation -> bool
     val explanation : arg -> explanation option
 end
@@ -1073,17 +1078,29 @@ struct
       is_stable_sub : bool;
       depth : int;
       context : context;
+      context1 : context;
       error : explanation option ref;
     }
-  let sub context = { context; depth = 0; is_stable_sub = false; error = ref None }
+  let sub context = {
+      context;
+      context1 = context;
+      depth = 0;
+      is_stable_sub = false;
+      error = ref None;
+    }
   let stable_sub context =  { (sub context) with is_stable_sub = true }
   let inc_depth arg =
     { arg with depth = arg.depth + 1 }
   let push context_item arg =
     { arg with context = context_item :: arg.context }
+  let push1 context_item arg =
+    { arg with context1 = context_item :: arg.context1 }
+  let push_both context_item arg =
+    push context_item (push1 context_item arg)
   let is_stable_sub arg = arg.is_stable_sub
   let exceeds_max_depth arg = arg.depth > max_depth
   let context arg = arg.context
+  let context1 arg = arg.context1
   let false_with arg e = (arg.error := Some e; false)
   let explanation arg = !(arg.error)
 end
@@ -1100,8 +1117,8 @@ let unexpected_tag d lab t =
 let missing_field d lab t =
   RelArg.false_with d (MissingField (RelArg.context d, lab, t))
 
-let unexpected_field d lab t =
-  RelArg.false_with d (UnexpectedField (RelArg.context d, lab, t))
+let unexpected_field d field t =
+  RelArg.false_with d (UnexpectedField (RelArg.context1 d, RelArg.context d, field, t))
 
 let fewer_items d desc =
   RelArg.false_with d (FewerItems (RelArg.context d, desc))
@@ -1164,14 +1181,16 @@ let rec rel_typ d rel eq t1 t2 =
   | Non, _ when rel != eq ->
     true
   | Named (n, t1'), t2 ->
-    rel_typ d rel eq t1' t2
+    let d' = RelArg.push1 (NamedType n) d in
+    rel_typ d' rel eq t1' t2
   | t1, Named (n, t2') ->
     let d' = RelArg.push (NamedType n) d in
     rel_typ d' rel eq t1 t2'
   | Con (con1, ts1), Con (con2, ts2) ->
     (match Cons.kind con1, Cons.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-      rel_typ d rel eq (open_ ts1 t) t2
+      let d' = RelArg.push1 (ConsType con1) d in
+      rel_typ d' rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
       let d' = RelArg.push (ConsType con2) d in
       rel_typ d' rel eq t1 (open_ ts2 t)
@@ -1185,7 +1204,8 @@ let rec rel_typ d rel eq t1 t2 =
   | Con (con1, ts1), t2 ->
     (match Cons.kind con1, t2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-      rel_typ d rel eq (open_ ts1 t) t2
+      let d' = RelArg.push1 (ConsType con1) d in
+      rel_typ d' rel eq (open_ ts1 t) t2
     | Abs (tbs, t), _ when rel != eq ->
       rel_typ d rel eq (open_ ts1 t) t2
     | _ -> incompatible_types d t1 t2
@@ -1206,6 +1226,7 @@ let rec rel_typ d rel eq t1 t2 =
     (s1 = s2 || incompatible_obj_sorts d t1 t2) &&
     rel_fields t2 d rel eq tfs1 tfs2
   | Array t1', Array t2' ->
+    let d = RelArg.push_both ArrayItem d in
     rel_typ d rel eq t1' t2'
   | Opt t1', Opt t2' ->
     rel_typ d rel eq t1' t2'
@@ -1243,9 +1264,10 @@ and rel_fields t2 d rel eq tfs1 tfs2 =
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
-      let d' = RelArg.push (Field tf2.lab) d in
+      let d' = RelArg.push1 (Field tf1.lab) d in
+      let d'' = RelArg.push (Field tf2.lab) d' in
       let is_rel =
-        rel_typ d' rel eq tf1.typ tf2.typ &&
+        rel_typ d'' rel eq tf1.typ tf2.typ &&
         rel_fields t2 d rel eq tfs1' tfs2'
       in
       add_src_field_update is_rel rel eq tf1 tf2;
@@ -1254,12 +1276,12 @@ and rel_fields t2 d rel eq tfs1 tfs2 =
       rel_fields t2 d rel eq tfs1' tfs2
     | result ->
       if result > 0 then
-        unexpected_field d tf2.lab t2
+        unexpected_field d tf2 t2
       else
         missing_field d tf1.lab t2
     )
   | [], tf2::_ ->
-    unexpected_field d tf2.lab t2
+    unexpected_field d tf2 t2
   | tf1::_, [] ->
     missing_field d tf1.lab t2
 
@@ -2313,8 +2335,22 @@ let string_of_context context =
     | (NamedType name)::rest ->
        Printf.sprintf "%s in %s" name (emit_context true rest)
     | (StableVariable name)::_ -> name
+    | _::rest -> emit_context nested rest
   in
     emit_context false context
+
+let rec string_of_typ_of_context acc = function
+  | [] -> acc
+  | (item: context_item) :: rest ->
+    rest |> string_of_typ_of_context
+      (match item with
+      | ArrayItem -> "[" ^ acc ^ "]"
+      | Field l -> "{... " ^ l ^ " : " ^ acc ^ " ...}"
+      | ConsType c -> 
+        let name = remove_hash_suffix (Cons.name c) in
+        Printf.sprintf "%s = %s" name acc
+      | NamedType name -> Printf.sprintf "( %s : %s )" name acc
+      | StableVariable _ -> acc)
 
 let string_of_explanation explanation =
   let display_typ = Lib.Format.display pp_typ in
@@ -2327,8 +2363,12 @@ let string_of_explanation explanation =
     Format.asprintf "Unsupported additional tag `#%s` in type %a\n of %s" lab display_typ t (string_of_context context)
   | MissingField (context, lab, t) ->
     Format.asprintf "Missing field `%s` in type %a\n of %s" lab display_typ t (string_of_context context)
-  | UnexpectedField (context, lab, t) ->
-    Format.asprintf "Unsupported additional field `%s` in type %a\n of %s" lab display_typ t (string_of_context context)
+  | UnexpectedField (context1, context, field, t) ->
+    let lab = field.lab in
+    Format.asprintf "Unsupported additional field `%s`. Type\n  %s\n is not compatible with\n  %s" lab
+      (string_of_typ_of_context (string_of_typ_expand field.typ) (Field lab :: context1))
+      (string_of_typ_of_context "{ ... }" context)
+    (* Format.asprintf "Unsupported additional field `%s` in type %a\n of %s" lab display_typ t (string_of_context context) *)
   | FewerItems (context, desc) ->
     Format.asprintf "Fewer %s in %s than expected" desc (string_of_context context)
   | MoreItems (context, desc) ->
