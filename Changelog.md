@@ -2,7 +2,7 @@
 
 * motoko (`moc`)
 
-  * Allows resolving local definitions for context-dot
+  * Allows resolving local definitions for context-dot (#5731).
 
   Extends contextual-dot resolution to consider local definitions first, to make the following snippet type check. Local definitions take precedence over definitions that are in scope via modules.
 
