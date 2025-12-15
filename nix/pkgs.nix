@@ -17,8 +17,8 @@
           version = "1.1.1";
           src = self.sources.wasm-spec-src;
           patchPhase = ''
-            substituteInPlace ./interpreter/Makefile \
-              --replace-fail "+a-4-27-42-44-45" "+a-4-27-42-44-45-70"
+            # substituteInPlace ./interpreter/Makefile \
+            #   --replace-fail "+a-4-27-42-44-45" "+a-4-27-42-44-45-70"
           '';
         };
 
