@@ -8,6 +8,7 @@ pkgs: let
   }.${pkgs.system} or (throw "Unsupported system: ${pkgs.system}");
 
   # SHA256 hashes for each platform's .gz file
+  # This is version 10.0.0.
   sha256Map = {
     "pocket-ic-x86_64-linux" = "42ffe67ff1688fbc8111ca63d9527f2ad5c02d3462eeef803bb99f89acda7d43";
     "pocket-ic-arm64-linux" = "83991b18925d92471c30f10a00363195b9cd9e5e45bf1dfad522625f8e71d942";
@@ -19,8 +20,7 @@ pkgs: let
   baseUrl = "https://github.com/dfinity/ic/releases/download/${releaseTag}";
 
   server = pkgs.stdenv.mkDerivation rec {
-    pname = "pocket-ic-server";
-    version = "10.0.0"; # This is the pocket-ic production version.
+    name = "pocket-ic-server";
     
     src = pkgs.fetchurl {
       url = "${baseUrl}/${binaryName}.gz";
