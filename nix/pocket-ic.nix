@@ -12,6 +12,8 @@ pkgs: let
   # in a conscious way, otherwise automated updating will result in breaking the CI and
   # possibly not knowing which pocket-ic-server version is actually good to use since
   # the dfinity CI releases versions weekly and sometimes they result in breaking changes.
+  # Whenever someone would like to update the pocket-ic-server, they should get the
+  # needed release tag and sha256 hashes from the dfinity releases and update them here as needed.
   releaseTag = "release-2025-10-02_03-13-base";
   baseUrl = "https://github.com/dfinity/ic/releases/download/${releaseTag}";
   sha256Map = {
