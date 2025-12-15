@@ -94,7 +94,7 @@ jobs:
         run: nix build --max-jobs 1 '.#"release-files-${{ matrix.os }}"'
 
       - name: Upload Release Artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: release-files-${{ matrix.os }}
           path: result/*
