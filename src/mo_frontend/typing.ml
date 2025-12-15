@@ -2869,16 +2869,18 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       (* explicit instantiation, check argument against instantiated domain *)
       let typs = match inst.it with None -> [] | Some (_, typs) -> typs in
       let ts = check_inst_bounds env sort tbs typs t_ret at in
-      let t_arg' = T.open_ ts t_arg in
-      let t_ret' = T.open_ ts t_ret in
-      if not env.pre then begin
-        if typs <> [] && is_redundant_instantiation ts env (fun env' ->
-          infer_call_instantiation env' t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
-          warn env inst.at "M0223" "redundant type instantiation";
-        (* Check AFTER the redundant instantiation check *)
-        check_exp_strong env t_arg' exp2
-      end;
-      ts, t_arg', t_ret'
+      if not env.pre && typs <> [] && is_redundant_instantiation ts env (fun env' ->
+        infer_call_instantiation env' t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems)
+      then (
+        warn env inst.at "M0223" "redundant type instantiation";
+        (* If the instantiation is redundant, we MUST continue without the instantiation to avoid false positives, so we cannot `check_exp` here *)
+        infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
+      ) else
+        let t_arg' = T.open_ ts t_arg in
+        let t_ret' = T.open_ ts t_ret in
+        if not env.pre then
+          check_exp_strong env t_arg' exp2;
+        ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
       infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
