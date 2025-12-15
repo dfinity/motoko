@@ -7,17 +7,19 @@ pkgs: let
     "aarch64-darwin" = "pocket-ic-arm64-darwin";
   }.${pkgs.system} or (throw "Unsupported system: ${pkgs.system}");
 
-  # SHA256 hashes for each platform's .gz file
-  # This is version 10.0.0.
+  # The pocket-ic-server is a binary that we download from github/dfinity/ic/releases.
+  # Since this binary is important for our CI, we need to update it manually for now
+  # in a conscious way, otherwise automated updating will result in breaking the CI and
+  # possibly not knowing which pocket-ic-server version is actually good to use since
+  # the dfinity CI releases versions weekly and sometimes they result in breaking changes.
+  releaseTag = "release-2025-10-02_03-13-base";
+  baseUrl = "https://github.com/dfinity/ic/releases/download/${releaseTag}";
   sha256Map = {
     "pocket-ic-x86_64-linux" = "42ffe67ff1688fbc8111ca63d9527f2ad5c02d3462eeef803bb99f89acda7d43";
     "pocket-ic-arm64-linux" = "83991b18925d92471c30f10a00363195b9cd9e5e45bf1dfad522625f8e71d942";
     "pocket-ic-x86_64-darwin" = "b89923b6a216e4f609ea3ebdab69e87dd782e9a722cd5daced5053b8eff866b3";
     "pocket-ic-arm64-darwin" = "cda584415351cbbefbcd59321820c3e1252b3e2f0508d761c667551b5849cea9";
   };
-
-  releaseTag = "release-2025-10-02_03-13-base";
-  baseUrl = "https://github.com/dfinity/ic/releases/download/${releaseTag}";
 
   server = pkgs.stdenv.mkDerivation rec {
     name = "pocket-ic-server";
