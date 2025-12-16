@@ -220,13 +220,13 @@
     <exp_bin> <relop> <exp_bin>
     <exp_bin> 'and' <exp_bin>
     <exp_bin> 'or' <exp_bin>
-    <exp_bin> '??' <exp_bin>
     <exp_bin> ':' <typ_nobin>
     <exp_bin> '|>' <exp_bin>
 
 <exp_nondec> ::= 
     <exp_bin>
     <exp_bin> ':=' <exp>
+    <exp_bin> '??' <exp_nest>
     <exp_bin> <binassign> <exp>
     'return' <exp>?
     <parenthetical>? 'async' <exp_nest>
