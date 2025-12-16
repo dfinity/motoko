@@ -1548,7 +1548,7 @@ let resolve_hole env at hole_sort typ =
      end
 
 type ctx_dot_candidate =
-  { module_name : T.lab;
+  { module_name : T.lab option;
     path : exp;
     arg_ty : T.typ;
     func_ty : T.typ;
@@ -1578,16 +1578,16 @@ type 'a context_dot_error =
   | DotAmbiguous of (env -> 'a)
 
 let contextual_dot env name receiver_ty : (ctx_dot_candidate, 'a context_dot_error) Result.t =
-  let is_matching_func field =
-    if not (String.equal field.T.lab name.it) then None
-    else match T.normalize field.T.typ with
+  let is_matching_func n t =
+    if not (String.equal n name.it) then None
+    else match T.normalize t with
     | T.Func (_, _, tbs, T.Named("self", first_arg)::_, _) as typ ->
       (match permissive_sub receiver_ty (tbs, first_arg) with
         | Some inst -> Some (T.open_ inst first_arg, typ, inst)
         | _ -> None)
     | _ -> None in
   let find_candidate in_libs (module_name, (module_ty, fs)) =
-    List.find_map is_matching_func fs |>
+    List.find_map (fun fld -> is_matching_func fld.T.lab fld.T.typ) fs |>
       Option.map (fun (arg_ty, func_ty, inst) ->
         let path = {
           it = DotE({
@@ -1598,7 +1598,21 @@ let contextual_dot env name receiver_ty : (ctx_dot_candidate, 'a context_dot_err
           at = name.at;
           note = empty_typ_note }
         in
-        { module_name; path; func_ty; arg_ty; inst }) in
+        { module_name = Some module_name; path; func_ty; arg_ty; inst }) in
+
+  let local_candidate =
+    match T.Env.find_opt name.it env.vals with
+    | None -> None
+    | Some (t, _, _, _) ->
+      match is_matching_func name.it t with
+       | None -> None
+       | Some (arg_ty, func_ty, inst) ->
+         let path = {
+           it = VarE { it = name.it; at = name.at; note = (Const, None) };
+           at = name.at;
+           note = empty_typ_note } in
+         Some { module_name = None; path; func_ty; arg_ty; inst } in
+
   let candidates in_libs xs f =
     T.Env.to_seq xs |>
       Seq.filter_map f |>
@@ -1607,20 +1621,23 @@ let contextual_dot env name receiver_ty : (ctx_dot_candidate, 'a context_dot_err
   (* All candidate functions accept supertypes of the required type as their first arguments.
      The "smallest" of these types is the closest to the required type. *)
   let disambiguate_candidates = disambiguate_resolutions (fun c1 c2 -> T.sub c2.arg_ty c1.arg_ty) in
-  match candidates false env.vals is_val_module with
-  | [c] -> Ok c
-  | [] ->
-    (match candidates true env.libs is_lib_module with
-    | [c] when Option.is_some !Flags.implicit_package -> Ok c
-    | lib_candidates ->
-      match if Option.is_some !Flags.implicit_package then disambiguate_candidates lib_candidates else None with
+  match local_candidate with
+  | Some c -> Ok c
+  | None ->
+    (match candidates false env.vals is_val_module with
+    | [c] -> Ok c
+    | [] ->
+      (match candidates true env.libs is_lib_module with
+      | [c] when Option.is_some !Flags.implicit_package -> Ok c
+      | lib_candidates ->
+        match if Option.is_some !Flags.implicit_package then disambiguate_candidates lib_candidates else None with
+        | Some c -> Ok c
+        | None ->  Error (DotSuggestions (fun env -> List.filter_map (fun candidate -> Option.map Suggest.module_name_as_url candidate.module_name) lib_candidates)))
+    | cs -> match disambiguate_candidates cs with
       | Some c -> Ok c
-      | None ->  Error (DotSuggestions (fun env -> List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)))
-  | cs -> match disambiguate_candidates cs with
-    | Some c -> Ok c
-    | None -> Error (DotAmbiguous (fun env ->
-       let modules =  (List.map (fun c -> c.module_name) cs) in
-       error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " modules)))
+      | None -> Error (DotAmbiguous (fun env ->
+         let modules =  (List.filter_map (fun c -> c.module_name) cs) in
+         error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " modules))))
 
 let check_can_dot env ctx_dot (exp : Syntax.exp) tys es at =
   if not env.pre then
@@ -2588,7 +2605,7 @@ and check_exp' env0 t exp : T.typ =
     let t' = infer_exp env0 exp in
     check_inferred env0 env t t' exp
 
-and check_inferred env0 env t t' exp = 
+and check_inferred env0 env t t' exp =
   if not (sub env exp.at t' t) then
   begin
     local_error env0 exp.at "M0096"
@@ -2918,7 +2935,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   t_ret'
 
 and wrong_call_args env tbs ctx_dot at t_args implicits_arity syntax_args =
-  let inst = 
+  let inst =
     match ctx_dot with
     | Some (_, _, _, inst) -> inst
     | None -> T.open_binds tbs
