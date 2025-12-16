@@ -1,13 +1,11 @@
 import Prim "mo:prim";
-import Func "Func";
-
 import Migration "Migration6";
 import Migration2 "Migration5";
 
 (
   with migration =
-    ((Migration.run).then
-     (Migration2.run))
+    Migration.run then
+    Migration2.run
 )
 actor {
 

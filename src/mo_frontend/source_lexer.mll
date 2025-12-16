@@ -254,6 +254,7 @@ rule token mode = parse
   | "stable" { STABLE }
   | "switch" { SWITCH }
   | "system" { SYSTEM }
+  | "then" { THEN }
   | "transient" { TRANSIENT }
   | "try" { TRY }
   | "throw" { THROW }

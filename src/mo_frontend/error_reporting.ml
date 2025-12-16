@@ -18,6 +18,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_UNDERSCORE -> UNDERSCORE
       | T_COMPOSITE -> COMPOSITE
       | T_TYPE -> TYPE
+      | T_THEN -> THEN
       | T_TRANSIENT -> TRANSIENT
       | T_TRY -> TRY
       | T_THROW -> THROW

@@ -215,6 +215,7 @@ and exp' =
   | ThrowE of exp                              (* throw exception *)
   | TryE of exp * case list * exp option       (* catch exception / finally *)
   | IgnoreE of exp                             (* ignore *)
+  | ComposeE of exp * exp                      (* ignore *)
 (*
   | AtomE of string                            (* atom *)
  *)

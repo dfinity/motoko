@@ -771,7 +771,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | AnnotE (exp1, _typ) ->
     interpret_exp env exp1 k
   | IgnoreE exp1 ->
-    interpret_exp env exp1 (fun _v -> k V.unit)
+     interpret_exp env exp1 (fun _v -> k V.unit)
+  | ComposeE _ ->
+     assert false
 
 and interpret_par env par k =
   match par with

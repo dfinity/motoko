@@ -90,7 +90,8 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | ImpliesE (exp1, exp2)
   | WhileE (exp1, exp2)
   | LoopE (exp1, Some exp2)
-  | ForE (_, exp1, exp2) ->
+  | ForE (_, exp1, exp2)
+  | ComposeE (exp1, exp2) ->
     map_max_effs effect_exp [exp1; exp2]
   | CallE (None, exp1, _, (_, exp2)) ->
     map_max_effs effect_exp [exp1; !exp2]

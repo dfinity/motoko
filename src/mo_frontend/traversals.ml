@@ -69,6 +69,9 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
      f { exp with it = FuncE (name, sort_pat, typ_binds, pat, typ_opt, sugar, over_exp f exp1) }
   | IgnoreE exp1 ->
      f { exp with it = IgnoreE (over_exp f exp1)}
+  | ComposeE (exp1, exp2) ->
+     f { exp with it = ComposeE (over_exp f exp1, over_exp f exp2) }
+
 
 and over_dec (f : exp -> exp) (d : dec) : dec = match d.it with
   | TypD _ -> d

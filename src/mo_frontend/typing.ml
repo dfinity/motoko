@@ -1085,7 +1085,7 @@ let rec is_explicit_exp e =
   | BreakE _ | RetE _ | ThrowE _ ->
     false
   | VarE _
-  | RelE _ | NotE _ | AndE _ | OrE _ | ImpliesE _ | OldE _ | ShowE _ | ToCandidE _ | FromCandidE _
+  | RelE _ | NotE _ | AndE _ | OrE _ | ComposeE _ | ImpliesE _ | OldE _ | ShowE _ | ToCandidE _ | FromCandidE _
   | AssignE _ | IgnoreE _ | AssertE _ | DebugE _
   | WhileE _ | ForE _
   | AnnotE _ | ImportE _ | ImplicitLibE _ ->
@@ -1785,6 +1785,23 @@ and infer_exp'' env exp : T.typ =
       ot := t;
     end;
     T.bool
+  | ComposeE(exp1, exp2) ->
+    let t1 = infer_exp env exp1 in
+    let t2 = infer_exp env exp2 in
+    (match (T.normalize t1, T.normalize t2) with
+    | T.(Func(Local, Returns, [], ts11, [t12])),
+      T.(Func(Local, Returns, [], [t21], ts22)) ->
+       (if not env.pre then begin
+           if not (sub env exp1.at t12 t21) then
+             error env exp.at "M0XXX" "`then` is not defined for operand types%a%a"
+               display_typ_expand t1
+               display_typ_expand t2;
+         end;
+        T.(Func(T.Local, T.Returns, [], ts11, ts22)))
+    | _ ->
+       error env exp.at "M0XXX" "`then` is not defined for operand types%a%a"
+         display_typ_expand t1
+         display_typ_expand t2)
   | ShowE (ot, exp1) ->
     if not env.pre then begin
       let t = infer_exp_promote env exp1 in

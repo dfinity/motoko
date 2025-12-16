@@ -1,5 +1,4 @@
 import Prim "mo:prim";
-import Func "Func";
 import Migration1 "Migration1";
 import Migration2 "Migration2";
 import Migration3 "Migration3";
@@ -9,11 +8,11 @@ import Migration6 "Migration4";
 
 (
   with migration =
-    (Migration1.run).then
-    (Migration2.run).then
-    (Migration3.run).then
-    (Migration4.run).then
-    (Migration5.run)
+    Migration1.run then
+    Migration2.run then
+    Migration3.run then
+    Migration4.run then
+    Migration5.run
 )
 actor {
 

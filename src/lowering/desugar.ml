@@ -294,6 +294,21 @@ and exp' at note = function
       { it = I.LetD ({it = I.WildP; at = e.at; note = T.Any}, exp e);
         at = e.at; note = ()}], (unitE ()))
 
+  | S.ComposeE(e1, e2) ->
+    let f1 = exp e1 in
+    let f2 = exp e2 in
+    let v1 = fresh_var "f1" f1.note.Note.typ in
+    let v2 = fresh_var "f2" f2.note.Note.typ in
+    let _, _, _, ts11, _ = T.as_func f1.note.Note.typ in
+    let vs = fresh_vars "v" ts11 in
+    (blockE [
+      letD v1 f1;
+      letD v2 f2;
+    ]
+    (vs -->*  (varE v2 -*- (varE v1 -*- seqE (List.map varE vs))))).it
+(*    I.FuncE ("compose", (s, None), cntrl, [], args, ts2, wrap (exp e)) *)
+
+
 and parenthetical send = function
   | None -> [], []
   | Some par when not send -> [expD (exp par)], []

@@ -227,7 +227,7 @@ and objblock eo s id ty dec_fields =
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
-%token AND OR NOT
+%token AND OR NOT THEN
 %token IMPORT INCLUDE MODULE MIXIN
 %token DEBUG_SHOW
 %token TO_CANDID FROM_CANDID
@@ -267,6 +267,7 @@ and objblock eo s id ty dec_fields =
 %left PIPE
 %left OR
 %left AND
+%left THEN
 %nonassoc EQOP NEQOP LEOP LTOP GTOP GEOP
 %left ADDOP SUBOP WRAPADDOP WRAPSUBOP HASH
 %left MULOP WRAPMULOP DIVOP MODOP
@@ -741,7 +742,8 @@ exp_un(B) :
         LetD (VarP x @! x.at, e1, None) @? e1.at;
         ExpD e2 @? e2.at
       ] @? at $sloc }
-
+  | e1=exp_bin(B) THEN e2=exp_bin(ob)
+    { ComposeE(e1, e2) @? at $sloc }
 
 %public exp_nondec(B) :
   | e=exp_bin(B)
