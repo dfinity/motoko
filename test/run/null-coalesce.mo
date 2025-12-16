@@ -41,3 +41,16 @@ module WithDo {
 };
 
 assert (WithDo.app(1) == 5);
+
+// Blocks
+let b1 = (do { // block is not allowed on LHS
+  let x = 1;
+  ?{x};
+}) ?? {{x=0}}; // block is allowed on RHS, so the record needs extra braces
+assert (b1 == {x=1});
+let br = ?{x=1};
+let b2 = br ?? {
+  let x = 2;
+  {x}
+};
+assert (b2 == {x=1});

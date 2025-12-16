@@ -268,7 +268,6 @@ and objblock eo s id ty dec_fields =
 %left PIPE
 %left OR
 %left AND
-%left NULLCOALESCE
 %nonassoc EQOP NEQOP LEOP LTOP GTOP GEOP
 %left ADDOP SUBOP WRAPADDOP WRAPSUBOP HASH
 %left MULOP WRAPMULOP DIVOP MODOP
@@ -739,8 +738,6 @@ exp_un(B) :
     { AndE(e1, e2) @? at $sloc }
   | e1=exp_bin(B) OR e2=exp_bin(ob)
     { OrE(e1, e2) @? at $sloc }
-  | e1=exp_bin(B) NULLCOALESCE e2=exp_bin(ob)
-    { NullCoalesceE(e1, e2) @? at $sloc }
   | e=exp_bin(B) COLON t=typ_nobin
     { AnnotE(e, t) @? at $sloc }
   | e1=exp_bin(B) PIPE e2=exp_bin(ob)
@@ -756,6 +753,8 @@ exp_un(B) :
     { e }
   | e1=exp_bin(B) ASSIGN e2=exp(ob)
     { AssignE(e1, e2) @? at $sloc}
+  | e1=exp_bin(B) NULLCOALESCE e2=exp_nest
+    { NullCoalesceE(e1, e2) @? at $sloc }
   | e1=exp_bin(B) op=binassign e2=exp(ob)
     { assign_op e1 (fun e1' -> BinE(ref Type.Pre, e1', op, e2) @? at $sloc) (at $sloc) }
   | RETURN %prec RETURN_NO_ARG
