@@ -1,6 +1,9 @@
 # Motoko compiler changelog
 
+
 * motoko (`moc`)
+
+  * Explain subtype failures (#5643).
 
   * Allows resolving local definitions for context-dot (#5731).
 
