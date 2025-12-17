@@ -61,7 +61,6 @@ type env =
     used_identifiers : S.t ref;
     unused_warnings : unused_warnings ref;
     reported_stable_memory : bool ref;
-    viper_mode : bool;
     errors_only : bool;
     srcs : Field_sources.t;
   }
@@ -70,7 +69,7 @@ and ret_env =
   | Ret of T.typ
   | BimatchRet of (env -> exp -> unit)
 
-let env_of_scope ?(viper_mode=false) msgs scope =
+let env_of_scope msgs scope =
   { vals = available scope.Scope.val_env;
     libs = scope.Scope.lib_env;
     mixins = scope.Scope.mixin_env;
@@ -92,7 +91,6 @@ let env_of_scope ?(viper_mode=false) msgs scope =
     unused_warnings = ref [];
     reported_stable_memory = ref false;
     errors_only = false;
-    viper_mode;
     srcs = Field_sources.of_immutable_map scope.Scope.fld_src_env;
   }
 
@@ -1682,7 +1680,7 @@ and infer_exp_wrapper inf f env exp : T.typ =
     let t'' = T.normalize t' in
     assert (t'' <> T.Pre);
     let note_eff = A.infer_effect_exp exp in
-    exp.note <- {note_typ = if env.viper_mode then t' else t''; note_eff}
+    exp.note <- {note_typ = t''; note_eff}
   end;
   t'
 
@@ -4575,14 +4573,14 @@ and infer_dec_valdecs env dec : Scope.t =
     }
 
 (* Programs *)
-let infer_prog ?(viper_mode=false) scope pkg_opt async_cap prog
+let infer_prog scope pkg_opt async_cap prog
     : (T.typ * Scope.t) Diag.result
   =
   Diag.with_message_store
     (fun msgs ->
       recover_opt
         (fun prog ->
-          let env0 = env_of_scope ~viper_mode msgs scope in
+          let env0 = env_of_scope msgs scope in
           let env = {
              env0 with async = async_cap;
           } in
@@ -4601,13 +4599,13 @@ let is_actor_dec d =
     obj_sort.it = T.Actor
   | _ -> false
 
-let check_actors ?(viper_mode=false) ?(check_actors=false) scope progs : unit Diag.result =
+let check_actors ?(check_actors=false) scope progs : unit Diag.result =
   if not check_actors then Diag.return () else
   Diag.with_message_store
     (fun msgs ->
       recover_opt (fun progs ->
         let prog = (CompUnit.combine_progs progs).it in
-        let env = env_of_scope ~viper_mode msgs scope in
+        let env = env_of_scope msgs scope in
         let report ds =
           match ds with
             [] -> ()

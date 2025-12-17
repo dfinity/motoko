@@ -13,9 +13,6 @@ result*
 
 /samples/**/*.txt
 
-**/*.mo.vpr
-test/viper/tmp
-
 enable-internals
 
 # Editor configuration

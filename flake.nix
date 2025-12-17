@@ -16,10 +16,6 @@
       url = "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz";
       flake = false;
     };
-    viper-server = {
-      url = "https://github.com/viperproject/viperserver/releases/download/v.22.11-release/viperserver.jar";
-      flake = false;
-    };
 
     candid-src = {
       url = "github:dfinity/candid";
@@ -66,7 +62,6 @@
     , nix-update-flake
     , rust-overlay
     , esm
-    , viper-server
     , candid-src
     , ic-wasm-src
     , libtommath-src
@@ -170,7 +165,7 @@
       };
 
       tests = import ./nix/tests.nix { 
-        inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages test-runner; 
+        inherit pkgs llvmEnv esm commonBuildInputs debugMoPackages test-runner; 
       };
 
       filterTests = type:
@@ -218,7 +213,7 @@
       nix-update = nix-update-flake.packages.${system}.default;
 
       shell = import ./nix/shell.nix {
-        inherit pkgs nix-update base-src core-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages docs test-runner;
+        inherit pkgs nix-update base-src core-src llvmEnv esm commonBuildInputs rts js debugMoPackages docs test-runner;
         inherit (checks) check-rts-formatting;
       };
 
