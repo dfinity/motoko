@@ -284,7 +284,6 @@ and exp' at note = function
     (blockE (ds @ rs) { at; note; it }).it
   | S.AwaitE (sort, e) -> I.PrimE I.(AwaitPrim sort, [exp e])
   | S.AssertE (Runtime, e) -> I.PrimE (I.AssertPrim, [exp e])
-  | S.AssertE (_, e) -> (unitE ()).it
   | S.AnnotE (e, _) -> assert false
   | S.ImportE (f, ir) -> raise (Invalid_argument (Printf.sprintf "Import expression found in unit body: %s" f))
   | S.ImplicitLibE lib -> (varE (var (id_of_full_path lib) note.Note.typ)).it

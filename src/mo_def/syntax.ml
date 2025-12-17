@@ -221,7 +221,7 @@ and exp' =
 and arg_exp = (bool * (exp ref))
 
 and assert_kind =
-  | Runtime | Static | Invariant | Precondition | Postcondition | Concurrency of string | Loop_entry | Loop_continue | Loop_exit | Loop_invariant
+  | Runtime
 
 and dec_field = dec_field' Source.phrase
 and dec_field' = {dec : dec; vis : vis; stab: stab option}
