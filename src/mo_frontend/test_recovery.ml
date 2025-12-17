@@ -106,7 +106,6 @@ let%expect_test "test1" =
       |> <exp_bin(ob)> (e.g. '|> 42')
       or <exp_bin(ob)> (e.g. 'or 42')
       <unassign> <exp(ob)> (e.g. '-= 42')
-      implies <exp_bin(ob)> (e.g. 'implies 42')
       <relop> <exp_bin(ob)> (e.g. '== 42')
       else <exp_nest> (e.g. 'else 42')
       . <id>
@@ -129,7 +128,6 @@ let%expect_test "test1" =
       |> <exp_bin(ob)> (e.g. '|> 42')
       or <exp_bin(ob)> (e.g. 'or 42')
       <unassign> <exp(ob)> (e.g. '-= 42')
-      implies <exp_bin(ob)> (e.g. 'implies 42')
       <relop> <exp_bin(ob)> (e.g. '== 42')
       else <exp_nest> (e.g. 'else 42')
       . <id>
@@ -335,7 +333,6 @@ actor Main {
       |> <exp_bin(ob)> (e.g. '|> 42')
       or <exp_bin(ob)> (e.g. 'or 42')
       <unassign> <exp(ob)> (e.g. '-= 42')
-      implies <exp_bin(ob)> (e.g. 'implies 42')
       <relop> <exp_bin(ob)> (e.g. '== 42')
       else <exp_nest> (e.g. 'else 42')
       . <id>
