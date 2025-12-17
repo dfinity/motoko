@@ -2,6 +2,23 @@
 
 * motoko (`moc`)
 
+  * Allows resolving local definitions for context-dot (#5731).
+
+  Extends contextual-dot resolution to consider local definitions first, to make the following snippet type check. Local definitions take precedence over definitions that are in scope via modules.
+
+  ```motoko
+  func first<A>(self : [A]) : A {
+    return self[0]
+  };
+  assert [1, 2, 3].first() == 1
+  ```
+
+  * Add privileged primitive for setting Candid type table cutoff (#5642).
+
+## 1.0.0 (2025-12-11)
+
+* motoko (`moc`)
+
   * Shorter, simpler error messages for generic functions (#5650).
     The compiler now tries to point to the first problematic expression in the function call, rather than the entire function call with type inference details.
     Simple errors only mention closed types; verbose errors with unsolved type variables are only shown when necessary.
