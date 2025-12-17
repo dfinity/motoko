@@ -1,17 +1,17 @@
 (unknown location): Compatibility error [M0170], the new type of stable variable `CanisterMap` is not compatible with the previous version.
  The previous type
   {
-    DTCTArchives : SBuffer<CreditsActorData>;
-    var ICPfundsActor : [ICPfundsActor];
-    LedgerArchives : TrieMap<Text, [CanisterId]>;
-    Ledgers : TrieMap<CoinCode, CanisterId>;
-    USCTArchives : SBuffer<CreditsActorData>;
+    DTCTArchives : Old.SBuffer<Old.CreditsActorData>;
+    var ICPfundsActor : [Old.ICPfundsActor];
+    LedgerArchives : Old.TrieMap<Text, [Old.CanisterId]>;
+    Ledgers : Old.TrieMap<Old.CoinCode, Old.CanisterId>;
+    USCTArchives : Old.SBuffer<Old.CreditsActorData>;
     ...
-    var mobileActor : [MobileActor];
-    var pendingUSCTActor : [Actor];
-    var roadMapCanisterId : CanisterId;
-    var statsActor : [StatsActor];
-    totalCredit : TotalCredit
+    var mobileActor : [Old.MobileActor];
+    var pendingUSCTActor : [Old.Actor];
+    var roadMapCanisterId : Old.CanisterId;
+    var statsActor : [Old.StatsActor];
+    totalCredit : Old.TotalCredit
   }
  is not a subtype of
   {
