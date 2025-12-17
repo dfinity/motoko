@@ -306,17 +306,21 @@ and exp' at note = function
     let i = fresh_var "i" t2 in
     let vs = fresh_vars "v" ts11 in
     (blockE [
-      letD v1 f1;
-      letD v2 f2;
-    ]
-      (vs -->* blockE [ letD o (varE v1 -*- seqE (List.map varE vs));
-                        letD i (objectE T.Object (List.filter_map
-                          (fun T.{lab;typ;_} -> match typ with
-                            | T.Typ _ -> None
-                            | _ -> Some (lab, dotE (varE o) lab (T.as_immut typ))) tfs2) tfs2)
-                 ]
-                 (varE v2 -*- (varE i)))).it
-
+         letD v1 f1;
+         letD v2 f2;
+       ]
+       (vs -->*
+          blockE [ letD o (varE v1 -*- seqE (List.map varE vs));
+                   letD i
+                     (objectE T.Object
+                        (List.filter_map
+                                 (fun T.{lab;typ;_} ->
+                                   match typ with
+                                   | T.Typ _ -> None
+                                   | _ -> Some (lab, dotE (varE o) lab (T.as_immut typ))) tfs2)
+                        tfs2)
+            ]
+            (varE v2 -*- (varE i)))).it
 
 and parenthetical send = function
   | None -> [], []
