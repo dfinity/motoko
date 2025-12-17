@@ -179,7 +179,7 @@ jobs:
           ref: 'master'
       - name: Automatically closing successful trials
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           gh pr close ${{ github.event.pull_request.number }} --delete-branch --comment "CI looks good, this dependency bump would not cause problems, hence closing this trial PR."
           gh pr edit ${{ github.event.pull_request.number }} --remove-label "autoclose"
@@ -193,7 +193,7 @@ jobs:
           ref: 'master'
       - name: Hand out single-file review approvals
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
           set +e
