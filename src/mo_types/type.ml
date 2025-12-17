@@ -79,6 +79,8 @@ and kind =
 
 let empty_src = {depr = None; track_region = Source.no_region; region = Source.no_region}
 
+let val_fields = List.filter (function | { typ = Typ _; _} -> false | _ -> true)
+
 (* Stable signatures *)
 type stab_sig =
   | Single of field list

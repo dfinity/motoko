@@ -193,6 +193,8 @@ val lookup_typ_field_opt : string -> field list -> con option
 val lookup_val_deprecation : string -> field list -> string option
 val lookup_typ_deprecation : string -> field list -> string option
 
+val val_fields : field list -> field list
+
 val compare_field : field -> field -> int
 
 
