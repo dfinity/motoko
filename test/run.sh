@@ -99,7 +99,7 @@ function normalize () {
 
     # Delete everything after Oom
     sed -e '/RTS error: Cannot grow memory/q' \
-        -e '/RTS error: Cannot allocate memory/q' 
+        -e '/RTS error: Cannot allocate memory/q' > $1.norm
 
     mv $1.norm $1
   fi
@@ -331,10 +331,6 @@ do
         $ECHO " Skipped (not applicable on experimental platforms)"
         continue
       fi
-    fi
-    if [ $VIPER = 'yes' ]
-    then
-      TEST_MOC_ARGS="$TEST_MOC_ARGS --package base pkg/base"
     fi
     moc_with_flags="env $moc_extra_env moc $MOC_ARGS $moc_extra_flags $TEST_MOC_ARGS"
 
