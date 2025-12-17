@@ -202,7 +202,7 @@ jobs:
           GH_TOKEN: ${{ steps.app-token-for-approvals.outputs.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          set +e
+          set +e -x
           ### Handles open PRs that address `master` and only have one changed file. The body checks whether that is the `Changelog.md` (since the `if:` condition can't). If so, the PR gets approved with a comment.
           [ $(gh pr diff $PR --name-only) == "Changelog.md" ] \
           && gh pr review $PR --approve --body 'A change to `Changelog.md`? I can handle that!'
