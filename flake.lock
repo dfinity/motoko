@@ -71,11 +71,11 @@
     "ic-wasm-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1763575621,
-        "narHash": "sha256-gxfjS/X9EkVEEqDGCWWJQtNXuJk8Kc94o+hVfC5sw5Y=",
+        "lastModified": 1765912852,
+        "narHash": "sha256-FfMgwq6IBGn5hGuTpCEr3OxsiqAckWtRN9LETHFbLa0=",
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "65a9462fd63503182c7c5dd44f92839a21047e71",
+        "rev": "8c908cd12bf9e73a204c546b24e0b170df8f00d8",
         "type": "github"
       },
       "original": {
@@ -121,11 +121,11 @@
     "motoko-core-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1765446062,
-        "narHash": "sha256-NxzdUytTMiZ6km1h8msivQ5QaIYrHCqx6y+ZnN4K5ew=",
+        "lastModified": 1765897893,
+        "narHash": "sha256-TNqpd8IR8gvYPI5fXxxPNVfU8tgqcEFUtQXnZT08s5o=",
         "owner": "caffeinelabs",
         "repo": "motoko-core",
-        "rev": "a5b53056e7022f21c6d3d49a4814915593d8d978",
+        "rev": "e914b88ea9de63d40e24518355cc0674083b92c0",
         "type": "github"
       },
       "original": {
