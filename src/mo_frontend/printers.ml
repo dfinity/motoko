@@ -47,6 +47,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (T T_SHRASSIGN) -> binop ">>="
   | X (T T_UNDERSCORE) -> simple_token "_"
   | X (T T_TYPE) -> simple_token  "type"
+  | X (T T_THEN) -> simple_token "then"
   | X (T T_TRANSIENT) -> simple_token "transient"
   | X (T T_TRY) -> simple_token "try"
   | X (T T_THROW) -> simple_token "throw"

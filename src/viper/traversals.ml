@@ -47,6 +47,7 @@ let rec over_exp (v : visitor) (exp : exp) : exp =
   | ForE (x, exp1, exp2) -> { exp with it = ForE (x, over_exp v exp1, over_exp v exp2) }
   | DebugE exp1 -> { exp with it = DebugE (over_exp v exp1) }
   | TupE exps -> { exp with it = TupE (List.map (over_exp v) exps) }
+  | ComposeE (exp1, exp2) -> { exp with it = ComposeE (over_exp v exp1, over_exp v exp2) }
   | ArrayE (x, exps) -> { exp with it = ArrayE (x, List.map (over_exp v) exps) }
   | BlockE ds -> { exp with it = BlockE (List.map (over_dec v) ds) }
   | ObjBlockE (eo, s, (n, t), dfs) -> { exp with it = ObjBlockE (Option.map (over_exp v) eo, s, (n, Option.map (over_typ v) t), List.map (over_dec_field v) dfs) }

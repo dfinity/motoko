@@ -1085,7 +1085,7 @@ let rec is_explicit_exp e =
   | BreakE _ | RetE _ | ThrowE _ ->
     false
   | VarE _
-  | RelE _ | NotE _ | AndE _ | OrE _ | ImpliesE _ | OldE _ | ShowE _ | ToCandidE _ | FromCandidE _
+  | RelE _ | NotE _ | AndE _ | OrE _ | ComposeE _ | ImpliesE _ | OldE _ | ShowE _ | ToCandidE _ | FromCandidE _
   | AssignE _ | IgnoreE _ | AssertE _ | DebugE _
   | WhileE _ | ForE _
   | AnnotE _ | ImportE _ | ImplicitLibE _ ->
@@ -1785,6 +1785,29 @@ and infer_exp'' env exp : T.typ =
       ot := t;
     end;
     T.bool
+  | ComposeE(exp1, exp2) ->
+    let t1 = infer_exp env exp1 in
+    let t2 = infer_exp env exp2 in
+    let err msg = error env exp.at "M0XXX" "`then` is not defined for operand types%a%a\nbecause%s"
+                     display_typ_expand t1
+                     display_typ_expand t2
+                     msg
+    in
+    (match (T.normalize t1, T.normalize t2) with
+    | T.(Func(Local, Returns, [], ts11, [t12])),
+      T.(Func(Local, Returns, [], [t21], ts22)) ->
+       (if not env.pre then
+          begin
+            match T.normalize t12, T.normalize t21 with
+            | T.(Obj(Object, tfs1)), T.(Obj(Object, tfs2)) ->
+               let required_tfs2 = List.map (fun tf -> (true, tf)) tfs2 in
+               if not (Type.match_stab_sig (T.Single tfs1) (T.PrePost(required_tfs2, []))) then
+                 err "output of first function is not compatible with input of second";
+            | _  -> err "output of first function or input of second function is not an object"
+          end;
+        T.(Func(T.Local, T.Returns, [], ts11, ts22)))
+    | _ ->
+       err "both arguments must be non-generic functions")
   | ShowE (ot, exp1) ->
     if not env.pre then begin
       let t = infer_exp_promote env exp1 in
@@ -3832,7 +3855,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
          | Some fld -> fld.at
          | None -> exp.at)
       | _ -> exp.at in
-    Static.exp env.msgs exp; (* preclude side effects *)
+    (*    Static.exp env.msgs exp; (* preclude side effects *) *)
     let check_fields desc typ =
       match typ with
       | T.Obj(T.Object, tfs) ->

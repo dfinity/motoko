@@ -37,6 +37,7 @@ type token =
   | RETURN
   | SYSTEM
   | STABLE
+  | THEN
   | TRANSIENT
   | TRY
   | THROW
@@ -172,6 +173,7 @@ let to_parser_token :
   | WHILE -> Ok Parser.WHILE
   | FOR -> Ok Parser.FOR
   | RETURN -> Ok Parser.RETURN
+  | THEN -> Ok Parser.THEN
   | TRANSIENT -> Ok Parser.TRANSIENT
   | TRY -> Ok Parser.TRY
   | THROW -> Ok Parser.THROW
@@ -309,6 +311,7 @@ let string_of_parser_token = function
   | Parser.WHILE -> "WHILE"
   | Parser.FOR -> "FOR"
   | Parser.RETURN -> "RETURN"
+  | Parser.THEN -> "THEN"
   | Parser.TRY -> "TRY"
   | Parser.THROW -> "THROW"
   | Parser.FINALLY -> "FINALLY"

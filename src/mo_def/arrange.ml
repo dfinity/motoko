@@ -99,6 +99,7 @@ module Make (Cfg : Config) = struct
     | ObjE (bases, efs)   -> "ObjE"      $$ exps bases @ [Atom "with"] @ List.map exp_field efs
     | DotE (e, x, ol)     -> "DotE"      $$ [exp e; match !ol with None -> id x | Some e -> exp e]
     | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
+    | ComposeE (e1, e2)    -> "ComposeE"   $$ [exp e1; exp e2]                                                          
     | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ exps es
     | IdxE (e1, e2)       -> "IdxE"      $$ [exp e1; exp e2]
     | FuncE (x, sp, tp, p, t, sugar, e') ->

@@ -62,6 +62,9 @@ let rec exp m e = match e.it with
   | AnnotE (exp1, _) | IgnoreE exp1 | DoOptE exp1 -> exp m exp1
   | BlockE ds -> List.iter (dec m) ds
 
+  (* Migration Composition *)
+  | ComposeE(e1, e2) -> exp m e1; exp m e2
+
   (* Clearly non-static *)
   | UnE _
   | ShowE _
