@@ -71,11 +71,11 @@
     "ic-wasm-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1763575621,
-        "narHash": "sha256-gxfjS/X9EkVEEqDGCWWJQtNXuJk8Kc94o+hVfC5sw5Y=",
+        "lastModified": 1765912852,
+        "narHash": "sha256-FfMgwq6IBGn5hGuTpCEr3OxsiqAckWtRN9LETHFbLa0=",
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "65a9462fd63503182c7c5dd44f92839a21047e71",
+        "rev": "8c908cd12bf9e73a204c546b24e0b170df8f00d8",
         "type": "github"
       },
       "original": {
@@ -121,11 +121,11 @@
     "motoko-core-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1765446062,
-        "narHash": "sha256-NxzdUytTMiZ6km1h8msivQ5QaIYrHCqx6y+ZnN4K5ew=",
+        "lastModified": 1765897893,
+        "narHash": "sha256-TNqpd8IR8gvYPI5fXxxPNVfU8tgqcEFUtQXnZT08s5o=",
         "owner": "caffeinelabs",
         "repo": "motoko-core",
-        "rev": "a5b53056e7022f21c6d3d49a4814915593d8d978",
+        "rev": "e914b88ea9de63d40e24518355cc0674083b92c0",
         "type": "github"
       },
       "original": {
@@ -176,11 +176,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1764836381,
-        "narHash": "sha256-8jemYbbW9EBttQKHep7Rj8kzXaxsrk/lACdXA2DN5Xk=",
+        "lastModified": 1765363881,
+        "narHash": "sha256-3C3xWn8/2Zzr7sxVBmpc1H1QfxjNfta5IMFe3O9ZEPw=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "ff06bd3398fb1bea6c937039ece7e7c8aa396ebf",
+        "rev": "d2b1213bf5ec5e62d96b003ab4b5cbc42abfc0d0",
         "type": "github"
       },
       "original": {
@@ -222,23 +222,6 @@
         "type": "github"
       }
     },
-    "pocket-ic-src": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1763769101,
-        "narHash": "sha256-/VaUL3Wu9NILofasZPTCtFVIoXmsOokiO/sTUZQJTZw=",
-        "owner": "dfinity",
-        "repo": "ic",
-        "rev": "f07e9896fef2c24db8d4d0bed3d3ed42f0934e2a",
-        "type": "github"
-      },
-      "original": {
-        "owner": "dfinity",
-        "repo": "ic",
-        "rev": "f07e9896fef2c24db8d4d0bed3d3ed42f0934e2a",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
         "candid-src": "candid-src",
@@ -253,7 +236,6 @@
         "nixpkgs": "nixpkgs",
         "ocaml-recovery-parser-src": "ocaml-recovery-parser-src",
         "ocaml-vlq-src": "ocaml-vlq-src",
-        "pocket-ic-src": "pocket-ic-src",
         "rust-overlay": "rust-overlay",
         "viper-server": "viper-server",
         "wasm-spec-src": "wasm-spec-src"
@@ -266,11 +248,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1764988672,
-        "narHash": "sha256-FIJtt3Zil89/hLy9i7f0R2xXcJDPc3CeqiiCLfsFV0Y=",
+        "lastModified": 1765420988,
+        "narHash": "sha256-35VIWDwLN9gFLWLEJj70D8XRk8YuJjJZywefJRf3MXI=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "086fd19a68e80fcc8a298e9df4674982e4c498a6",
+        "rev": "4f8466786e8bc7a90047ebe9367ba66ea76b7845",
         "type": "github"
       },
       "original": {
