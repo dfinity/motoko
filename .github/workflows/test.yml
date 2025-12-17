@@ -179,7 +179,7 @@ jobs:
           ref: 'master'
       - name: Automatically closing successful trials
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           gh pr close ${{ github.event.pull_request.number }} --delete-branch --comment "CI looks good, this dependency bump would not cause problems, hence closing this trial PR."
           gh pr edit ${{ github.event.pull_request.number }} --remove-label "autoclose"
