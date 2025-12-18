@@ -55,6 +55,7 @@ type env =
     context : exp' list;
     pre : bool;
     weak : bool;
+    backtracking : bool;
     msgs : Diag.msg_store;
     scopes : Source.region T.ConEnv.t;
     check_unused : bool;
@@ -85,6 +86,7 @@ let env_of_scope ?(viper_mode=false) msgs scope =
     context = [];
     pre = false;
     weak = false;
+    backtracking = false;
     msgs;
     scopes = T.ConEnv.empty;
     check_unused = true;
@@ -95,6 +97,14 @@ let env_of_scope ?(viper_mode=false) msgs scope =
     viper_mode;
     srcs = Field_sources.of_immutable_map scope.Scope.fld_src_env;
   }
+
+let commit env ref v =
+  if not env.backtracking then
+    ref := v
+
+let commit_note env ap n =
+  if not env.backtracking then
+    ap.note <- n
 
 let use_identifier env id =
   env.used_identifiers := S.add id !(env.used_identifiers)
@@ -260,6 +270,12 @@ let check_deprecation env at desc id depr =
     warn env at "M0154" "%s %s is deprecated:\n%s" desc id msg
   | None -> ()
 
+let is_warning_enabled env code =
+  (* TODO: what about warnings-as-errors and errors_only? Should we skip these warnings-as-errors there? *)
+  not env.errors_only && Flags.is_warning_enabled code
+
+let is_warning_disabled env code = not (is_warning_enabled env code)
+
 let flag_of_compile_mode mode =
   match mode with
   | Flags.ICMode -> ""
@@ -391,6 +407,8 @@ let eq_kind env at k1 k2 =
 (* Coverage *)
 
 let coverage' warnOrError category env f x t at =
+  (* Skip coverage checking when PreLit can still appear *)
+  if not env.backtracking then
   let uncovered, unreached = f x t in
   List.iter (fun at -> warn env at "M0146" "this pattern is never matched") unreached;
   if uncovered <> [] then
@@ -733,7 +751,7 @@ let infer_class_cap env obj_sort (tbs : T.bind list) cs =
 
 let rec check_typ env (typ : typ) : T.typ =
   let t = check_typ' env typ in
-  typ.note <- t;
+  commit_note env typ t;
   t
 
 and check_typ_item env typ_item =
@@ -1171,19 +1189,19 @@ let infer_lit env lit at : T.prim =
   | BlobLit _ -> T.Blob
   | PreLit (s, T.Nat) ->
     if not env.pre then
-      lit := NatLit (check_nat env at s); (* default *)
+      commit env lit (NatLit (check_nat env at s)); (* default *)
     T.Nat
   | PreLit (s, T.Int) ->
     if not env.pre then
-      lit := IntLit (check_int env at s); (* default *)
+      commit env lit (IntLit (check_int env at s)); (* default *)
     T.Int
   | PreLit (s, T.Float) ->
     if not env.pre then
-      lit := FloatLit (check_float env at s); (* default *)
+      commit env lit (FloatLit (check_float env at s)); (* default *)
     T.Float
   | PreLit (s, T.Text) ->
     if not env.pre then
-      lit := TextLit (check_text env at s); (* default *)
+      commit env lit (TextLit (check_text env at s)); (* default *)
     T.Text
   | PreLit _ ->
     assert false
@@ -1191,29 +1209,29 @@ let infer_lit env lit at : T.prim =
 let check_lit env t lit at suggest =
   match t, !lit with
   | T.Prim T.Nat, PreLit (s, T.Nat) ->
-    lit := NatLit (check_nat env at s)
+    commit env lit (NatLit (check_nat env at s))
   | T.Prim T.Nat8, PreLit (s, T.Nat) ->
-    lit := Nat8Lit (check_nat8 env at s)
+    commit env lit (Nat8Lit (check_nat8 env at s))
   | T.Prim T.Nat16, PreLit (s, T.Nat) ->
-    lit := Nat16Lit (check_nat16 env at s)
+    commit env lit (Nat16Lit (check_nat16 env at s))
   | T.Prim T.Nat32, PreLit (s, T.Nat) ->
-    lit := Nat32Lit (check_nat32 env at s)
+    commit env lit (Nat32Lit (check_nat32 env at s))
   | T.Prim T.Nat64, PreLit (s, T.Nat) ->
-    lit := Nat64Lit (check_nat64 env at s)
+    commit env lit (Nat64Lit (check_nat64 env at s))
   | T.Prim T.Int, PreLit (s, (T.Nat | T.Int)) ->
-    lit := IntLit (check_int env at s)
+    commit env lit (IntLit (check_int env at s))
   | T.Prim T.Int8, PreLit (s, (T.Nat | T.Int)) ->
-    lit := Int8Lit (check_int8 env at s)
+    commit env lit (Int8Lit (check_int8 env at s))
   | T.Prim T.Int16, PreLit (s, (T.Nat | T.Int)) ->
-    lit := Int16Lit (check_int16 env at s)
+    commit env lit (Int16Lit (check_int16 env at s))
   | T.Prim T.Int32, PreLit (s, (T.Nat | T.Int)) ->
-    lit := Int32Lit (check_int32 env at s)
+    commit env lit (Int32Lit (check_int32 env at s))
   | T.Prim T.Int64, PreLit (s, (T.Nat | T.Int)) ->
-    lit := Int64Lit (check_int64 env at s)
+    commit env lit (Int64Lit (check_int64 env at s))
   | T.Prim T.Float, PreLit (s, (T.Nat | T.Int | T.Float)) ->
-    lit := FloatLit (check_float env at s)
+    commit env lit (FloatLit (check_float env at s))
   | T.Prim T.Blob, PreLit (s, T.Text) ->
-    lit := BlobLit s
+    commit env lit (BlobLit s)
   | t, _ ->
     let t' = T.Prim (infer_lit env lit at) in
     if not (sub env at t' t) then
@@ -1618,7 +1636,7 @@ let contextual_dot env name receiver_ty : (ctx_dot_candidate, 'a context_dot_err
 
 let check_can_dot env ctx_dot (exp : Syntax.exp) tys es at =
   if not env.pre then
-  if Flags.get_warning_level "M0236" <> Flags.Allow then
+  if is_warning_enabled env "M0236" then
   match ctx_dot with
   | Some _ -> () (* already dotted *)
   | None ->
@@ -1682,7 +1700,7 @@ and infer_exp_wrapper inf f env exp : T.typ =
     let t'' = T.normalize t' in
     assert (t'' <> T.Pre);
     let note_eff = A.infer_effect_exp exp in
-    exp.note <- {note_typ = if env.viper_mode then t' else t''; note_eff}
+    commit_note env exp {note_typ = if env.viper_mode then t' else t''; note_eff}
   end;
   t'
 
@@ -1743,29 +1761,29 @@ and infer_exp'' env exp : T.typ =
     let t1 = infer_exp_promote env exp1 in
     let t = Operator.type_unop op t1 in
     if not env.pre then begin
-      assert (!ot = Type.Pre);
+      assert (!ot = T.Pre);
       if not (Operator.has_unop op t) then
         error env exp.at "M0059" "operator is not defined for operand type%a"
           display_typ_expand t;
-      ot := t;
+      commit env ot t;
     end;
     t
   | BinE (ot, exp1, op, exp2) ->
     let t1, t2 = infer_bin_exp env exp1 exp2 in
     let t = Operator.type_binop op (T.lub ~src_fields:env.srcs (T.promote t1) (T.promote t2)) in
     if not env.pre then begin
-      assert (!ot = Type.Pre);
+      assert (!ot = T.Pre);
       if not (Operator.has_binop op t) then
         error_bin_op env exp.at t1 t2
       else if op = Operator.SubOp && eq env exp.at t T.nat then
         warn env exp.at "M0155" "operator may trap for inferred type%a"
           display_typ_expand t;
-      ot := t
+      commit env ot t
     end;
     t
   | RelE (ot, exp1, op, exp2) ->
     if not env.pre then begin
-      assert (!ot = Type.Pre);
+      assert (!ot = T.Pre);
       let t1, t2 = infer_bin_exp env exp1 exp2 in
       let t = Operator.type_relop op (T.lub ~src_fields:env.srcs (T.promote t1) (T.promote t2)) in
       if not (Operator.has_relop op t) then
@@ -1782,7 +1800,7 @@ and infer_exp'' env exp : T.typ =
             display_typ_expand t1
             display_typ_expand t2
             display_typ_expand t;
-      ot := t;
+      commit env ot t;
     end;
     T.bool
   | ShowE (ot, exp1) ->
@@ -1791,7 +1809,7 @@ and infer_exp'' env exp : T.typ =
       if not (Show.can_show t) then
         error env exp.at "M0063" "show is not defined for operand type%a"
           display_typ_expand t;
-      ot := t
+      commit env ot t
     end;
     T.text
   | ToCandidE exps ->
@@ -2365,7 +2383,7 @@ and check_exp env t exp =
   assert (t <> T.Pre);
   let t' = check_exp' env (T.normalize t) exp in
   let e = A.infer_effect_exp exp in
-  exp.note <- {exp.note with note_typ = t'; note_eff = e}
+  commit_note env exp {exp.note with note_typ = t'; note_eff = e}
 
 and check_exp' env0 t exp : T.typ =
   let env = {env0 with in_prog = false; in_actor = false; context = exp.it :: env0.context } in
@@ -2420,11 +2438,11 @@ and check_exp' env0 t exp : T.typ =
     | _ -> error env exp.at "M0090" "actor reference must have an actor type"
     end
   | UnE (ot, op, exp1), _ when Operator.has_unop op t ->
-    ot := t;
+    commit env ot t;
     check_exp env t exp1;
     t
   | BinE (ot, exp1, op, exp2), _ when Operator.has_binop op t ->
-    ot := t;
+    commit env ot t;
     check_exp env t exp1;
     check_exp env t exp2;
     if env.weak && op = Operator.SubOp && eq env exp.at t T.nat then
@@ -2779,7 +2797,7 @@ and insert_holes at ts es =
   | args -> TupE args
 
 and check_explicit_arguments env saturated_arity implicits_arity arg_typs syntax_args =
-    if Flags.get_warning_level "M0237" <> Flags.Allow then
+    if is_warning_enabled env "M0237" then
       if List.length syntax_args = saturated_arity && implicits_arity < saturated_arity then
         let _, explicit_implicits = List.fold_right2
           (fun typ arg (pos, acc) ->
@@ -2868,14 +2886,18 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       (* explicit instantiation, check argument against instantiated domain *)
       let typs = match inst.it with None -> [] | Some (_, typs) -> typs in
       let ts = check_inst_bounds env sort tbs typs t_ret at in
-      let t_arg' = T.open_ ts t_arg in
-      let t_ret' = T.open_ ts t_ret in
-      if not env.pre then check_exp_strong env t_arg' exp2
-      else if typs <> [] && Flags.is_warning_enabled "M0223" &&
-        is_redundant_instantiation ts env (fun env' ->
-          infer_call_instantiation env' t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
-            warn env inst.at "M0223" "redundant type instantiation";
-      ts, t_arg', t_ret'
+      if not env.pre && typs <> [] && is_redundant_instantiation ts env (fun env' ->
+        infer_call_instantiation env' t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems)
+      then (
+        warn env inst.at "M0223" "redundant type instantiation";
+        (* If the instantiation is redundant, we MUST continue without the instantiation to avoid false positives, so we cannot `check_exp` here *)
+        infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
+      ) else
+        let t_arg' = T.open_ ts t_arg in
+        let t_ret' = T.open_ ts t_ret in
+        if not env.pre then
+          check_exp_strong env t_arg' exp2;
+        ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
       infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
@@ -3120,9 +3142,12 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
        | Some hint -> Format.asprintf "\n%s" hint)
 
 and is_redundant_instantiation ts env infer_instantiation =
-  assert env.pre;
+  (* Only execute this check during full type-checking, env.pre skips parts of the program *)
+  assert (not env.pre);
+  (* Only check 1-level deep redundant instantiations to limit exponential explosion and false positives *)
+  if env.backtracking || is_warning_disabled env "M0223" then false else
   match Diag.with_message_store (recover_opt (fun msgs ->
-    let env_without_errors = { env with msgs } in
+    let env_without_errors = { env with msgs; backtracking = true} in
     let ts', _, _ = infer_instantiation env_without_errors in
     List.length ts = List.length ts' && List.for_all2 (T.eq ?src_fields:None) ts ts'
     ))
@@ -3185,7 +3210,7 @@ and infer_pat name_types env pat : T.typ * Scope.val_env =
   assert (pat.note = T.Pre);
   let t, ve = infer_pat' name_types env pat in
   if not env.pre then
-    pat.note <- T.normalize t;
+    commit_note env pat (T.normalize t);
   t, ve
 
 and infer_pat' name_types env pat : T.typ * Scope.val_env =
@@ -3300,7 +3325,7 @@ and check_pat_aux env t pat val_kind : Scope.val_env =
   if t = T.Pre then snd (infer_pat false env pat) else
   let t' = T.normalize t in
   let ve = check_pat_aux' env t' pat val_kind in
-  if not env.pre then pat.note <- t';
+  if not env.pre then commit_note env pat t';
   ve
 
 and check_pat_aux' env t pat val_kind : Scope.val_env =
