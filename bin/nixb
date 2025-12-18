@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+nix eval --json .#targets.$system | jq -r ".[]" | fzf --bind 'enter:become(echo "Running nix build .#{}" && nix build .#{})'

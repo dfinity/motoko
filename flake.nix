@@ -157,15 +157,15 @@
         # Make pocket-ic available during tests.
         checkInputs = [ pkgs.pocket-ic.server pkgs.cacert ];
         nativeCheckInputs = [ pkgs.pocket-ic.server ];
-        
+
         POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
         SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
-        
+
         doCheck = true;
       };
 
-      tests = import ./nix/tests.nix { 
-        inherit pkgs llvmEnv esm commonBuildInputs debugMoPackages test-runner; 
+      tests = import ./nix/tests.nix {
+        inherit pkgs llvmEnv esm commonBuildInputs debugMoPackages test-runner;
       };
 
       filterTests = type:
@@ -295,5 +295,25 @@
         if [[ $# = 0 ]]; then set -- .; fi
         exec "${pkgs.nixpkgs-fmt}/bin/nixpkgs-fmt" "$@"
       '';
+
+      # Used to list all buildable targets for the `nixb` command available inside nix develop
+      targets =
+        let
+          # TODO: remove once motoko's nixpkgs has: https://github.com/NixOS/nixpkgs/commit/e5ac84e29c4b04ea5934d166f270dd6516ad76c7
+          inherit (builtins) isAttrs concatMap attrNames;
+          mapAttrsToListRecursiveCond =
+            pred: f: set:
+            let
+              mapRecursive =
+                path: value: if isAttrs value && pred path value then recurse path value else [ (f path value) ];
+              recurse = path: set: concatMap (name: mapRecursive (path ++ [ name ]) set.${name}) (attrNames set);
+            in
+            recurse [ ] set;
+        in
+        mapAttrsToListRecursiveCond
+          (path: as: !(pkgs.lib.isDerivation as))
+          (path: _value: pkgs.lib.concatStringsSep "." path)
+          self.packages.${system};
+
     });
 }
