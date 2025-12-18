@@ -442,9 +442,9 @@ and call_system_func_opt name es obj_typ =
           let msg = fresh_var "msg" msg_typ in
           let record_typ =
             T.Obj (T.Object, List.sort T.compare_field
-             [{T.lab = "caller"; T.typ = typ_of_var caller; T.src = T.empty_src};
-               {T.lab = "arg"; T.typ = typ_of_var arg; T.src = T.empty_src};
-               {T.lab = "msg"; T.typ = typ_of_var msg; T.src = T.empty_src}])
+             [{T.lab = "caller"; implicit_lab = None; T.typ = typ_of_var caller; T.src = T.empty_src};
+               {T.lab = "arg"; implicit_lab = None; T.typ = typ_of_var arg; T.src = T.empty_src};
+               {T.lab = "msg"; implicit_lab = None; T.typ = typ_of_var msg; T.src = T.empty_src}])
           in
           let record = fresh_var "record" record_typ in
           let msg_variant =
@@ -511,7 +511,7 @@ and export_footprint self_id expr =
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
-  let ret_typ = T.Obj(Object,[{lab = "size"; typ = T.nat64; src = empty_src}]) in
+  let ret_typ = T.Obj(Object,[{lab = "size"; implicit_lab = None; typ = T.nat64; src = empty_src}]) in
   let caller = fresh_var "caller" caller in
   ([ letD (var v typ) (
        funcE v (Shared Query) Promises [bind1] [] [ret_typ] (
@@ -620,7 +620,7 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
   let idss = List.map fst pairs in
   let ids = List.concat idss in
   let stab_fields = List.sort T.compare_field
-    (List.map (fun (i, t) -> T.{lab = i; typ = t; src = empty_src}) ids)
+    (List.map (fun (i, t) -> T.{lab = i; implicit_lab = None; typ = t; src = empty_src}) ids)
   in
   let mem_fields =
     List.map
@@ -1045,6 +1045,7 @@ and pat p = phrase pat' p
 
 and pat' = function
   | S.VarP v -> I.VarP v.it
+  | S.ImplicitP { id; _ } -> I.VarP id.it
   | S.WildP -> I.WildP
   | S.LitP l -> I.LitP (lit !l)
   | S.SignP (o, l) -> I.LitP (lit (apply_sign o (!l)))

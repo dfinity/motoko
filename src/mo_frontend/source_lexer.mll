@@ -236,6 +236,7 @@ rule token mode = parse
   | "old" as s { if mode.verification then OLD else ID s }
   | "import" { IMPORT }
   | "include" { INCLUDE }
+  | "implicit" { IMPLICIT }
   | "mixin" { MIXIN }
   | "module" { MODULE }
   | "not" { NOT }

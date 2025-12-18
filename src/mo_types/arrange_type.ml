@@ -99,7 +99,8 @@ module Make (Cfg : Config) = struct
   and typ_bind (tb : Type.bind) =
     tb.var $$ [typ tb.bound]
 
-  and typ_field ({lab; typ = t; src = s} : Type.field) =
+  (* TODO *)
+  and typ_field ({lab; implicit_lab; typ = t; src = s} : Type.field) =
     lab $$ typ t :: src s
 end
 

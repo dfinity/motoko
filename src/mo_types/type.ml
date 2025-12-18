@@ -70,7 +70,7 @@ and bind_sort = Scope | Type
 
 and bind = {var : var; sort: bind_sort; bound : typ}
 and src = {depr : string option; track_region : Source.region; region : Source.region}
-and field = {lab : lab; typ : typ; src : src}
+and field = {lab : lab; implicit_lab : lab option; typ : typ; src : src}
 
 and con = kind Cons.t
 and kind =
@@ -346,7 +346,7 @@ let region = Prim Region
 
 let fields flds =
   List.sort compare_field
-    (List.map (fun (lab, typ) -> {lab; typ; src = empty_src}) flds)
+    (List.map (fun (lab, typ) -> {lab; implicit_lab = None; typ; src = empty_src}) flds)
 
 let obj sort flds =
   Obj (sort, fields flds)
@@ -355,20 +355,20 @@ let sum flds =
   Variant (fields flds)
 
 let throwErrorCodes = List.sort compare_field [
-  { lab = "canister_reject"; typ = unit; src = empty_src}
+  { lab = "canister_reject"; implicit_lab = None; typ = unit; src = empty_src}
 ]
 
-let call_error = Obj(Object,[{ lab = "err_code"; typ = Prim Nat32; src = empty_src}])
+let call_error = Obj(Object,[{ lab = "err_code"; implicit_lab = None; typ = Prim Nat32; src = empty_src}])
 
 let catchErrorCodes = List.sort compare_field (
   throwErrorCodes @ [
-    { lab = "system_fatal"; typ = unit; src = empty_src};
-    { lab = "system_transient"; typ = unit; src = empty_src};
-    { lab = "destination_invalid"; typ = unit; src = empty_src};
-    { lab = "canister_error"; typ = unit; src = empty_src};
-    { lab = "system_unknown"; typ = unit; src = empty_src};
-    { lab = "future"; typ = Prim Nat32; src = empty_src};
-    { lab = "call_error"; typ = call_error; src = empty_src};
+    { implicit_lab = None; lab = "system_fatal"; typ = unit; src = empty_src};
+    { implicit_lab = None; lab = "system_transient"; typ = unit; src = empty_src};
+    { implicit_lab = None; lab = "destination_invalid"; typ = unit; src = empty_src};
+    { implicit_lab = None; lab = "canister_error"; typ = unit; src = empty_src};
+    { implicit_lab = None; lab = "system_unknown"; typ = unit; src = empty_src};
+    { implicit_lab = None; lab = "future"; typ = Prim Nat32; src = empty_src};
+    { implicit_lab = None; lab = "call_error"; typ = call_error; src = empty_src};
   ])
 
 let throw = Prim Error
@@ -377,7 +377,7 @@ let catch = Prim Error
 (* Shared call context *)
 
 let caller = principal
-let ctxt = Obj (Object,[{ lab = "caller"; typ = caller; src = empty_src}])
+let ctxt = Obj (Object,[{ implicit_lab = None; lab = "caller"; typ = caller; src = empty_src}])
 
 let prim = function
   | "Null" -> Null
@@ -412,7 +412,7 @@ let codom c to_scope ts2 =  match c with
 
 let iter_obj t =
   Obj (Object,
-    [{lab = "next"; typ = Func (Local, Returns, [], [], [Opt t]); src = empty_src}])
+    [{lab = "next"; implicit_lab = None; typ = Func (Local, Returns, [], [], [Opt t]); src = empty_src}])
 
 
 (* Shifting *)
@@ -442,8 +442,8 @@ let rec shift i n t =
 and shift_bind i n tb =
   {tb with bound = shift i n tb.bound}
 
-and shift_field i n {lab; typ; src} =
-  {lab; typ = shift i n typ; src}
+and shift_field i n {lab; implicit_lab; typ; src} =
+  {lab; implicit_lab; typ = shift i n typ; src}
 
 (*
 and shift_kind i n k =
@@ -495,8 +495,8 @@ let rec subst sigma t =
 and subst_bind sigma tb =
   { tb with bound = subst sigma tb.bound}
 
-and subst_field sigma {lab; typ; src} =
-  {lab; typ = subst sigma typ; src}
+and subst_field sigma {lab; implicit_lab; typ; src} =
+  {lab; implicit_lab; typ = subst sigma typ; src}
 
 (*
 and subst_kind sigma k =
@@ -546,8 +546,8 @@ let rec open' i ts t =
 and open_bind i ts tb  =
   {tb with bound = open' i ts tb.bound}
 
-and open_field i ts {lab; typ; src} =
-  {lab; typ = open' i ts typ; src}
+and open_field i ts {lab; implicit_lab; typ; src} =
+  {lab; implicit_lab; typ = open' i ts typ; src}
 
 (*
 and open_kind i ts k =
@@ -655,11 +655,11 @@ let as_prim_sub p t = match promote t with
   | _ -> invalid "as_prim_sub"
 let as_obj_sub ls t = match promote t with
   | Obj (s, tfs) -> s, tfs
-  | Non -> Object, List.map (fun l -> {lab = l; typ = Non; src = empty_src}) ls
+  | Non -> Object, List.map (fun l -> {lab = l; implicit_lab = None; typ = Non; src = empty_src}) ls
   | _ -> invalid "as_obj_sub"
 let as_variant_sub l t = match promote t with
   | Variant tfs -> tfs
-  | Non -> [{lab = l; typ = Non; src = empty_src}]
+  | Non -> [{lab = l; implicit_lab = None; typ = Non; src = empty_src}]
   | _ -> invalid "as_variant_sub"
 let as_array_sub t = match promote t with
   | Array t -> t
@@ -719,7 +719,7 @@ let lookup_val_field_opt l tfs =
 let lookup_typ_field_opt l tfs =
   let is_lab = function {typ = Typ _; lab; _} -> lab = l | _ -> false in
   match List.find_opt is_lab tfs with
-  | Some {lab = _; typ = Typ c; src} -> Some c
+  | Some {lab = _; implicit_lab = _; typ = Typ c; src} -> Some c
   | _ -> None
 
 let lookup_val_field l tfs =
@@ -808,7 +808,7 @@ and cons_con inTyp c cs =
 and cons_bind inTyp tb cs =
   cons' inTyp tb.bound cs
 
-and cons_field inTyp {lab; typ; src} cs =
+and cons_field inTyp {lab; implicit_lab; typ; src} cs =
   cons' inTyp typ cs
 
 and cons_kind' inTyp k cs =
@@ -1665,7 +1665,7 @@ and combine_fields rel lubs glbs fs1 fs2 =
       | typ ->
         add_src_field rel lubs glbs f1 f2;
         let src = {empty_src with track_region = f1.src.track_region} in
-        {lab = f1.lab; typ; src} :: combine_fields rel lubs glbs fs1' fs2'
+        {lab = f1.lab; implicit_lab = f1.implicit_lab; typ; src} :: combine_fields rel lubs glbs fs1' fs2'
       | exception Mismatch when rel == lubs ->
         combine_fields rel lubs glbs fs1' fs2'
 
@@ -1681,7 +1681,7 @@ and combine_tags rel lubs glbs fs1 fs2 =
       let typ = combine rel lubs glbs f1.typ f2.typ in
       add_src_field rel lubs glbs f1 f2;
       let src = {empty_src with track_region = f1.src.track_region} in
-      {lab = f1.lab; typ; src} :: combine_tags rel lubs glbs fs1' fs2'
+      {lab = f1.lab; implicit_lab = f1.implicit_lab; typ; src} :: combine_tags rel lubs glbs fs1' fs2'
 
 let lub ?(src_fields = empty_srcs_tbl ()) t1 t2 =
   with_src_field_updates src_fields (fun () ->
@@ -1724,20 +1724,23 @@ let low_memory_type =
 
 let motoko_async_helper_fld =
   { lab = "__motoko_async_helper";
+    implicit_lab = None;
     typ = Func(Shared Write, Promises, [scope_bind], [Prim Nat32], []);
     src = empty_src;
   }
 
 let motoko_stable_var_info_fld =
   { lab = "__motoko_stable_var_info";
+    implicit_lab = None;
     typ =
       Func(Shared Query, Promises, [scope_bind], [],
-        [ Obj(Object, [{lab = "size"; typ = nat64; src = empty_src}]) ]);
+        [ Obj(Object, [{lab = "size"; implicit_lab = None; typ = nat64; src = empty_src}]) ]);
     src = empty_src;
   }
 
 let motoko_gc_trigger_fld =
   { lab = "__motoko_gc_trigger";
+    implicit_lab = None;
     typ = Func(Shared Write, Promises, [scope_bind], [], []);
     src = empty_src;
   }
@@ -1745,24 +1748,25 @@ let motoko_gc_trigger_fld =
 let motoko_runtime_information_type =
   Obj(Object, [
     (* Fields must be sorted by label *)
-    {lab = "callbackTableCount"; typ = nat; src = empty_src};
-    {lab = "callbackTableSize"; typ = nat; src = empty_src};
-    {lab = "compilerVersion"; typ = text; src = empty_src};
-    {lab = "garbageCollector"; typ = text; src = empty_src};
-    {lab = "heapSize"; typ = nat; src = empty_src};
-    {lab = "logicalStableMemorySize"; typ = nat; src = empty_src};
-    {lab = "maxLiveSize"; typ = nat; src = empty_src};
-    {lab = "maxStackSize"; typ = nat; src = empty_src};
-    {lab = "memorySize"; typ = nat; src = empty_src};
-    {lab = "reclaimed"; typ = nat; src = empty_src};
-    {lab = "rtsVersion"; typ = text; src = empty_src};
-    {lab = "sanityChecks"; typ = bool; src = empty_src};
-    {lab = "stableMemorySize"; typ = nat; src = empty_src};
-    {lab = "totalAllocation"; typ = nat; src = empty_src};
+    {implicit_lab = None; lab = "callbackTableCount"; typ = nat; src = empty_src};
+    {implicit_lab = None; lab = "callbackTableSize"; typ = nat; src = empty_src};
+    {implicit_lab = None; lab = "compilerVersion"; typ = text; src = empty_src};
+    {implicit_lab = None; lab = "garbageCollector"; typ = text; src = empty_src};
+    {implicit_lab = None; lab = "heapSize"; typ = nat; src = empty_src};
+    {implicit_lab = None; lab = "logicalStableMemorySize"; typ = nat; src = empty_src};
+    {implicit_lab = None; lab = "maxLiveSize"; typ = nat; src = empty_src};
+    {implicit_lab = None; lab = "maxStackSize"; typ = nat; src = empty_src};
+    {implicit_lab = None; lab = "memorySize"; typ = nat; src = empty_src};
+    {implicit_lab = None; lab = "reclaimed"; typ = nat; src = empty_src};
+    {implicit_lab = None; lab = "rtsVersion"; typ = text; src = empty_src};
+    {implicit_lab = None; lab = "sanityChecks"; typ = bool; src = empty_src};
+    {implicit_lab = None; lab = "stableMemorySize"; typ = nat; src = empty_src};
+    {implicit_lab = None; lab = "totalAllocation"; typ = nat; src = empty_src};
   ])
 
 let motoko_runtime_information_fld =
   { lab = "__motoko_runtime_information";
+    implicit_lab = None;
     typ = Func(Shared Query, Promises, [scope_bind], [],
       [ motoko_runtime_information_type ]);
     src = empty_src;
@@ -1827,8 +1831,8 @@ let cycles_lab = "cycles"
 let migration_lab = "migration"
 let timeout_lab = "timeout"
 
-let cycles_fld = { lab = cycles_lab; typ = nat; src = empty_src }
-let timeout_fld = { lab = timeout_lab; typ = nat32; src = empty_src }
+let cycles_fld = { lab = cycles_lab; implicit_lab = None; typ = nat; src = empty_src }
+let timeout_fld = { lab = timeout_lab; implicit_lab = None; typ = nat32; src = empty_src }
 
 (* Pretty printing *)
 
@@ -2134,7 +2138,7 @@ and pp_typ' vs ppf t =
   (* No cases for syntactic _ And _ & _ Or _ (already desugared) *)
   | t -> pp_typ_nobin vs ppf t
 
-and pp_field vs ppf {lab; typ; src} =
+and pp_field vs ppf {lab; implicit_lab; typ; src} =
   match typ with
   | Typ c ->
     let op, sbs, st = pps_of_kind' vs (Cons.kind c) in
@@ -2142,16 +2146,18 @@ and pp_field vs ppf {lab; typ; src} =
   | Mut t' ->
     fprintf ppf "@[<2>var %s :@ %a@]" lab (pp_typ' vs) t'
   | _ ->
-    fprintf ppf "@[<2>%s :@ %a@]" lab (pp_typ' vs) typ
+    match implicit_lab with
+    | None ->  fprintf ppf "@[<2>%s :@ %a@]" lab (pp_typ' vs) typ
+    | Some il ->  fprintf ppf "@[<2>implicit(%s) %s :@ %a@]" il lab (pp_typ' vs) typ
 
-and pp_stab_field vs ppf {lab; typ; src} =
+and pp_stab_field vs ppf {lab; implicit_lab; typ; src} =
   match typ with
   | Mut t' ->
     fprintf ppf "@[<2>stable var %s :@ %a@]" lab (pp_typ' vs) t'
   | _ ->
     fprintf ppf "@[<2>stable %s :@ %a@]" lab (pp_typ' vs) typ
 
-and pp_pre_stab_field vs ppf (required, {lab; typ; src}) =
+and pp_pre_stab_field vs ppf (required, {lab; implicit_lab; typ; src}) =
   let req = if required then "in" else "stable" in
   match typ with
   | Mut t' ->
@@ -2160,7 +2166,7 @@ and pp_pre_stab_field vs ppf (required, {lab; typ; src}) =
     fprintf ppf "@[<2>%s %s :@ %a@]" req lab (pp_typ' vs) typ
 
 
-and pp_tag vs ppf {lab; typ; src} =
+and pp_tag vs ppf {lab; implicit_lab; typ; src} =
   match typ with
   | Tup [] ->
     fprintf ppf "#%s" lab
@@ -2239,6 +2245,7 @@ and pp_stab_sig ppf sig_ =
     List.sort compare_field
       (List.map (fun c ->
         { lab = string_of_con c;
+          implicit_lab = None;
           typ = Typ c;
           src = empty_src }) ds)
   in
