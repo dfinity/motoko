@@ -329,6 +329,23 @@ let compare_field f1 f2 =
   | {lab = l1; typ = _; _}, {lab = l2; typ = Typ _; _} -> 1
   | {lab = l1; typ = _; _}, {lab = l2; typ = _; _} -> compare l1 l2
 
+type ('a, 'b) these =
+  | This of 'a
+  | That of 'b
+  | Both of 'a * 'b
+
+(* Assumes fs1 and fs2 have been sorted *)
+let align_fields fs1 fs2 =
+  let next (fs1, fs2) = match fs1, fs2 with
+    | [], [] -> None
+    | f1::fs1', [] -> Some (This f1, (fs1', []))
+    | [], f2::fs2' -> Some (That f2, ([], fs2'))
+    | f1::fs1', f2::fs2' -> (match compare_field f1 f2 with
+      | -1 -> Some (This f1, (fs1', fs2))
+      | +1 -> Some (That f2, (fs1, fs2'))
+      | _ -> Some (Both(f1, f2), (fs1', fs2')))
+  in
+  Seq.unfold next (fs1, fs2)
 
 (* Shorthands *)
 
@@ -1007,8 +1024,8 @@ let add_src_field rel lubs glbs f1 f2 =
    entire relation checking procedure is wrapped in
    [with_src_field_updates_predicate]. You'll probably want to use it when
    checking [sub] or [eq]. *)
-let add_src_field_update is_rel rel eq tf1 tf2 =
-  if !Mo_config.Flags.typechecker_combine_srcs && is_rel then
+let add_src_field_update rel eq tf1 tf2 =
+  if !Mo_config.Flags.typechecker_combine_srcs then
     let src_field_update () =
       let r1 = tf1.src.track_region in
       let r2 = tf2.src.track_region in
@@ -1237,62 +1254,32 @@ let rec rel_typ d rel eq t1 t2 =
 
 and rel_fields t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
-  match tfs1, tfs2 with
-  | [], [] ->
-    true
-  | tf1::_, [] when rel != eq && not (RelArg.is_stable_sub d) ->
-    true
-  | tf1::tfs1', tf2::tfs2' ->
-    (match compare_field tf1 tf2 with
-    | 0 ->
+  let rel_fields = ref [] in
+  let res = align_fields tfs1 tfs2 |>
+    Seq.for_all (function
+    | Both(tf1, tf2) ->
+      rel_fields := (tf1, tf2) :: !rel_fields;
       let d' = RelArg.push (Field tf2.lab) d in
-      let is_rel =
-        rel_typ d' rel eq tf1.typ tf2.typ &&
-        rel_fields t2 d rel eq tfs1' tfs2'
-      in
-      add_src_field_update is_rel rel eq tf1 tf2;
-      is_rel
-    | -1 when rel != eq && not (RelArg.is_stable_sub d) ->
-      rel_fields t2 d rel eq tfs1' tfs2
-    | result ->
-      if result > 0 then
-        unexpected_field d tf2.lab t2
-      else
-        missing_field d tf1.lab t2
-    )
-  | [], tf2::_ ->
-    unexpected_field d tf2.lab t2
-  | tf1::_, [] ->
-    missing_field d tf1.lab t2
+      rel_typ d' rel eq tf1.typ tf2.typ
+    | This tf1 ->
+      if rel != eq && not (RelArg.is_stable_sub d) then true
+      else missing_field d tf1.lab t2
+    | That tf2 -> unexpected_field d tf2.lab t2) in
+  if res then List.iter (fun (tf1, tf2) -> add_src_field_update rel eq tf1 tf2) !rel_fields;
+  res
 
 and rel_tags t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
-  match tfs1, tfs2 with
-  | [], [] ->
-    true
-  | [], _ when rel != eq ->
-    true
-  | tf1::tfs1', tf2::tfs2' ->
-    (match compare_field tf1 tf2 with
-     | 0 ->
-      let is_rel =
-       rel_typ d rel eq tf1.typ tf2.typ &&
-       rel_tags t2 d rel eq tfs1' tfs2'
-      in
-      add_src_field_update is_rel rel eq tf1 tf2;
-      is_rel
-    | +1 when rel != eq ->
-      rel_tags t2 d rel eq tfs1 tfs2'
-    | result ->
-      if result > 0 then
-        unexpected_tag d tf2.lab t2
-      else
-        missing_tag d tf1.lab t2
-    )
-  | [], tf2::_ ->
-    unexpected_tag d tf2.lab t2
-  | tf1::_, [] ->
-    missing_tag d tf1.lab t2
+  let rel_fields = ref [] in
+  let res = align_fields tfs1 tfs2 |>
+    Seq.for_all (function
+      | Both(tf1, tf2) ->
+        rel_fields := (tf1, tf2) :: !rel_fields;
+        rel_typ d rel eq tf1.typ tf2.typ
+      | This tf1 -> missing_tag d tf1.lab t2
+      | That tf2 -> if rel != eq then true else unexpected_tag d tf2.lab t2) in
+  if res then List.iter (fun (tf1, tf2) -> add_src_field_update rel eq tf1 tf2) !rel_fields;
+  res
 
 and rel_binds d rel eq tbs1 tbs2 =
   let ts = open_binds tbs2 in
@@ -1411,22 +1398,17 @@ let rec compatible_typ co t1 t2 =
 
 and compatible_fields co tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
-  match tfs1, tfs2 with
-  | [], [] -> true
-  | tf1::tfs1', tf2::tfs2' ->
-    tf1.lab = tf2.lab && compatible_typ co tf1.typ tf2.typ &&
-    compatible_fields co tfs1' tfs2'
-  | _, _ -> false
+  align_fields tfs1 tfs2 |>
+  Seq.for_all (function
+    | Both(tf1, tf2) -> compatible_typ co tf1.typ tf2.typ
+    | _ -> false)
 
 and compatible_tags co tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
-  match tfs1, tfs2 with
-  | [], _ | _, [] -> true
-  | tf1::tfs1', tf2::tfs2' ->
-    match compare_field tf1 tf2 with
-    | -1 -> compatible_tags co tfs1' tfs2
-    | +1 -> compatible_tags co tfs1 tfs2'
-    | _ -> compatible_typ co tf1.typ tf2.typ && compatible_tags co tfs1' tfs2'
+  align_fields tfs1 tfs2 |>
+  Seq.for_all (function
+    | Both(tf1, tf2) -> compatible_typ co tf1.typ tf2.typ
+    | _ -> true)
 
 and compatible t1 t2 : bool =
   compatible_typ (ref SS.empty) t1 t2
@@ -1655,35 +1637,30 @@ let rec combine rel lubs glbs t1 t2 =
 and cons_if b x xs = if b then x::xs else xs
 
 and combine_fields rel lubs glbs fs1 fs2 =
-  match fs1, fs2 with
-  | _, [] -> if rel == lubs then [] else fs1
-  | [], _ -> if rel == lubs then [] else fs2
-  | f1::fs1', f2::fs2' ->
-    match compare_field f1 f2 with
-    | -1 -> cons_if (rel == glbs) f1 (combine_fields rel lubs glbs fs1' fs2)
-    | +1 -> cons_if (rel == glbs) f2 (combine_fields rel lubs glbs fs1 fs2')
-    | _ ->
-      match combine rel lubs glbs f1.typ f2.typ with
-      | typ ->
-        add_src_field rel lubs glbs f1 f2;
-        let src = {empty_src with track_region = f1.src.track_region} in
-        {lab = f1.lab; typ; src} :: combine_fields rel lubs glbs fs1' fs2'
-      | exception Mismatch when rel == lubs ->
-        combine_fields rel lubs glbs fs1' fs2'
+  align_fields fs1 fs2
+  |> Seq.fold_left (fun acc x -> match x with
+      | Both(f1, f2) ->
+        (match combine rel lubs glbs f1.typ f2.typ with
+        | typ ->
+          add_src_field rel lubs glbs f1 f2;
+          let src = {empty_src with track_region = f1.src.track_region} in
+          {lab = f1.lab; typ; src} :: acc
+        | exception Mismatch when rel == lubs -> acc)
+      | This f1 -> cons_if (rel == glbs) f1 acc
+      | That f2 -> cons_if (rel == glbs) f2 acc) []
+  |> List.rev
 
 and combine_tags rel lubs glbs fs1 fs2 =
-  match fs1, fs2 with
-  | _, [] -> if rel == lubs then fs1 else []
-  | [], _ -> if rel == lubs then fs2 else []
-  | f1::fs1', f2::fs2' ->
-    match compare_field f1 f2 with
-    | -1 -> cons_if (rel == lubs) f1 (combine_tags rel lubs glbs fs1' fs2)
-    | +1 -> cons_if (rel == lubs) f2 (combine_tags rel lubs glbs fs1 fs2')
-    | _ ->
+  align_fields fs1 fs2
+  |> Seq.fold_left (fun acc x -> match x with
+    | Both(f1, f2) ->
       let typ = combine rel lubs glbs f1.typ f2.typ in
       add_src_field rel lubs glbs f1 f2;
       let src = {empty_src with track_region = f1.src.track_region} in
-      {lab = f1.lab; typ; src} :: combine_tags rel lubs glbs fs1' fs2'
+      {lab = f1.lab; typ; src} :: acc
+    | This(f1) -> cons_if (rel == lubs) f1 acc
+    | That(f2) -> cons_if (rel == lubs) f2 acc) []
+  |> List.rev
 
 let lub ?(src_fields = empty_srcs_tbl ()) t1 t2 =
   with_src_field_updates src_fields (fun () ->
