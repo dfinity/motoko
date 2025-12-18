@@ -6,7 +6,7 @@
 )
 
 (menhir
-  (modules parser assertions)
+  (modules parser)
   (merge_into parser)
   (flags --table --inspection -v --strict --cmly)
   (infer true)

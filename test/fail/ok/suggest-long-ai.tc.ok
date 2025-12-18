@@ -30,7 +30,6 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     Array_tabulate : <T>(len : Nat, gen : Nat -> T) -> [T];
     Array_tabulateVar : <T>(len : Nat, gen : Nat -> T) -> [var T];
     BlobIterator : (hash : [var __List]) -> BlobIterator;
-    Ret : <T>() -> T;
     Types :
       module {
         type Any = Any;
