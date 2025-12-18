@@ -30,7 +30,6 @@ suggest-short-ai.mo:4.6-4.7: type error [M0072], field s does not exist in type:
     Array_tabulate : <T>(len : Nat, gen : Nat -> T) -> [T];
     Array_tabulateVar : <T>(len : Nat, gen : Nat -> T) -> [var T];
     BlobIterator : (hash : [var __List]) -> BlobIterator;
-    Ret : <T>() -> T;
     Types :
       module {
         type Any = Any;
