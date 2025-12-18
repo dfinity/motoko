@@ -63,8 +63,8 @@ let
   baseFlake = flakeOf (checkout from);
   prFlake = flakeOf (checkout to);
 
-  baseMoc = baseFlake.packages.${system}.debug.moc;
-  prMoc = prFlake.packages.${system}.debug.moc;
+  baseMoc = baseFlake.packages.${system}.moc;
+  prMoc = prFlake.packages.${system}.moc;
 
   baseWasm = wasm-hash-for baseMoc;
   prWasm = wasm-hash-for prMoc;
