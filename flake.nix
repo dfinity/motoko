@@ -162,15 +162,15 @@
         # Make pocket-ic available during tests.
         checkInputs = [ pkgs.pocket-ic.server pkgs.cacert ];
         nativeCheckInputs = [ pkgs.pocket-ic.server ];
-        
+
         POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
         SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
-        
+
         doCheck = true;
       };
 
-      tests = import ./nix/tests.nix { 
-        inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages test-runner; 
+      tests = import ./nix/tests.nix {
+        inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages test-runner;
       };
 
       filterTests = type:
@@ -234,13 +234,10 @@
       };
     in
     {
-      packages = checks // common-constituents // rec {
-        release = buildableReleaseMoPackages;
-        debug = buildableDebugMoPackages;
+      packages = checks // common-constituents // tests // js // rec {
+        inherit nix-update test-runner;
 
-        inherit nix-update tests js test-runner;
-
-        inherit (pkgs) nix-build-uncached ic-wasm pocket-ic;
+        inherit (pkgs) nix-build-uncached ic-wasm;
 
         # Get pocket-ic server.
         pocket-ic-server = pkgs.pocket-ic.server;
@@ -287,7 +284,7 @@
               ++ builtins.attrValues js;
         };
 
-        inherit (debug) moc;
+        inherit (buildableDebugMoPackages) moc;
 
         default = release-systems-go;
       };
