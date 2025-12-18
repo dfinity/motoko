@@ -237,7 +237,6 @@
         "ocaml-recovery-parser-src": "ocaml-recovery-parser-src",
         "ocaml-vlq-src": "ocaml-vlq-src",
         "rust-overlay": "rust-overlay",
-        "viper-server": "viper-server",
         "wasm-spec-src": "wasm-spec-src"
       }
     },
@@ -295,18 +294,6 @@
         "owner": "numtide",
         "repo": "treefmt-nix",
         "type": "github"
-      }
-    },
-    "viper-server": {
-      "flake": false,
-      "locked": {
-        "narHash": "sha256-lP7CFmug2kecogQ+qFS2GzxNQEzBVODw7xXmTHmxblQ=",
-        "type": "file",
-        "url": "https://github.com/viperproject/viperserver/releases/download/v.22.11-release/viperserver.jar"
-      },
-      "original": {
-        "type": "file",
-        "url": "https://github.com/viperproject/viperserver/releases/download/v.22.11-release/viperserver.jar"
       }
     },
     "wasm-spec-src": {

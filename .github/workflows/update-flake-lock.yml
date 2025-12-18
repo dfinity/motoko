@@ -38,7 +38,6 @@ jobs:
             flake-utils
             nix-update-flake
             esm
-            viper-server
             candid-src
             ic-wasm-src
             libtommath-src

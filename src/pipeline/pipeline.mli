@@ -18,8 +18,6 @@ val print_deps: string -> unit
 
 val check_files  : ?enable_recovery:bool -> string list -> unit Diag.result
 
-val viper_files : string list -> (string * (Source.region -> Source.region option)) Diag.result
-
 val stable_compatible : string -> string -> unit Diag.result
 
 val generate_idl : string list -> Idllib.Syntax.prog Diag.result
@@ -53,8 +51,7 @@ type load_result_cached =
   Diag.result
 
 val load_progs_cached
-  :  ?viper_mode:bool
-  -> ?check_actors:bool
+  :  ?check_actors:bool
   -> parse_fn
   -> string list
   -> Scope.t
@@ -64,4 +61,4 @@ val load_progs_cached
 type load_result =
   (Syntax.lib list * Syntax.prog list * Scope.scope) Diag.result
 
-val load_progs : ?viper_mode:bool -> ?check_actors:bool -> parse_fn -> string list -> Scope.scope -> load_result
+val load_progs : ?check_actors:bool -> parse_fn -> string list -> Scope.scope -> load_result

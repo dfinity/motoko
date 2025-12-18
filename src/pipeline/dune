@@ -18,7 +18,6 @@
     ir_passes
     codegen
     rts
-    viper
   )
   (modules (:standard \ test_field_srcs))
   (inline_tests)
