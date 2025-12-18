@@ -31,7 +31,7 @@ let
     };
 in
 {
-  moc = mk "moc";
-  moc_interpreter = mk "moc_interpreter";
-  didc = mk "didc";
+  "moc.js" = mk "moc";
+  "moc_interpreter.js" = mk "moc_interpreter";
+  "didc.js" = mk "didc";
 }

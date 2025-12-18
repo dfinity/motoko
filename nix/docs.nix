@@ -7,7 +7,7 @@ pkgs.stdenv.mkDerivation {
   buildPhase = ''
     patchShebangs .
     export HOME=$PWD
-    export MOC_JS=${js.moc}/bin/moc.js
+    export MOC_JS=${js."moc.js"}/bin/moc.js
     export MOTOKO_BASE=${base-src}
     export MOTOKO_CORE=${core-src}
     make
