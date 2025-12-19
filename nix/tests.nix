@@ -146,7 +146,7 @@ let
     # test directory to be run by src/pipeline/test_field_srcs.ml. We create src
     # and test (the latter only with the wanted subdirectories) so that the dune
     # rule will be able to copy.
-    src = pkgs.runCommand "project-sources" {} ''
+    src = pkgs.runCommand "project-sources" { } ''
       mkdir -p $out/src $out/test
       cp -r ${../src}/* $out/src
       cp -r ${../test}/{run,run-drun,perf,bench} $out/test

@@ -1,4 +1,5 @@
-pkgs: let
+pkgs:
+let
   # Map Nix system to binary name (note: Nix uses aarch64, binaries use arm64)
   binaryName = {
     "x86_64-linux" = "pocket-ic-x86_64-linux";
@@ -25,15 +26,15 @@ pkgs: let
 
   server = pkgs.stdenv.mkDerivation rec {
     name = "pocket-ic-server";
-    
+
     src = pkgs.fetchurl {
       url = "${baseUrl}/${binaryName}.gz";
       sha256 = sha256Map.${binaryName};
-      name = "pocket-ic-server.gz"; 
+      name = "pocket-ic-server.gz";
     };
-    
-    dontUnpack = true; 
-    
+
+    dontUnpack = true;
+
     nativeBuildInputs = [ pkgs.gzip ]
       ++ pkgs.lib.optional pkgs.stdenv.isLinux pkgs.autoPatchelfHook;
 
@@ -42,7 +43,7 @@ pkgs: let
       pkgs.zlib
       pkgs.openssl
     ];
-    
+
     installPhase = ''
       mkdir -p $out/bin
       
@@ -54,6 +55,7 @@ pkgs: let
     '';
   };
 
-in {
+in
+{
   inherit server;
 }
