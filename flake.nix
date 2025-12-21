@@ -312,7 +312,7 @@
         in
         mapAttrsToListRecursiveCond
           (path: as: !(pkgs.lib.isDerivation as))
-          (path: _value: pkgs.lib.concatStringsSep "." path)
+          (path: _drv: pkgs.lib.concatStringsSep "." path)
           self.packages.${system};
 
     });
