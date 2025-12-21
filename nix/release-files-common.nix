@@ -23,4 +23,4 @@ in
       } ''
       cp -v ${drv}/bin/*.min.js $out
     '';
-} 
+}
