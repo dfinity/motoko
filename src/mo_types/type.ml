@@ -329,7 +329,21 @@ let compare_field f1 f2 =
   | {lab = l1; typ = _; _}, {lab = l2; typ = Typ _; _} -> 1
   | {lab = l1; typ = _; _}, {lab = l2; typ = _; _} -> compare l1 l2
 
-let align_fields xs ys = Lib.List.align compare_field xs ys
+type next_field =
+| Nil
+| This of field * field list * field list
+| That of field * field list * field list
+| Both of field * field * field list * field list
+
+let next_field xs ys = match xs, ys with
+  | [], [] -> Nil
+  | x::xs', [] -> This (x, xs', [])
+  | [], y::ys' -> That (y, [], ys')
+  | x::xs', y::ys' ->
+     (match compare_field x y with
+      | -1 -> This (x, xs', ys)
+      | +1 -> That (y, xs, ys')
+      | _ ->  Both (x, y, xs', ys'))
 
 (* Shorthands *)
 
@@ -1238,32 +1252,34 @@ let rec rel_typ d rel eq t1 t2 =
 
 and rel_fields t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
-  let rel_fields = ref [] in
-  let res = align_fields tfs1 tfs2 |>
-    Seq.for_all (function
-    | Lib.Both(tf1, tf2) ->
-      rel_fields := (tf1, tf2) :: !rel_fields;
+  match next_field tfs1 tfs2 with
+    | Nil -> true
+    | Both (tf1, tf2, tfs1, tfs2) ->
       let d' = RelArg.push (Field tf2.lab) d in
-      rel_typ d' rel eq tf1.typ tf2.typ
-    | Lib.This tf1 ->
-      if rel != eq && not (RelArg.is_stable_sub d) then true
+      rel_typ d' rel eq tf1.typ tf2.typ &&
+      rel_fields t2 d rel eq tfs1 tfs2 &&
+      (add_src_field_update rel eq tf1 tf2; true)
+    | This (tf1, tfs1', tfs2') ->
+       if rel != eq && not (RelArg.is_stable_sub d) then
+         rel_fields t2 d rel eq tfs1' tfs2'
       else missing_field d tf1.lab t2
-    | Lib.That tf2 -> unexpected_field d tf2.lab t2) in
-  if res then List.iter (fun (tf1, tf2) -> add_src_field_update rel eq tf1 tf2) !rel_fields;
-  res
+    | That (tf2, _, _) -> unexpected_field d tf2.lab t2
+
 
 and rel_tags t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
-  let rel_fields = ref [] in
-  let res = align_fields tfs1 tfs2 |>
-    Seq.for_all (function
-      | Lib.Both(tf1, tf2) ->
-        rel_fields := (tf1, tf2) :: !rel_fields;
-        rel_typ d rel eq tf1.typ tf2.typ
-      | Lib.This tf1 -> missing_tag d tf1.lab t2
-      | Lib.That tf2 -> if rel != eq then true else unexpected_tag d tf2.lab t2) in
-  if res then List.iter (fun (tf1, tf2) -> add_src_field_update rel eq tf1 tf2) !rel_fields;
-  res
+  match next_field tfs1 tfs2 with
+  | Nil -> true
+  | Both (tf1, tf2, tfs1', tfs2') ->
+     rel_typ d rel eq tf1.typ tf2.typ &&
+     rel_tags t2 d rel eq tfs1' tfs2' &&
+     (add_src_field_update rel eq tf1 tf2; true)
+  | This (tf1, _, _) -> missing_tag d tf1.lab t2
+  | That (tf2, tfs1', tfs2') ->
+     if rel != eq then
+       rel_tags t2 d rel eq tfs1' tfs2'
+     else unexpected_tag d tf2.lab t2
+
 
 and rel_binds d rel eq tbs1 tbs2 =
   let ts = open_binds tbs2 in
@@ -1382,17 +1398,23 @@ let rec compatible_typ co t1 t2 =
 
 and compatible_fields co tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
-  align_fields tfs1 tfs2 |>
-  Seq.for_all (function
-    | Lib.Both(tf1, tf2) -> compatible_typ co tf1.typ tf2.typ
-    | _ -> false)
+  match next_field tfs1 tfs2 with
+  | Nil -> true
+  | Both(tf1, tf2, tfs1', tfs2') ->
+    compatible_typ co tf1.typ tf2.typ &&
+    compatible_fields co tfs1' tfs2'
+  | _ -> false
 
 and compatible_tags co tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
-  align_fields tfs1 tfs2 |>
-  Seq.for_all (function
-    | Lib.Both(tf1, tf2) -> compatible_typ co tf1.typ tf2.typ
-    | _ -> true)
+  match next_field tfs1 tfs2 with
+  | Nil -> true
+  | Both(tf1, tf2, tfs1', tfs2') ->
+    compatible_typ co tf1.typ tf2.typ &&
+    compatible_tags co tfs1' tfs2'
+  | This (_, tfs1', tfs2')
+  | That (_, tfs1', tfs2') ->
+    compatible_tags co tfs1' tfs2' (* is this correct? *)
 
 and compatible t1 t2 : bool =
   compatible_typ (ref SS.empty) t1 t2
@@ -1621,30 +1643,30 @@ let rec combine rel lubs glbs t1 t2 =
 and cons_if b x xs = if b then x::xs else xs
 
 and combine_fields rel lubs glbs fs1 fs2 =
-  align_fields fs1 fs2
-  |> Seq.fold_left (fun acc x -> match x with
-      | Lib.Both(f1, f2) ->
-        (match combine rel lubs glbs f1.typ f2.typ with
-        | typ ->
-          add_src_field rel lubs glbs f1 f2;
-          let src = {empty_src with track_region = f1.src.track_region} in
-          {lab = f1.lab; typ; src} :: acc
-        | exception Mismatch when rel == lubs -> acc)
-      | Lib.This f1 -> cons_if (rel == glbs) f1 acc
-      | Lib.That f2 -> cons_if (rel == glbs) f2 acc) []
-  |> List.rev
+  match next_field fs1 fs2 with
+  | Nil -> []
+  | Both(f1, f2, fs1', fs2') ->
+     (match combine rel lubs glbs f1.typ f2.typ with
+      | typ ->
+         add_src_field rel lubs glbs f1 f2;
+         let src = {empty_src with track_region = f1.src.track_region} in
+         {lab = f1.lab; typ; src} :: combine_fields rel lubs glbs fs1' fs2'
+      | exception Mismatch when rel == lubs -> combine_fields rel lubs glbs fs1' fs2')
+  | This (f, fs1', fs2')
+  | That (f, fs1', fs2') ->
+    cons_if (rel == glbs) f (combine_fields rel lubs glbs fs1' fs2')
 
 and combine_tags rel lubs glbs fs1 fs2 =
-  align_fields fs1 fs2
-  |> Seq.fold_left (fun acc x -> match x with
-    | Lib.Both(f1, f2) ->
-      let typ = combine rel lubs glbs f1.typ f2.typ in
-      add_src_field rel lubs glbs f1 f2;
-      let src = {empty_src with track_region = f1.src.track_region} in
-      {lab = f1.lab; typ; src} :: acc
-    | Lib.This(f1) -> cons_if (rel == lubs) f1 acc
-    | Lib.That(f2) -> cons_if (rel == lubs) f2 acc) []
-  |> List.rev
+  match next_field fs1 fs2 with
+  | Nil -> []
+  | Both(f1, f2, fs1', fs2') ->
+     let typ = combine rel lubs glbs f1.typ f2.typ in
+     add_src_field rel lubs glbs f1 f2;
+     let src = {empty_src with track_region = f1.src.track_region} in
+     {lab = f1.lab; typ; src} :: combine_tags rel lubs glbs fs1' fs2'
+  | This(f, fs1', fs2')
+  | That(f, fs1', fs2') ->
+    cons_if (rel == lubs) f (combine_tags rel lubs glbs fs1' fs2')
 
 let lub ?(src_fields = empty_srcs_tbl ()) t1 t2 =
   with_src_field_updates src_fields (fun () ->
