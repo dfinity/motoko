@@ -328,15 +328,6 @@ type ('a, 'b) these =
   | That of 'b
   | Both of 'a * 'b
 
-module These =
-struct
-  let equal pa pb ta tb = match ta, tb with
-    | This a1, This a2 -> pa a1 a2
-    | That b1, That b2 -> pb b1 b2
-    | Both(a1, b1), Both(a2, b2) -> pa a1 a2 && pb b1 b2
-    | _ -> false
-end
-
 module List =
 struct
   let equal p xs ys =

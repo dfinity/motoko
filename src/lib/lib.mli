@@ -23,11 +23,6 @@ type ('a, 'b) these =
   | That of 'b
   | Both of 'a * 'b
 
-module These :
-sig
-  val equal : ('a -> 'a -> bool) -> ('b -> 'b -> bool) -> ('a, 'b) these -> ('a, 'b) these -> bool
-end
-
 module List :
 sig
   val equal : ('a -> 'a -> bool) -> 'a list -> 'a list -> bool
