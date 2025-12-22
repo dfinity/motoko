@@ -1253,17 +1253,17 @@ let rec rel_typ d rel eq t1 t2 =
 and rel_fields t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match next_field tfs1 tfs2 with
-    | Nil -> true
-    | Both (tf1, tf2, tfs1, tfs2) ->
-      let d' = RelArg.push (Field tf2.lab) d in
-      rel_typ d' rel eq tf1.typ tf2.typ &&
-      rel_fields t2 d rel eq tfs1 tfs2 &&
-      (add_src_field_update rel eq tf1 tf2; true)
-    | This (tf1, tfs1', tfs2') ->
-       if rel != eq && not (RelArg.is_stable_sub d) then
-         rel_fields t2 d rel eq tfs1' tfs2'
-      else missing_field d tf1.lab t2
-    | That (tf2, _, _) -> unexpected_field d tf2.lab t2
+  | Nil -> true
+  | Both (tf1, tf2, tfs1', tfs2') ->
+    let d' = RelArg.push (Field tf2.lab) d in
+    rel_typ d' rel eq tf1.typ tf2.typ &&
+      rel_fields t2 d rel eq tfs1' tfs2' &&
+        (add_src_field_update rel eq tf1 tf2; true)
+  | This (tf1, tfs1', tfs2') ->
+    if rel != eq && not (RelArg.is_stable_sub d) then
+      rel_fields t2 d rel eq tfs1' tfs2'
+    else missing_field d tf1.lab t2
+  | That (tf2, _, _) -> unexpected_field d tf2.lab t2
 
 
 and rel_tags t2 d rel eq tfs1 tfs2 =
@@ -1276,9 +1276,9 @@ and rel_tags t2 d rel eq tfs1 tfs2 =
      (add_src_field_update rel eq tf1 tf2; true)
   | This (tf1, _, _) -> missing_tag d tf1.lab t2
   | That (tf2, tfs1', tfs2') ->
-     if rel != eq then
-       rel_tags t2 d rel eq tfs1' tfs2'
-     else unexpected_tag d tf2.lab t2
+    if rel != eq then
+      rel_tags t2 d rel eq tfs1' tfs2'
+    else unexpected_tag d tf2.lab t2
 
 
 and rel_binds d rel eq tbs1 tbs2 =
