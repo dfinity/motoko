@@ -3418,39 +3418,39 @@ and check_pats env ts pats ve at : Scope.val_env =
   go ts pats ve
 
 and check_pat_fields env t tfs pfs ve at : Scope.val_env =
-  match tfs, pfs with
-  | _, [] -> ve
-  | _, {it = TypPF(id); at; _}::pfs' ->
-    (* NOTE(Christoph): We check the note to see if we were able to
-       resolve this type field in the "types-only" pass. *)
-    if Option.is_none id.note then
-      error env at "M0221" "failed to determine type for type pattern field";
-    check_pat_fields env t tfs pfs' ve at
-  | [], {it = ValPF(id, _); at; _}::_ ->
-     error env at "M0119"
-       "object field %s is not contained in expected type%a"
-       id.it
-       display_typ_expand t
-  | tf::tfs', pf::pfs' ->
-     match compare_pat_typ_field tf pf with
-     | -1 -> check_pat_fields env t tfs' pfs ve at
-     | 1 -> (match pf.it with
-            | ValPF(_) -> check_pat_fields env t [] pfs ve at
-            | _ -> check_pat_fields env t tfs pfs' ve at)
-     | _ -> match tf, pf with
-        | T.{lab; typ; src}, {it = ValPF(id, pat); _} ->
-           if T.is_mut typ then
-             error env pf.at "M0120" "cannot pattern match mutable field %s" lab;
-           check_deprecation env pf.at "field" lab src.T.depr;
-           let val_kind = kind_of_field_pattern pf in
-           let ve1 = check_pat_aux env typ pat val_kind in
-           let ve' =
-             disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
-           (match pfs' with
-           | {it = ValPF(id', _); at = at';_}::_ when id'.it = lab ->
-              error env at' "M0121" "duplicate field %s in object pattern" lab
-           | _ -> check_pat_fields env t tfs' pfs' ve' at)
-        | _, _ -> assert false
+  let cmp (tf : T.field) pf = match tf, pf with
+    | T.{ typ = T.Typ _; _ }, _ -> -1
+    | T.{ lab; _ }, (id, _, _) -> String.compare lab id.it
+    in
+  let value_pfs = List.filter_map (fun pf -> match pf.it with
+    | TypPF(id) ->
+      (* NOTE(Christoph): We check the note to see if we were able to
+         resolve this type field in the "types-only" pass. *)
+      if Option.is_none id.note then
+        error env pf.at "M0221" "failed to determine type for type pattern field";
+      None
+    | ValPF(id, p) -> Some(id, p, pf)) pfs in
+  let last_field = ref "" in
+  Lib.List.align cmp tfs value_pfs |>
+  Seq.fold_left (fun ve -> function
+    | Lib.This _ -> ve
+    | Lib.That (id, _, pf) ->
+      if String.equal !last_field id.it then
+        error env pf.at "M0121" "duplicate field %s in object pattern" id.it
+      else
+        error env pf.at "M0119"
+          "object field %s is not contained in expected type%a"
+          id.it
+          display_typ_expand t
+    | Lib.Both(T.{ lab; typ; src }, (id, pat, pf)) ->
+      last_field := lab;
+      if T.is_mut typ then
+        error env pf.at "M0120" "cannot pattern match mutable field %s" lab;
+      check_deprecation env pf.at "field" lab src.T.depr;
+      let val_kind = kind_of_field_pattern pf in
+      let ve1 = check_pat_aux env typ pat val_kind in
+      disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1
+  ) ve
 
 and check_pat_typ_dec env t pat : Scope.typ_env =
   match pat.it, T.promote t with
@@ -3500,36 +3500,35 @@ and check_pats_typ_dec env ts pats te at : Scope.typ_env =
   in
   go ts pats te
 
-and check_pat_fields_typ_dec env t tfs pfs te at : Scope.typ_env = match tfs, pfs with
-  | _, [] -> te
-  | [], {it = TypPF(id); at; _}::_ ->
-    error env at "M0119"
-      "object type field %s is not contained in expected type%a"
-      id.it
-      display_typ_expand t
-  | [], {it = ValPF(_); _}::pfs' ->
-     check_pat_fields_typ_dec env t tfs pfs' te at
-  | tf::tfs', pf::pfs' ->
-     match compare_pat_typ_field tf pf with
-     | -1 -> check_pat_fields_typ_dec env t tfs' pfs te at
-     | 1 ->
-        (match pf.it with
-        | TypPF(_) -> check_pat_fields_typ_dec env t [] pfs te at
-        | _ -> check_pat_fields_typ_dec env t tfs pfs' te at)
-     | _ ->
-        match tf, pf with
-        | T.{lab; typ = Typ t'; _}, { it = TypPF(id); _ } ->
-           id.note <- Some t';
-           let te' = T.Env.add id.it t' te in
-           begin match pfs' with
-           | {it = TypPF(id'); at = at';_}::_ when id'.it = lab ->
-              error env at' "M0121" "duplicate type field %s in object pattern" lab
-           | _ -> check_pat_fields_typ_dec env t tfs' pfs' te' at
-           end
-        | T.{lab; typ; _}, { it = ValPF(id, p); _ } ->
-           let te1 = check_pat_typ_dec env typ p in
-           disjoint_union env at "M0017" "duplicate binding for %s in pattern" te te1
-        | _ -> assert false
+and check_pat_fields_typ_dec env t tfs pfs te at : Scope.typ_env =
+  let cmp (tf : T.field) pf = match tf, pf with
+    | T.{ lab; typ = T.Typ _; _}, { it = TypPF(id); _ } -> String.compare lab id.it
+    | _, { it = TypPF(id); _ } -> 1
+    | T.{ lab; _ }, { it = ValPF(id, _); _ } -> String.compare lab id.it in
+  let last_field = ref "" in
+  Lib.List.align cmp tfs pfs |>
+  Seq.fold_left (fun te -> function
+    | Lib.This _ -> te
+    | Lib.That pf -> (match pf.it with
+      | TypPF(id) ->
+        if String.equal !last_field id.it then
+          error env pf.at "M0121" "duplicate type field %s in object pattern" id.it
+        else
+          error env pf.at "M0119"
+            "object type field %s is not contained in expected type%a"
+            id.it
+            display_typ_expand t
+      | _ -> te)
+    | Lib.Both(T.{ lab; typ; src }, pf) ->
+      match typ, pf.it with
+      | T.Typ t, TypPF(id) ->
+        last_field := lab;
+        id.note <- Some t;
+        T.Env.add id.it t te
+      | _, ValPF(_, p) ->
+        let te1 = check_pat_typ_dec env typ p in
+        disjoint_union env at "M0017" "duplicate binding for %s in pattern" te te1
+      | _, _ -> assert false) te
 
 (* Objects *)
 
