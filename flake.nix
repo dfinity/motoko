@@ -181,7 +181,8 @@
                 matchRelease == null &&
                 matchGC == null &&
                 matchPerf == null;
-            in {
+            in
+            {
               debug = matchDebug != null;
               release = matchRelease != null;
               gc = matchGC != null;
@@ -251,13 +252,13 @@
         # Common tests version - includes non-GC, non-release/debug specific tests.
         common-tests = pkgs.releaseTools.aggregate {
           name = "common-tests";
-          constituents = filterTests "common";  # Only include common tests.
+          constituents = filterTests "common"; # Only include common tests.
         };
 
         # GC tests version - only includes GC tests.
         gc-tests = pkgs.releaseTools.aggregate {
           name = "gc-tests";
-          constituents = filterTests "gc";  # Only include GC tests.
+          constituents = filterTests "gc"; # Only include GC tests.
         };
 
         # Release version - excludes debug tests.
