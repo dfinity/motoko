@@ -197,7 +197,6 @@ val val_fields : field list -> field list
 
 val compare_field : field -> field -> int
 
-
 (* Constructors *)
 
 val set_kind : con -> kind -> unit

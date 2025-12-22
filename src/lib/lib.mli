@@ -18,6 +18,16 @@ sig
   val repeat : int -> ('a -> unit) -> 'a -> unit
 end
 
+type ('a, 'b) these =
+  | This of 'a
+  | That of 'b
+  | Both of 'a * 'b
+
+module These :
+sig
+  val equal : ('a -> 'a -> bool) -> ('b -> 'b -> bool) -> ('a, 'b) these -> ('a, 'b) these -> bool
+end
+
 module List :
 sig
   val equal : ('a -> 'a -> bool) -> 'a list -> 'a list -> bool
@@ -47,6 +57,9 @@ sig
   val iter_pairs : ('a -> 'a -> unit) -> 'a list -> unit
 
   val safe_map : ('a -> 'b) -> 'a list -> 'b list
+
+  (** Assumes the two lists have been sorted with respect to the comparison function *)
+  val align : ('a -> 'b -> int) -> 'a list -> 'b list -> ('a, 'b) these Seq.t
 end
 
 module List32 :
