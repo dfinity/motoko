@@ -53,7 +53,7 @@ pkgs.mkShell {
         pkgs.fzf
         pkgs.jq
         test-runner
-      ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin pkgs.darwin.apple_sdk.frameworks.Security
+      ]
     ));
 
   # Add these variables to the shell environment so that
