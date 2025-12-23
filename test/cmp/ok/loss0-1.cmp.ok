@@ -2,7 +2,7 @@
  The previous type
   var {field : Nat}
  is not a stable subtype of
-  var {} because field `field` is missing from type 
+  var {} because field `field` is missing from expected type 
   {}
  of `one`.
  The data can only be dropped by an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.

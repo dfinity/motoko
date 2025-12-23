@@ -1033,8 +1033,8 @@ type compatibility = Compatible | Incompatible of explanation
 and explanation =
   | IncompatibleTypes of context * typ * typ
   | FailedPromote of typ * typ * explanation
-  | MissingTag of context * lab * typ
-  | MissingField of context * lab * typ
+  | MissingTag of context * desc * lab * typ
+  | MissingField of context * desc * lab * typ
   | FewerItems of context * string
   | MoreItems of context * string
   | PromotionToAny of context * typ
@@ -1045,6 +1045,7 @@ and explanation =
   | IncompatibleFuncs of context * typ * typ
   | IncompatibleAsyncSorts of context * async_sort * async_sort
   | IncompatibleAsyncScopes of context * typ * typ
+and desc = Actual | Expected
 and context_item =
   | ConsType of con
   | NamedType of name
@@ -1102,11 +1103,11 @@ let failed_promote d t1 bound t2 =
   in
   RelArg.false_with d (FailedPromote (t1, bound, inner_explanation))
 
-let missing_tag d lab t =
-  RelArg.false_with d (MissingTag (RelArg.context d, lab, t))
+let missing_tag d desc lab t =
+  RelArg.false_with d (MissingTag (RelArg.context d, desc, lab, t))
 
-let missing_field d lab t =
-  RelArg.false_with d (MissingField (RelArg.context d, lab, t))
+let missing_field d desc lab t =
+  RelArg.false_with d (MissingField (RelArg.context d, desc, lab, t))
 
 let fewer_items d desc =
   RelArg.false_with d (FewerItems (RelArg.context d, desc))
@@ -1264,14 +1265,14 @@ and rel_fields t1 t2 d rel eq tfs1 tfs2 =
       rel_fields t1 t2 d rel eq tfs1' tfs2
     | result ->
       if result > 0 then
-        missing_field d tf2.lab t1
+        missing_field d Expected tf2.lab t1
       else
-        missing_field d tf1.lab t2
+        missing_field d Actual tf1.lab t2
     )
   | [], tf2::_ ->
-    missing_field d tf2.lab t1
+    missing_field d Expected tf2.lab t1
   | tf1::_, [] ->
-    missing_field d tf1.lab t2
+    missing_field d Actual tf1.lab t2
 
 and rel_tags t1 t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
@@ -1293,14 +1294,14 @@ and rel_tags t1 t2 d rel eq tfs1 tfs2 =
       rel_tags t1 t2 d rel eq tfs1 tfs2'
     | result ->
       if result > 0 then
-        missing_tag d tf2.lab t1
+        missing_tag d Expected tf2.lab t1
       else
-        missing_tag d tf1.lab t2
+        missing_tag d Actual tf1.lab t2
     )
   | [], tf2::_ ->
-    missing_tag d tf2.lab t1
+    missing_tag d Expected tf2.lab t1
   | tf1::_, [] ->
-    missing_tag d tf1.lab t2
+    missing_tag d Actual tf1.lab t2
 
 and rel_binds d rel eq tbs1 tbs2 =
   let ts = open_binds tbs2 in
@@ -2347,6 +2348,8 @@ let string_of_context preposition context =
   in
    "\n " ^ preposition ^ " " ^ emit_context false context
 
+let flip desc = match desc with Actual -> Expected | Expected -> Actual
+let string_of_desc desc = match desc with Actual -> "" | Expected -> "expected "
 let rec string_of_explanation explanation =
   let display_typ = Lib.Format.display pp_typ in
   match explanation with
@@ -2354,11 +2357,11 @@ let rec string_of_explanation explanation =
     Format.asprintf "the type %a\n is not compatible with type %a%s" display_typ t1 display_typ t2 (string_of_context "in" context)
   | FailedPromote (t1, bound, inner_explanation) ->
     Format.asprintf "type variable %a\n was promoted to its bound %a\n and %s" display_typ t1 display_typ bound (string_of_explanation inner_explanation)
-  | MissingTag (context, lab, t) ->
-    Format.asprintf "case `#%s` is missing from type %a%s" lab display_typ t (string_of_context "of" context)
-  | MissingField (context, lab, t) ->
+  | MissingTag (context, desc, lab, t) ->
+    Format.asprintf "%scase `#%s` is missing from %stype %a%s" (string_of_desc desc) lab (string_of_desc (flip desc)) display_typ t (string_of_context "of" context)
+  | MissingField (context, desc, lab, t) ->
     let sort = if is_typ t then "type" else "field" in
-    Format.asprintf "%s `%s` is missing from type %a%s" sort lab display_typ t (string_of_context "of" context)
+    Format.asprintf "%s%s `%s` is missing from %stype %a%s" (string_of_desc desc) sort lab (string_of_desc (flip desc)) display_typ t (string_of_context "of" context)
   | FewerItems (context, desc) ->
     Format.asprintf "there are fewer %s than expected%s" desc (string_of_context "in" context)
   | MoreItems (context, desc) ->

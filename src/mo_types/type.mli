@@ -247,8 +247,8 @@ type compatibility = Compatible | Incompatible of explanation
 and explanation =
   | IncompatibleTypes of context * typ * typ
   | FailedPromote of typ * typ * explanation
-  | MissingTag of context * lab * typ
-  | MissingField of context * lab * typ
+  | MissingTag of context * desc * lab * typ
+  | MissingField of context * desc * lab * typ
   | FewerItems of context * string
   | MoreItems of context * string
   | PromotionToAny of context * typ
@@ -259,6 +259,7 @@ and explanation =
   | IncompatibleFuncs of context * typ * typ
   | IncompatibleAsyncSorts of context * async_sort * async_sort
   | IncompatibleAsyncScopes of context * typ * typ
+and desc = Actual | Expected
 and context_item =
   | ConsType of con
   | NamedType of name
