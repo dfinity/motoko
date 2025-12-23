@@ -766,7 +766,7 @@ let forE pat exp1 exp2 =
      } *)
   let lab = fresh_id "done" () in
   let ty1 = exp1.note.Note.typ in
-  let _, tfs = T.as_obj_sub [nextN] ty1 in
+  let _, tfs, _ = T.as_obj_sub [nextN] ty1 in
   let tnxt = T.lookup_val_field nextN tfs in
   let nxt = fresh_var "nxt" tnxt in
   letE nxt (dotE exp1 nextN tnxt) (
@@ -789,6 +789,7 @@ let objE sort typ_flds flds =
       blockE
         (List.rev ds)
         (newObjE sort fields
+          (* TODO *)
            (T.obj sort
               (List.map (fun (id, c) -> (id, T.Typ c)) typ_flds
                @ fld_tys)))
@@ -816,7 +817,7 @@ let objectE sort flds (tfs : T.field list) =
       blockE
         (List.rev ds)
         (newObjE sort fields
-          (T.Obj (sort, List.sort T.compare_field tfs)))
+          (T.Obj (sort, List.sort T.compare_field tfs, [])))
     | (lab, exp)::flds ->
        let v, typ, ds =
          match T.lookup_val_field_opt lab tfs with

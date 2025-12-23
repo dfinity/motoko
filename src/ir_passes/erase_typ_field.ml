@@ -36,8 +36,8 @@ let transform prog =
   let rec t_typ t =
     match t with
     (* The only interesting case *)
-    | Obj (s, fs) ->
-      Obj (s, List.map (fun f -> t_field f) (T.val_fields fs))
+    | Obj (s, fs, _) ->
+      Obj (s, fs, [])
     | T.Prim _
     | Var _ -> t
     | Con (c, ts) ->
@@ -55,7 +55,6 @@ let transform prog =
     | Pre -> Pre
     | Named (n , t) -> (* erased! *)
       t_typ t
-    | Typ c -> assert false (* second class *)
     | Weak t -> Weak (t_typ t)
 
   and t_bind tb =

@@ -542,7 +542,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let labs = List.map (fun (f : Syntax.exp_field) -> f.it.id.it) exp_fields in
     let tys = List.(map (fun b ->
                          T.as_obj b.note.note_typ |>
-                         snd |>
+                         (fun (_, fs, _) -> fs) |>
                          filter (fun f -> not (mem f.T.lab labs)))) exp_bases in
     let strip vs =
       let known fs k _ = List.exists (fun { T.lab; _ } -> k = lab) fs in
@@ -550,7 +550,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exps env exp_bases [] (fun objs -> fields (merges (strip objs)))
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
-  | DotE (exp1, id, _) when T.(sub exp1.note.note_typ (Obj (Actor, []))) ->
+  | DotE (exp1, id, _) when T.(sub exp1.note.note_typ (Obj (Actor, [], []))) ->
     interpret_exp env exp1 (fun v1 -> k V.(Tup [v1; Text id.it]))
   | DotE (exp1, id, _) ->
     interpret_exp env exp1 (fun v1 ->
