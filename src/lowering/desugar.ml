@@ -257,8 +257,6 @@ and exp' at note = function
     (switch_optE (exp e1)
       (exp e2)
       (varP v) (varE v) t).it
-  | S.ImpliesE (e1, e2) -> (impliesE (exp e1) (exp e2)).it
-  | S.OldE e -> (oldE (exp e)).it
   | S.IfE (e1, e2, e3) -> I.IfE (exp e1, exp e2, exp e3)
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
   | S.TryE (e1, cs, None) -> I.TryE (exp e1, cases cs, None)
@@ -290,7 +288,6 @@ and exp' at note = function
     (blockE (ds @ rs) { at; note; it }).it
   | S.AwaitE (sort, e) -> I.PrimE I.(AwaitPrim sort, [exp e])
   | S.AssertE (Runtime, e) -> I.PrimE (I.AssertPrim, [exp e])
-  | S.AssertE (_, e) -> (unitE ()).it
   | S.AnnotE (e, _) -> assert false
   | S.ImportE (f, ir) -> raise (Invalid_argument (Printf.sprintf "Import expression found in unit body: %s" f))
   | S.ImplicitLibE lib -> (varE (var (id_of_full_path lib) note.Note.typ)).it

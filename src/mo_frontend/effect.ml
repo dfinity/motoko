@@ -72,7 +72,6 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | TagE (_, exp1)
   | DotE (exp1, _, _)
   | NotE exp1
-  | OldE (exp1)
   | AssertE (_, exp1)
   | LabelE (_, _, exp1)
   | BreakE (_, exp1)
@@ -88,7 +87,6 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | AndE (exp1, exp2)
   | OrE (exp1, exp2)
   | NullCoalesceE (exp1, exp2)
-  | ImpliesE (exp1, exp2)
   | WhileE (exp1, exp2)
   | LoopE (exp1, Some exp2)
   | ForE (_, exp1, exp2) ->

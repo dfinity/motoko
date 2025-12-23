@@ -166,11 +166,8 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (T T_ANDOP) -> binop "&"
   | X (T T_ANDASSIGN) -> binassign "&="
   | X (T T_AND) -> simple_token "and"
-  | X (T T_IMPLIES) -> simple_token "implies"
-  | X (T T_OLD) -> simple_token "old"
   | X (T T_ADDOP) -> unop "+"
   | X (T T_ACTOR) -> simple_token "actor"
-  | X (T T_INVARIANT) -> simple_token "invariant"
   | X (T T_PIPE) -> simple_token "|>"
   | X (T T_WEAK) -> simple_token "weak"
   (* non-terminals *)

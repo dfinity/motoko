@@ -377,8 +377,6 @@ module Make (Cfg : Config) = struct
     | AndE (e1, e2) -> to_js_object "AndE" [| exp_js e1; exp_js e2 |]
     | OrE (e1, e2) -> to_js_object "OrE" [| exp_js e1; exp_js e2 |]
     | NullCoalesceE (e1, e2) -> to_js_object "NullCoalesceE" [| exp_js e1; exp_js e2 |]
-    | ImpliesE (e1, e2) -> to_js_object "ImpliesE" [| exp_js e1; exp_js e2 |]
-    | OldE e -> to_js_object "OldE" [| exp_js e |]
     | IfE (e1, e2, e3) ->
         to_js_object "IfE" [| exp_js e1; exp_js e2; exp_js e3 |]
     | SwitchE (e, cs) ->
@@ -404,17 +402,6 @@ module Make (Cfg : Config) = struct
     | AwaitE (Type.AwaitFut true, e) -> to_js_object "AwaitE?" [| exp_js e |]
     | AwaitE (Type.AwaitCmp, e) -> to_js_object "AwaitE*" [| exp_js e |]
     | AssertE (Runtime, e) -> to_js_object "AssertE" [| exp_js e |]
-    | AssertE (Static, e) -> to_js_object "Static_AssertE" [| exp_js e |]
-    | AssertE (Invariant, e) -> to_js_object "Invariant" [| exp_js e |]
-    | AssertE (Precondition, e) -> to_js_object "Precondition" [| exp_js e |]
-    | AssertE (Postcondition, e) -> to_js_object "Postcondition" [| exp_js e |]
-    | AssertE (Loop_entry, e) -> to_js_object "Loop_entry" [| exp_js e |]
-    | AssertE (Loop_continue, e) -> to_js_object "Loop_continue" [| exp_js e |]
-    | AssertE (Loop_exit, e) -> to_js_object "Loop_exit" [| exp_js e |]
-    | AssertE (Loop_invariant, e) ->
-        to_js_object "Loop_invariant" [| exp_js e |]
-    | AssertE (Concurrency s, e) ->
-        to_js_object ("Concurrency" ^ s) [| exp_js e |]
     | AnnotE (e, t) -> to_js_object "AnnotE" [| exp_js e; syntax_typ_js t |]
     | OptE e -> to_js_object "OptE" [| exp_js e |]
     | DoOptE e -> to_js_object "DoOptE" [| exp_js e |]

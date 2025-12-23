@@ -13,10 +13,10 @@ on:
   schedule:
     # * is a special character in YAML so you have to quote this string
     # Run every day at midnight
-    - cron: '0 0 * * *'
+    - cron: "0 0 * * *"
 jobs:
   flake-updater:
-    name: 'Update flake.lock'
+    name: "Update flake.lock"
     timeout-minutes: 2 # if this takes more than 2 minutes then something's wrong
     runs-on: ubuntu-latest
     steps:
@@ -38,7 +38,6 @@ jobs:
             flake-utils
             nix-update-flake
             esm
-            viper-server
             candid-src
             ic-wasm-src
             libtommath-src

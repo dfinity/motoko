@@ -185,11 +185,11 @@ let async_cap_of_prog prog =
      else
        Async_cap.initial_cap()
 
-let infer_prog ?(viper_mode=false) pkg_opt senv async_cap prog : (Type.typ * Scope.scope) Diag.result =
+let infer_prog pkg_opt senv async_cap prog : (Type.typ * Scope.scope) Diag.result =
   let filename = prog.Source.note.Syntax.filename in
   phase "Checking" filename;
   Cons.session ~scope:filename (fun () ->
-    let r = Typing.infer_prog ~viper_mode pkg_opt senv async_cap prog in
+    let r = Typing.infer_prog pkg_opt senv async_cap prog in
     if !Flags.trace && !Flags.verbose then begin
       match r with
       | Ok ((_, scope), _) ->
@@ -204,7 +204,7 @@ let infer_prog ?(viper_mode=false) pkg_opt senv async_cap prog : (Type.typ * Sco
     let* () = Definedness.check_prog prog in
     Diag.return t_sscope)
 
-let check_progs ?(viper_mode=false) senv progs : (Scope.t list * Scope.t) Diag.result =
+let check_progs senv progs : (Scope.t list * Scope.t) Diag.result =
   let rec go senv sscopes = function
     | [] -> Diag.return (List.rev sscopes, senv)
     | prog::progs ->
@@ -213,7 +213,7 @@ let check_progs ?(viper_mode=false) senv progs : (Scope.t list * Scope.t) Diag.r
       let async_cap = async_cap_of_prog prog in
       let* _t, sscope =
         Cons.session ~scope:filename (fun () ->
-          infer_prog ~viper_mode senv None async_cap prog)
+          infer_prog senv None async_cap prog)
       in
       let senv' = Scope.adjoin senv sscope in
       let sscopes' = sscope :: sscopes in
@@ -494,7 +494,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
   let* libs, senv, _cache = chase_imports_cached parsefn senv0 imports cache in
   Diag.return (libs, senv)
 
-let load_progs_cached ?viper_mode ?check_actors parsefn files senv scope_cache : load_result_cached =
+let load_progs_cached ?check_actors parsefn files senv scope_cache : load_result_cached =
   let open Diag.Syntax in
   let* parsed = Diag.traverse (parsefn Source.no_region) files in
   let* rs = resolve_progs parsed in
@@ -503,10 +503,10 @@ let load_progs_cached ?viper_mode ?check_actors parsefn files senv scope_cache :
   let* libs, senv, scope_cache =
     chase_imports_cached parsefn senv libs scope_cache
   in
-  let* () = Typing.check_actors ?viper_mode ?check_actors senv progs in
+  let* () = Typing.check_actors ?check_actors senv progs in
   (* [infer_prog] seems to annotate the AST with types by mutating some of its
      nodes, therefore, we always run the type checker for programs. *)
-  let* sscopes, senv = check_progs ?viper_mode senv progs in
+  let* sscopes, senv = check_progs senv progs in
   let prog_result =
     List.map2
       (fun (prog, rims) sscope ->
@@ -517,11 +517,11 @@ let load_progs_cached ?viper_mode ?check_actors parsefn files senv scope_cache :
   in
   Diag.return (libs, prog_result, senv, scope_cache)
 
-let load_progs ?viper_mode ?check_actors parsefn files senv : load_result =
+let load_progs ?check_actors parsefn files senv : load_result =
   let open Diag.Syntax in
   let scope_cache = Type.Env.empty in
   let* libs, rs, senv, _scope_cache =
-    load_progs_cached ?viper_mode ?check_actors parsefn files senv scope_cache
+    load_progs_cached ?check_actors parsefn files senv scope_cache
   in
   let progs = List.map (fun (prog, _immediate_imports, _sscope) -> prog) rs in
   Diag.return (libs, progs, senv)
@@ -606,24 +606,6 @@ let check_files ?(enable_recovery=false) files : check_result =
     else parse_file
   in
   check_files' parsefn files
-
-(* Generate Viper *)
-
-type viper_result = (string * (Source.region -> Source.region option)) Diag.result
-
-let viper_files' parsefn files : viper_result =
-  let open Diag.Syntax in
-  let* libs, progs, senv = load_progs ~viper_mode:true parsefn files initial_stat_env in
-  let* () = Typing.check_actors ~viper_mode:true ~check_actors:true senv progs in
-  let prog = CompUnit.combine_progs progs in
-  let u = CompUnit.comp_unit_of_prog false prog in
-  let reqs = Viper.Common.init_reqs () in
-  let* v = Viper.Trans.unit reqs (Viper.Prep.prep_unit u) in
-  let s = Viper.Pretty.prog_mapped "" (Viper.Prelude.prelude reqs) v in
-  Diag.return s
-
-let viper_files files : viper_result =
-  viper_files' parse_verification_file files
 
 (* Generate IDL *)
 

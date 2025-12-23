@@ -668,14 +668,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | V.Opt v -> k v
       | _ -> assert false
     )
-  | ImpliesE (exp1, exp2) ->
-    interpret_exp env exp1 (fun v1 ->
-      interpret_exp env exp2 (fun v2 ->
-        k V.(Bool (as_bool v1 <= as_bool v2))
-      )
-    )
-  | OldE exp1 ->
-    interpret_exp env exp1 (fun v1 -> k v1)
   | IfE (exp1, exp2, exp3) ->
     interpret_exp env exp1 (fun v1 ->
       if V.as_bool v1
@@ -774,7 +766,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       then k V.unit
       else trap exp.at "assertion failure"
     )
-  | AssertE (_, exp1) -> k V.unit
   | AnnotE (exp1, _typ) ->
     interpret_exp env exp1 k
   | IgnoreE exp1 ->
