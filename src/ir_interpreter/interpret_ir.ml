@@ -475,7 +475,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | ICReplyDeadlinePrim, [] ->
         k (V.Nat64 Numerics.Nat64.zero)
       | ICStableRead t, [] ->
-        let (_, tfs) = T.as_obj t in
+        let (_, tfs, _) = T.as_obj t in
         let ve = List.fold_left
           (fun ve' tf -> V.Env.add tf.T.lab V.Null ve')
           V.Env.empty tfs

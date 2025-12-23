@@ -40,7 +40,7 @@ and typ =
   | Var of var * int                          (* variable *)
   | Con of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
-  | Obj of obj_sort * field list              (* object *)
+  | Obj of obj_sort * field list * typ_field list (* object *)
   | Variant of field list                     (* variant *)
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
@@ -50,7 +50,6 @@ and typ =
   | Mut of typ                                (* mutable type *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
-  | Typ of con                                (* type (field of module) *)
   | Named of name * typ
   | Weak of typ                               (* weak references *)
   | Pre                                       (* pre-type *)
@@ -61,7 +60,9 @@ and bind_sort = Scope | Type
 and bind = {var : var; sort: bind_sort; bound : typ}
 
 and src = {depr : string option; track_region : Source.region; region : Source.region}
-and field = {lab : lab; typ : typ; src : src}
+and 'a gen_field = {lab : lab; typ : 'a; src : src}
+and field = typ gen_field
+and typ_field = con gen_field
 
 and con = kind Cons.t
 and kind =
@@ -141,12 +142,11 @@ val is_async : typ -> bool
 val is_fut : typ -> bool
 val is_cmp : typ -> bool
 val is_mut : typ -> bool
-val is_typ : typ -> bool
 val is_con : typ -> bool
 val is_var : typ -> bool
 
 val as_prim : prim -> typ -> unit
-val as_obj : typ -> obj_sort * field list
+val as_obj : typ -> obj_sort * field list * typ_field list
 val as_variant : typ -> field list
 val as_array : typ -> typ
 val as_opt : typ -> typ
@@ -157,11 +157,10 @@ val as_func : typ -> func_sort * control * bind list * typ list * typ list
 val as_async : typ -> async_sort * typ * typ
 val as_mut : typ -> typ
 val as_immut : typ -> typ
-val as_typ : typ -> con
 val as_con : typ -> con * typ list
 
 val as_prim_sub : prim -> typ -> unit
-val as_obj_sub : string list -> typ -> obj_sort * field list
+val as_obj_sub : string list -> typ -> obj_sort * field list * typ_field list
 val as_variant_sub : string -> typ -> field list
 val as_array_sub : typ -> typ
 val as_opt_sub : typ -> typ
@@ -186,12 +185,12 @@ val arity : typ -> int
 
 val find_val_field_opt : string -> field list -> field option
 val lookup_val_field : string -> field list -> typ
-val lookup_typ_field : string -> field list -> con
+val lookup_typ_field : string -> typ_field list -> con
 val lookup_val_field_opt : string -> field list -> typ option
-val lookup_typ_field_opt : string -> field list -> con option
+val lookup_typ_field_opt : string -> typ_field list -> con option
 
 val lookup_val_deprecation : string -> field list -> string option
-val lookup_typ_deprecation : string -> field list -> string option
+val lookup_typ_deprecation : string -> typ_field list -> string option
 
 val val_fields : field list -> field list
 
@@ -247,6 +246,7 @@ val cons_typs : typ list -> ConSet.t
 type compatibility = Compatible | Incompatible of explanation
 and explanation =
   | IncompatibleTypes of context * typ * typ
+  | IncompatibleCons of context * con * con
   | MissingTag of context * lab * typ
   | UnexpectedTag of context * lab * typ
   | MissingField of context * lab * typ
