@@ -1272,7 +1272,7 @@ and rel_tags t1 t2 d rel eq tfs1 tfs2 =
       | Lib.This tf1 ->
         missing_tag d Actual tf1.lab t2
       | Lib.That tf2 ->
-        if rel != eq then true else missing_tag Expected d tf2.lab t1)
+        if rel != eq then true else missing_tag d Expected tf2.lab t1)
   in
   res
 
