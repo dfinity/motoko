@@ -248,9 +248,7 @@ and explanation =
   | IncompatibleTypes of context * typ * typ
   | FailedPromote of typ * typ * explanation
   | MissingTag of context * lab * typ
-  | UnexpectedTag of context * lab * typ
   | MissingField of context * lab * typ
-  | UnexpectedField of context * lab * typ
   | FewerItems of context * string
   | MoreItems of context * string
   | PromotionToAny of context * typ

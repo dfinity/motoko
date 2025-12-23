@@ -14,7 +14,7 @@ variance.mo:44.10-44.15: type error [M0096], expression of type
   {put : (i : Nat) -> ()}
 cannot produce expected type
   {put : (i : Any) -> ()}
-because: The type 
+because the type 
   Any
  is not compatible with type 
   Nat
@@ -39,7 +39,7 @@ variance.mo:82.11-82.18: type error [M0096], expression of type
   {get : () -> ?Nat; put : (i : Nat) -> ()}
 cannot produce expected type
   {get : () -> ?Any; put : (i : Any) -> ()}
-because: The type 
+because the type 
   Any
  is not compatible with type 
   Nat

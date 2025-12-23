@@ -3,7 +3,7 @@
   var {root : Tree<Text, Product>; size : Nat}
  is not a subtype of
   Map<Text, OldProduct> = {root : Tree<Text, OldProduct>; size : Nat}
- because: Case `#caffeine` missing from type 
+ because case `#caffeine` is missing from type 
   {
     #crypto;
     #defi;

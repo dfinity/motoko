@@ -3,7 +3,7 @@
   var [var (Text, Nat, Bool)]
  is not a subtype of
   var [var (Nat, Text)]
- because: The type 
+ because the type 
   Text
  is not compatible with type 
   Nat

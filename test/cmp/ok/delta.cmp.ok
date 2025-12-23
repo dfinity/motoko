@@ -27,7 +27,7 @@
     var statsActor : [StatsActor];
     totalCredit : TotalCredit
   }
- because: Unsupported additional field `dailyMiningCount2` in type 
+ because field `dailyMiningCount2` is missing from type 
   actor {
     _appendReferee : shared (DID, Nat, AccountReferee, Nat) -> ();
     _childRewardTimeAndReferees :

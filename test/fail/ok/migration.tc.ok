@@ -8,7 +8,7 @@ migration.mo:3.7-13.7: type error [M0204], migration expression produces field `
   var Text
 , not the expected type
   var [var (Nat, Text)]
-because: The type 
+because the type 
   Text
  is not compatible with type 
   [var (Nat, Text)]

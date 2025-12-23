@@ -386,7 +386,7 @@ let incompatible_sub env at t1 t2 =
   | T.Incompatible reason ->
     let explanation =
       if T.is_redundant_explanation t1 t2 reason then ""
-      else Printf.sprintf "\nbecause: %s" (T.string_of_explanation reason)
+      else Printf.sprintf "\nbecause %s" (T.string_of_explanation reason)
     in
     Some explanation
   | T.Compatible -> None
@@ -3900,7 +3900,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
         | T.Compatible -> ()
         | T.Incompatible explanation ->
           local_error env focus "M0204"
-            "migration expression produces field `%s` of type%a\n, not the expected type%a\nbecause: %s"
+            "migration expression produces field `%s` of type%a\n, not the expected type%a\nbecause %s"
             tf.T.lab
             display_typ_expand typ
             display_typ_expand tf.T.typ

@@ -2,7 +2,7 @@ bad-async.mo:4.32-4.42: type error [M0096], expression of type
   async<$foo1> Nat
 cannot produce expected type
   async<$@anon-async-1.1> Nat
-because: Incompatible async scopes: 
+because of incompatible async scopes: 
   $foo1
  does not match 
   $@anon-async-1.1

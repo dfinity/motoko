@@ -3,7 +3,7 @@
   var {root : Tree<Text, Product>; size : Nat}
  is not a subtype of
   Map<Text, OldProduct> = {root : Tree<Text, OldProduct>; size : Nat}
- because: The type 
+ because the type 
   {
     acceptanceCriteria : [Text];
     dependencies : [Dependency];

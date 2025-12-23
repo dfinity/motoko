@@ -2,7 +2,7 @@ argument-subtyping.mo:12.61-12.62: type error [M0096], expression of type
   shared Nat -> ()
 cannot produce expected type
   shared Text -> ()
-because: The type 
+because the type 
   Text
  is not compatible with type 
   Nat

@@ -2,13 +2,13 @@ bad-type-comp.mo:5.10-5.19: type error [M0096], expression of type
   module {}
 cannot produce expected type
   module {type T = Null}
-because: Unsupported additional field `T` in type 
-  module {type T = Null}
+because field `T` is missing from type 
+  module {}
 bad-type-comp.mo:6.10-6.39: type error [M0096], expression of type
   module {type T = Int}
 cannot produce expected type
   module {type T = Null}
-because: The type 
+because the type 
   type T = Int
  is not compatible with type 
   type T = Null

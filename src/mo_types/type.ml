@@ -1034,9 +1034,7 @@ and explanation =
   | IncompatibleTypes of context * typ * typ
   | FailedPromote of typ * typ * explanation
   | MissingTag of context * lab * typ
-  | UnexpectedTag of context * lab * typ
   | MissingField of context * lab * typ
-  | UnexpectedField of context * lab * typ
   | FewerItems of context * string
   | MoreItems of context * string
   | PromotionToAny of context * typ
@@ -1107,14 +1105,8 @@ let failed_promote d t1 bound t2 =
 let missing_tag d lab t =
   RelArg.false_with d (MissingTag (RelArg.context d, lab, t))
 
-let unexpected_tag d lab t =
-  RelArg.false_with d (UnexpectedTag (RelArg.context d, lab, t))
-
 let missing_field d lab t =
   RelArg.false_with d (MissingField (RelArg.context d, lab, t))
-
-let unexpected_field d lab t =
-  RelArg.false_with d (UnexpectedField (RelArg.context d, lab, t))
 
 let fewer_items d desc =
   RelArg.false_with d (FewerItems (RelArg.context d, desc))
@@ -1222,7 +1214,7 @@ let rec rel_typ d rel eq t1 t2 =
     incompatible_prims d t1 t2
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
     (s1 = s2 || incompatible_obj_sorts d s1 s2) &&
-    rel_fields t2 d rel eq tfs1 tfs2
+    rel_fields t1 t2 d rel eq tfs1 tfs2
   | Array t1', Array t2' ->
     rel_typ d rel eq t1' t2'
   | Opt t1', Opt t2' ->
@@ -1232,7 +1224,7 @@ let rec rel_typ d rel eq t1 t2 =
   | Prim Null, Opt t2' when rel != eq ->
     true
   | Variant fs1, Variant fs2 ->
-    rel_tags t2 d rel eq fs1 fs2
+    rel_tags t1 t2 d rel eq fs1 fs2
   | Tup ts1, Tup ts2 ->
     rel_list "tuple arguments" d rel_typ rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
@@ -1251,7 +1243,7 @@ let rec rel_typ d rel eq t1 t2 =
   | _, _ -> incompatible_types d t1 t2
   end
 
-and rel_fields t2 d rel eq tfs1 tfs2 =
+and rel_fields t1 t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
   | [], [] ->
@@ -1264,24 +1256,24 @@ and rel_fields t2 d rel eq tfs1 tfs2 =
       let d' = RelArg.push (Field tf2.lab) d in
       let is_rel =
         rel_typ d' rel eq tf1.typ tf2.typ &&
-        rel_fields t2 d rel eq tfs1' tfs2'
+        rel_fields t1 t2 d rel eq tfs1' tfs2'
       in
       add_src_field_update is_rel rel eq tf1 tf2;
       is_rel
     | -1 when rel != eq && not (RelArg.is_stable_sub d) ->
-      rel_fields t2 d rel eq tfs1' tfs2
+      rel_fields t1 t2 d rel eq tfs1' tfs2
     | result ->
       if result > 0 then
-        unexpected_field d tf2.lab t2
+        missing_field d tf2.lab t1
       else
         missing_field d tf1.lab t2
     )
   | [], tf2::_ ->
-    unexpected_field d tf2.lab t2
+    missing_field d tf2.lab t1
   | tf1::_, [] ->
     missing_field d tf1.lab t2
 
-and rel_tags t2 d rel eq tfs1 tfs2 =
+and rel_tags t1 t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
   | [], [] ->
@@ -1293,20 +1285,20 @@ and rel_tags t2 d rel eq tfs1 tfs2 =
      | 0 ->
       let is_rel =
        rel_typ d rel eq tf1.typ tf2.typ &&
-       rel_tags t2 d rel eq tfs1' tfs2'
+       rel_tags t1 t2 d rel eq tfs1' tfs2'
       in
       add_src_field_update is_rel rel eq tf1 tf2;
       is_rel
     | +1 when rel != eq ->
-      rel_tags t2 d rel eq tfs1 tfs2'
+      rel_tags t1 t2 d rel eq tfs1 tfs2'
     | result ->
       if result > 0 then
-        unexpected_tag d tf2.lab t2
+        missing_tag d tf2.lab t1
       else
         missing_tag d tf1.lab t2
     )
   | [], tf2::_ ->
-    unexpected_tag d tf2.lab t2
+    missing_tag d tf2.lab t1
   | tf1::_, [] ->
     missing_tag d tf1.lab t2
 
@@ -2359,28 +2351,23 @@ let rec string_of_explanation explanation =
   let display_typ = Lib.Format.display pp_typ in
   match explanation with
   | IncompatibleTypes (context, t1, t2) ->
-    Format.asprintf "The type %a\n is not compatible with type %a%s" display_typ t1 display_typ t2 (string_of_context "in" context)
+    Format.asprintf "the type %a\n is not compatible with type %a%s" display_typ t1 display_typ t2 (string_of_context "in" context)
   | FailedPromote (t1, bound, inner_explanation) ->
-    Format.asprintf "Type variable %a\n was promoted to its bound %a\n and: %s" display_typ t1 display_typ bound (string_of_explanation inner_explanation)
+    Format.asprintf "type variable %a\n was promoted to its bound %a\n and %s" display_typ t1 display_typ bound (string_of_explanation inner_explanation)
   | MissingTag (context, lab, t) ->
-    Format.asprintf "Case `#%s` missing from type %a%s" lab display_typ t (string_of_context "of" context)
-  | UnexpectedTag (context, lab, t) ->
-    Format.asprintf "Unsupported additional tag `#%s` in type %a%s" lab display_typ t (string_of_context "of" context)
+    Format.asprintf "case `#%s` is missing from type %a%s" lab display_typ t (string_of_context "of" context)
   | MissingField (context, lab, t) ->
     let sort = if is_typ t then "type" else "field" in
-    Format.asprintf "Missing %s `%s` in type %a%s" sort lab display_typ t (string_of_context "of" context)
-  | UnexpectedField (context, lab, t) ->
-    let sort = if is_typ t then "type" else "field" in
-    Format.asprintf "Unsupported additional %s `%s` in type %a%s" sort lab display_typ t (string_of_context "of" context)
+    Format.asprintf "%s `%s` is missing from type %a%s" sort lab display_typ t (string_of_context "of" context)
   | FewerItems (context, desc) ->
-    Format.asprintf "Fewer %s than expected%s" desc (string_of_context "in" context)
+    Format.asprintf "there are fewer %s than expected%s" desc (string_of_context "in" context)
   | MoreItems (context, desc) ->
-    Format.asprintf "More %s than expected%s" desc (string_of_context "in" context)
+    Format.asprintf "there are more %s than expected%s" desc (string_of_context "in" context)
   | PromotionToAny (context, t) ->
-    Format.asprintf "Converting %a\n to `Any` is disallowed as it leads to data loss%s" display_typ t (string_of_context "in" context)
+    Format.asprintf "promoting %a\n to `Any` loses data%s" display_typ t (string_of_context "in" context)
   | IncompatiblePrims (context, t1, t2) ->
     let context = match context with h::tl -> tl | _ -> context in
-    Format.asprintf "The type %a\n is not compatible with type %a%s" display_typ t1 display_typ t2 (string_of_context "in" context)
+    Format.asprintf "the type %a\n is not compatible with type %a%s" display_typ t1 display_typ t2 (string_of_context "in" context)
   | IncompatibleObjSorts (context, s1, s2) ->
     let string_of_obj_sort = function
       | Object -> "object"
@@ -2389,27 +2376,27 @@ let rec string_of_explanation explanation =
       | Module -> "module"
       | Memory -> "memory"
     in
-    Format.asprintf "Incompatible object sorts:\n %s does not match %s%s" (string_of_obj_sort s1) (string_of_obj_sort s2) (string_of_context "in" context)
+    Format.asprintf "of incompatible object sorts:\n %s does not match %s%s" (string_of_obj_sort s1) (string_of_obj_sort s2) (string_of_context "in" context)
   | IncompatibleFuncSorts (context, s1, s2) ->
-    Format.asprintf "Incompatible function modifiers: %s\n does not match %s%s" (string_of_func_sort s1) (string_of_func_sort s2) (string_of_context "in" context)
+    Format.asprintf "of incompatible function modifiers: %s\n does not match %s%s" (string_of_func_sort s1) (string_of_func_sort s2) (string_of_context "in" context)
   | IncompatibleFuncControls (context, c1, c2) ->
     let string_of_control = function
       | Returns -> "regular function or one-shot shared function"
       | Promises -> "shared function that returns a future"
       | Replies -> "compiler-internal reply function"
     in
-    Format.asprintf "Incompatible function controls: %s\n does not match %s%s" (string_of_control c1) (string_of_control c2) (string_of_context "in" context)
+    Format.asprintf "of incompatible function controls: %s\n does not match %s%s" (string_of_control c1) (string_of_control c2) (string_of_context "in" context)
   | IncompatibleFuncs (context, t1, t2) ->
-    Format.asprintf "Incompatible function types: %a\n does not match %a%s" display_typ t1 display_typ t2 (string_of_context "in" context)
+    Format.asprintf "of incompatible function types: %a\n does not match %a%s" display_typ t1 display_typ t2 (string_of_context "in" context)
   | IncompatibleAsyncSorts (context, s1, s2) ->
     (* TODO: refactor with other string_of_async_sort function, look at other uses of this function *)
     let string_of_async_sort = function
       | Fut -> "async"
       | Cmp -> "async*"
     in
-    Format.asprintf "Incompatible async sorts: %s\n does not match %s%s" (string_of_async_sort s1) (string_of_async_sort s2) (string_of_context "in" context)
+    Format.asprintf "of incompatible async sorts: %s\n does not match %s%s" (string_of_async_sort s1) (string_of_async_sort s2) (string_of_context "in" context)
   | IncompatibleAsyncScopes (context, t1, t2) ->
-    Format.asprintf "Incompatible async scopes: %a\n does not match %a%s" display_typ t1 display_typ t2 (string_of_context "in" context)
+    Format.asprintf "of incompatible async scopes: %a\n does not match %a%s" display_typ t1 display_typ t2 (string_of_context "in" context)
 
 let is_redundant_explanation t1 t2 = function
   | IncompatibleTypes (_, t1', t2')

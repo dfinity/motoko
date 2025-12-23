@@ -3,7 +3,7 @@
   List<Int> = ?(Int, List<Int>)
  is not a subtype of
   List<Nat> = ?(Nat, List<Nat>)
- because: The type 
+ because the type 
   Int
  is not compatible with type 
   Nat
@@ -14,7 +14,7 @@
   List<(Int, Int)> = ?((Int, Int), List<(Int, Int)>)
  is not a subtype of
   List<(Nat, Nat)> = ?((Nat, Nat), List<(Nat, Nat)>)
- because: The type 
+ because the type 
   Int
  is not compatible with type 
   Nat

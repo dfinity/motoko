@@ -8,7 +8,7 @@
    }
  is not a subtype of
   var {#v1 : [[var Cell]]; #v2 : {bits : [var Nat64]; size : Nat}}
- because: Case `#v3` missing from type 
+ because case `#v3` is missing from type 
   {#v1 : [[var Cell]]; #v2 : {bits : [var Nat64]; size : Nat}}
  of `state`.
  Write an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
