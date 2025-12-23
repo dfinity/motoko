@@ -171,9 +171,7 @@ module MakeState() = struct
        I.{label = I.Id nat @@ no_region; typ = typ t} @@ region
     | Id id ->
        I.{label = I.Named id @@ no_region; typ = typ t} @@ region
-  and fields fs =
-    List.map field
-      (List.filter (fun f -> not (is_typ f.typ)) fs)
+  and fields fs = List.map field (val_fields fs)
   and tuple ts =
     List.mapi (fun i x ->
         let id = Lib.Uint32.of_int i in

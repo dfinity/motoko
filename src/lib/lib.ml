@@ -323,6 +323,11 @@ struct
     | _ -> raise Utf8
 end
 
+type ('a, 'b) these =
+  | This of 'a
+  | That of 'b
+  | Both of 'a * 'b
+
 module List =
 struct
   let equal p xs ys =
@@ -439,13 +444,25 @@ struct
       (match list with
        | [] -> false
        | hd' :: tl' -> equal hd hd' && is_prefix equal tl tl')
-  
+
   (* tail-recursive map *)
   let[@tail_mod_cons] rec safe_map f l = match l with
     | [] -> []
     | x :: xs ->
       f x :: (safe_map[@tailcall]) f xs
     [@@coverage off]
+
+  let align cmp xs ys =
+    let next (xs, ys) = match xs, ys with
+      | [], [] -> None
+      | x::xs', [] -> Some (This x, (xs', []))
+      | [], y::ys' -> Some (That y, ([], ys'))
+      | x::xs', y::ys' -> (match cmp x y with
+        | -1 -> Some (This x, (xs', ys))
+        | +1 -> Some (That y, (xs, ys'))
+        | _ -> Some (Both(x, y), (xs', ys')))
+    in
+    Seq.unfold next (xs, ys)
 end
 
 module List32 =
