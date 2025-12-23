@@ -249,7 +249,7 @@ and explanation =
   | MissingTag of context * lab * typ
   | UnexpectedTag of context * lab * typ
   | MissingField of context * lab * typ
-  | UnexpectedField of context * lab * typ
+  | UnexpectedField of context * context * field * typ
   | FewerItems of context * string
   | MoreItems of context * string
   | PromotionToAny of context * typ
@@ -264,7 +264,8 @@ and context_item =
   | NamedType of name
   | StableVariable of lab
   | Field of lab
-and context = context_item list
+  | ArrayItem
+  and context = context_item list
 
 exception Undecided (* raised if termination depth exceeded  *)
 

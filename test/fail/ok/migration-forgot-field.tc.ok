@@ -1,0 +1,8 @@
+migration-forgot-field.mo:5.8-5.55: type error [M0204], migration expression produces field `data` of type
+  [Data]
+, not the expected type
+  [Data]
+because: Unsupported additional field `b`. Type
+  [Data = {... b : Text ...}]
+ is not compatible with
+  [Data = { ... }]
