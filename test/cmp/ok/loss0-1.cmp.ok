@@ -4,7 +4,7 @@
  is not a stable subtype of
   var {} because: Missing field `field` in type 
   {}
- of one.
+ of `one`.
  The data can only be dropped by an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
 (unknown location): Compatibility error [M0216], the new type of stable variable `two` implicitly drops data of the previous version. 
  The previous type
@@ -12,6 +12,7 @@
  is not a stable subtype of
   var Any because: Converting 
   Nat
- to `Any` is disallowed as it leads to data loss: Any (used by two).
+ to `Any` is disallowed as it leads to data loss
+ in `two`.
  The data can only be dropped by an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
 FALSE
