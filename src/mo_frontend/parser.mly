@@ -242,6 +242,7 @@ and objblock eo s id ty dec_fields =
 %token ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN SHRASSIGN ROTLASSIGN ROTRASSIGN
 %token WRAPADDASSIGN WRAPSUBASSIGN WRAPMULASSIGN WRAPPOWASSIGN
 %token NULL
+%token NULLCOALESCE
 %token FLEXIBLE STABLE
 %token TRANSIENT PERSISTENT
 %token<string> DOT_NUM
@@ -746,6 +747,8 @@ exp_un(B) :
     { e }
   | e1=exp_bin(B) ASSIGN e2=exp(ob)
     { AssignE(e1, e2) @? at $sloc}
+  | e1=exp_bin(B) NULLCOALESCE e2=exp_nest
+    { NullCoalesceE(e1, e2) @? at $sloc }
   | e1=exp_bin(B) op=binassign e2=exp(ob)
     { assign_op e1 (fun e1' -> BinE(ref Type.Pre, e1', op, e2) @? at $sloc) (at $sloc) }
   | RETURN %prec RETURN_NO_ARG
