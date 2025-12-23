@@ -159,7 +159,6 @@ rule token mode = parse
   | ">=" { GEOP }
   | "<=" { LEOP }
   | ":=" { ASSIGN }
-  | "??" { NULLCOALESCE }
 
   | "+=" { PLUSASSIGN }
   | "-=" { MINUSASSIGN }
