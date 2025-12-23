@@ -430,14 +430,9 @@ let system_funcs tfs =
     T.("postupgrade", Func (Local, Returns, [scope_bind], [], []));
     ("lowmemory", T.low_memory_type);
     ("inspect",
-     (let msg_typ = T.decode_msg_typ tfs in
-      let record_typ =
-        T.(Obj (Object, List.sort compare_field
-           [{lab = "caller"; typ = principal; src = empty_src};
-            {lab = "arg"; typ = blob; src = empty_src};
-            {lab = "msg"; typ = msg_typ; src = empty_src}]))
-      in
-        T.(Func (Local, Returns, [],  [record_typ], [bool]))))
+     let record_typ =
+       T.(obj Object [("caller", principal); ("arg", blob); ("msg", T.decode_msg_typ tfs)]) in
+     T.(Func (Local, Returns, [], [record_typ], [bool])))
   ]
 
 

@@ -361,7 +361,7 @@ let throwErrorCodes = List.sort compare_field [
   { lab = "canister_reject"; typ = unit; src = empty_src}
 ]
 
-let call_error = Obj(Object,[{ lab = "err_code"; typ = Prim Nat32; src = empty_src}])
+let call_error = obj Object [("err_code", Prim Nat32)]
 
 let catchErrorCodes = List.sort compare_field (
   throwErrorCodes @ [
@@ -380,7 +380,7 @@ let catch = Prim Error
 (* Shared call context *)
 
 let caller = principal
-let ctxt = Obj (Object,[{ lab = "caller"; typ = caller; src = empty_src}])
+let ctxt = obj Object [("caller", caller)]
 
 let prim = function
   | "Null" -> Null
@@ -414,8 +414,7 @@ let codom c to_scope ts2 =  match c with
 (* Coercions *)
 
 let iter_obj t =
-  Obj (Object,
-    [{lab = "next"; typ = Func (Local, Returns, [], [], [Opt t]); src = empty_src}])
+  obj Object [("next", Func (Local, Returns, [], [], [Opt t]))]
 
 
 (* Shifting *)
@@ -1695,7 +1694,7 @@ let motoko_stable_var_info_fld =
   { lab = "__motoko_stable_var_info";
     typ =
       Func(Shared Query, Promises, [scope_bind], [],
-        [ Obj(Object, [{lab = "size"; typ = nat64; src = empty_src}]) ]);
+        [ obj Object [("size", nat64)] ]);
     src = empty_src;
   }
 
@@ -1706,23 +1705,22 @@ let motoko_gc_trigger_fld =
   }
 
 let motoko_runtime_information_type =
-  Obj(Object, [
-    (* Fields must be sorted by label *)
-    {lab = "callbackTableCount"; typ = nat; src = empty_src};
-    {lab = "callbackTableSize"; typ = nat; src = empty_src};
-    {lab = "compilerVersion"; typ = text; src = empty_src};
-    {lab = "garbageCollector"; typ = text; src = empty_src};
-    {lab = "heapSize"; typ = nat; src = empty_src};
-    {lab = "logicalStableMemorySize"; typ = nat; src = empty_src};
-    {lab = "maxLiveSize"; typ = nat; src = empty_src};
-    {lab = "maxStackSize"; typ = nat; src = empty_src};
-    {lab = "memorySize"; typ = nat; src = empty_src};
-    {lab = "reclaimed"; typ = nat; src = empty_src};
-    {lab = "rtsVersion"; typ = text; src = empty_src};
-    {lab = "sanityChecks"; typ = bool; src = empty_src};
-    {lab = "stableMemorySize"; typ = nat; src = empty_src};
-    {lab = "totalAllocation"; typ = nat; src = empty_src};
-  ])
+  obj Object [
+    ("callbackTableCount", nat);
+    ("callbackTableSize", nat);
+    ("compilerVersion", text);
+    ("garbageCollector", text);
+    ("heapSize", nat);
+    ("logicalStableMemorySize", nat);
+    ("maxLiveSize", nat);
+    ("maxStackSize", nat);
+    ("memorySize", nat);
+    ("reclaimed", nat);
+    ("rtsVersion", text);
+    ("sanityChecks", bool);
+    ("stableMemorySize", nat);
+    ("totalAllocation", nat);
+  ]
 
 let motoko_runtime_information_fld =
   { lab = "__motoko_runtime_information";
