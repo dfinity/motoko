@@ -2332,9 +2332,9 @@ let string_of_context preposition context =
   if context = [] then "" else
   let emit_item item nested =
     match item with
-    | (Field label) -> Printf.sprintf "`%s`" label, "in"
-    | (ConsType c) ->  Printf.sprintf "`%s`" (remove_hash_suffix (Cons.name c)), "in"
-    | (NamedType name)-> Printf.sprintf "`(%s : _)`" name, "in"
+    | Field label -> Printf.sprintf "`%s`" label, "in"
+    | ConsType c ->  Printf.sprintf "`%s`" (remove_hash_suffix (Cons.name c)), "in"
+    | NamedType name-> Printf.sprintf "`(%s : _)`" name, "in"
     | Bounds -> "type parameters", "of"
     | Domain -> "arguments", "of"
     | CoDomain -> "results", "of"
