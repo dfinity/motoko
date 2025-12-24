@@ -1,6 +1,8 @@
 (** Maintenance note:
     Update of the expected values could be done via [dune runtest --auto-promote].
 *)
+module Parser = Mo_frontend.Parser
+module Lexer = Mo_frontend.Lexer
 
 let parse_from_lexbuf lexbuf : Mo_def.Syntax.prog Diag.result =
   let open Mo_frontend in
@@ -24,6 +26,21 @@ let show  (r: Mo_def.Syntax.prog Diag.result) : String.t =
   match r with
   | Ok (prog, msgs) ->
     "Ok: " ^ Wasm.Sexpr.to_string 80 (Mo_def.Arrange.prog prog)
+    ^ "\n with errors:\n" ^ show_msgs msgs
+  | Error msgs -> "Errors:\n" ^ show_msgs msgs
+
+let show_with_types  (r: Mo_def.Syntax.prog Diag.result) : String.t =
+  let show_msgs msgs =
+    String.concat "\n" (List.map Diag.string_of_message msgs) in
+  match r with
+  | Ok (prog, msgs) ->
+    let module Arrange = Mo_def.Arrange.Make(
+      struct
+        include Mo_def.Arrange.Default
+        let include_types = true
+      end
+    ) in
+    "Ok: " ^ Wasm.Sexpr.to_string 80 (Arrange.prog prog)
     ^ "\n with errors:\n" ^ show_msgs msgs
   | Error msgs -> "Errors:\n" ^ show_msgs msgs
 
@@ -407,3 +424,269 @@ let%expect_test "test5" =
       module class <func_pat> <annot_opt> <class_body> (e.g. 'module class f(x : Int) : Int = {}')
       actor class <func_pat> <annot_opt> <class_body> (e.g. 'actor class f(x : Int) : Int = {}')
       persistent actor class <func_pat> <annot_opt> <class_body> (e.g. 'persistent actor class f(x : Int) : Int = {}') |}]
+
+let%expect_test "test type recovery 1" =
+  let s = "func test_func () {
+  let x = Counter(0);
+  x.
+  let a = 1;
+}
+
+class Counter(n: Nat) {
+  var counter : Nat = n;
+  func inc() {counter +=1;};
+  func get() : Nat {counter};
+}" in
+  match (parse_from_string s) with
+  | Ok (prog, _) -> begin
+    let open Mo_frontend in
+    let async_cap = Pipeline.async_cap_of_prog prog in
+    match (Typing.infer_prog ~enable_type_recovery:true Pipeline.initial_stat_env None async_cap prog) with
+    | Ok (_, msgs) ->
+      Printf.printf "%s" @@ show_with_types (Ok (prog, msgs));
+      [%expect {|
+        Ok: (Prog
+          (LetD
+            (: (VarP (ID test_func)) () -> ())
+            (:
+              (FuncE
+                () -> ()
+                Local
+                test_func
+                (: (TupP) ())
+                _
+
+                (:
+                  (BlockE
+                    (LetD
+                      (: (VarP (ID x)) {})
+                      (:
+                        (CallE
+                          _
+                          (: (VarE (ID Counter)) (n : Nat) -> Counter)
+                          (: (LitE (NatLit 0)) Nat)
+                        )
+                        {}
+                      )
+                    )
+                    (ExpD
+                      (: (DotE (: (VarE (ID x)) {}) (ID __error_recovery_var__)) ???)
+                    )
+                    (LetD (: (VarP (ID a)) Nat) (: (LitE (NatLit 1)) Nat))
+                  )
+                  ()
+                )
+              )
+              () -> ()
+            )
+          )
+          (ClassD
+            _
+            Local
+            (ID Counter)
+            (:
+              (ParP
+                (: (AnnotP (: (VarP (ID n)) Nat) (: (PathT (IdH (ID Nat))) Nat)) Nat)
+              )
+              Nat
+            )
+            _
+            Object
+            (ID @anon-object-7.23)
+            (DecField
+              (VarD
+                (ID counter)
+                (: (AnnotE (: (VarE (ID n)) Nat) (: (PathT (IdH (ID Nat))) Nat)) Nat)
+              )
+              Private
+              (Flexible)
+            )
+            (DecField
+              (LetD
+                (: (VarP (ID inc)) () -> ())
+                (:
+                  (FuncE
+                    () -> ()
+                    Local
+                    inc
+                    (: (TupP) ())
+                    _
+
+                    (:
+                      (BlockE
+                        (ExpD
+                          (:
+                            (AssignE
+                              (: (VarE (ID counter)) var Nat)
+                              (:
+                                (BinE
+                                  Nat
+                                  (: (VarE (ID counter)) Nat)
+                                  AddOp
+                                  (: (LitE (NatLit 1)) Nat)
+                                )
+                                Nat
+                              )
+                            )
+                            ()
+                          )
+                        )
+                      )
+                      ()
+                    )
+                  )
+                  () -> ()
+                )
+              )
+              Private
+              (Flexible)
+            )
+            (DecField
+              (LetD
+                (: (VarP (ID get)) () -> Nat)
+                (:
+                  (FuncE
+                    () -> Nat
+                    Local
+                    get
+                    (: (TupP) ())
+                    (: (PathT (IdH (ID Nat))) Nat)
+
+                    (: (BlockE (ExpD (: (VarE (ID counter)) Nat))) Nat)
+                  )
+                  () -> Nat
+                )
+              )
+              Private
+              (Flexible)
+            )
+          )
+        )
+
+         with errors:
+        (unknown location): type error [M0072], field __error_recovery_var__ does not exist in type:
+          {}
+      |}]
+    | Error msgs -> Printf.printf "%s" @@ show (Error msgs)
+    end
+  | Error _ as r -> Printf.printf "%s" @@ show r;
+  [%expect.unreachable]
+
+let%expect_test "test type recovery 2" =
+  let s = "module M {};
+let _x = M.
+" in
+  match (parse_from_string s) with
+  | Ok (prog, _) -> begin
+    let open Mo_frontend in
+    let async_cap = Pipeline.async_cap_of_prog prog in
+    match (Typing.infer_prog ~enable_type_recovery:true Pipeline.initial_stat_env None async_cap prog) with
+    | Ok (_, msgs) ->
+      Printf.printf "%s" @@ show_with_types (Ok (prog, msgs));
+      [%expect {|
+        Ok: (Prog
+          (LetD (: (VarP (ID M)) module {}) (: (ObjBlockE _ Module _) ???))
+          (LetD
+            (: (VarP (ID _x)) ???)
+            (: (DotE (: (VarE (ID M)) ???) (ID __error_recovery_var__)) ???)
+          )
+        )
+
+         with errors:
+        (unknown location): type error [M0072], field __error_recovery_var__ does not exist in type:
+          module {}
+      |}]
+    | Error msgs -> Printf.printf "%s" @@ show (Error msgs)
+    end
+  | Error _ as r -> Printf.printf "%s" @@ show r;
+  [%expect.unreachable]
+
+let%expect_test "test type recovery 3" =
+  let s = "let _x = (1 +
+" in
+  match (parse_from_string s) with
+  | Ok (prog, _) -> begin
+    let open Mo_frontend in
+    let async_cap = Pipeline.async_cap_of_prog prog in
+    match (Typing.infer_prog ~enable_type_recovery:true Pipeline.initial_stat_env None async_cap prog) with
+    | Ok (_, msgs) ->
+      Printf.printf "%s" @@ show_with_types (Ok (prog, msgs));
+      [%expect {|
+        Ok: (Prog
+          (LetD
+            (: (VarP (ID _x)) Nat)
+            (:
+              (BinE
+                Nat
+                (: (LitE (NatLit 1)) Nat)
+                AddOp
+                (: (LoopE (: (BlockE) ())) None)
+              )
+              Nat
+            )
+          )
+        )
+
+         with errors:
+      |}]
+    | Error msgs -> Printf.printf "%s" @@ show (Error msgs)
+    end
+  | Error _ as r -> Printf.printf "%s" @@ show r;
+  [%expect.unreachable]
+
+let%expect_test "test type recovery 4" =
+  let s = "f(x
+" in
+  match (parse_from_string s) with
+  | Ok (prog, _) -> begin
+    let open Mo_frontend in
+    let async_cap = Pipeline.async_cap_of_prog prog in
+    match (Typing.infer_prog ~enable_type_recovery:true Pipeline.initial_stat_env None async_cap prog) with
+    | Ok (_, msgs) ->
+      Printf.printf "%s" @@ show_with_types (Ok (prog, msgs));
+      [%expect {|
+        Ok: (Prog (ExpD (: (CallE _ (: (VarE (ID f)) ???) (: (VarE (ID x)) ???)) ???)))
+
+         with errors:
+        (unknown location): type error [M0057], unbound variable f
+      |}]
+    | Error msgs -> Printf.printf "%s" @@ show (Error msgs)
+    end
+  | Error _ as r -> Printf.printf "%s" @@ show r;
+  [%expect.unreachable]
+
+let%expect_test "test type recovery 5" =
+  let s = "import A \"a\";
+  A.f(x
+" in
+  match (parse_from_string s) with
+  | Ok (prog, _) -> begin
+    let open Mo_frontend in
+    let async_cap = Pipeline.async_cap_of_prog prog in
+    match (Typing.infer_prog ~enable_type_recovery:true Pipeline.initial_stat_env None async_cap prog) with
+    | Ok (_, msgs) ->
+      Printf.printf "%s" @@ show_with_types (Ok (prog, msgs));
+      [%expect {|
+        Ok: (Prog
+          (LetD (: (VarP (ID A)) ???) (: (ImportE a) ???))
+          (ExpD
+            (:
+              (CallE
+                _
+                (: (DotE (: (VarE (ID A)) ???) (ID f)) ???)
+                (: (VarE (ID x)) ???)
+              )
+              ???
+            )
+          )
+        )
+
+         with errors:
+        (unknown location): type error [M0020], unresolved import a
+      |}]
+    | Error msgs -> Printf.printf "%s" @@ show (Error msgs)
+    end
+  | Error _ as r -> Printf.printf "%s" @@ show r;
+  [%expect.unreachable]
+
+
