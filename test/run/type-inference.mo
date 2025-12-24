@@ -1,3 +1,5 @@
+//MOC-FLAG -W M0074,M0081,M0101
+
 import Prim "mo:⛔";
 
 // Branch warnings.
