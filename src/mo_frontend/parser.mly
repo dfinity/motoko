@@ -54,7 +54,6 @@ let funcT (sort, tbs, t1, t2) =
   | Type.Shared _, _ -> FuncT (sort, ensure_scope_bind "" tbs, t1, t2)
   | _ -> FuncT(sort, tbs, t1, t2)
 
-
 let dup_var x = VarE (x.it @~ x.at) @? x.at
 
 let name_exp e =
@@ -368,6 +367,9 @@ seplist1(X, SEP) :
 %inline implicit :
   | IMPLICIT { "implicit" @@ at $sloc }
 
+%inline id_wild :
+  | UNDERSCORE { "_" @@ at $sloc }
+
 %inline typ_id :
   | id=ID { id @= at $sloc }
 
@@ -469,8 +471,7 @@ typ_pre :
       in ObjT(s, tfs') @! at $sloc }
 
 typ_nobin :
-  | t=typ_pre
-    { t }
+  | t=typ_pre { t }
   | s=func_sort_opt tps=typ_params_opt t1=typ_un ARROW t2=typ_nobin
     { funcT(s, tps, t1, t2) @! at $sloc }
 
@@ -483,8 +484,19 @@ typ :
     { OrT(t1, t2) @! at $sloc }
 
 typ_item :
-  | i=implicit COLON t = typ { Some i, t }
-  | i=id COLON t=typ { Some i, t }
+  | i=implicit COLON t = typ
+    { Some i, t }
+  | i=id COLON t=typ
+    { Some i, t }
+  | i=id_wild COLON t=typ
+    { Some i, t }
+  | implicit i=id COLON t=typ
+    { None,
+      ImplicitT ({i with it = Some i.it}, t) @! at $sloc
+    }
+  | implicit i=id_wild COLON t=typ
+    { None,
+      ImplicitT ({i with it = None}, t) @! at $sloc }
   | t=typ { None, t }
 
 typ_args :
@@ -938,8 +950,28 @@ pat_opt :
   | (* empty *)
     { fun sloc -> WildP @! sloc }
 
+pat_arg :
+  | implicit x=id COLON t=typ
+    { AnnotP(VarP x @! x.at, (ImplicitT({x with it = Some x.it}, t) @! at $sloc)) @! at $sloc
+    }
+  | implicit x=id COLON t=typ EQ p=pat
+    { AnnotP(p, (ImplicitT({x with it = Some x.it} , t) @! at $sloc)) @! at $sloc }
+  | implicit w=id_wild COLON t=typ EQ p=pat
+    { AnnotP(p, (ImplicitT({w with it = None}, t) @! at $sloc)) @! at $sloc }
+  | p = pat_bin { p }
+
+pat_args :
+  | UNDERSCORE
+    { WildP @! at $sloc }
+  | x=id
+    { VarP(x) @! at $sloc }
+  | l=lit
+    { LitP(ref l) @! at $sloc }
+  | LPAR ps=seplist(pat_arg, COMMA) RPAR
+    { (match ps with [p] -> ParP(p) | _ -> TupP(ps)) @! at $sloc }
+
 func_pat :
-  | xf=id_opt ts=typ_params_opt p=pat_plain { (xf, ts, p) }
+  | xf=id_opt ts=typ_params_opt p=pat_args { (xf, ts, p) }
 
 (* Declarations *)
 

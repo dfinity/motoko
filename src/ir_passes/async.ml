@@ -208,7 +208,8 @@ let transform prog =
     | Non -> Non
     | Pre -> Pre
     | Typ c -> Typ (t_con c)
-    | Named _ -> assert false (* removed by erase_typ_field *)
+    | Named _
+    | Implicit _ -> assert false (* removed by erase_typ_field *)
     | Weak t -> Weak (t_typ t)
 
   and t_bind tb =

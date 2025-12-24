@@ -53,7 +53,8 @@ let transform prog =
     | Any -> Any
     | Non -> Non
     | Pre -> Pre
-    | Named (n , t) -> (* erased! *)
+    | Named (_, t) (* erased! *)
+    | Implicit (_ , t) -> (* erased! *)
       t_typ t
     | Typ c -> assert false (* second class *)
     | Weak t -> Weak (t_typ t)
