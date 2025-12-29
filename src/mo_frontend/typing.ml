@@ -2215,7 +2215,7 @@ and try_infer_dot_exp env at exp id (desc, pred) =
       error env at "M0071"
         "cannot infer type of forward field reference %s"
         id.it
-    | t when pred t ->
+    | t when pred (T.as_immut t) ->
       if not env.pre then
         check_deprecation env at "field" id.it (T.lookup_val_deprecation id.it tfs);
       Ok(t)

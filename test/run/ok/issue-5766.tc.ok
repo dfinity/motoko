@@ -1,5 +1,0 @@
-issue-5766.mo:9.15-9.19: type error [M0234], field call does exist in type:
-  {var call : Nat -> ()}
-but is not a function.
-
-Did you mean field call?
