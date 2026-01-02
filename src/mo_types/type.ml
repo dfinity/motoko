@@ -1,6 +1,7 @@
 open Field_sources
 
 (* Representation *)
+type id = string
 type lab = string
 type var = string
 type name = string
@@ -864,6 +865,8 @@ let concrete t =
 
 (* Mapping constructors to type paths *)
 
+type path = IdP of id | DotP of path * lab
+
 let paths p t =
   let cm = ref ConEnv.empty in
   let seen = ref S.empty in
@@ -873,10 +876,10 @@ let paths p t =
       seen := S.add t !seen;
       match t with
       | Typ c ->
-        cm := ConEnv.add c (List.rev p) (!cm)
+        cm := ConEnv.add c p (!cm)
       | Named (_, t) -> go p t
       | Obj (_, fs) ->
-        List.iter (fun f -> go (f.lab::p) f.typ) fs
+        List.iter (fun f -> go (DotP (p, f.lab)) f.typ) fs
       | Con (c, ts) ->
         (match Cons.kind c with
         | Abs (_, t) -> go p (open_ ts t)
@@ -1911,7 +1914,7 @@ end
 
 module MakePretty(Cfg : PrettyConfig) = struct
 
-let con_map = ref (ConEnv.empty : string list ConEnv.t)
+let con_map = ref (ConEnv.empty : path ConEnv.t)
 
 let set_con_map cm = con_map := cm
 let clear_con_map () = con_map := ConEnv.empty
@@ -1964,8 +1967,8 @@ module StringSet = Set.Make(String)
 let vs_of_cs cs =
   let names = ConSet.fold (fun c ns ->
       match ConEnv.find_opt c (!con_map) with
-      | Some [id] -> StringSet.add id ns (* avoid required simple paths *)
-      | Some _ -> ns (* ignore qualified paths *)
+      | Some (IdP id) -> StringSet.add id ns (* avoid required simple paths *)
+      | Some (DotP _) -> ns (* ignore qualified paths *)
       | None -> (* avoid other anonymous cons *)
         StringSet.add (Cons.name c) ns)
       cs
@@ -1976,9 +1979,13 @@ let vs_of_cs cs =
 let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s%s%d" x Cfg.par_sep i
 
+let rec string_of_path p = match p with
+  | IdP id -> id
+  | DotP (p1, lab) -> string_of_path p1 ^ "." ^ lab
+
 let string_of_con c =
   match ConEnv.find_opt c !con_map with
-  | Some path -> String.concat "." path
+  | Some path -> string_of_path path
   | None ->
     let name = Cons.to_string Cfg.show_stamps Cfg.con_sep c in
     if Cfg.show_hash_suffix then name
@@ -2363,7 +2370,7 @@ let string_of_explanation explanation =
 end
 
 module type Pretty = sig
-  val set_con_map : string list ConEnv.t -> unit
+  val set_con_map : path ConEnv.t -> unit
   val clear_con_map : unit -> unit
   val pp_lab : Format.formatter -> lab -> unit
   val pp_typ : Format.formatter -> typ -> unit
