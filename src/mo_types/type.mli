@@ -221,6 +221,7 @@ val opaque : typ -> bool
 val concrete : typ -> bool
 
 type path = IdP of id | DotP of path * lab
+val compare_path : path -> path -> int
 val paths : path -> typ -> path ConEnv.t
 
 val shared : typ -> bool

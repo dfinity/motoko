@@ -867,6 +867,16 @@ let concrete t =
 
 type path = IdP of id | DotP of path * lab
 
+let rec compare_path p1 p2 =
+  match (p1, p2) with
+  | IdP id1, IdP id2 -> String.compare id1 id2
+  | DotP (p1, l1), DotP (p2, l2) ->
+     (match compare_path p1 p2 with
+     | 0 -> String.compare l1 l2
+     | other -> other)
+  | IdP _, DotP _ -> -1
+  | DotP _, IdP _ -> 1
+
 let paths p t =
   let cm = ref ConEnv.empty in
   let seen = ref S.empty in

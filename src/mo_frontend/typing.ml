@@ -127,11 +127,17 @@ let kind_of_field_pattern pf = match pf.it with
   | _ -> Scope.Declaration
 
 let con_map env =
+  let choose c p1 p2 = if T.compare_path p1 p2 <= 0 then Some p1 else Some p2
+  in
+  let update p1 o = match o with
+    | None -> Some p1
+    | Some p2 -> if T.compare_path p1 p2 <= 0 then Some p1 else Some p2
+  in
   let m = ref T.ConEnv.empty in
   T.Env.iter (fun id (typ, _, _, _) ->
-      m := T.ConEnv.adjoin (!m) (T.paths (T.IdP id) typ))
+      m := T.ConEnv.union choose (!m) (T.paths (T.IdP id) typ))
     env.vals;
-  T.Env.iter (fun id c -> m := T.ConEnv.add c (T.IdP id) !m) env.typs;
+  T.Env.iter (fun id c -> m := T.ConEnv.update c (update (T.IdP id)) !m) env.typs;
   !m
 
 (* Error bookkeeping *)
