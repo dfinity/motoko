@@ -430,14 +430,9 @@ let system_funcs tfs =
     T.("postupgrade", Func (Local, Returns, [scope_bind], [], []));
     ("lowmemory", T.low_memory_type);
     ("inspect",
-     (let msg_typ = T.decode_msg_typ tfs in
-      let record_typ =
-        T.(Obj (Object, List.sort compare_field
-           [{lab = "caller"; typ = principal; src = empty_src};
-            {lab = "arg"; typ = blob; src = empty_src};
-            {lab = "msg"; typ = msg_typ; src = empty_src}]))
-      in
-        T.(Func (Local, Returns, [],  [record_typ], [bool]))))
+     let record_typ =
+       T.(obj Object [("caller", principal); ("arg", blob); ("msg", T.decode_msg_typ tfs)]) in
+     T.(Func (Local, Returns, [], [record_typ], [bool])))
   ]
 
 
@@ -523,10 +518,7 @@ and check_obj_path' env path : T.typ =
         id.it
         display_obj (T.Obj(s, fs))
         (Suggest.suggest_id "field" id.it
-          (List.filter_map
-            (function
-              {T.typ=T.Typ _;_} -> None
-            | {T.lab;_} -> Some lab) fs))
+          (List.map (fun f -> f.T.lab) (T.val_fields fs)))
 
 let rec check_typ_path env path : T.con =
   let c = check_typ_path' env path in
@@ -555,9 +547,7 @@ and check_typ_path' env path : T.con =
           id.it
           display_obj (T.Obj(s, fs))
           (Suggest.suggest_id "type field" id.it
-             (List.filter_map
-               (function { T.lab; T.typ=T.Typ _;_ } -> Some lab
-               |  _ -> None) fs))
+             (List.map (fun f -> f.T.lab) (T.val_fields fs)))
 
 (* Type helpers *)
 
@@ -2218,10 +2208,7 @@ and try_infer_dot_exp env at exp id (desc, pred) =
   | Ok((s, tfs)) -> begin
     let suggest () =
       Suggest.suggest_id "field" id.it
-        (List.filter_map
-           (function
-              { T.typ=T.Typ _;_} -> None
-            | {T.lab;_} -> Some lab) tfs)
+        (List.map (fun f -> f.T.lab) (T.val_fields tfs))
     in
     match T.lookup_val_field id.it tfs with
     | T.Pre ->
@@ -2247,10 +2234,7 @@ and try_infer_dot_exp env at exp id (desc, pred) =
              id.it
              display_obj t0
              (Suggest.suggest_id "field" id.it
-                (List.filter_map
-                   (function
-                      { T.typ=T.Typ _;_} -> None
-                    | {T.lab;_} -> Some lab) tfs))))
+                (List.map (fun f -> f.T.lab) (T.val_fields tfs)))))
     end
 
 and infer_exp_field env rf =
@@ -2448,7 +2432,8 @@ and check_exp' env0 t exp : T.typ =
       | _ -> []
     in
     let missing_val_field_labs = fts
-      |> List.filter T.(fun ft -> not (is_typ ft.T.typ) && Option.is_none (lookup_val_field_opt ft.lab fts'))
+      |> T.val_fields
+      |> List.filter T.(fun ft -> Option.is_none (lookup_val_field_opt ft.lab fts'))
       |> List.map (fun ft -> Printf.sprintf "'%s'" ft.T.lab)
     in
     begin match missing_val_field_labs with
@@ -3428,39 +3413,39 @@ and check_pats env ts pats ve at : Scope.val_env =
   go ts pats ve
 
 and check_pat_fields env t tfs pfs ve at : Scope.val_env =
-  match tfs, pfs with
-  | _, [] -> ve
-  | _, {it = TypPF(id); at; _}::pfs' ->
-    (* NOTE(Christoph): We check the note to see if we were able to
-       resolve this type field in the "types-only" pass. *)
-    if Option.is_none id.note then
-      error env at "M0221" "failed to determine type for type pattern field";
-    check_pat_fields env t tfs pfs' ve at
-  | [], {it = ValPF(id, _); at; _}::_ ->
-     error env at "M0119"
-       "object field %s is not contained in expected type%a"
-       id.it
-       display_typ_expand t
-  | tf::tfs', pf::pfs' ->
-     match compare_pat_typ_field tf pf with
-     | -1 -> check_pat_fields env t tfs' pfs ve at
-     | 1 -> (match pf.it with
-            | ValPF(_) -> check_pat_fields env t [] pfs ve at
-            | _ -> check_pat_fields env t tfs pfs' ve at)
-     | _ -> match tf, pf with
-        | T.{lab; typ; src}, {it = ValPF(id, pat); _} ->
-           if T.is_mut typ then
-             error env pf.at "M0120" "cannot pattern match mutable field %s" lab;
-           check_deprecation env pf.at "field" lab src.T.depr;
-           let val_kind = kind_of_field_pattern pf in
-           let ve1 = check_pat_aux env typ pat val_kind in
-           let ve' =
-             disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
-           (match pfs' with
-           | {it = ValPF(id', _); at = at';_}::_ when id'.it = lab ->
-              error env at' "M0121" "duplicate field %s in object pattern" lab
-           | _ -> check_pat_fields env t tfs' pfs' ve' at)
-        | _, _ -> assert false
+  let cmp (tf : T.field) pf = match tf, pf with
+    | T.{ typ = T.Typ _; _ }, _ -> -1
+    | T.{ lab; _ }, (id, _, _) -> String.compare lab id.it
+    in
+  let value_pfs = List.filter_map (fun pf -> match pf.it with
+    | TypPF(id) ->
+      (* NOTE(Christoph): We check the note to see if we were able to
+         resolve this type field in the "types-only" pass. *)
+      if Option.is_none id.note then
+        error env pf.at "M0221" "failed to determine type for type pattern field";
+      None
+    | ValPF(id, p) -> Some(id, p, pf)) pfs in
+  let last_field = ref "" in
+  Lib.List.align cmp tfs value_pfs |>
+  Seq.fold_left (fun ve -> function
+    | Lib.This _ -> ve
+    | Lib.That (id, _, pf) ->
+      if String.equal !last_field id.it then
+        error env pf.at "M0121" "duplicate field %s in object pattern" id.it
+      else
+        error env pf.at "M0119"
+          "object field %s is not contained in expected type%a"
+          id.it
+          display_typ_expand t
+    | Lib.Both(T.{ lab; typ; src }, (id, pat, pf)) ->
+      last_field := lab;
+      if T.is_mut typ then
+        error env pf.at "M0120" "cannot pattern match mutable field %s" lab;
+      check_deprecation env pf.at "field" lab src.T.depr;
+      let val_kind = kind_of_field_pattern pf in
+      let ve1 = check_pat_aux env typ pat val_kind in
+      disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1
+  ) ve
 
 and check_pat_typ_dec env t pat : Scope.typ_env =
   match pat.it, T.promote t with
@@ -3510,36 +3495,35 @@ and check_pats_typ_dec env ts pats te at : Scope.typ_env =
   in
   go ts pats te
 
-and check_pat_fields_typ_dec env t tfs pfs te at : Scope.typ_env = match tfs, pfs with
-  | _, [] -> te
-  | [], {it = TypPF(id); at; _}::_ ->
-    error env at "M0119"
-      "object type field %s is not contained in expected type%a"
-      id.it
-      display_typ_expand t
-  | [], {it = ValPF(_); _}::pfs' ->
-     check_pat_fields_typ_dec env t tfs pfs' te at
-  | tf::tfs', pf::pfs' ->
-     match compare_pat_typ_field tf pf with
-     | -1 -> check_pat_fields_typ_dec env t tfs' pfs te at
-     | 1 ->
-        (match pf.it with
-        | TypPF(_) -> check_pat_fields_typ_dec env t [] pfs te at
-        | _ -> check_pat_fields_typ_dec env t tfs pfs' te at)
-     | _ ->
-        match tf, pf with
-        | T.{lab; typ = Typ t'; _}, { it = TypPF(id); _ } ->
-           id.note <- Some t';
-           let te' = T.Env.add id.it t' te in
-           begin match pfs' with
-           | {it = TypPF(id'); at = at';_}::_ when id'.it = lab ->
-              error env at' "M0121" "duplicate type field %s in object pattern" lab
-           | _ -> check_pat_fields_typ_dec env t tfs' pfs' te' at
-           end
-        | T.{lab; typ; _}, { it = ValPF(id, p); _ } ->
-           let te1 = check_pat_typ_dec env typ p in
-           disjoint_union env at "M0017" "duplicate binding for %s in pattern" te te1
-        | _ -> assert false
+and check_pat_fields_typ_dec env t tfs pfs te at : Scope.typ_env =
+  let cmp (tf : T.field) pf = match tf, pf with
+    | T.{ lab; typ = T.Typ _; _}, { it = TypPF(id); _ } -> String.compare lab id.it
+    | _, { it = TypPF(id); _ } -> 1
+    | T.{ lab; _ }, { it = ValPF(id, _); _ } -> String.compare lab id.it in
+  let last_field = ref "" in
+  Lib.List.align cmp tfs pfs |>
+  Seq.fold_left (fun te -> function
+    | Lib.This _ -> te
+    | Lib.That pf -> (match pf.it with
+      | TypPF(id) ->
+        if String.equal !last_field id.it then
+          error env pf.at "M0121" "duplicate type field %s in object pattern" id.it
+        else
+          error env pf.at "M0119"
+            "object type field %s is not contained in expected type%a"
+            id.it
+            display_typ_expand t
+      | _ -> te)
+    | Lib.Both(T.{ lab; typ; src }, pf) ->
+      match typ, pf.it with
+      | T.Typ t, TypPF(id) ->
+        last_field := lab;
+        id.note <- Some t;
+        T.Env.add id.it t te
+      | _, ValPF(_, p) ->
+        let te1 = check_pat_typ_dec env typ p in
+        disjoint_union env at "M0017" "duplicate binding for %s in pattern" te te1
+      | _, _ -> assert false) te
 
 (* Objects *)
 
@@ -3654,11 +3638,10 @@ and object_of_scope env sort dec_fields scope at =
 
   Lib.List.iter_pairs
     (fun x y ->
-      if not (T.is_typ x.T.typ) && not (T.is_typ y.T.typ) &&
-         Hash.hash x.T.lab = Hash.hash y.T.lab
+      if Hash.hash x.T.lab = Hash.hash y.T.lab
       then error env at "M0122" "field names %s and %s in %sobject type have colliding hashes"
         x.T.lab y.T.lab (T.string_of_obj_sort sort);
-    ) tfs';
+    ) (T.val_fields tfs');
 
   T.Obj (sort, List.sort T.compare_field tfs')
 
@@ -3701,7 +3684,7 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
   if not env.pre then begin
     if s = T.Actor || s = T.Mixin then begin
       List.iter (fun T.{lab; typ; _} ->
-        if not (T.is_typ typ) && not (T.is_shared_func typ) then
+        if not (T.is_shared_func typ) then
           let _, pub_val = pub_fields dec_fields in
           match T.Env.find_opt lab pub_val with
           | None -> () (* Mixins expose private fields as public in their type *)
@@ -3710,7 +3693,7 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
                "public actor field %s has non-shared function type%a"
                lab
                display_typ_expand typ
-      ) tfs;
+      ) (T.val_fields tfs);
       List.iter (fun df ->
         if is_public df.it.vis && not (is_actor_method df.it.dec) && not (is_typ_dec df.it.dec) then
           local_error env df.it.dec.at "M0125"
@@ -3900,46 +3883,39 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
    (* Reject any fields in range not in post signature (unintended data loss) *)
    let stab_ids = List.map (fun tf -> tf.T.lab) stab_tfs in
    List.iter (fun T.{lab;typ;src} ->
-     match typ with
-     | T.Typ c -> ()
-     | _ ->
-       match T.lookup_val_field_opt lab stab_tfs with
-       | Some _ -> ()
-       | None ->
-         local_error env focus "M0205"
-           "migration expression produces unexpected field `%s` of type%a\n%s\n%s"
-            lab
-            display_typ_expand typ
-            (Suggest.suggest_id "field" lab stab_ids)
-           "The actor should declare a corresponding `stable` field.")
-     rng_tfs;
+     match T.lookup_val_field_opt lab stab_tfs with
+     | Some _ -> ()
+     | None ->
+       local_error env focus "M0205"
+         "migration expression produces unexpected field `%s` of type%a\n%s\n%s"
+          lab
+          display_typ_expand typ
+          (Suggest.suggest_id "field" lab stab_ids)
+         "The actor should declare a corresponding `stable` field.")
+     (T.val_fields rng_tfs);
    (* Warn about any field in domain, not in range, and declared stable in actor *)
    (* This may indicate unintentional data loss. *)
    List.iter (fun T.{lab;typ;src} ->
-     match typ with
-     | T.Typ c -> ()
-     | _ ->
-       match T.lookup_val_field_opt lab rng_tfs with
-       | Some _ -> ()
-       | None ->
-         if List.mem lab stab_ids then
-           (* re-initialized *)
-           warn env focus "M0206"
-             "migration expression consumes field `%s` of type%a\nbut does not produce it, yet the field is declared in the actor.\n%s\n%s"
-             lab
-             display_typ_expand typ
-             "The declaration in the actor will be reinitialized, discarding its consumed value."
-             "If reinitialization is unintended, and you want to preserve the consumed value, either remove this field from the parameter of the migration function or add it to the result of the migration function."
-         else
-           (* dropped *)
-           warn env focus "M0207"
-             "migration expression consumes field `%s` of type%a\nbut does not produce it. The field is not declared in the actor.\n%s\n%s"
-             lab
-             display_typ_expand typ
-             "This field will be removed from the actor, discarding its consumed value."
-             "If this removal is unintended, declare the field in the actor and either remove the field from the parameter of the migration function or add it to the result of the migration function."
-     )
-     dom_tfs;
+     match T.lookup_val_field_opt lab rng_tfs with
+     | Some _ -> ()
+     | None ->
+       if List.mem lab stab_ids then
+         (* re-initialized *)
+         warn env focus "M0206"
+           "migration expression consumes field `%s` of type%a\nbut does not produce it, yet the field is declared in the actor.\n%s\n%s"
+           lab
+           display_typ_expand typ
+           "The declaration in the actor will be reinitialized, discarding its consumed value."
+           "If reinitialization is unintended, and you want to preserve the consumed value, either remove this field from the parameter of the migration function or add it to the result of the migration function."
+       else
+         (* dropped *)
+         warn env focus "M0207"
+           "migration expression consumes field `%s` of type%a\nbut does not produce it. The field is not declared in the actor.\n%s\n%s"
+           lab
+           display_typ_expand typ
+           "This field will be removed from the actor, discarding its consumed value."
+           "If this removal is unintended, declare the field in the actor and either remove the field from the parameter of the migration function or add it to the result of the migration function."
+   ) (T.val_fields dom_tfs);
    (* Warn the user about unrecognised attributes. *)
    let [@warning "-8"] T.Object, attrs_flds = T.as_obj exp.note.note_typ in
    let unrecognised = List.(filter (fun {T.lab; _} -> lab <> T.migration_lab) attrs_flds |> map (fun {T.lab; _} -> lab)) in

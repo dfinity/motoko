@@ -50,8 +50,10 @@ pkgs.mkShell {
         pkgs.difftastic
         pkgs.pocket-ic.server
         pkgs.gh # GitHub CLI
+        pkgs.fzf
+        pkgs.jq
         test-runner
-      ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin pkgs.darwin.apple_sdk.frameworks.Security
+      ]
     ));
 
   # Add these variables to the shell environment so that

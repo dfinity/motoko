@@ -79,6 +79,8 @@ and kind =
 
 let empty_src = {depr = None; track_region = Source.no_region; region = Source.no_region}
 
+let val_fields = List.filter (function | { typ = Typ _; _} -> false | _ -> true)
+
 (* Stable signatures *)
 type stab_sig =
   | Single of field list
@@ -327,6 +329,7 @@ let compare_field f1 f2 =
   | {lab = l1; typ = _; _}, {lab = l2; typ = Typ _; _} -> 1
   | {lab = l1; typ = _; _}, {lab = l2; typ = _; _} -> compare l1 l2
 
+let align_fields xs ys = Lib.List.align compare_field xs ys
 
 (* Shorthands *)
 
@@ -358,7 +361,7 @@ let throwErrorCodes = List.sort compare_field [
   { lab = "canister_reject"; typ = unit; src = empty_src}
 ]
 
-let call_error = Obj(Object,[{ lab = "err_code"; typ = Prim Nat32; src = empty_src}])
+let call_error = obj Object [("err_code", Prim Nat32)]
 
 let catchErrorCodes = List.sort compare_field (
   throwErrorCodes @ [
@@ -377,7 +380,7 @@ let catch = Prim Error
 (* Shared call context *)
 
 let caller = principal
-let ctxt = Obj (Object,[{ lab = "caller"; typ = caller; src = empty_src}])
+let ctxt = obj Object [("caller", caller)]
 
 let prim = function
   | "Null" -> Null
@@ -411,8 +414,7 @@ let codom c to_scope ts2 =  match c with
 (* Coercions *)
 
 let iter_obj t =
-  Obj (Object,
-    [{lab = "next"; typ = Func (Local, Returns, [], [], [Opt t]); src = empty_src}])
+  obj Object [("next", Func (Local, Returns, [], [], [Opt t]))]
 
 
 (* Shifting *)
@@ -1005,8 +1007,8 @@ let add_src_field rel lubs glbs f1 f2 =
    entire relation checking procedure is wrapped in
    [with_src_field_updates_predicate]. You'll probably want to use it when
    checking [sub] or [eq]. *)
-let add_src_field_update is_rel rel eq tf1 tf2 =
-  if !Mo_config.Flags.typechecker_combine_srcs && is_rel then
+let add_src_field_update rel eq tf1 tf2 =
+  if !Mo_config.Flags.typechecker_combine_srcs then
     let src_field_update () =
       let r1 = tf1.src.track_region in
       let r2 = tf2.src.track_region in
@@ -1235,62 +1237,31 @@ let rec rel_typ d rel eq t1 t2 =
 
 and rel_fields t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
-  match tfs1, tfs2 with
-  | [], [] ->
-    true
-  | tf1::_, [] when rel != eq && not (RelArg.is_stable_sub d) ->
-    true
-  | tf1::tfs1', tf2::tfs2' ->
-    (match compare_field tf1 tf2 with
-    | 0 ->
+  let res = align_fields tfs1 tfs2 |>
+    Seq.for_all (function
+    | Lib.Both(tf1, tf2) ->
+      add_src_field_update rel eq tf1 tf2;
       let d' = RelArg.push (Field tf2.lab) d in
-      let is_rel =
-        rel_typ d' rel eq tf1.typ tf2.typ &&
-        rel_fields t2 d rel eq tfs1' tfs2'
-      in
-      add_src_field_update is_rel rel eq tf1 tf2;
-      is_rel
-    | -1 when rel != eq && not (RelArg.is_stable_sub d) ->
-      rel_fields t2 d rel eq tfs1' tfs2
-    | result ->
-      if result > 0 then
-        unexpected_field d tf2.lab t2
-      else
-        missing_field d tf1.lab t2
-    )
-  | [], tf2::_ ->
-    unexpected_field d tf2.lab t2
-  | tf1::_, [] ->
-    missing_field d tf1.lab t2
+      rel_typ d' rel eq tf1.typ tf2.typ
+    | Lib.This tf1 ->
+      if rel != eq && not (RelArg.is_stable_sub d) then true
+      else missing_field d tf1.lab t2
+    | Lib.That tf2 ->
+      unexpected_field d tf2.lab t2) in
+  res
 
 and rel_tags t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
-  match tfs1, tfs2 with
-  | [], [] ->
-    true
-  | [], _ when rel != eq ->
-    true
-  | tf1::tfs1', tf2::tfs2' ->
-    (match compare_field tf1 tf2 with
-     | 0 ->
-      let is_rel =
-       rel_typ d rel eq tf1.typ tf2.typ &&
-       rel_tags t2 d rel eq tfs1' tfs2'
-      in
-      add_src_field_update is_rel rel eq tf1 tf2;
-      is_rel
-    | +1 when rel != eq ->
-      rel_tags t2 d rel eq tfs1 tfs2'
-    | result ->
-      if result > 0 then
-        unexpected_tag d tf2.lab t2
-      else
+  let res = align_fields tfs1 tfs2 |>
+    Seq.for_all (function
+      | Lib.Both(tf1, tf2) ->
+        add_src_field_update rel eq tf1 tf2;
+        rel_typ d rel eq tf1.typ tf2.typ
+      | Lib.This tf1 ->
         missing_tag d tf1.lab t2
-    )
-  | [], tf2::_ ->
-    unexpected_tag d tf2.lab t2
-  | tf1::_, [] ->
-    missing_tag d tf1.lab t2
+      | Lib.That tf2 ->
+        if rel != eq then true else unexpected_tag d tf2.lab t2) in
+  res
 
 and rel_binds d rel eq tbs1 tbs2 =
   let ts = open_binds tbs2 in
@@ -1409,22 +1380,17 @@ let rec compatible_typ co t1 t2 =
 
 and compatible_fields co tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
-  match tfs1, tfs2 with
-  | [], [] -> true
-  | tf1::tfs1', tf2::tfs2' ->
-    tf1.lab = tf2.lab && compatible_typ co tf1.typ tf2.typ &&
-    compatible_fields co tfs1' tfs2'
-  | _, _ -> false
+  align_fields tfs1 tfs2 |>
+  Seq.for_all (function
+    | Lib.Both(tf1, tf2) -> compatible_typ co tf1.typ tf2.typ
+    | _ -> false)
 
 and compatible_tags co tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
-  match tfs1, tfs2 with
-  | [], _ | _, [] -> true
-  | tf1::tfs1', tf2::tfs2' ->
-    match compare_field tf1 tf2 with
-    | -1 -> compatible_tags co tfs1' tfs2
-    | +1 -> compatible_tags co tfs1 tfs2'
-    | _ -> compatible_typ co tf1.typ tf2.typ && compatible_tags co tfs1' tfs2'
+  align_fields tfs1 tfs2 |>
+  Seq.for_all (function
+    | Lib.Both(tf1, tf2) -> compatible_typ co tf1.typ tf2.typ
+    | _ -> true)
 
 and compatible t1 t2 : bool =
   compatible_typ (ref SS.empty) t1 t2
@@ -1653,35 +1619,30 @@ let rec combine rel lubs glbs t1 t2 =
 and cons_if b x xs = if b then x::xs else xs
 
 and combine_fields rel lubs glbs fs1 fs2 =
-  match fs1, fs2 with
-  | _, [] -> if rel == lubs then [] else fs1
-  | [], _ -> if rel == lubs then [] else fs2
-  | f1::fs1', f2::fs2' ->
-    match compare_field f1 f2 with
-    | -1 -> cons_if (rel == glbs) f1 (combine_fields rel lubs glbs fs1' fs2)
-    | +1 -> cons_if (rel == glbs) f2 (combine_fields rel lubs glbs fs1 fs2')
-    | _ ->
-      match combine rel lubs glbs f1.typ f2.typ with
-      | typ ->
-        add_src_field rel lubs glbs f1 f2;
-        let src = {empty_src with track_region = f1.src.track_region} in
-        {lab = f1.lab; typ; src} :: combine_fields rel lubs glbs fs1' fs2'
-      | exception Mismatch when rel == lubs ->
-        combine_fields rel lubs glbs fs1' fs2'
+  align_fields fs1 fs2
+  |> Seq.fold_left (fun acc x -> match x with
+      | Lib.Both(f1, f2) ->
+        (match combine rel lubs glbs f1.typ f2.typ with
+        | typ ->
+          add_src_field rel lubs glbs f1 f2;
+          let src = {empty_src with track_region = f1.src.track_region} in
+          {lab = f1.lab; typ; src} :: acc
+        | exception Mismatch when rel == lubs -> acc)
+      | Lib.This f1 -> cons_if (rel == glbs) f1 acc
+      | Lib.That f2 -> cons_if (rel == glbs) f2 acc) []
+  |> List.rev
 
 and combine_tags rel lubs glbs fs1 fs2 =
-  match fs1, fs2 with
-  | _, [] -> if rel == lubs then fs1 else []
-  | [], _ -> if rel == lubs then fs2 else []
-  | f1::fs1', f2::fs2' ->
-    match compare_field f1 f2 with
-    | -1 -> cons_if (rel == lubs) f1 (combine_tags rel lubs glbs fs1' fs2)
-    | +1 -> cons_if (rel == lubs) f2 (combine_tags rel lubs glbs fs1 fs2')
-    | _ ->
+  align_fields fs1 fs2
+  |> Seq.fold_left (fun acc x -> match x with
+    | Lib.Both(f1, f2) ->
       let typ = combine rel lubs glbs f1.typ f2.typ in
       add_src_field rel lubs glbs f1 f2;
       let src = {empty_src with track_region = f1.src.track_region} in
-      {lab = f1.lab; typ; src} :: combine_tags rel lubs glbs fs1' fs2'
+      {lab = f1.lab; typ; src} :: acc
+    | Lib.This(f1) -> cons_if (rel == lubs) f1 acc
+    | Lib.That(f2) -> cons_if (rel == lubs) f2 acc) []
+  |> List.rev
 
 let lub ?(src_fields = empty_srcs_tbl ()) t1 t2 =
   with_src_field_updates src_fields (fun () ->
@@ -1732,7 +1693,7 @@ let motoko_stable_var_info_fld =
   { lab = "__motoko_stable_var_info";
     typ =
       Func(Shared Query, Promises, [scope_bind], [],
-        [ Obj(Object, [{lab = "size"; typ = nat64; src = empty_src}]) ]);
+        [ obj Object [("size", nat64)] ]);
     src = empty_src;
   }
 
@@ -1743,23 +1704,22 @@ let motoko_gc_trigger_fld =
   }
 
 let motoko_runtime_information_type =
-  Obj(Object, [
-    (* Fields must be sorted by label *)
-    {lab = "callbackTableCount"; typ = nat; src = empty_src};
-    {lab = "callbackTableSize"; typ = nat; src = empty_src};
-    {lab = "compilerVersion"; typ = text; src = empty_src};
-    {lab = "garbageCollector"; typ = text; src = empty_src};
-    {lab = "heapSize"; typ = nat; src = empty_src};
-    {lab = "logicalStableMemorySize"; typ = nat; src = empty_src};
-    {lab = "maxLiveSize"; typ = nat; src = empty_src};
-    {lab = "maxStackSize"; typ = nat; src = empty_src};
-    {lab = "memorySize"; typ = nat; src = empty_src};
-    {lab = "reclaimed"; typ = nat; src = empty_src};
-    {lab = "rtsVersion"; typ = text; src = empty_src};
-    {lab = "sanityChecks"; typ = bool; src = empty_src};
-    {lab = "stableMemorySize"; typ = nat; src = empty_src};
-    {lab = "totalAllocation"; typ = nat; src = empty_src};
-  ])
+  obj Object [
+    ("callbackTableCount", nat);
+    ("callbackTableSize", nat);
+    ("compilerVersion", text);
+    ("garbageCollector", text);
+    ("heapSize", nat);
+    ("logicalStableMemorySize", nat);
+    ("maxLiveSize", nat);
+    ("maxStackSize", nat);
+    ("memorySize", nat);
+    ("reclaimed", nat);
+    ("rtsVersion", text);
+    ("sanityChecks", bool);
+    ("stableMemorySize", nat);
+    ("totalAllocation", nat);
+  ]
 
 let motoko_runtime_information_fld =
   { lab = "__motoko_runtime_information";
@@ -2404,26 +2364,14 @@ let rec match_stab_sig sig1 sig2 =
 
 and match_stab_fields tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
-  match tfs1, tfs2 with
-  | [], _ ->
-    (* same amount of fields or new, non-required, fields ok *)
-    List.for_all (fun (required, tf) -> not required) tfs2
-  | _, [] ->
-    (* no dropped fields *)
-    false
-  | tf1::tfs1', (required, tf2)::tfs2' ->
-    (match compare_field tf1 tf2 with
-     | 0 ->
-       stable_sub (as_immut tf1.typ) (as_immut tf2.typ) &&
-       match_stab_fields tfs1' tfs2'
-     | -1 ->
-       (* no dropped fields *)
-       false
-     | _ ->
-       (* new field ok *)
-       (not required) &&
-       match_stab_fields tfs1 tfs2'
-    )
+  let cmp tf1 (_, tf2) = compare_field tf1 tf2 in
+  Lib.List.align cmp tfs1 tfs2
+    |> Seq.for_all (function
+      (* no dropped fields *)
+      | Lib.This _ -> false
+      (* new field ok *)
+      | Lib.That (required, _) -> not required
+      | Lib.Both (tf1, (_, tf2)) -> stable_sub (as_immut tf1.typ) (as_immut tf2.typ))
 
 let string_of_stab_sig stab_sig : string =
   let module Pretty = MakePretty(ParseableStamps) in
