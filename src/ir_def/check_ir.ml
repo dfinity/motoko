@@ -178,14 +178,13 @@ let has_prim_eq t =
   | Obj (Actor, _) | Func (Shared _, _, _, _, _) -> true
   | _ -> false
 
-let check_field_hashes env what at =
+let check_field_hashes env what at fields =
   Lib.List.iter_pairs
     (fun x y ->
-      if not (T.is_typ x.T.typ) && not (T.is_typ y.T.typ) &&
-         Hash.hash x.T.lab = Hash.hash y.T.lab
+      if Hash.hash x.T.lab = Hash.hash y.T.lab
       then error env at "field names %s and %s in %s type have colliding hashes"
         x.T.lab y.T.lab what;
-    )
+    ) (T.val_fields fields)
 
 
 let rec check_typ env typ : unit =
@@ -886,7 +885,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ stable_record <: stable_type.post;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
-    let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
+    let val_tfs0 = T.val_fields tfs0 in
     (type_obj env'' T.Actor fs) <: (T.Obj (s0, val_tfs0));
     t0 <: t;
   | NewObjE (s, fs, t0) ->
@@ -897,7 +896,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     (* check annotation *)
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
-    let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
+    let val_tfs0 = T.val_fields tfs0 in
     t1 <: T.Obj (s0, val_tfs0);
 
     t0 <: t
@@ -1241,7 +1240,7 @@ let check_comp_unit env = function
     typ stable_record <: stable_type.post;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
-    let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
+    let val_tfs0 = T.val_fields tfs0 in
     type_obj env'' T.Actor fs <: T.Obj (s0, val_tfs0);
     () (* t0 <: t *)
 
