@@ -2,6 +2,8 @@
 
 * motoko (`moc`)
 
+  * Print type constructors using available type paths (#5698).
+
   * Removes the Viper support (#5751).
 
   * Allows resolving local definitions for context-dot (#5731).
