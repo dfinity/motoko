@@ -196,6 +196,7 @@ val lookup_typ_deprecation : string -> field list -> string option
 val val_fields : field list -> field list
 
 val compare_field : field -> field -> int
+val align_fields : field list -> field list -> (field, field) Lib.these Seq.t
 
 (* Constructors *)
 

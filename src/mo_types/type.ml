@@ -2425,26 +2425,14 @@ let rec match_stab_sig sig1 sig2 =
 
 and match_stab_fields tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
-  match tfs1, tfs2 with
-  | [], _ ->
-    (* same amount of fields or new, non-required, fields ok *)
-    List.for_all (fun (required, tf) -> not required) tfs2
-  | _, [] ->
-    (* no dropped fields *)
-    false
-  | tf1::tfs1', (required, tf2)::tfs2' ->
-    (match compare_field tf1 tf2 with
-     | 0 ->
-       stable_sub (as_immut tf1.typ) (as_immut tf2.typ) &&
-       match_stab_fields tfs1' tfs2'
-     | -1 ->
-       (* no dropped fields *)
-       false
-     | _ ->
-       (* new field ok *)
-       (not required) &&
-       match_stab_fields tfs1 tfs2'
-    )
+  let cmp tf1 (_, tf2) = compare_field tf1 tf2 in
+  Lib.List.align cmp tfs1 tfs2
+    |> Seq.for_all (function
+      (* no dropped fields *)
+      | Lib.This _ -> false
+      (* new field ok *)
+      | Lib.That (required, _) -> not required
+      | Lib.Both (tf1, (_, tf2)) -> stable_sub (as_immut tf1.typ) (as_immut tf2.typ))
 
 let string_of_stab_sig stab_sig : string =
   let module Pretty = MakePretty(ParseableStamps) in
