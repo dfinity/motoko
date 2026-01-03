@@ -6,7 +6,13 @@ open Scope
 
 val initial_scope : scope
 
-val infer_prog : scope -> string option -> Async_cap.async_cap -> Syntax.prog -> (typ * scope) Diag.result
+val infer_prog
+  :  ?enable_type_recovery:bool
+  -> scope
+  -> string option
+  -> Async_cap.async_cap
+  -> Syntax.prog
+  -> (typ * scope) Diag.result
 
 val check_lib : scope -> string option -> Syntax.lib -> scope Diag.result
 val check_actors : ?check_actors:bool -> scope -> Syntax.prog list -> unit Diag.result
