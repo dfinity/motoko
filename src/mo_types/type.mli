@@ -52,6 +52,7 @@ and typ =
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
   | Named of name * typ
+  | Implicit of name option * typ
   | Weak of typ                               (* weak references *)
   | Pre                                       (* pre-type *)
 
@@ -264,6 +265,7 @@ and explanation =
 and context_item =
   | ConsType of con
   | NamedType of name
+  | ImplicitType of name option
   | StableVariable of lab
   | Field of lab
 and context = context_item list

@@ -217,6 +217,8 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (N N_parse_prog_interactive) -> entry_point "<parse_prog_interactive>"
   | X (N N_parse_stab_sig) -> entry_point "<parse_stab_sig>"
   | X (N N_pat) -> "<pat>", eg_pat
+  | X (N N_pat_arg) -> "<pat_arg>", eg_pat
+  | X (N N_pat_args) -> "<pat_args>", eg_pat
   | X (N N_pat_bin) -> "<pat_bin>", eg_pat
   | X (N N_pat_field) -> "<pat_field>", eg_pat ^ " " ^ eg_pat
   | X (N N_pat_nullary) -> "<pat_nullary>", eg_pat
@@ -236,6 +238,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (N N_seplist_exp_nonvar_ob__COMMA_) -> seplist ("<exp_nonvar(ob)>", eg_exp) comma
   | X (N N_seplist_imp_SEMICOLON_) -> seplist ("<imp>", eg_imp) semi2
   | X (N N_seplist_imp_semicolon_) -> seplist ("<imp>", eg_imp) semi
+  | X (N N_seplist_pat_arg_COMMA_) -> seplist ("<pat_bin>", eg_pat) comma
   | X (N N_seplist_pat_bin_COMMA_) -> seplist ("<pat_bin>", eg_pat) comma
   | X (N N_seplist_pat_field_semicolon_) -> seplist ("<pat_field", eg_pat) semi
   | X (N N_seplist_typ_COMMA_) -> seplist ("<typ>", eg_typ) comma

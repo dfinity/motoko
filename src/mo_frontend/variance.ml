@@ -71,7 +71,8 @@ let update ?(start = Covariant) env t =
         List.iter (go (flip p)) (List.map (open_ ts) ts1);
         List.iter (go p) (List.map (open_ ts) ts2)
       | Typ c -> () (* TBR  assumed closed *)
-      | Named (n, t) -> go p t
+      | Named (_, t)
+      | Implicit (_, t) -> go p t
     end
   in
   go start t;

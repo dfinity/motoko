@@ -10,6 +10,9 @@
 <implicit> ::= 
     'implicit'
 
+<id_wild> ::= 
+    '_'
+
 <typ_obj_sort> ::= 
     'object'
     'actor'
@@ -71,6 +74,9 @@
 <typ_item> ::= 
     <implicit> ':' <typ>
     <id> ':' <typ>
+    <id_wild> ':' <typ>
+    <implicit> <id> ':' <typ>
+    <implicit> <id_wild> ':' <typ>
     <typ>
 
 <typ_args> ::= 
@@ -321,8 +327,20 @@
     <id> (':' <typ>)? '=' <pat>
     'type' <id>
 
+<pat_arg> ::= 
+    <implicit> <id> ':' <typ>
+    <implicit> <id> ':' <typ> '=' <pat>
+    <implicit> <id_wild> ':' <typ> '=' <pat>
+    <pat_bin>
+
+<pat_args> ::= 
+    '_'
+    <id>
+    <lit>
+    '(' <list(<pat_arg>, ',')> ')'
+
 <func_pat> ::= 
-    <id>? <typ_params_opt> <pat_plain>
+    <id>? <typ_params_opt> <pat_args>
 
 <dec_var> ::= 
     'var' <id> (':' <typ>)? '=' <exp>

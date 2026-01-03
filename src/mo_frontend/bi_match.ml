@@ -272,6 +272,10 @@ let bi_match_typs ctx =
     | Named (_n, t1'), t2 ->
       bi_match_typ rel eq inst any t1' t2
     | t1, Named (_n, t2') ->
+       bi_match_typ rel eq inst any t1 t2'
+    | Implicit (_n, t1'), t2 ->
+      bi_match_typ rel eq inst any t1' t2
+    | t1, Implicit (_n, t2') ->
       bi_match_typ rel eq inst any t1 t2'
     | _, Con (con2, ts2) when flexible con2 ->
       assert (ts2 = []);
@@ -526,6 +530,9 @@ let solve ctx (ts1, ts2, ats) must_solve =
       Format.asprintf "%a  (for the expected return type) " display_rel (t1, "<:", t2)
     | Named (n, t2) ->
       Format.asprintf "%a  (for argument `%s`) " display_rel (t1, "<:", t2) n
+    | Implicit(no, t2) ->
+      let n = match no with Some n -> n | _ -> "_" in
+      Format.asprintf "%a  (for `implicit` argument `%s`) " display_rel (t1, "<:", t2) n
     | t2 ->
       Format.asprintf "%a" display_rel (t1, "<:", t2)
     in

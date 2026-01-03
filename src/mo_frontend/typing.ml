@@ -719,21 +719,23 @@ let infer_class_cap env obj_sort (tbs : T.bind list) cs =
 
 (* Types *)
 
-let rec check_typ env (typ : typ) : T.typ =
-  let t = check_typ' env typ in
+let rec check_typ env ?(allow_implicit=false) (typ : typ) : T.typ =
+  let t = check_typ' ~allow_implicit env typ in
   typ.note <- t;
   t
 
-and check_typ_item env typ_item =
+and check_typ_item allow_implicit env typ_item =
   match typ_item with
-  | (None, typ) -> check_typ env typ
-  | (Some id, typ) -> T.Named (id.it, check_typ env typ)
+  | (None, typ) ->
+     check_typ env ~allow_implicit typ
+  | (Some id, typ) ->
+     T.Named (id.it, check_typ env ~allow_implicit typ)
 
-and check_typ' env typ : T.typ =
+and check_typ' env ?(allow_implicit=false) typ : T.typ =
   match typ.it with
   | PathT (path, typs) ->
     let c = check_typ_path env path in
-    let ts = List.map (check_typ env) typs in
+    let ts = List.map (check_typ env ~allow_implicit:false) typs in
     let T.Def (tbs, _) | T.Abs (tbs, _) = Cons.kind c in
     let tbs' = List.map (fun tb -> { tb with T.bound = T.open_ ts tb.T.bound }) tbs in
     check_typ_bounds env tbs' ts (List.map (fun typ -> typ.at) typs) typ.at;
@@ -748,14 +750,14 @@ and check_typ' env typ : T.typ =
     let t = check_typ env typ in
     T.Array (infer_mut mut t)
   | TupT typ_items ->
-    T.Tup (List.map (check_typ_item env) typ_items)
+    T.Tup (List.map (check_typ_item allow_implicit env) typ_items)
   | FuncT (sort, binds, typ1, typ2) ->
     let cs, tbs, te, ce = check_typ_binds env binds in
     let env' = infer_async_cap (adjoin_typs env te ce) sort.it cs tbs None typ.at in
     let typs1 = as_domT typ1 in
     let c, typs2 = as_codomT sort.it typ2 in
-    let ts1 = List.map (check_typ_item env') typs1 in
-    let ts2 = List.map (check_typ_item env') typs2 in
+    let ts1 = List.map (check_typ_item true env') typs1 in
+    let ts2 = List.map (check_typ_item false env') typs2 in
     check_shared_return env typ2.at sort.it c ts2;
     if not env.pre && Type.is_shared_sort sort.it then begin
       check_shared_binds env typ.at tbs;
@@ -833,9 +835,16 @@ and check_typ' env typ : T.typ =
         display_typ_expand t2;
     t
   | ParT typ ->
-    check_typ env typ
-  | NamedT (name, typ) ->
-    T.Named (name.it, check_typ env typ)
+    check_typ env ~allow_implicit typ
+  | NamedT (name, typ1) ->
+    if not env.pre && name.it = "implicit" && not allow_implicit then
+      local_error env typ.at "M0240" "misplaced `implicit`";
+    let allow_implicit = allow_implicit && name.it <> "implicit" in
+    T.Named (name.it, check_typ env ~allow_implicit:allow_implicit typ1)
+  | ImplicitT (name_opt, typ1) ->
+    if not env.pre && not allow_implicit then
+      local_error env typ.at "M0240" "misplaced `implicit`";
+    T.Implicit (name_opt.it, check_typ env ~allow_implicit:false typ1)
   | WeakT typ ->
     T.Weak (check_typ env typ)
 
@@ -973,7 +982,7 @@ and check_con_env env at ce =
   end;
 
 and infer_inst env sort tbs typs t_ret at =
-  let ts = List.map (check_typ env) typs in
+  let ts = List.map (check_typ env ~allow_implicit:false) typs in
   let ats = List.map (fun typ -> typ.at) typs in
   match tbs, typs with
   | {T.bound; sort = T.Scope; _}::tbs', typs' ->
@@ -1395,7 +1404,7 @@ let resolve_hole env at hole_sort typ =
   let is_matching_lab lab =
     match hole_sort with
     | Named lab1 -> lab = lab1
-    | Anon _ -> not (Syntax.is_privileged lab) (* fix from 5659 *)
+    | Anon _ -> not (Syntax.is_privileged lab)
   in
 
   let is_matching_typ typ1 = T.sub typ1 typ
@@ -1438,7 +1447,7 @@ let resolve_hole env at hole_sort typ =
   in
   let (eligible_ids, explicit_ids) =
     T.Env.to_seq env.vals |>
-      Seq.filter_map find_candidate_id |>
+      Seq.filter_map find_candidate_id |> (* TODO: this is inefficient when searching for a specific label*)
       List.of_seq |>
       List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
   in
@@ -1479,7 +1488,7 @@ let resolve_hole env at hole_sort typ =
               ("a new", mid)
           in
             info env candidate.region
-             "Consider renaming `%s` to `%s.%s` in %s module `%s`. Then it can serve as an implicit argument `%s` in this call:\n%s%s"
+             "Consider renaming %s to `%s.%s` in %s module `%s`. Then it can serve as an implicit argument `%s` in this call:\n%s%s"
              candidate.desc mid id mod_desc mid id call_region call_src)
       explicit_terms
   in
@@ -1932,7 +1941,7 @@ and infer_exp'' env exp : T.typ =
     let env' = infer_async_cap (adjoin_typs env te ce) sort cs tbs (Some exp1) exp.at in
     let t1, ve1 = infer_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env' pat in
     let ve2 = T.Env.adjoin ve ve1 in
-    let ts2 = List.map (check_typ_item env') ts2 in
+    let ts2 = List.map (check_typ_item false env') ts2 in
     typ.note <- T.seq ts2; (* HACK *)
     let codom = T.codom c (fun () -> T.Con(List.hd cs,[])) ts2 in
     if not env.pre then begin
@@ -2708,17 +2717,8 @@ and infer_callee env exp =
   | _ ->
      infer_exp_promote env exp, None
 and as_implicit = function
-(* disable wildcard patterns
-  | T.Named ("implicit", T.Named (arg_name, t)) ->
-    Some arg_name
-  | T.Named ("implicit", t) ->
-    Some "_" *)
-  | T.Named (_inf_arg_name, (T.Named ("implicit", T.Named (arg_name, t)))) ->
-    (* override inferred arg_name *)
-    Some arg_name
-  | T.Named (inf_arg_name, (T.Named ("implicit", t))) ->
-    (* non-overriden, use inferred arg_name *)
-    Some inf_arg_name
+  | T.Implicit(id_opt, t) ->
+    Some id_opt
   | _ -> None
 
 (** With implicits we can either fully specify all implicit arguments or none
@@ -2731,8 +2731,11 @@ and arity_with_implicits t_args =
   saturated_arity, implicits_arity
 
 and insert_holes at ts es =
-  let mk_hole pos hole_id =
-    let hole_sort = if hole_id = "" then Anon pos else Named hole_id in
+  let mk_hole pos id_opt =
+    let hole_sort = match id_opt with
+      | Some id -> Named id
+      | None -> Anon pos
+    in
     {it = HoleE (hole_sort, ref {it = PrimE "hole"; at; note=empty_typ_note });
       at;
       note = empty_typ_note }
@@ -2761,8 +2764,12 @@ and check_explicit_arguments env saturated_arity implicits_arity arg_typs syntax
              pos + 1,
              match as_implicit typ with
              | None -> acc
-             | Some name ->
-                match resolve_hole env arg.at (match name with "_" -> Anon pos | id -> Named id) typ with
+             | Some id_opt ->
+                let hole_sort = match id_opt with
+                  | Some id -> Named id
+                  | None -> Anon pos
+                in
+                match resolve_hole env arg.at hole_sort typ with
                 | Error _ -> acc
                 | Ok {path;_} ->
                    match path.it, arg.it with
@@ -3207,11 +3214,26 @@ and infer_pat' name_types env pat : T.typ * Scope.val_env =
     if not env.pre then T.Env.(iter (fun k t1 -> warn_lossy_bind_type env pat.at k t1 (find k ve2))) ve1;
     t, T.Env.merge (fun _ -> Lib.Option.map2 (T.lub ~src_fields:env.srcs)) ve1 ve2*)
   | AnnotP ({it = VarP id; _} as pat1, typ) when name_types ->
-    let t = check_typ env typ in
-    T.Named (id.it, t), check_pat env t pat1
-  | AnnotP (pat1, typ) ->
-    let t = check_typ env typ in
-    t, check_pat env t pat1
+    let t = check_typ env ~allow_implicit:true typ in
+    (match t with
+    (* legacy *)
+    | T.Named ("implicit", T.Named (id', t1)) ->
+      T.Implicit((if id' = "_" then None else Some id'), t1), check_pat env t1 pat1
+    | T.Named ("implicit", t1)->
+      T.Implicit(Some id.it, t1), check_pat env t1 pat1
+    (* dedicated *)
+    | T.Implicit _ ->
+      t, check_pat env t pat1
+    | _ ->
+      T.Named (id.it, t), check_pat env t pat1)
+  | AnnotP (pat1, typ) -> (* TBR *)
+    let t = check_typ env ~allow_implicit:name_types typ in
+    (match t with
+     (* legacy *)
+     | T.Named ("implicit", T.Named (id', t1)) ->
+       T.Implicit((if id' = "_" then None else Some id'), t1), check_pat env t1 pat1
+     | _ ->
+       t, check_pat env t pat1)
   | ParP pat1 ->
     infer_pat name_types env pat1
 

@@ -1,0 +1,15 @@
+Motoko compiler (source XXX)
+>                 let f :
+  (implicit a : Nat, implicit b : Nat, implicit _ : Nat, implicit d : Nat,
+   implicit e : Nat, implicit _ : Nat, implicit g : Nat, implicit _ : Nat) ->
+    () =
+  <func>
+>     let u1 : (implicit a : Nat) -> () = <func>
+>     let u2 : (implicit b : Nat) -> () = <func>
+>     let u3 : (implicit _ : Nat) -> () = <func>
+>     let u4 : (implicit d : Nat) -> () = <func>
+>     let u5 : (implicit e : Nat) -> () = <func>
+>     let u6 : (implicit _ : Nat) -> () = <func>
+>     let u7 : (implicit g : Nat) -> () = <func>
+>     let u8 : (implicit _ : Nat) -> () = <func>
+>     

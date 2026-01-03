@@ -19,7 +19,7 @@ module Contravariant {
     public func cmp(_ : C, _ : C) : Nat = 3;
   };
 
-  func cmp<T>(x : T, y : T, cmp : (implicit : (T, T) -> Nat)) : Nat {
+  func cmp<T>(x : T, y : T, implicit cmp : (T, T) -> Nat) : Nat {
     cmp(x, y);
   };
 
@@ -43,7 +43,7 @@ module Covariant {
     public let default : C = { a = 0; b = "" };
   };
 
-  func default<T>(default : (implicit : T)) : T = default;
+  func default<T>(implicit default : T) : T = default;
 
   public func test() {
     assert default<A>() == a;
