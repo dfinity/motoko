@@ -1,7 +1,10 @@
 # Motoko compiler changelog
 
+
 * motoko (`moc`)
 
+  * Explain subtype failures (#5643).
+  
   * Removes the Viper support (#5751).
 
   * Allows resolving local definitions for context-dot (#5731).
