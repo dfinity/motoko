@@ -71,15 +71,16 @@
     "ic-wasm-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1765912852,
-        "narHash": "sha256-FfMgwq6IBGn5hGuTpCEr3OxsiqAckWtRN9LETHFbLa0=",
+        "lastModified": 1767363725,
+        "narHash": "sha256-YjfXhZJ5OnUbI07uZ68j3EXer2f8XUZj3L5XfewVpf8=",
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "8c908cd12bf9e73a204c546b24e0b170df8f00d8",
+        "rev": "4575d217877626df0902a91fbf3099371e8d3453",
         "type": "github"
       },
       "original": {
         "owner": "dfinity",
+        "ref": "gabor/bump-wasm-opt",
         "repo": "ic-wasm",
         "type": "github"
       }
