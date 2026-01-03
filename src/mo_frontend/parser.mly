@@ -250,7 +250,7 @@ and objblock eo s id ty dec_fields =
 %token<string> FLOAT
 %token<Mo_values.Value.unicode> CHAR
 %token<bool> BOOL
-%token<string> ID
+%token<string> ID [@recover.expr "__error_recovery_var__"]
 %token<string> TEXT
 %token PIPE
 %token PRIM
