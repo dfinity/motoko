@@ -1246,19 +1246,17 @@ let rec rel_typ d rel eq t1 t2 =
 
 and rel_fields t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
-  let rel_fields = ref [] in
-  let res = align_fields tfs1 tfs2 |>
+  align_fields tfs1 tfs2 |>
     Seq.for_all (function
     | Lib.Both(tf1, tf2) ->
-      rel_fields := (tf1, tf2) :: !rel_fields;
+      add_src_field_update rel eq tf1 tf2;
       let d' = RelArg.push (Field tf2.lab) d in
       rel_typ d' rel eq tf1.typ tf2.typ
     | Lib.This tf1 ->
       if rel != eq && not (RelArg.is_stable_sub d) then true
       else missing_field d tf1.lab t2
-    | Lib.That tf2 -> unexpected_field d tf2.lab t2) in
-  if res then List.iter (fun (tf1, tf2) -> add_src_field_update rel eq tf1 tf2) !rel_fields;
-  res
+    | Lib.That tf2 ->
+      unexpected_field d tf2.lab t2) in
 
 and rel_typ_fields t2 d rel eq tfs1 tfs2 =
   let res = align_fields tfs1 tfs2 |>
@@ -1275,16 +1273,15 @@ and rel_typ_fields t2 d rel eq tfs1 tfs2 =
 
 and rel_tags t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
-  let rel_fields = ref [] in
-  let res = align_fields tfs1 tfs2 |>
+  align_fields tfs1 tfs2 |>
     Seq.for_all (function
       | Lib.Both(tf1, tf2) ->
-        rel_fields := (tf1, tf2) :: !rel_fields;
+        add_src_field_update rel eq tf1 tf2;
         rel_typ d rel eq tf1.typ tf2.typ
-      | Lib.This tf1 -> missing_tag d tf1.lab t2
-      | Lib.That tf2 -> if rel != eq then true else unexpected_tag d tf2.lab t2) in
-  if res then List.iter (fun (tf1, tf2) -> add_src_field_update rel eq tf1 tf2) !rel_fields;
-  res
+      | Lib.This tf1 ->
+        missing_tag d tf1.lab t2
+      | Lib.That tf2 ->
+        if rel != eq then true else unexpected_tag d tf2.lab t2)
 
 and rel_binds d rel eq tbs1 tbs2 =
   let ts = open_binds tbs2 in
@@ -2401,26 +2398,14 @@ let rec match_stab_sig sig1 sig2 =
 
 and match_stab_fields tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
-  match tfs1, tfs2 with
-  | [], _ ->
-    (* same amount of fields or new, non-required, fields ok *)
-    List.for_all (fun (required, tf) -> not required) tfs2
-  | _, [] ->
-    (* no dropped fields *)
-    false
-  | tf1::tfs1', (required, tf2)::tfs2' ->
-    (match compare_field tf1 tf2 with
-     | 0 ->
-       stable_sub (as_immut tf1.typ) (as_immut tf2.typ) &&
-       match_stab_fields tfs1' tfs2'
-     | -1 ->
-       (* no dropped fields *)
-       false
-     | _ ->
-       (* new field ok *)
-       (not required) &&
-       match_stab_fields tfs1 tfs2'
-    )
+  let cmp tf1 (_, tf2) = compare_field tf1 tf2 in
+  Lib.List.align cmp tfs1 tfs2
+    |> Seq.for_all (function
+      (* no dropped fields *)
+      | Lib.This _ -> false
+      (* new field ok *)
+      | Lib.That (required, _) -> not required
+      | Lib.Both (tf1, (_, tf2)) -> stable_sub (as_immut tf1.typ) (as_immut tf2.typ))
 
 let string_of_stab_sig stab_sig : string =
   let module Pretty = MakePretty(ParseableStamps) in

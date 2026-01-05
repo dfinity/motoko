@@ -36,8 +36,8 @@ let transform prog =
   let rec t_typ t =
     match t with
     (* The only interesting case *)
-    | Obj (s, fs, _) ->
       Obj (s, fs, [])
+      Obj (s, List.map t_field fs)
     | T.Prim _
     | Var _ -> t
     | Con (c, ts) ->
