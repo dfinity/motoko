@@ -67,14 +67,10 @@ and exp' at note = function
   | S.LitE l -> I.LitE (lit !l)
   | S.UnE (ot, o, e) ->
     I.PrimE (I.UnPrim (!ot, o), [exp e])
-  | S.BinE (_ot, e1, (AddOp | SubOp), {it = LitE {contents = (NatLit n | IntLit n)}; _}) when Numerics.Int.(eq n zero) ->
-    exp' at note e1.it
-  | S.BinE (_ot, {it = LitE {contents = (NatLit n | IntLit n)}; _}, AddOp, e2) when Numerics.Int.(eq n zero) ->
-     exp' at note e2.it
-  | S.BinE (_ot, e1, (MulOp | DivOp), {it = LitE {contents = (NatLit n | IntLit n)}; _}) when Numerics.Int.(of_int 1 |> eq n) ->
-    exp' at note e1.it
-  | S.BinE (_ot, {it = LitE {contents = (NatLit n | IntLit n)}; _}, MulOp, e2) when Numerics.Int.(of_int 1 |> eq n) ->
-    exp' at note e2.it
+  | S.BinE (_ot, e1, op, e2) when neutral (Either.Left op) e1 ->
+    (exp e2).it
+  | S.BinE (_ot, e1, op, e2) when neutral (Either.Right op) e2 ->
+    (exp e1).it
   | S.BinE (ot, e1, o, e2) ->
     I.PrimE (I.BinPrim (!ot, o), [exp e1; exp e2])
   | S.RelE (ot, e1, Operator.NeqOp, e2) ->
@@ -321,6 +317,29 @@ and parenthetical send = function
       [letD parV (exp par)], List.map (fun attr -> attr (varE parV)) present @ absent
     (* if all attributes are absent, we still have to evaluate the parenthetical for side-effects *)
     else [expD (exp par)], absent
+
+and neutral (op : (binop, binop) Either.t) : exp -> bool =
+  let add_like = function Either.(Left AddOp | Right (AddOp | SubOp)) -> true | _ -> false in
+  let mul_like = function Either.(Left MulOp | Right (MulOp | DivOp)) -> true | _ -> false in
+  let rec strip e = match e.it with
+    | S.AnnotE (e,_) -> strip e
+    | S.LitE {contents = (NatLit n | IntLit n)} ->
+      (match op with
+       | op when add_like op && Numerics.Int.(eq n zero) -> true
+       | op when mul_like op && Numerics.Int.(of_int 1 |> eq n) -> true
+       | _ -> false)
+    | S.LitE {contents = Nat8Lit n} ->
+      (match op with
+       | op when add_like op && Numerics.Nat8.(eq n zero) -> true
+       | op when mul_like op && Numerics.Nat8.(of_int 1 |> eq n) -> true
+       | _ -> false)
+    | S.LitE {contents = Int8Lit n} ->
+      (match op with
+       | op when add_like op && Numerics.Int_8.(eq n zero) -> true
+       | op when mul_like op && Numerics.Int_8.(of_int 1 |> eq n) -> true
+       | _ -> false)
+    | _ -> false in
+  strip
 
 and url e at =
     (* Set position explicitly *)
