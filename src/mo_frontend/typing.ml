@@ -4567,12 +4567,16 @@ and infer_dec_valdecs env dec : Scope.t =
     }
 
 (* Programs *)
-let infer_prog scope pkg_opt async_cap prog
+let infer_prog ?(enable_type_recovery=false) scope pkg_opt async_cap prog
     : (T.typ * Scope.t) Diag.result
   =
-  Diag.with_message_store
+  let recovery_fn = if enable_type_recovery then
+    fun f y -> recover_with (Some (T.unit, Scope.empty)) (fun y -> Some (f y)) y;
+    else recover_opt;
+  in
+  Diag.with_message_store ~allow_errors:enable_type_recovery
     (fun msgs ->
-      recover_opt
+      recovery_fn
         (fun prog ->
           let env0 = env_of_scope msgs scope in
           let env = {
