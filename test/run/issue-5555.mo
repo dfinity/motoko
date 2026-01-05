@@ -1,6 +1,6 @@
-//MOC-FLAG -dp -dt -v -t -dl
+//MOC-FLAG -dl
 
-ignore 42 + 0;
+ignore 57 + 0;
 ignore 42 + -0;
 ignore 25 * 1;
 ignore 25 * +1;
