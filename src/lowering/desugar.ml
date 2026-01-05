@@ -71,10 +71,6 @@ and exp' at note = function
     exp' at note e1.it
   | S.BinE (_ot, {it = LitE {contents = (NatLit n | IntLit n)}; _}, AddOp, e2) when Numerics.Int.(eq n zero) ->
      exp' at note e2.it
-  | S.BinE (_ot, {it = LitE {contents = (NatLit n | IntLit n)}; _}, AddOp, e2) when Numerics.Int.(ne n zero) ->
-     failwith "NOT NEUTRAL"(*; exp' at note e2.it*)
-  (*| S.BinE (_ot, {it = LitE {contents = IntLit n}; _}, AddOp, e2) when Numerics.Int.(eq n zero) ->
-     failwith "NEUTRALINT"(*; exp' at note e2.it*)*)
   | S.BinE (_ot, e1, (MulOp | DivOp), {it = LitE {contents = (NatLit n | IntLit n)}; _}) when Numerics.Int.(of_int 1 |> eq n) ->
     exp' at note e1.it
   | S.BinE (_ot, {it = LitE {contents = (NatLit n | IntLit n)}; _}, MulOp, e2) when Numerics.Int.(of_int 1 |> eq n) ->
