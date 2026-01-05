@@ -99,26 +99,6 @@ let js_run list source =
         end)
       end)
 
-let js_viper filenames =
-  Mo_types.Cons.session (fun _ ->
-    let result = Pipeline.viper_files (Js.to_array filenames |> Array.to_list |> List.map Js.to_string) in
-    js_result result (fun (viper, lookup) ->
-      let js_viper = Js.string viper in
-      let js_lookup = Js.wrap_callback (fun js_file js_region ->
-        let file = Js.to_string js_file in
-        let viper_region = match js_region |> Js.to_array |> Array.to_list with
-        | [a; b; c; d] ->
-          lookup { left = { file; line = a + 1; column = b }; right = { file; line = c + 1; column = d } }
-        | _ -> None in
-        match viper_region with
-        | Some region ->
-          Js.some (range_of_region region)
-        | None -> Js.null) in
-      Js.some (object%js
-        val viper = js_viper
-        val lookup = js_lookup
-      end)))
-
 let js_candid source =
   Mo_types.Cons.session (fun _ ->
     js_result (Pipeline.generate_idl [Js.to_string source])
@@ -267,13 +247,14 @@ let js_parse_motoko_typed_with_scope_cache_impl enable_recovery paths scope_cach
            all. Hence, the use of [Obj.magic] is legitimate here. *)
         String_map_conversion.from_js scope_cache Js.to_string Obj.magic)
   in
-  let parse_fn = if Js.Opt.get enable_recovery (fun () -> false)
+  let recovery_enabled = Js.Opt.get enable_recovery (fun () -> false) in
+  let parse_fn = if recovery_enabled
     then Pipeline.parse_file_with_recovery
     else Pipeline.parse_file
   in
   let load_result =
     Mo_types.Cons.session (fun () ->
-      Pipeline.load_progs_cached
+      Pipeline.load_progs_cached ~enable_type_recovery:recovery_enabled
         parse_fn paths Pipeline.initial_stat_env scope_cache)
   in
   match load_result with

@@ -30,7 +30,6 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     Array_tabulate : <T>(len : Nat, gen : Nat -> T) -> [T];
     Array_tabulateVar : <T>(len : Nat, gen : Nat -> T) -> [var T];
     BlobIterator : (hash : [var __List]) -> BlobIterator;
-    Ret : <T>() -> T;
     Types :
       module {
         type Any = Any;
@@ -160,6 +159,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     forall : <T>(f : T -> Bool) -> Bool;
     getCandidLimits :
       <system>() -> {bias : Nat32; denominator : Nat32; numerator : Nat32};
+    getCandidTypeLimits : <system>() -> {bias : Nat32; scalar : Nat32};
     getCertificate : () -> ?Blob;
     getDeadBlobs : () -> ?[Blob];
     getSelfPrincipal : <system>() -> Principal;
@@ -272,6 +272,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     rts_version : () -> Text;
     setCandidLimits :
       <system>{bias : Nat32; denominator : Nat32; numerator : Nat32} -> ();
+    setCandidTypeLimits : <system>{bias : Nat32; scalar : Nat32} -> ();
     setCertifiedData : (data : Blob) -> ();
     setTimer :
       <system>(delayNanos : Nat64, recurring : Bool, job : () -> async ()) ->

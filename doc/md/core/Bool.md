@@ -32,7 +32,7 @@ Booleans with constants `true` and `false`.
 
 ## Function `logicalAnd`
 ``` motoko no-repl
-func logicalAnd(a : Bool, b : Bool) : Bool
+func logicalAnd(self : Bool, other : Bool) : Bool
 ```
 
 Returns `a and b`.
@@ -45,7 +45,7 @@ assert Bool.logicalAnd(true, true);
 
 ## Function `logicalOr`
 ``` motoko no-repl
-func logicalOr(a : Bool, b : Bool) : Bool
+func logicalOr(self : Bool, other : Bool) : Bool
 ```
 
 Returns `a or b`.
@@ -58,7 +58,7 @@ assert Bool.logicalOr(false, true);
 
 ## Function `logicalXor`
 ``` motoko no-repl
-func logicalXor(a : Bool, b : Bool) : Bool
+func logicalXor(self : Bool, other : Bool) : Bool
 ```
 
 Returns exclusive or of `a` and `b`, `a != b`.
@@ -72,7 +72,7 @@ assert not Bool.logicalXor(false, false);
 
 ## Function `logicalNot`
 ``` motoko no-repl
-func logicalNot(bool : Bool) : Bool
+func logicalNot(self : Bool) : Bool
 ```
 
 Returns `not bool`.
@@ -85,7 +85,7 @@ assert not Bool.logicalNot(true);
 
 ## Function `equal`
 ``` motoko no-repl
-func equal(a : Bool, b : Bool) : Bool
+func equal(self : Bool, other : Bool) : Bool
 ```
 
 Returns `a == b`.
@@ -98,7 +98,7 @@ assert not Bool.equal(true, false);
 
 ## Function `compare`
 ``` motoko no-repl
-func compare(a : Bool, b : Bool) : Order.Order
+func compare(self : Bool, other : Bool) : Order.Order
 ```
 
 Returns the ordering of `a` compared to `b`.
@@ -115,7 +115,7 @@ assert Bool.compare(false, true) == #less;
 
 ## Function `toText`
 ``` motoko no-repl
-func toText(bool : Bool) : Text
+func toText(self : Bool) : Text
 ```
 
 Returns a text value which is either `"true"` or `"false"` depending on the input value.

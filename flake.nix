@@ -16,17 +16,9 @@
       url = "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz";
       flake = false;
     };
-    viper-server = {
-      url = "https://github.com/viperproject/viperserver/releases/download/v.22.11-release/viperserver.jar";
-      flake = false;
-    };
 
     candid-src = {
       url = "github:dfinity/candid";
-      flake = false;
-    };
-    pocket-ic-src = {
-      url = "github:dfinity/ic/master";
       flake = false;
     };
     ic-wasm-src = {
@@ -38,11 +30,11 @@
       flake = false;
     };
     motoko-base-src = {
-      url = "github:dfinity/motoko-base/next-moc";
+      url = "github:caffeinelabs/motoko-base/next-moc";
       flake = false;
     };
     motoko-core-src = {
-      url = "github:dfinity/motoko-core";
+      url = "github:caffeinelabs/motoko-core";
       flake = false;
     };
     motoko-matchers-src = {
@@ -70,9 +62,7 @@
     , nix-update-flake
     , rust-overlay
     , esm
-    , viper-server
     , candid-src
-    , pocket-ic-src
     , ic-wasm-src
     , libtommath-src
     , motoko-base-src
@@ -88,7 +78,6 @@
         sources = {
           inherit
             candid-src
-            pocket-ic-src
             ic-wasm-src
             libtommath-src
             motoko-base-src
@@ -165,15 +154,18 @@
         buildInputs = [
           pkgs.pocket-ic.server
         ];
+        # Make pocket-ic available during tests.
+        checkInputs = [ pkgs.pocket-ic.server pkgs.cacert ];
+        nativeCheckInputs = [ pkgs.pocket-ic.server ];
+
         POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
         SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
-        
-        # Enable tests when building the package.
+
         doCheck = true;
       };
 
-      tests = import ./nix/tests.nix { 
-        inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages test-runner; 
+      tests = import ./nix/tests.nix {
+        inherit pkgs llvmEnv esm commonBuildInputs debugMoPackages test-runner;
       };
 
       filterTests = type:
@@ -189,7 +181,8 @@
                 matchRelease == null &&
                 matchGC == null &&
                 matchPerf == null;
-            in {
+            in
+            {
               debug = matchDebug != null;
               release = matchRelease != null;
               gc = matchGC != null;
@@ -221,7 +214,7 @@
       nix-update = nix-update-flake.packages.${system}.default;
 
       shell = import ./nix/shell.nix {
-        inherit pkgs nix-update base-src core-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages docs test-runner;
+        inherit pkgs nix-update base-src core-src llvmEnv esm commonBuildInputs rts js debugMoPackages docs test-runner;
         inherit (checks) check-rts-formatting;
       };
 
@@ -259,13 +252,13 @@
         # Common tests version - includes non-GC, non-release/debug specific tests.
         common-tests = pkgs.releaseTools.aggregate {
           name = "common-tests";
-          constituents = filterTests "common";  # Only include common tests.
+          constituents = filterTests "common"; # Only include common tests.
         };
 
         # GC tests version - only includes GC tests.
         gc-tests = pkgs.releaseTools.aggregate {
           name = "gc-tests";
-          constituents = filterTests "gc";  # Only include GC tests.
+          constituents = filterTests "gc"; # Only include GC tests.
         };
 
         # Release version - excludes debug tests.
@@ -303,5 +296,25 @@
         if [[ $# = 0 ]]; then set -- .; fi
         exec "${pkgs.nixpkgs-fmt}/bin/nixpkgs-fmt" "$@"
       '';
+
+      # Used to list all buildable targets for the `nixb` command available inside nix develop
+      targets =
+        let
+          # TODO: remove once motoko's nixpkgs has: https://github.com/NixOS/nixpkgs/commit/e5ac84e29c4b04ea5934d166f270dd6516ad76c7
+          inherit (builtins) isAttrs concatMap attrNames;
+          mapAttrsToListRecursiveCond =
+            pred: f: set:
+            let
+              mapRecursive =
+                path: value: if isAttrs value && pred path value then recurse path value else [ (f path value) ];
+              recurse = path: set: concatMap (name: mapRecursive (path ++ [ name ]) set.${name}) (attrNames set);
+            in
+            recurse [ ] set;
+        in
+        mapAttrsToListRecursiveCond
+          (path: as: !(pkgs.lib.isDerivation as))
+          (path: _drv: pkgs.lib.concatStringsSep "." path)
+          self.packages.${system};
+
     });
 }
