@@ -322,21 +322,27 @@ and neutral (op : (binop, binop) Either.t) : exp -> bool =
   let add_like = function Either.(Left AddOp | Right (AddOp | SubOp)) -> true | _ -> false in
   let mul_like = function Either.(Left MulOp | Right (MulOp | DivOp)) -> true | _ -> false in
   let rec strip e = match e.it with
-    | S.AnnotE (e,_) -> strip e
-    | S.LitE {contents = (NatLit n | IntLit n)} ->
-      (match op with
-       | op when add_like op && Numerics.Int.(eq n zero) -> true
-       | op when mul_like op && Numerics.Int.(of_int 1 |> eq n) -> true
-       | _ -> false)
-    | S.LitE {contents = Nat8Lit n} ->
-      (match op with
-       | op when add_like op && Numerics.Nat8.(eq n zero) -> true
-       | op when mul_like op && Numerics.Nat8.(of_int 1 |> eq n) -> true
-       | _ -> false)
-    | S.LitE {contents = Int8Lit n} ->
-      (match op with
-       | op when add_like op && Numerics.Int_8.(eq n zero) -> true
-       | op when mul_like op && Numerics.Int_8.(of_int 1 |> eq n) -> true
+    | S.AnnotE (e, _) -> strip e
+    | S.LitE {contents } ->
+      (match contents with
+       | NatLit n | IntLit n when add_like op && Numerics.Int.(eq n zero) -> true
+       | NatLit n | IntLit n when mul_like op && Numerics.Int.(of_int 1 |> eq n) -> true
+       | Nat8Lit n when add_like op && Numerics.Nat8.(eq n zero) -> true
+       | Nat8Lit n when mul_like op && Numerics.Nat8.(of_int 1 |> eq n) -> true
+       | Int8Lit n when add_like op && Numerics.Int_8.(eq n zero) -> true
+       | Int8Lit n when mul_like op && Numerics.Int_8.(of_int 1 |> eq n) -> true
+       | Nat16Lit n when add_like op && Numerics.Nat16.(eq n zero) -> true
+       | Nat16Lit n when mul_like op && Numerics.Nat16.(of_int 1 |> eq n) -> true
+       | Int16Lit n when add_like op && Numerics.Int_16.(eq n zero) -> true
+       | Int16Lit n when mul_like op && Numerics.Int_16.(of_int 1 |> eq n) -> true
+       | Nat32Lit n when add_like op && Numerics.Nat32.(eq n zero) -> true
+       | Nat32Lit n when mul_like op && Numerics.Nat32.(of_int 1 |> eq n) -> true
+       | Int32Lit n when add_like op && Numerics.Int_32.(eq n zero) -> true
+       | Int32Lit n when mul_like op && Numerics.Int_32.(of_int 1 |> eq n) -> true
+       | Nat64Lit n when add_like op && Numerics.Nat64.(eq n zero) -> true
+       | Nat64Lit n when mul_like op && Numerics.Nat64.(of_int 1 |> eq n) -> true
+       | Int64Lit n when add_like op && Numerics.Int_64.(eq n zero) -> true
+       | Int64Lit n when mul_like op && Numerics.Int_64.(of_int 1 |> eq n) -> true
        | _ -> false)
     | _ -> false in
   strip

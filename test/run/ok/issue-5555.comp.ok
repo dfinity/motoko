@@ -1,3 +1,107 @@
+-- Parsing issue-5555.mo:
+-- Checking issue-5555.mo:
+(Prog
+  (ExpD (IgnoreE (BinE Nat (LitE (NatLit 57)) AddOp (LitE (NatLit 0)))))
+  (ExpD (IgnoreE (BinE Int (LitE (NatLit 42)) AddOp (LitE (IntLit 0)))))
+  (ExpD (IgnoreE (BinE Nat (LitE (NatLit 25)) MulOp (LitE (NatLit 1)))))
+  (ExpD (IgnoreE (BinE Int (LitE (NatLit 25)) MulOp (LitE (IntLit 1)))))
+  (ExpD
+    (IgnoreE
+      (AnnotE
+        (BinE Nat (LitE (NatLit 42)) SubOp (LitE (NatLit 0)))
+        (PathT (IdH (ID Nat)))
+      )
+    )
+  )
+  (ExpD (IgnoreE (BinE Nat (LitE (NatLit 42)) SubOp (LitE (NatLit 0)))))
+  (ExpD (IgnoreE (BinE Int (LitE (NatLit 42)) SubOp (LitE (IntLit 0)))))
+  (ExpD (IgnoreE (BinE Nat (LitE (NatLit 25)) DivOp (LitE (NatLit 1)))))
+  (ExpD (IgnoreE (BinE Int (LitE (NatLit 25)) DivOp (LitE (IntLit 1)))))
+  (ExpD (IgnoreE (BinE Nat (LitE (NatLit 0)) AddOp (LitE (NatLit 42)))))
+  (ExpD (IgnoreE (BinE Int (LitE (IntLit 0)) AddOp (LitE (NatLit 42)))))
+  (ExpD (IgnoreE (BinE Nat (LitE (NatLit 1)) MulOp (LitE (NatLit 25)))))
+  (ExpD (IgnoreE (BinE Int (LitE (IntLit 1)) MulOp (LitE (NatLit 25)))))
+  (ExpD
+    (IgnoreE
+      (BinE
+        Int
+        (AnnotE (LitE (IntLit 42)) (PathT (IdH (ID Int))))
+        AddOp
+        (LitE (IntLit 0))
+      )
+    )
+  )
+  (ExpD
+    (IgnoreE
+      (BinE
+        Nat8
+        (AnnotE (LitE (Nat8Lit 42)) (PathT (IdH (ID Nat8))))
+        AddOp
+        (LitE (Nat8Lit 0))
+      )
+    )
+  )
+  (ExpD
+    (IgnoreE
+      (AnnotE
+        (BinE Nat16 (LitE (Nat16Lit 42)) AddOp (LitE (Nat16Lit 0)))
+        (PathT (IdH (ID Nat16)))
+      )
+    )
+  )
+  (ExpD
+    (IgnoreE
+      (AnnotE
+        (BinE Nat32 (LitE (Nat32Lit 42)) AddOp (LitE (Nat32Lit 0)))
+        (PathT (IdH (ID Nat32)))
+      )
+    )
+  )
+  (ExpD
+    (IgnoreE
+      (AnnotE
+        (BinE Nat64 (LitE (Nat64Lit 42)) AddOp (LitE (Nat64Lit 0)))
+        (PathT (IdH (ID Nat64)))
+      )
+    )
+  )
+  (ExpD
+    (IgnoreE
+      (BinE
+        Nat8
+        (AnnotE (LitE (Nat8Lit 25)) (PathT (IdH (ID Nat8))))
+        MulOp
+        (LitE (Nat8Lit 1))
+      )
+    )
+  )
+  (ExpD
+    (IgnoreE
+      (AnnotE
+        (BinE Nat16 (LitE (Nat16Lit 25)) MulOp (LitE (Nat16Lit 1)))
+        (PathT (IdH (ID Nat16)))
+      )
+    )
+  )
+  (ExpD
+    (IgnoreE
+      (AnnotE
+        (BinE Nat32 (LitE (Nat32Lit 25)) MulOp (LitE (Nat32Lit 1)))
+        (PathT (IdH (ID Nat32)))
+      )
+    )
+  )
+  (ExpD
+    (IgnoreE
+      (AnnotE
+        (BinE Nat64 (LitE (Nat64Lit 25)) MulOp (LitE (Nat64Lit 1)))
+        (PathT (IdH (ID Nat64)))
+      )
+    )
+  )
+)
+-- Definedness issue-5555.mo:
+-- Desugaring issue-5555.mo:
 (ProgU
   (VarD @cycles Nat (LitE (NatLit 0)))
   (VarD @timeout ?Nat32 (LitE NullLit))
@@ -3778,7 +3882,17 @@
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (IntLit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 25))) (PrimE TupPrim)))
 )
+-- Erase type components issue-5555.mo:
 (ProgU
   (VarD @cycles Nat (LitE (NatLit 0)))
   (VarD @timeout ?Nat32 (LitE NullLit))
@@ -7553,7 +7667,17 @@
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (IntLit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 25))) (PrimE TupPrim)))
 )
+-- Translate show issue-5555.mo:
 (ProgU
   (VarD @cycles Nat (LitE (NatLit 0)))
   (VarD @timeout ?Nat32 (LitE NullLit))
@@ -11328,7 +11452,17 @@
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (IntLit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 25))) (PrimE TupPrim)))
 )
+-- Translate polymorphic equality issue-5555.mo:
 (ProgU
   (VarD @cycles Nat (LitE (NatLit 0)))
   (VarD @timeout ?Nat32 (LitE NullLit))
@@ -15103,7 +15237,17 @@
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (IntLit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 25))) (PrimE TupPrim)))
 )
+-- Await Lowering issue-5555.mo:
 (ProgU
   (VarD @cycles Nat (LitE (NatLit 0)))
   (VarD @timeout ?Nat32 (LitE NullLit))
@@ -20550,7 +20694,17 @@
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (IntLit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 25))) (PrimE TupPrim)))
 )
+-- Async Lowering issue-5555.mo:
 (ProgU
   (VarD @cycles Nat (LitE (NatLit 0)))
   (VarD @timeout ?Nat32 (LitE NullLit))
@@ -27146,7 +27300,17 @@
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (IntLit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 25))) (PrimE TupPrim)))
 )
+-- Tailcall optimization issue-5555.mo:
 (ProgU
   (VarD @cycles Nat (LitE (NatLit 0)))
   (VarD @timeout ?Nat32 (LitE NullLit))
@@ -33809,4 +33973,15 @@
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (NatLit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (IntLit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 25))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 25))) (PrimE TupPrim)))
 )
+-- constness analysis issue-5555.mo:
+-- Compiling issue-5555.mo:
