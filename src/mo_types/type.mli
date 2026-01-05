@@ -110,6 +110,7 @@ val low_memory_type : typ
 
 val sum : (lab * typ) list -> typ
 val obj : obj_sort -> (lab * typ) list -> typ
+val obj' : obj_sort -> (lab * typ) list -> (lab * con) list -> typ
 
 val throwErrorCodes : field list
 val catchErrorCodes : field list
@@ -193,8 +194,8 @@ val lookup_val_deprecation : string -> field list -> string option
 val lookup_typ_deprecation : string -> typ_field list -> string option
 
 val val_fields : field list -> field list
-val compare_field : field -> field -> int
-val align_fields : field list -> field list -> (field, field) Lib.these Seq.t
+val compare_field : 'a gen_field -> 'a gen_field -> int
+val align_fields : 'a gen_field list -> 'a gen_field list -> ('a gen_field, 'a gen_field) Lib.these Seq.t
 
 (* Constructors *)
 

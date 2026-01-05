@@ -111,7 +111,7 @@ and exp' at note = function
     (text_dotE x.it (exp e)).it
   | S.DotE (e, x, _) ->
     begin match T.as_obj_sub [x.it] e.note.S.note_typ with
-    | T.Actor, _ -> I.PrimE (I.ActorDotPrim x.it, [exp e])
+    | T.Actor, _, _ -> I.PrimE (I.ActorDotPrim x.it, [exp e])
     | _ -> I.PrimE (I.DotPrim x.it, [exp e])
     end
   | S.AssignE (e1, e2) -> I.AssignE (lexp e1, exp e2)
@@ -297,11 +297,11 @@ and parenthetical send = function
   | Some par ->
     (* fishing for relevant attributes in the parenthetical based on its static type *)
     let cycles, clean_cycles =
-      if T.(sub par.note.note_typ (Obj (Object, [T.cycles_fld])))
+      if T.(sub par.note.note_typ (Obj (Object, [T.cycles_fld], [])))
       then [fun parV -> dotE parV T.cycles_lab T.nat |> assignVarE "@cycles" |> expD], []
       else [], [] in
     let timeout, clean_timeout =
-      if T.(sub par.note.note_typ (Obj (Object, [T.timeout_fld])))
+      if T.(sub par.note.note_typ (Obj (Object, [T.timeout_fld], [])))
       then [fun parV -> dotE parV T.timeout_lab T.nat32 |> optE |> assignVarE "@timeout" |> expD], []
       else [], [nullE () |> assignE (var "@timeout" T.(Mut (Opt nat32))) |> expD] in
     (* present attributes need to set variables, absent ones just clear out *)
@@ -401,9 +401,9 @@ and build_field {T.lab; T.typ;_} =
 
 and build_fields obj_typ =
     match obj_typ with
-    | T.Obj (_, fields) ->
+    | T.Obj (_, fields, _) ->
       (* TBR: do we need to sort val_fields?*)
-      List.map build_field (T.val_fields fields)
+      List.map build_field fields
     | _ -> assert false
 
 and with_self i typ decs =
@@ -431,17 +431,16 @@ and call_system_func_opt name es obj_typ =
             [ expD (callE (varE (var id.it note)) [T.Any] (unitE())) ]
            (unitE ())
         | "inspect" ->
-          let _, tfs = T.as_obj obj_typ in
+          let _, tfs, _ = T.as_obj obj_typ in
           let caller = fresh_var "caller" T.caller in
           let arg = fresh_var "arg" T.blob in
           let msg_typ = T.decode_msg_typ tfs in
           let msg = fresh_var "msg" msg_typ in
-          let record_typ =
-            T.Obj (T.Object, List.sort T.compare_field
-             [{T.lab = "caller"; T.typ = typ_of_var caller; T.src = T.empty_src};
-               {T.lab = "arg"; T.typ = typ_of_var arg; T.src = T.empty_src};
-               {T.lab = "msg"; T.typ = typ_of_var msg; T.src = T.empty_src}])
-          in
+          let record_typ = T.obj T.Object [
+            ("caller", typ_of_var caller);
+            ("arg", typ_of_var arg);
+            ("msg", typ_of_var msg);
+          ] in
           let record = fresh_var "record" record_typ in
           let msg_variant =
             switch_textE (primE Ir.ICMethodNamePrim [])
@@ -507,7 +506,7 @@ and export_footprint self_id expr =
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
-  let ret_typ = T.Obj(Object,[{lab = "size"; typ = T.nat64; src = empty_src}]) in
+  let ret_typ = T.obj T.Object [("size", T.nat64)] in
   let caller = fresh_var "caller" caller in
   ([ letD (var v typ) (
        funcE v (Shared Query) Promises [bind1] [] [ret_typ] (
@@ -623,7 +622,7 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
       (fun tf -> {tf with T.typ = T.Opt (T.as_immut tf.T.typ) } )
       stab_fields in
   let mk_ds = List.map snd pairs in
-  let mem_ty = T.Obj (T.Memory, mem_fields) in
+  let mem_ty = T.Obj (T.Memory, mem_fields, []) in
   let state = fresh_var "state" (T.Mut (T.Opt mem_ty)) in
   let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [mem_ty])) in
   let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
@@ -633,13 +632,13 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
       I.{pre = mem_ty; post = mem_ty},
       primE (I.ICStableRead mem_ty) [] (* as before *)
     | Some exp0 ->
-      let typ = let _, tfs = T.as_obj_sub [T.migration_lab] exp0.note.Note.typ in
+      let typ = let _, tfs, _ = T.as_obj_sub [T.migration_lab] exp0.note.Note.typ in
                 T.lookup_val_field T.migration_lab tfs
       in
       let e = dotE exp0 T.migration_lab typ in
       let dom, rng = T.as_mono_func_sub typ in
-      let (_dom_sort, dom_fields) = T.as_obj (T.normalize dom) in
-      let (_rng_sort, rng_fields) = T.as_obj (T.promote rng) in
+      let (_dom_sort, dom_fields, _) = T.as_obj (T.normalize dom) in
+      let (_rng_sort, rng_fields, _) = T.as_obj (T.promote rng) in
       let stab_fields_pre =
         List.sort (fun (r1, tf1) (r2, tf2) -> T.compare_field tf1 tf2)
           ((List.map (fun tf -> (true, tf)) dom_fields) (* required *) @
@@ -660,7 +659,7 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
           (fun (is_required, tf) -> { tf with T.typ = T.Opt (T.as_immut tf.T.typ) })
           stab_fields_pre
       in
-      let mem_ty_pre = T.Obj (T.Memory, mem_fields_pre) in
+      let mem_ty_pre = T.Obj (T.Memory, mem_fields_pre, []) in
       let v = fresh_var "v" mem_ty_pre in
       let v_dom = fresh_var "v_dom" dom in
       let v_rng = fresh_var "v_rng" rng in
@@ -816,7 +815,7 @@ and build_obj at s self_id dfs obj_typ =
       (letE self e (varE self)).it
 
 and exp_field obj_typ ef =
-  let _, fts = T.as_obj_sub [] obj_typ in
+  let _, fts, _ = T.as_obj_sub [] obj_typ in
   let S.{mut; id; exp = e} = ef.it in
   match mut.it with
   | S.Var ->
@@ -849,8 +848,11 @@ and obj obj_typ efs bases =
     let base_var = fresh_var "base" base_t in
     let base_dec = letD base_var base_exp in
     let pick l =
-      if exists (fun { T.lab; _ } -> lab = l) T.(promote base_t |> as_obj |> snd)
-      then [base_var] else [] in
+      let (_, fs, _) = T.as_obj (T.promote base_t) in
+      if Option.is_some (T.lookup_val_field_opt l fs) then
+        [base_var]
+      else
+        [] in
     base_dec, pick in
 
   let base_decs, pickers = map base_info bases |> split in
@@ -868,7 +870,7 @@ and obj obj_typ efs bases =
       [d, f] in
 
   let dss, fs = map (exp_field obj_typ) efs |> split in
-  let ds', fs' = concat_map gap (T.as_obj obj_typ |> snd |> T.val_fields) |> split in
+  let ds', fs' = concat_map gap (let _, fs, _ = T.as_obj obj_typ in fs) |> split in
   let obj_e = newObjE T.Object (append fs fs') obj_typ in
   let decs = append base_decs (append (flatten dss) ds') in
   (blockE decs obj_e).it
@@ -1203,7 +1205,7 @@ and transform_import (i : S.import) : Ir.dec list =
   let t = i.note in
   assert (t <> T.Pre);
   match t with
-  | T.Obj(T.Mixin, _) -> []
+  | T.Obj(T.Mixin, _, _) -> []
   | _ ->
   let rhs = match !ri with
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))

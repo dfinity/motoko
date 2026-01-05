@@ -361,6 +361,9 @@ let fields flds =
 let obj sort flds =
   Obj (sort, fields flds, [])
 
+let obj' sort flds tfs =
+  Obj (sort, fields flds, fields tfs)
+
 let sum flds =
   Variant (fields flds)
 
@@ -1256,7 +1259,7 @@ and rel_fields t2 d rel eq tfs1 tfs2 =
       if rel != eq && not (RelArg.is_stable_sub d) then true
       else missing_field d tf1.lab t2
     | Lib.That tf2 ->
-      unexpected_field d tf2.lab t2) in
+      unexpected_field d tf2.lab t2)
 
 and rel_typ_fields t2 d rel eq tfs1 tfs2 =
   let res = align_fields tfs1 tfs2 |>

@@ -161,8 +161,8 @@ let display_given_arg_types fmt types =
 
 let display_obj fmt typ =
   match T.normalize typ with
-  | T.Obj(s, fs) ->
-     if !Flags.ai_errors || (List.length fs) < 16 then
+  | T.Obj(s, fs, tfs) ->
+     if !Flags.ai_errors || (List.length fs) + (List.length tfs) < 16 then
        Format.fprintf fmt "type:%a" display_typ_expand typ
      else
        Format.fprintf fmt "%s."
@@ -180,21 +180,18 @@ let display_vals fmt vals =
     let tfs = T.Env.fold (fun x (t, _, _, _) acc ->
       if x = "Prim" || Syntax.is_privileged x
       then acc
-      else T.{lab = x; src = empty_src; typ = t}::acc)
+      else (x, t)::acc)
       vals []
     in
-    let ty = T.Obj(T.Object, List.rev tfs) in
+    let ty = T.obj T.Object tfs in
     Format.fprintf fmt " in environment:%a" display_typ ty
   else
     Format.fprintf fmt ""
 
 let display_labs fmt labs =
   if !Flags.ai_errors then
-    let tfs = T.Env.fold (fun x t acc ->
-      T.{lab = x; src = empty_src; typ = t}::acc)
-      labs []
-    in
-    let ty = T.Obj(T.Object, List.rev tfs) in
+    let tfs = List.of_seq (T.Env.to_seq labs) in
+    let ty = T.obj T.Object tfs in
     Format.fprintf fmt " in label environment:%a" display_typ ty
   else
     Format.fprintf fmt ""
@@ -207,10 +204,10 @@ let display_typs fmt typs =
           | Def ([], (Prim _ | Any | Non)) -> string_of_con c = x
           | _ -> false)
       then acc
-      else T.{lab = x; src = empty_src; typ = T.Typ c}::acc)
+      else (x, c)::acc)
       typs []
     in
-    let ty = T.Obj(T.Object, List.rev tfs) in
+    let ty = T.obj' T.Object [] tfs in
     Format.fprintf fmt " in type environment:%a" display_typ ty
   else
     Format.fprintf fmt ""
