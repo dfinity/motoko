@@ -375,6 +375,27 @@ let sub env at t1 t2 =
       display_typ_expand t1
       display_typ_expand t2
 
+let sub_explained env at t1 t2 =
+  try T.sub_explained ~src_fields:env.srcs [] t1 t2 with T.Undecided ->
+    error env at "M0200" "cannot decide subtyping between type%a\nand%a"
+      display_typ_expand t1
+      display_typ_expand t2
+
+let incompatible_sub env at t1 t2 =
+  match sub_explained env at t1 t2 with
+  | T.Incompatible reason ->
+    let explanation =
+      if T.is_redundant_explanation t1 t2 reason then ""
+      else Printf.sprintf "\nbecause %s" (T.string_of_explanation reason)
+    in
+    Some explanation
+  | T.Compatible -> None
+
+let check_sub_explained env at t1 t2 on_incompatible =
+  match incompatible_sub env at t1 t2 with
+  | Some explanation -> on_incompatible explanation
+  | None -> ()
+
 let eq env at t1 t2 =
   try T.eq ~src_fields:env.srcs t1 t2 with T.Undecided ->
     error env at "M0200" "cannot decide equality between type%a\nand%a"
@@ -1855,12 +1876,14 @@ and infer_exp'' env exp : T.typ =
     begin match env.pre, typ_opt with
       | false, (_, Some typ) ->
         let t' = check_typ env' typ in
-        if not (sub env exp.at t t') then
+        (match incompatible_sub env exp.at t t' with
+        | Some explanation ->
           local_error env exp.at "M0192"
-            "body of type%a\ndoes not match expected type%a"
+            "body of type%a\ndoes not match expected type%a%s"
             display_typ_expand t
             display_typ_expand t'
-        else detect_lost_fields env t' e;
+            explanation
+        | None -> detect_lost_fields env t' e)
       | _ -> ()
     end;
     t
@@ -2524,20 +2547,22 @@ and check_exp' env0 t exp : T.typ =
   (* TODO: allow shared with one scope par *)
   | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
     let env', t2, codom = check_func_step env0.in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) in
-    if not (sub env Source.no_region t2 codom) then
+    check_sub_explained env Source.no_region t2 codom (fun explanation ->
       error env exp.at "M0095"
-        "function return type%a\ndoes not match expected return type%a"
+        "function return type%a\ndoes not match expected return type%a%s"
         display_typ_expand t2
-        display_typ_expand codom;
+        display_typ_expand codom
+        explanation);
     check_exp_strong env' t2 exp;
     t
   | CallE (par_opt, exp1, inst, exp2), _ ->
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
-    if not (sub env exp1.at t' t) then
+    check_sub_explained env exp1.at t' t (fun explanation ->
       local_error env0 exp.at "M0096"
-        "expression of type%a\ncannot produce expected type%a"
+        "expression of type%a\ncannot produce expected type%a%s"
         display_typ_expand t'
-        display_typ_expand t;
+        display_typ_expand t
+        explanation);
     if not env.pre then check_parenthetical env (Some exp1.note.note_typ) par_opt;
     t'
   | TagE (id, exp1), T.Variant fs when List.exists (fun T.{lab; _} -> lab = id.it) fs ->
@@ -2551,15 +2576,16 @@ and check_exp' env0 t exp : T.typ =
     check_inferred env0 env t t' exp
 
 and check_inferred env0 env t t' exp =
-  if not (sub env exp.at t' t) then
-  begin
+  (match incompatible_sub env exp.at t' t with
+  | Some explanation ->
     local_error env0 exp.at "M0096"
-      "expression of type%a\ncannot produce expected type%a%s"
+      "expression of type%a\ncannot produce expected type%a%s%s"
       display_typ_expand t'
       display_typ_expand t
+      explanation
       (Suggest.suggest_conversion env.libs env.vals t' t)
-  end
-  else detect_lost_fields env t exp.it;
+  | None ->
+    detect_lost_fields env t exp.it);
   t'
 
 and check_exp_field env (ef : exp_field) fts =
@@ -3857,7 +3883,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
         | T.Compatible -> ()
         | T.Incompatible explanation ->
           local_error env focus "M0204"
-            "migration expression produces field `%s` of type%a\n, not the expected type%a\nbecause: %s"
+            "migration expression produces field `%s` of type%a\n, not the expected type%a\nbecause %s"
             tf.T.lab
             display_typ_expand typ
             display_typ_expand tf.T.typ
@@ -4541,12 +4567,16 @@ and infer_dec_valdecs env dec : Scope.t =
     }
 
 (* Programs *)
-let infer_prog scope pkg_opt async_cap prog
+let infer_prog ?(enable_type_recovery=false) scope pkg_opt async_cap prog
     : (T.typ * Scope.t) Diag.result
   =
-  Diag.with_message_store
+  let recovery_fn = if enable_type_recovery then
+    fun f y -> recover_with (Some (T.unit, Scope.empty)) (fun y -> Some (f y)) y;
+    else recover_opt;
+  in
+  Diag.with_message_store ~allow_errors:enable_type_recovery
     (fun msgs ->
-      recover_opt
+      recovery_fn
         (fun prog ->
           let env0 = env_of_scope msgs scope in
           let env = {

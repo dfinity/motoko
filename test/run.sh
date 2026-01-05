@@ -294,7 +294,6 @@ do
     then
       if [[ $EXTRA_MOC_ARGS != *"--enhanced-orthogonal-persistence"* ]]
       then
-        SKIP_RUNNING=yes
         $ECHO " Skipped (not applicable to classical orthogonal persistence)"
         continue
       fi
