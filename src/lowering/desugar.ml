@@ -323,7 +323,7 @@ and neutral (op : (binop, binop) Either.t) : exp -> bool =
   let mul_like = function Either.(Left MulOp | Right (MulOp | DivOp)) -> true | _ -> false in
   let rec strip e = match e.it with
     | S.AnnotE (e, _) -> strip e
-    | S.LitE {contents } ->
+    | S.LitE {contents} ->
       (match contents with
        | NatLit n | IntLit n when add_like op && Numerics.Int.(eq n zero) -> true
        | NatLit n | IntLit n when mul_like op && Numerics.Int.(of_int 1 |> eq n) -> true

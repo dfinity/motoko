@@ -67,6 +67,14 @@
   )
   (ExpD
     (IgnoreE
+      (AnnotE
+        (BinE Nat64 (LitE (Nat64Lit 37)) OrOp (LitE (Nat64Lit 0)))
+        (PathT (IdH (ID Nat64)))
+      )
+    )
+  )
+  (ExpD
+    (IgnoreE
       (BinE
         Nat8
         (AnnotE (LitE (Nat8Lit 25)) (PathT (IdH (ID Nat8))))

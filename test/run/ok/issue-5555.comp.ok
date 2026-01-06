@@ -67,6 +67,14 @@
   )
   (ExpD
     (IgnoreE
+      (AnnotE
+        (BinE Nat64 (LitE (Nat64Lit 37)) OrOp (LitE (Nat64Lit 0)))
+        (PathT (IdH (ID Nat64)))
+      )
+    )
+  )
+  (ExpD
+    (IgnoreE
       (BinE
         Nat8
         (AnnotE (LitE (Nat8Lit 25)) (PathT (IdH (ID Nat8))))
@@ -3887,6 +3895,7 @@
   (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 37))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 25))) (PrimE TupPrim)))
@@ -7672,6 +7681,7 @@
   (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 37))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 25))) (PrimE TupPrim)))
@@ -11457,6 +11467,7 @@
   (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 37))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 25))) (PrimE TupPrim)))
@@ -15242,6 +15253,7 @@
   (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 37))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 25))) (PrimE TupPrim)))
@@ -20699,6 +20711,7 @@
   (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 37))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 25))) (PrimE TupPrim)))
@@ -27305,6 +27318,7 @@
   (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 37))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 25))) (PrimE TupPrim)))
@@ -33978,6 +33992,7 @@
   (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 42))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 42))) (PrimE TupPrim)))
+  (LetD WildP (BlockE (LetD WildP (LitE (Nat64Lit 37))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat8Lit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat16Lit 25))) (PrimE TupPrim)))
   (LetD WildP (BlockE (LetD WildP (LitE (Nat32Lit 25))) (PrimE TupPrim)))
