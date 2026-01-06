@@ -162,6 +162,11 @@ type sugar = bool (* Is the source of a function body a block `<block>`,
                      This flag is used to correctly desugar an actor's
                      public functions as oneway, shared functions *)
 
+type loop_flags = { mutable has_break : bool; mutable has_continue : bool }
+
+let auto_s = "<>auto"
+let auto_continue_s = "continue <>auto"
+
 type id_ref = (string, mut' * exp option) Source.annotated_phrase
 and hole_sort = Named of string | Anon of int
 and exp = (exp', typ_note) Source.annotated_phrase
@@ -197,9 +202,9 @@ and exp' =
   | OrE of exp * exp                           (* disjunction *)
   | IfE of exp * exp * exp                     (* conditional *)
   | SwitchE of exp * case list                 (* switch *)
-  | WhileE of exp * exp                        (* while-do loop *)
-  | LoopE of exp * exp option                  (* do-while loop *)
-  | ForE of pat * exp * exp                    (* iteration *)
+  | WhileE of exp * exp * loop_flags       (* while-do loop *)
+  | LoopE of exp * exp option * loop_flags (* do-while loop *)
+  | ForE of pat * exp * exp * loop_flags   (* iteration *)
   | LabelE of id * typ * exp                   (* label *)
   | BreakE of id * exp                         (* break *)
   | RetE of exp                                (* return *)
@@ -402,3 +407,5 @@ let contextual_dot_args e1 e2 dot_note =
     | { at; note = { note_eff; _ }; _ } ->
        { it = TupE ([e1; e2]); at; note = { note_eff = effect note_eff; note_typ = T.Tup ([e1.note.note_typ; e2.note.note_typ]) } }
   in args
+
+let new_loop_flags () : loop_flags = { has_break = false; has_continue = false }

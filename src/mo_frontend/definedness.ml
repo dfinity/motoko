@@ -109,16 +109,16 @@ let rec exp msgs e : f = match e.it with
   | SwitchE (e, cs)
   | TryE (e, cs, None)  -> exp msgs e ++ cases msgs cs
   | TryE (e, cs, Some f)-> exps msgs [e; f] ++ cases msgs cs
-  | LoopE (e1, None)    -> exp msgs e1
-  | LoopE (e1, Some e2)
-  | WhileE (e1, e2)
+  | LoopE (e1, None, _)    -> exp msgs e1
+  | LoopE (e1, Some e2, _)
+  | WhileE (e1, e2, _)
   | AssignE (e1, e2)
   | IdxE (e1, e2)
   | BinE (_, e1, _, e2)
   | RelE (_, e1, _, e2)
   | AndE (e1, e2)
   | OrE (e1, e2) -> exps msgs [e1; e2]
-  | ForE (p, e1, e2)    -> exp msgs e1 ++ (exp msgs e2 /// pat msgs p)
+  | ForE (p, e1, e2, _)    -> exp msgs e1 ++ (exp msgs e2 /// pat msgs p)
   | AsyncE (Some par, _, _, e) -> exps msgs [par; e]
   | UnE (_, _, e)
   | ShowE (_, e)
