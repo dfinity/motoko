@@ -28,6 +28,7 @@ type token =
   | IF
   | IGNORE
   | IN
+  | IMPLICIT
   | ELSE
   | SWITCH
   | LOOP
@@ -61,8 +62,6 @@ type token =
   | BANG
   | AND
   | OR
-  | IMPLIES
-  | OLD
   | NOT
   | IMPORT
   | INCLUDE
@@ -128,7 +127,6 @@ type token =
   | UNDERSCORE
   | WEAK
   | COMPOSITE
-  | INVARIANT
   (* Trivia *)
   | LINEFEED of line_feed
   | SINGLESPACE
@@ -164,6 +162,7 @@ let to_parser_token :
   | IF -> Ok Parser.IF
   | IGNORE -> Ok Parser.IGNORE
   | IN -> Ok Parser.IN
+  | IMPLICIT -> Ok Parser.IMPLICIT
   | ELSE -> Ok Parser.ELSE
   | SWITCH -> Ok Parser.SWITCH
   | LOOP -> Ok Parser.LOOP
@@ -198,8 +197,6 @@ let to_parser_token :
   | BANG -> Ok Parser.BANG
   | AND -> Ok Parser.AND
   | OR -> Ok Parser.OR
-  | IMPLIES -> Ok Parser.IMPLIES
-  | OLD -> Ok Parser.OLD
   | NOT -> Ok Parser.NOT
   | IMPORT -> Ok Parser.IMPORT
   | INCLUDE -> Ok Parser.INCLUDE
@@ -263,7 +260,6 @@ let to_parser_token :
   | PRIM -> Ok Parser.PRIM
   | UNDERSCORE -> Ok Parser.UNDERSCORE
   | COMPOSITE -> Ok Parser.COMPOSITE
-  | INVARIANT -> Ok Parser.INVARIANT
   | PIPE -> Ok Parser.PIPE
   | WEAK -> Ok Parser.WEAK
   (*Trivia *)
@@ -300,6 +296,7 @@ let string_of_parser_token = function
   | Parser.IF -> "IF"
   | Parser.IGNORE -> "IGNORE"
   | Parser.IN -> "IN"
+  | Parser.IMPLICIT -> "IMPLICIT"
   | Parser.ELSE -> "ELSE"
   | Parser.SWITCH -> "SWITCH"
   | Parser.LOOP -> "LOOP"
@@ -401,9 +398,6 @@ let string_of_parser_token = function
   | Parser.PRIM -> "PRIM"
   | Parser.UNDERSCORE -> "UNDERSCORE"
   | Parser.COMPOSITE -> "COMPOSITE"
-  | Parser.INVARIANT -> "INVARIANT"
-  | Parser.IMPLIES -> "IMPLIES"
-  | Parser.OLD -> "OLD"
   | Parser.PIPE -> "PIPE"
   | Parser.WEAK -> "WEAK"
 

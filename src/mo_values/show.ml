@@ -78,9 +78,7 @@ let rec show_val t v =
   | T.Obj (_, fts), Value.Obj fs ->
     Printf.sprintf "{%s}"
       (String.concat "; "
-         (List.filter_map (fun ft ->
-            if T.is_typ ft.T.typ then None else
-            Some (show_field fs ft)) fts))
+         (List.map (show_field fs) (T.val_fields fts)))
   | T.Variant fs, Value.Variant (l, v) ->
     begin match List.find_opt (fun {T.lab = l'; _} -> l = l') fs with
     | Some {T.typ = T.Tup []; _} -> Printf.sprintf "#%s" l

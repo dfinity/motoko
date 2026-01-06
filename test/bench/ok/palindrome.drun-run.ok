@@ -1,10 +1,19 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
+<<<<<<< HEAD
 debug.print: (true, +2_928, 25_441)
 debug.print: (false, +2_928, 24_110)
 debug.print: (false, +2_928, 25_415)
 debug.print: (true, +2_184, 23_476)
 debug.print: (false, +2_160, 21_552)
 debug.print: (false, +2_160, 23_277)
+=======
+debug.print: (true, +2_928, 25_412)
+debug.print: (false, +2_928, 24_081)
+debug.print: (false, +2_928, 25_386)
+debug.print: (true, +2_184, 23_432)
+debug.print: (false, +2_160, 21_507)
+debug.print: (false, +2_160, 23_232)
+>>>>>>> master
 ingress Completed: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000

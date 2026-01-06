@@ -83,6 +83,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_IGNORE -> IGNORE
       | T_IF -> IF
       | T_ID -> ID "<id>"
+      | T_IMPLICIT -> IMPLICIT
       | T_HASH -> HASH
       | T_GTOP -> GTOP
       | T_GT -> GT
@@ -126,11 +127,8 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_ANDOP -> ANDOP
       | T_ANDASSIGN -> ANDASSIGN
       | T_AND -> AND
-      | T_IMPLIES -> IMPLIES
-      | T_OLD -> OLD
       | T_ADDOP -> ADDOP
       | T_ACTOR -> ACTOR
-      | T_INVARIANT -> INVARIANT
       | T_WRAPADDOP -> WRAPADDOP
       | T_WRAPSUBOP -> WRAPSUBOP
       | T_WRAPMULOP -> WRAPMULOP

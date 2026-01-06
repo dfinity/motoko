@@ -88,7 +88,7 @@ Space: O(a.size())
 
 ## Function `toIter`
 ``` motoko no-repl
-func toIter(t : Text) : Iter.Iter<Char>
+func toIter(self : Text) : Iter.Iter<Char>
 ```
 
 Iterates over each `Char` value in the given `Text`.
@@ -105,7 +105,7 @@ assert chars.next() == null;
 
 ## Function `foldLeft`
 ``` motoko no-repl
-func foldLeft<A>(text : Text, base : A, combine : (A, Char) -> A) : A
+func foldLeft<A>(self : Text, base : A, combine : (A, Char) -> A) : A
 ```
 
 Collapses the characters in `text` into a single value by starting with `base`
@@ -132,7 +132,7 @@ Space: O(1)
 
 ## Function `toArray`
 ``` motoko no-repl
-func toArray(t : Text) : [Char]
+func toArray(self : Text) : [Char]
 ```
 
 Creates a new `Array` containing characters of the given `Text`.
@@ -148,7 +148,7 @@ Space: O(t.size())
 
 ## Function `toVarArray`
 ``` motoko no-repl
-func toVarArray(t : Text) : [var Char]
+func toVarArray(self : Text) : [var Char]
 ```
 
 Creates a new mutable `Array` containing characters of the given `Text`.
@@ -179,7 +179,7 @@ assert text == "abc";
 
 ## Function `isEmpty`
 ``` motoko no-repl
-func isEmpty(t : Text) : Bool
+func isEmpty(self : Text) : Bool
 ```
 
 Returns whether the given `Text` is empty (has a size of zero).
@@ -193,7 +193,7 @@ assert not Text.isEmpty(text2);
 
 ## Function `size`
 ``` motoko no-repl
-func size(t : Text) : Nat
+func size(self : Text) : Nat
 ```
 
 Returns the number of characters in the given `Text`.
@@ -207,7 +207,7 @@ assert size == 3;
 
 ## Function `concat`
 ``` motoko no-repl
-func concat(t1 : Text, t2 : Text) : Text
+func concat(self : Text, other : Text) : Text
 ```
 
 Returns `t1 # t2`, where `#` is the `Text` concatenation operator.
@@ -225,7 +225,7 @@ assert togetherAgain == "HelloThere";
 
 ## Function `reverse`
 ``` motoko no-repl
-func reverse(t : Text) : Text
+func reverse(self : Text) : Text
 ```
 
 Returns a new `Text` with the characters of the input `Text` in reverse order.
@@ -240,7 +240,7 @@ Space: O(t.size())
 
 ## Function `equal`
 ``` motoko no-repl
-func equal(t1 : Text, t2 : Text) : Bool
+func equal(self : Text, other : Text) : Bool
 ```
 
 Returns true if two text values are equal.
@@ -254,7 +254,7 @@ assert not Text.equal("hello", "world");
 
 ## Function `notEqual`
 ``` motoko no-repl
-func notEqual(t1 : Text, t2 : Text) : Bool
+func notEqual(self : Text, other : Text) : Bool
 ```
 
 Returns true if two text values are not equal.
@@ -268,7 +268,7 @@ assert not Text.notEqual("hello", "hello");
 
 ## Function `less`
 ``` motoko no-repl
-func less(t1 : Text, t2 : Text) : Bool
+func less(self : Text, other : Text) : Bool
 ```
 
 Returns true if the first text value is lexicographically less than the second.
@@ -282,7 +282,7 @@ assert not Text.less("banana", "apple");
 
 ## Function `lessOrEqual`
 ``` motoko no-repl
-func lessOrEqual(t1 : Text, t2 : Text) : Bool
+func lessOrEqual(self : Text, other : Text) : Bool
 ```
 
 Returns true if the first text value is lexicographically less than or equal to the second.
@@ -297,7 +297,7 @@ assert not Text.lessOrEqual("banana", "apple");
 
 ## Function `greater`
 ``` motoko no-repl
-func greater(t1 : Text, t2 : Text) : Bool
+func greater(self : Text, other : Text) : Bool
 ```
 
 Returns true if the first text value is lexicographically greater than the second.
@@ -311,7 +311,7 @@ assert not Text.greater("apple", "banana");
 
 ## Function `greaterOrEqual`
 ``` motoko no-repl
-func greaterOrEqual(t1 : Text, t2 : Text) : Bool
+func greaterOrEqual(self : Text, other : Text) : Bool
 ```
 
 Returns true if the first text value is lexicographically greater than or equal to the second.
@@ -326,7 +326,7 @@ assert not Text.greaterOrEqual("apple", "banana");
 
 ## Function `compare`
 ``` motoko no-repl
-func compare(t1 : Text, t2 : Text) : Order.Order
+func compare(self : Text, other : Text) : Order.Order
 ```
 
 Compares `t1` and `t2` lexicographically.
@@ -339,19 +339,19 @@ assert Text.compare("abc", "ABC") == #greater;
 
 ## Function `join`
 ``` motoko no-repl
-func join(sep : Text, ts : Iter.Iter<Text>) : Text
+func join(self : Iter.Iter<Text>, sep : Text) : Text
 ```
 
 Join an iterator of `Text` values with a given delimiter.
 
 ```motoko include=import
-let joined = Text.join(", ", ["a", "b", "c"].values());
+let joined = Text.join(["a", "b", "c"].values(), ", ");
 assert joined == "a, b, c";
 ```
 
 ## Function `map`
 ``` motoko no-repl
-func map(t : Text, f : Char -> Char) : Text
+func map(self : Text, f : Char -> Char) : Text
 ```
 
 Applies a function to each character in a `Text` value, returning the concatenated `Char` results.
@@ -367,7 +367,7 @@ assert result == "Motoko!";
 
 ## Function `flatMap`
 ``` motoko no-repl
-func flatMap(t : Text, f : Char -> Text) : Text
+func flatMap(self : Text, f : Char -> Text) : Text
 ```
 
 Returns the result of applying `f` to each character in `ts`, concatenating the intermediate text values.
@@ -404,7 +404,7 @@ assert Text.contains("B", predicatePattern);
 
 ## Function `split`
 ``` motoko no-repl
-func split(t : Text, p : Pattern) : Iter.Iter<Text>
+func split(self : Text, p : Pattern) : Iter.Iter<Text>
 ```
 
 Splits the input `Text` with the specified `Pattern`.
@@ -418,7 +418,7 @@ assert Text.join("|", words) == "This|is|a|sentence.";
 
 ## Function `tokens`
 ``` motoko no-repl
-func tokens(t : Text, p : Pattern) : Iter.Iter<Text>
+func tokens(self : Text, p : Pattern) : Iter.Iter<Text>
 ```
 
 Returns a sequence of tokens from the input `Text` delimited by the specified `Pattern`, derived from start to end.
@@ -432,7 +432,7 @@ assert Text.join("|", tokens) == "this|needs|an|example";
 
 ## Function `contains`
 ``` motoko no-repl
-func contains(t : Text, p : Pattern) : Bool
+func contains(self : Text, p : Pattern) : Bool
 ```
 
 Returns `true` if the input `Text` contains a match for the specified `Pattern`.
@@ -444,7 +444,7 @@ assert not Text.contains("Motoko", #text "xyz");
 
 ## Function `startsWith`
 ``` motoko no-repl
-func startsWith(t : Text, p : Pattern) : Bool
+func startsWith(self : Text, p : Pattern) : Bool
 ```
 
 Returns `true` if the input `Text` starts with a prefix matching the specified `Pattern`.
@@ -455,7 +455,7 @@ assert Text.startsWith("Motoko", #text "Mo");
 
 ## Function `endsWith`
 ``` motoko no-repl
-func endsWith(t : Text, p : Pattern) : Bool
+func endsWith(self : Text, p : Pattern) : Bool
 ```
 
 Returns `true` if the input `Text` ends with a suffix matching the specified `Pattern`.
@@ -466,7 +466,7 @@ assert Text.endsWith("Motoko", #char 'o');
 
 ## Function `replace`
 ``` motoko no-repl
-func replace(t : Text, p : Pattern, r : Text) : Text
+func replace(self : Text, p : Pattern, r : Text) : Text
 ```
 
 Returns the input text `t` with all matches of pattern `p` replaced by text `r`.
@@ -478,7 +478,7 @@ assert result == "AbcAbc";
 
 ## Function `stripStart`
 ``` motoko no-repl
-func stripStart(t : Text, p : Pattern) : ?Text
+func stripStart(self : Text, p : Pattern) : ?Text
 ```
 
 Strips one occurrence of the given `Pattern` from the beginning of the input `Text`.
@@ -495,7 +495,7 @@ assert one == ?"-abc";
 
 ## Function `stripEnd`
 ``` motoko no-repl
-func stripEnd(t : Text, p : Pattern) : ?Text
+func stripEnd(self : Text, p : Pattern) : ?Text
 ```
 
 Strips one occurrence of the given `Pattern` from the end of the input `Text`.
@@ -512,7 +512,7 @@ assert one == ?"xyz-";
 
 ## Function `trimStart`
 ``` motoko no-repl
-func trimStart(t : Text, p : Pattern) : Text
+func trimStart(self : Text, p : Pattern) : Text
 ```
 
 Trims the given `Pattern` from the start of the input `Text`.
@@ -525,7 +525,7 @@ assert trimmed == "abc";
 
 ## Function `trimEnd`
 ``` motoko no-repl
-func trimEnd(t : Text, p : Pattern) : Text
+func trimEnd(self : Text, p : Pattern) : Text
 ```
 
 Trims the given `Pattern` from the end of the input `Text`.
@@ -538,7 +538,7 @@ assert trimmed == "xyz";
 
 ## Function `trim`
 ``` motoko no-repl
-func trim(t : Text, p : Pattern) : Text
+func trim(self : Text, p : Pattern) : Text
 ```
 
 Trims the given `Pattern` from both the start and end of the input `Text`.
@@ -550,7 +550,7 @@ assert trimmed == "abcxyz";
 
 ## Function `compareWith`
 ``` motoko no-repl
-func compareWith(t1 : Text, t2 : Text, cmp : (Char, Char) -> Order.Order) : Order.Order
+func compareWith(self : Text, other : Text, compare : (Char, Char) -> Order.Order) : Order.Order
 ```
 
 Compares `t1` and `t2` using the provided character-wise comparison function.
@@ -563,7 +563,7 @@ assert Text.compareWith("abc", "ABC", func(c1, c2) { Char.compare(c1, c2) }) == 
 
 ## Function `encodeUtf8`
 ``` motoko no-repl
-func encodeUtf8(_ : Text) : Blob
+func encodeUtf8(self : Text) : Blob
 ```
 
 Returns a UTF-8 encoded `Blob` from the given `Text`.
@@ -575,7 +575,7 @@ assert blob == "\48\65\6C\6C\6F";
 
 ## Function `decodeUtf8`
 ``` motoko no-repl
-func decodeUtf8(_ : Blob) : ?Text
+func decodeUtf8(self : Blob) : ?Text
 ```
 
 Tries to decode the given `Blob` as UTF-8.
@@ -588,7 +588,7 @@ assert text == ?"Hello";
 
 ## Function `toLower`
 ``` motoko no-repl
-func toLower(_ : Text) : Text
+func toLower(self : Text) : Text
 ```
 
 Returns the text argument in lowercase.
@@ -601,7 +601,7 @@ assert text == "good day";
 
 ## Function `toUpper`
 ``` motoko no-repl
-func toUpper(_ : Text) : Text
+func toUpper(self : Text) : Text
 ```
 
 Returns the text argument in uppercase. Unicode compliant.
@@ -614,7 +614,7 @@ assert text == "GOOD DAY";
 
 ## Function `toText`
 ``` motoko no-repl
-func toText(t : Text) : Text
+func toText(self : Text) : Text
 ```
 
 Returns the given text value unchanged.

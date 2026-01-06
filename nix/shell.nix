@@ -4,7 +4,6 @@
 , core-src
 , llvmEnv
 , esm
-, viper-server
 , commonBuildInputs
 , rts
 , js
@@ -48,12 +47,13 @@ pkgs.mkShell {
         pkgs.moreutils # `chronic` for `make -C test quick`
         pkgs.wabt # `wasm-validate` for `test/run.sh`
         pkgs.openjdk
-        pkgs.z3 # for viper dev
         pkgs.difftastic
         pkgs.pocket-ic.server
         pkgs.gh # GitHub CLI
+        pkgs.fzf
+        pkgs.jq
         test-runner
-      ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin pkgs.darwin.apple_sdk.frameworks.Security
+      ]
     ));
 
   # Add these variables to the shell environment so that
@@ -89,7 +89,6 @@ pkgs.mkShell {
   MOTOKO_BASE = base-src;
   MOTOKO_CORE = core-src;
   CANDID_TESTS = "${pkgs.sources.candid-src}/test";
-  VIPER_SERVER = "${viper-server}";
 
   # allow building this as a derivation, so that hydra builds and caches
   # the dependencies of shell.

@@ -77,4 +77,4 @@ If you need to handle or inspect the error, it's better to use a `switch` statem
 
 ## Resources
 
-- [`Result`](https://internetcomputer.org/docs/motoko/core/Result)
+- [`Result`](../../core/Result.md)

@@ -37,10 +37,7 @@ let transform prog =
     match t with
     (* The only interesting case *)
     | Obj (s, fs) ->
-      Obj (s,
-        List.filter_map (fun f ->
-          if is_typ f.typ then None else Some (t_field f))
-        fs)
+      Obj (s, List.map (fun f -> t_field f) (T.val_fields fs))
     | T.Prim _
     | Var _ -> t
     | Con (c, ts) ->
