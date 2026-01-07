@@ -3992,7 +3992,7 @@ and check_stab env sort scope dec_fields =
   let check_stable id at =
     match T.Env.find_opt id scope.Scope.val_env with
     | None -> assert false
-     | Some (t, _, _, _) ->
+    | Some (t, _, _, _) ->
       let t1 = T.as_immut t in
       if not (T.stable t1) then
         local_error env at "M0131"
