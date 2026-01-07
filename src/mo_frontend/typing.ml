@@ -305,6 +305,7 @@ let emit_unused_warnings env =
   let emit (id, region, kind) = match kind with
     | Scope.Declaration -> warn env region "M0194" "unused identifier %s (delete or rename to wildcard `_` or `_%s`)" id id
     | Scope.FieldReference -> warn env region "M0198" "unused field %s in object pattern (delete or rewrite as `%s = _`)" id id
+    | Scope.Shared -> warn env region "M0240" "unused identifier %s in shared pattern (delete or rename to wildcard `_` or `_%s`)" id id
   in
   let list = sorted_unused_warnings !(env.unused_warnings) in
   List.iter emit list
@@ -3269,7 +3270,7 @@ and check_shared_pat env shared_pat : T.func_sort * Scope.val_env =
   | T.Shared (ss, pat) ->
     if pat.it <> WildP then
       error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "M0106" "shared function cannot take a context pattern";
-    T.Shared ss, check_pat_exhaustive local_error env T.ctxt pat
+    T.Shared ss, check_pat_exhaustive ~val_kind:Scope.Shared local_error env T.ctxt pat
 
 and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
   match shared_pat.it, obj_sort.it with
@@ -3283,18 +3284,18 @@ and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
       error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "M0108" "actor class cannot take a context pattern";
     if mode = T.Query then
       error env shared_pat.at "M0109" "class cannot be a query";
-    check_pat_exhaustive local_error env T.ctxt pat
+    check_pat_exhaustive ~val_kind:Scope.Shared local_error env T.ctxt pat
   | _, T.Memory -> assert false
 
 
-and check_pat_exhaustive warnOrError env t pat : Scope.val_env =
-  let ve = check_pat env t pat in
+and check_pat_exhaustive ?(val_kind=Scope.Declaration) warnOrError env t pat : Scope.val_env =
+  let ve = check_pat ~val_kind env t pat in
   if not env.pre then
     coverage_pat warnOrError env pat t;
   ve
 
-and check_pat env t pat : Scope.val_env =
-  check_pat_aux env t pat Scope.Declaration
+and check_pat ?(val_kind=Scope.Declaration) env t pat : Scope.val_env =
+  check_pat_aux env t pat val_kind
 
 and check_pat_aux env t pat val_kind : Scope.val_env =
   assert (pat.note = T.Pre);
@@ -3337,7 +3338,7 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
     let ts = try T.as_tup_sub (List.length pats) t with Invalid_argument _ ->
       error env pat.at "M0112" "tuple pattern cannot consume expected type%a"
          display_typ_expand t
-    in check_pats env ts pats T.Env.empty pat.at
+    in check_pats env ts pats T.Env.empty pat.at val_kind
   | ObjP pfs ->
     let pfs' = List.stable_sort compare_pat_field pfs in
     let s, tfs =
@@ -3352,12 +3353,12 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
     if not env.pre && s = T.Actor then
       local_error env pat.at "M0114" "object pattern cannot consume actor type%a"
         display_typ_expand t;
-    check_pat_fields env t tfs pfs' T.Env.empty pat.at
+    check_pat_fields env t tfs pfs' T.Env.empty pat.at val_kind
   | OptP pat1 ->
     let t1 = try T.as_opt_sub t with Invalid_argument _ ->
       error env pat.at "M0115" "option pattern cannot consume expected type%a"
         display_typ_expand t
-    in check_pat env t1 pat1
+    in check_pat ~val_kind env t1 pat1
   | TagP (id, pat1) ->
     let t1 =
       try
@@ -3367,10 +3368,10 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
       with Invalid_argument _ ->
         error env pat.at "M0116" "variant pattern cannot consume expected type%a"
           display_typ_expand t
-    in check_pat env t1 pat1
+    in check_pat ~val_kind env t1 pat1
   | AltP (pat1, pat2) ->
-    let ve1 = check_pat env t pat1 in
-    let ve2 = check_pat env t pat2 in
+    let ve1 = check_pat ~val_kind env t pat1 in
+    let ve2 = check_pat ~val_kind env t pat2 in
     if T.Env.keys ve1 <> T.Env.keys ve2 then
       error env pat.at "M0189" "different set of bindings in pattern alternatives";
     T.Env.(iter (fun k (t1, _, _) ->
@@ -3386,9 +3387,9 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
         "pattern of type%a\ncannot consume expected type%a"
         display_typ_expand t'
         display_typ_expand t;
-    check_pat env t' pat1
+    check_pat ~val_kind env t' pat1
   | ParP pat1 ->
-    check_pat env t pat1
+    check_pat ~val_kind env t pat1
 
 (*
 Consider:
@@ -3422,14 +3423,14 @@ Consider:
 
 Alternative: pass in two types?
 *)
-and check_pats env ts pats ve at : Scope.val_env =
+and check_pats env ts pats ve at val_kind : Scope.val_env =
   let ts_len = List.length ts in
   let pats_len = List.length pats in
   let rec go ts pats ve =
     match ts, pats with
     | [], [] -> ve
     | t::ts', pat::pats' ->
-      let ve1 = check_pat env t pat in
+      let ve1 = check_pat ~val_kind env t pat in
       let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
       go ts' pats' ve'
     | _, _ ->
@@ -3438,7 +3439,7 @@ and check_pats env ts pats ve at : Scope.val_env =
   in
   go ts pats ve
 
-and check_pat_fields env t tfs pfs ve at : Scope.val_env =
+and check_pat_fields env t tfs pfs ve at val_kind : Scope.val_env =
   let cmp (tf : T.field) pf = match tf, pf with
     | T.{ typ = T.Typ _; _ }, _ -> -1
     | T.{ lab; _ }, (id, _, _) -> String.compare lab id.it
@@ -3468,8 +3469,11 @@ and check_pat_fields env t tfs pfs ve at : Scope.val_env =
       if T.is_mut typ then
         error env pf.at "M0120" "cannot pattern match mutable field %s" lab;
       check_deprecation env pf.at "field" lab src.T.depr;
-      let val_kind = kind_of_field_pattern pf in
-      let ve1 = check_pat_aux env typ pat val_kind in
+      let val_kind' =
+        if val_kind = Scope.Shared then Scope.Shared
+        else kind_of_field_pattern pf
+      in
+      let ve1 = check_pat_aux env typ pat val_kind' in
       disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1
   ) ve
 
