@@ -26,7 +26,7 @@ type val_env  = val_info T.Env.t
 type visibility_src = {depr : string option; id_region : Source.region; field_region : Source.region}
 type visibility_env = visibility_src T.Env.t * visibility_src T.Env.t
 
-let available env = T.Env.map (fun (ty, at, kind) -> (ty, at, kind, Available)) env
+let available env = T.Env.map (fun (ty, at, kind, shared) -> (ty, at, kind, Available)) env
 
 let initial_scope =
   { Scope.empty with
@@ -34,7 +34,7 @@ let initial_scope =
     Scope.con_env = T.ConSet.singleton C.top_cap;
   }
 
-type unused_warnings = (string * Source.region * Scope.val_kind) List.t
+type unused_warnings = (string * Source.region * Scope.val_kind * bool) List.t
 
 type env =
   { vals : val_env;
@@ -111,8 +111,8 @@ let add_unused_warning env warning =
   else ()
 
 let compare_unused_warning first second =
-  let (first_id, {left = first_left; right = first_right}, _) = first in
-  let (second_id, {left = second_left; right = second_right}, _) = second in
+  let (first_id, {left = first_left; right = first_right}, _, _) = first in
+  let (second_id, {left = second_left; right = second_right}, _, _) = second in
   match compare first_left second_left with
   | 0 ->
     (match compare first_right second_right with
@@ -302,10 +302,12 @@ let _warn_in modes env at code fmt =
 (* Unused identifier detection *)
 
 let emit_unused_warnings env =
-  let emit (id, region, kind) = match kind with
+  let emit (id, region, kind, shared) = 
+    if shared then
+      warn env region "M0240" "unused identifier %s in shared pattern (delete or rename to wildcard `_` or `_%s`)" id id
+    else match kind with
     | Scope.Declaration -> warn env region "M0194" "unused identifier %s (delete or rename to wildcard `_` or `_%s`)" id id
     | Scope.FieldReference -> warn env region "M0198" "unused field %s in object pattern (delete or rewrite as `%s = _`)" id id
-    | Scope.Shared -> warn env region "M0240" "unused identifier %s in shared pattern (delete or rename to wildcard `_` or `_%s`)" id id
   in
   let list = sorted_unused_warnings !(env.unused_warnings) in
   List.iter emit list
@@ -315,9 +317,9 @@ let ignore_warning_for_id id =
 
 let detect_unused env inner_identifiers =
   if not env.pre && env.check_unused then
-    T.Env.iter (fun id (_, at, kind) ->
+    T.Env.iter (fun id (_, at, kind, shared) ->
       if (not (ignore_warning_for_id id)) && (is_unused_identifier env id) then
-        add_unused_warning env (id, at, kind)
+        add_unused_warning env (id, at, kind, shared)
     ) inner_identifiers
 
 let enter_scope env : S.t =
@@ -332,8 +334,8 @@ let leave_scope env inner_identifiers initial_usage =
 
 (* Value environments *)
 
-let singleton id t = T.Env.singleton id.it (t, id.at, Scope.Declaration)
-let add_id val_env id t = T.Env.add id.it (t, id.at, Scope.Declaration) val_env
+let singleton id t = T.Env.singleton id.it (t, id.at, Scope.Declaration, false)
+let add_id val_env id t = T.Env.add id.it (t, id.at, Scope.Declaration, false) val_env
 
 (* Context extension *)
 
@@ -2074,7 +2076,7 @@ and infer_exp'' env exp : T.typ =
         let t1, t2 = T.as_mono_func_sub t in
         if not (sub env exp1.at T.unit t1) then raise (Invalid_argument "");
         let t2' = T.as_opt_sub t2 in
-        let ve = check_pat_exhaustive warn env t2' pat Scope.Declaration in
+        let ve = check_pat_exhaustive warn env t2' pat false in
         check_exp_strong (adjoin_vals env ve) T.unit exp2
       with Invalid_argument _ | Not_found ->
         local_error env exp1.at "M0082"
@@ -2636,7 +2638,7 @@ and check_func_step in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2
   if not env.pre && not in_actor && T.is_shared_sort sort then
     error_in [Flags.ICMode; Flags.RefMode] env exp.at "M0077"
       "a shared function is only allowed as a public field of an actor";
-  let ve1 = check_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env (T.seq ts1) pat Scope.Declaration in
+  let ve1 = check_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env (T.seq ts1) pat false in
   let ve2 = T.Env.adjoin ve ve1 in
   let codom = T.codom c (fun () -> assert false) ts2 in
   let exp_typ = match typ_opt with
@@ -3147,7 +3149,7 @@ and infer_cases env t_pat t cases : T.typ =
 
 and infer_case env t_pat t case =
   let {pat; exp} = case.it in
-  let ve = check_pat env t_pat pat Scope.Declaration in
+  let ve = check_pat env t_pat pat false in
   let initial_usage = enter_scope env in
   let t' = recover_with T.Non (infer_exp (adjoin_vals env ve)) exp in
   leave_scope env ve initial_usage;
@@ -3166,7 +3168,7 @@ and check_cases env t_pat t cases =
 and check_case env t_pat t case =
   let {pat; exp} = case.it in
   let initial_usage = enter_scope env in
-  let ve = check_pat env t_pat pat Scope.Declaration in
+  let ve = check_pat env t_pat pat false in
   let t' = recover (check_exp (adjoin_vals env ve) t) exp in
   leave_scope env ve initial_usage;
   t'
@@ -3235,10 +3237,10 @@ and infer_pat' name_types env pat : T.typ * Scope.val_env =
     t, T.Env.merge (fun _ -> Lib.Option.map2 (T.lub ~src_fields:env.srcs)) ve1 ve2*)
   | AnnotP ({it = VarP id; _} as pat1, typ) when name_types ->
     let t = check_typ env typ in
-    T.Named (id.it, t), check_pat env t pat1 Scope.Declaration
+    T.Named (id.it, t), check_pat env t pat1 false
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
-    t, check_pat env t pat1 Scope.Declaration
+    t, check_pat env t pat1 false
   | ParP pat1 ->
     infer_pat name_types env pat1
 
@@ -3270,7 +3272,7 @@ and check_shared_pat env shared_pat : T.func_sort * Scope.val_env =
   | T.Shared (ss, pat) ->
     if pat.it <> WildP then
       error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "M0106" "shared function cannot take a context pattern";
-    T.Shared ss, check_pat_exhaustive local_error env T.ctxt pat Scope.Shared
+    T.Shared ss, check_pat_exhaustive local_error env T.ctxt pat true
 
 and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
   match shared_pat.it, obj_sort.it with
@@ -3284,34 +3286,34 @@ and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
       error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "M0108" "actor class cannot take a context pattern";
     if mode = T.Query then
       error env shared_pat.at "M0109" "class cannot be a query";
-    check_pat_exhaustive local_error env T.ctxt pat Scope.Shared
+    check_pat_exhaustive local_error env T.ctxt pat true
   | _, T.Memory -> assert false
 
 
-and check_pat_exhaustive warnOrError env t pat val_kind: Scope.val_env =
-  let ve = check_pat env t pat val_kind in
+and check_pat_exhaustive warnOrError env t pat shared: Scope.val_env =
+  let ve = check_pat env t pat shared in
   if not env.pre then
     coverage_pat warnOrError env pat t;
   ve
 
-and check_pat env t pat val_kind : Scope.val_env =
-  check_pat_aux env t pat val_kind
+and check_pat env t pat shared : Scope.val_env =
+  check_pat_aux env t pat Scope.Declaration shared
 
-and check_pat_aux env t pat val_kind : Scope.val_env =
+and check_pat_aux env t pat val_kind shared : Scope.val_env =
   assert (pat.note = T.Pre);
   if t = T.Pre then snd (infer_pat false env pat) else
   let t' = T.normalize t in
-  let ve = check_pat_aux' env t' pat val_kind in
+  let ve = check_pat_aux' env t' pat val_kind shared in
   if not env.pre then pat.note <- t';
   ve
 
-and check_pat_aux' env t pat val_kind : Scope.val_env =
+and check_pat_aux' env t pat val_kind shared : Scope.val_env =
   assert (t <> T.Pre);
   match pat.it with
   | WildP ->
     T.Env.empty
   | VarP id ->
-    T.Env.singleton id.it (t, id.at, val_kind)
+    T.Env.singleton id.it (t, id.at, val_kind, shared)
   | LitP lit ->
     if not env.pre then begin
       let t' = if eq env pat.at t T.nat then T.int else t in  (* account for Nat <: Int *)
@@ -3338,7 +3340,7 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
     let ts = try T.as_tup_sub (List.length pats) t with Invalid_argument _ ->
       error env pat.at "M0112" "tuple pattern cannot consume expected type%a"
          display_typ_expand t
-    in check_pats env ts pats T.Env.empty pat.at val_kind
+    in check_pats env ts pats T.Env.empty pat.at shared
   | ObjP pfs ->
     let pfs' = List.stable_sort compare_pat_field pfs in
     let s, tfs =
@@ -3353,12 +3355,12 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
     if not env.pre && s = T.Actor then
       local_error env pat.at "M0114" "object pattern cannot consume actor type%a"
         display_typ_expand t;
-    check_pat_fields env t tfs pfs' T.Env.empty pat.at val_kind
+    check_pat_fields env t tfs pfs' T.Env.empty pat.at shared
   | OptP pat1 ->
     let t1 = try T.as_opt_sub t with Invalid_argument _ ->
       error env pat.at "M0115" "option pattern cannot consume expected type%a"
         display_typ_expand t
-    in check_pat env t1 pat1 val_kind
+    in check_pat env t1 pat1 shared
   | TagP (id, pat1) ->
     let t1 =
       try
@@ -3368,17 +3370,18 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
       with Invalid_argument _ ->
         error env pat.at "M0116" "variant pattern cannot consume expected type%a"
           display_typ_expand t
-    in check_pat env t1 pat1 val_kind
+    in check_pat env t1 pat1 shared
   | AltP (pat1, pat2) ->
-    let ve1 = check_pat env t pat1 val_kind in
-    let ve2 = check_pat env t pat2 val_kind in
+    let ve1 = check_pat env t pat1 shared in
+    let ve2 = check_pat env t pat2 shared in
     if T.Env.keys ve1 <> T.Env.keys ve2 then
       error env pat.at "M0189" "different set of bindings in pattern alternatives";
-    T.Env.(iter (fun k (t1, _, _) ->
-      let (t2, _, _) = find k ve2 in
+    T.Env.(iter (fun k (t1, _, _, _) ->
+      let (t2, _, _, _) = find k ve2 in
       warn_lossy_bind_type env pat.at k t1 t2)
     ) ve1;
-    let merge_entries (t1, at1, kind1) (t2, at2, kind2) = (T.lub ~src_fields:env.srcs t1 t2, at1, kind1) in
+    let merge_entries (t1, at1, kind1, shared1) (t2, at2, kind2, shared2) = 
+      (T.lub ~src_fields:env.srcs t1 t2, at1, kind1, shared1 || shared2) in
     T.Env.merge (fun _ -> Lib.Option.map2 merge_entries) ve1 ve2
   | AnnotP (pat1, typ) ->
     let t' = check_typ env typ in
@@ -3387,9 +3390,9 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
         "pattern of type%a\ncannot consume expected type%a"
         display_typ_expand t'
         display_typ_expand t;
-    check_pat env t' pat1 val_kind
+    check_pat env t' pat1 shared
   | ParP pat1 ->
-    check_pat env t pat1 val_kind
+    check_pat env t pat1 shared
 
 (*
 Consider:
@@ -3423,14 +3426,14 @@ Consider:
 
 Alternative: pass in two types?
 *)
-and check_pats env ts pats ve at val_kind : Scope.val_env =
+and check_pats env ts pats ve at shared : Scope.val_env =
   let ts_len = List.length ts in
   let pats_len = List.length pats in
   let rec go ts pats ve =
     match ts, pats with
     | [], [] -> ve
     | t::ts', pat::pats' ->
-      let ve1 = check_pat env t pat val_kind in
+      let ve1 = check_pat env t pat shared in
       let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
       go ts' pats' ve'
     | _, _ ->
@@ -3439,7 +3442,7 @@ and check_pats env ts pats ve at val_kind : Scope.val_env =
   in
   go ts pats ve
 
-and check_pat_fields env t tfs pfs ve at val_kind : Scope.val_env =
+and check_pat_fields env t tfs pfs ve at shared : Scope.val_env =
   let cmp (tf : T.field) pf = match tf, pf with
     | T.{ typ = T.Typ _; _ }, _ -> -1
     | T.{ lab; _ }, (id, _, _) -> String.compare lab id.it
@@ -3469,11 +3472,8 @@ and check_pat_fields env t tfs pfs ve at val_kind : Scope.val_env =
       if T.is_mut typ then
         error env pf.at "M0120" "cannot pattern match mutable field %s" lab;
       check_deprecation env pf.at "field" lab src.T.depr;
-      let val_kind' =
-        if val_kind = Scope.Shared then Scope.Shared
-        else kind_of_field_pattern pf
-      in
-      let ve1 = check_pat env typ pat val_kind' in
+      let val_kind = kind_of_field_pattern pf in
+      let ve1 = check_pat_aux env typ pat val_kind shared in
       disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1
   ) ve
 
@@ -3622,7 +3622,7 @@ and scope_of_object env (fields : T.field list) =
       | T.{ lab; typ = T.Typ t; _ } ->
          Scope.{ acc with typ_env = T.Env.add lab t acc.typ_env }
       | T.{ lab; typ = t; _ } ->
-         Scope.{ acc with val_env = T.Env.add lab (t, Source.no_region, Scope.FieldReference) acc.val_env }
+         Scope.{ acc with val_env = T.Env.add lab (t, Source.no_region, Scope.FieldReference, false) acc.val_env }
     ) Scope.empty fields
 
 (* TODO: remove by merging conenv and valenv or by separating typ_fields *)
@@ -3642,7 +3642,7 @@ and object_of_scope env sort dec_fields scope at =
   in
   let tfs' =
     T.Env.fold
-      (fun id (t, _, _) tfs ->
+      (fun id (t, _, _, _) tfs ->
         match T.Env.find_opt id pub_val with
         | Some src ->
           Field_sources.add_src env.srcs src.id_region;
@@ -3789,7 +3789,7 @@ and check_system_fields env sort scope tfs dec_fields =
           (* TBR why does Stable.md require this to be a manifest function, not just any expression of appropriate type?  *)
           if vis = System then
             begin
-              let (t1, _, _) = T.Env.find id.it scope.Scope.val_env in
+              let (t1, _, _, _) = T.Env.find id.it scope.Scope.val_env in
               if not (sub env id.at t1 t) then
                 local_error env df.at "M0127" "system function %s is declared with type%a\ninstead of expected type%a" id.it
                    display_typ t1
@@ -3989,7 +3989,7 @@ and check_stab env sort scope dec_fields =
   let check_stable id at =
     match T.Env.find_opt id scope.Scope.val_env with
     | None -> assert false
-    | Some (t, _, _) ->
+     | Some (t, _, _, _) ->
       let t1 = T.as_immut t in
       if not (T.stable t1) then
         local_error env at "M0131"
@@ -4024,7 +4024,7 @@ and check_stab env sort scope dec_fields =
   List.sort T.compare_field
     (List.map
       (fun id ->
-         let typ, _, _ = T.Env.find id.it scope.Scope.val_env in
+         let typ, _, _, _ = T.Env.find id.it scope.Scope.val_env in
          Field_sources.add_src env.srcs id.at;
          T.{ lab = id.it;
              typ;
@@ -4289,7 +4289,7 @@ and gather_dec env scope dec : Scope.t =
       | VarP id -> Scope.adjoin scope (Scope.mixin id.it mix)
       | _ -> error env pat.at "M0229" "mixins may only be imported by binding to a name"
   )
-  | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
+  | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration false)
   | TypD (id, binds, _) | ClassD (_, _, _, id, binds, _, _, _, _) ->
     let open Scope in
     if T.Env.mem id.it scope.typ_env then
@@ -4337,19 +4337,19 @@ and gather_dec env scope dec : Scope.t =
           { acc with typ_env = T.Env.add lab t acc.typ_env }
         | T.{ lab; typ = t; _ } ->
           if T.Env.mem lab acc.val_env then error_duplicate env "" { it = lab; at = i.at; note = () };
-          { acc with val_env = T.Env.add lab (t, Source.no_region, Scope.Declaration) acc.val_env }
+          { acc with val_env = T.Env.add lab (t, Source.no_region, Scope.Declaration, false) acc.val_env }
       in
       List.fold_left add_field scope fields
     end
   | MixinD _  | ExpD _ -> scope
 
 and gather_pat env (scope : Scope.t) pat : Scope.t =
-   gather_pat_aux env Scope.Declaration scope pat
+   gather_pat_aux env Scope.Declaration false scope pat
 
-and gather_pat_aux env val_kind scope pat : Scope.t =
+and gather_pat_aux env val_kind shared scope pat : Scope.t =
   match pat.it with
   | WildP | LitP _ | SignP _ -> scope
-  | VarP id -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id val_kind)
+  | VarP id -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id val_kind shared)
   | TupP pats -> List.fold_left (gather_pat env) scope pats
   | ObjP pfs -> List.fold_left (gather_pat_field env) scope pfs
   | TagP (_, pat1) | AltP (pat1, _) | OptP pat1
@@ -4358,13 +4358,13 @@ and gather_pat_aux env val_kind scope pat : Scope.t =
 and gather_pat_field env scope pf : Scope.t =
   let val_kind = kind_of_field_pattern pf in
   match pf.it with
-  | ValPF (id, pat) -> gather_pat_aux env val_kind scope pat
+  | ValPF (id, pat) -> gather_pat_aux env val_kind false scope pat
   | TypPF id -> gather_typ_id env scope id
 
-and gather_id env ve id val_kind : Scope.val_env =
+and gather_id env ve id val_kind shared : Scope.val_env =
   if T.Env.mem id.it ve then
     error_duplicate env "" id;
-  T.Env.add id.it (T.Pre, id.at, val_kind) ve
+  T.Env.add id.it (T.Pre, id.at, val_kind, shared) ve
 
 and gather_typ_id env scope id : Scope.t =
   let open Scope in
@@ -4519,13 +4519,13 @@ and infer_dec_valdecs env dec : Scope.t =
         decs obj_scope
     in
     let obj_typ = object_of_scope env obj_sort.it dec_fields obj_scope' at in
-    let _ve : Scope.val_env = check_pat env obj_typ pat Scope.Declaration in
+    let _ve : Scope.val_env = check_pat env obj_typ pat false in
     Scope.{empty with val_env = singleton id obj_typ}
   | LetD (pat, exp, fail) ->
      let t = infer_exp {env with pre = true; check_unused = false} exp in
      let ve' = match fail with
-       | None -> check_pat_exhaustive (if is_import dec then local_error else warn) env t pat Scope.Declaration
-       | Some _ -> check_pat env t pat Scope.Declaration
+       | None -> check_pat_exhaustive (if is_import dec then local_error else warn) env t pat false
+       | Some _ -> check_pat env t pat false
      in
      Scope.{empty with val_env = ve'}
   | VarD (id, exp) ->
