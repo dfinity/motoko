@@ -1,8 +1,12 @@
 # Motoko compiler changelog
 
+
 * motoko (`moc`)
 
+
   * Print type constructors using available type paths (#5698).
+
+  * Explain subtype failures (#5643).
 
   * Removes the Viper support (#5751).
 

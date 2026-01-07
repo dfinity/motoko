@@ -247,13 +247,14 @@ let js_parse_motoko_typed_with_scope_cache_impl enable_recovery paths scope_cach
            all. Hence, the use of [Obj.magic] is legitimate here. *)
         String_map_conversion.from_js scope_cache Js.to_string Obj.magic)
   in
-  let parse_fn = if Js.Opt.get enable_recovery (fun () -> false)
+  let recovery_enabled = Js.Opt.get enable_recovery (fun () -> false) in
+  let parse_fn = if recovery_enabled
     then Pipeline.parse_file_with_recovery
     else Pipeline.parse_file
   in
   let load_result =
     Mo_types.Cons.session (fun () ->
-      Pipeline.load_progs_cached
+      Pipeline.load_progs_cached ~enable_type_recovery:recovery_enabled
         parse_fn paths Pipeline.initial_stat_env scope_cache)
   in
   match load_result with

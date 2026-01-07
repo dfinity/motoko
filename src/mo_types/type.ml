@@ -1082,24 +1082,28 @@ type compatibility = Compatible | Incompatible of explanation
 
 and explanation =
   | IncompatibleTypes of context * typ * typ
-  | MissingTag of context * lab * typ
-  | UnexpectedTag of context * lab * typ
-  | MissingField of context * lab * typ
-  | UnexpectedField of context * lab * typ
+  | FailedPromote of typ * typ * explanation
+  | MissingTag of context * desc * lab * typ
+  | MissingField of context * desc * lab * typ
   | FewerItems of context * string
   | MoreItems of context * string
   | PromotionToAny of context * typ
   | IncompatiblePrims of context * typ * typ
-  | IncompatibleObjSorts of context * typ * typ
-  | IncompatibleFuncSorts of context * typ * typ
-  | IncompatibleBounds of context * typ * typ
+  | IncompatibleObjSorts of context * obj_sort * obj_sort
+  | IncompatibleFuncSorts of context * func_sort * func_sort
+  | IncompatibleFuncControls of context * control * control
   | IncompatibleFuncs of context * typ * typ
-  | IncompatibleAsyncSorts of context * typ * typ
+  | IncompatibleAsyncSorts of context * async_sort * async_sort
+  | IncompatibleAsyncScopes of context * typ * typ
+and desc = Actual | Expected
 and context_item =
   | ConsType of con
   | NamedType of name
   | StableVariable of lab
   | Field of lab
+  | Bounds
+  | Domain
+  | CoDomain
 and context = context_item list
 let empty_context : context = []
 
@@ -1141,17 +1145,19 @@ end
 let incompatible_types d t1 t2 =
   RelArg.false_with d (IncompatibleTypes (RelArg.context d, t1, t2))
 
-let missing_tag d lab t =
-  RelArg.false_with d (MissingTag (RelArg.context d, lab, t))
+let failed_promote d t1 bound t2 =
+  let inner_explanation =
+    match RelArg.explanation d with
+    | Some e -> e
+    | None -> IncompatibleTypes (RelArg.context d, t1, t2)
+  in
+  RelArg.false_with d (FailedPromote (t1, bound, inner_explanation))
 
-let unexpected_tag d lab t =
-  RelArg.false_with d (UnexpectedTag (RelArg.context d, lab, t))
+let missing_tag d desc lab t =
+  RelArg.false_with d (MissingTag (RelArg.context d, desc, lab, t))
 
-let missing_field d lab t =
-  RelArg.false_with d (MissingField (RelArg.context d, lab, t))
-
-let unexpected_field d lab t =
-  RelArg.false_with d (UnexpectedField (RelArg.context d, lab, t))
+let missing_field d desc lab t =
+  RelArg.false_with d (MissingField (RelArg.context d, desc, lab, t))
 
 let fewer_items d desc =
   RelArg.false_with d (FewerItems (RelArg.context d, desc))
@@ -1165,20 +1171,23 @@ let promotion_to_any d t =
 let incompatible_prims d t1 t2 =
   RelArg.false_with d (IncompatiblePrims (RelArg.context d, t1, t2))
 
-let incompatible_obj_sorts d t1 t2 =
-  RelArg.false_with d (IncompatibleObjSorts (RelArg.context d, t1, t2))
+let incompatible_obj_sorts d s1 s2 =
+  RelArg.false_with d (IncompatibleObjSorts (RelArg.context d, s1, s2))
 
-let incompatible_func_sorts d t1 t2 =
-  RelArg.false_with d (IncompatibleFuncSorts (RelArg.context d, t1, t2))
+let incompatible_func_sorts d s1 s2 =
+  RelArg.false_with d (IncompatibleFuncSorts (RelArg.context d, s1, s2))
 
-let incompatible_bounds d t1 t2 =
-  RelArg.false_with d (IncompatibleBounds (RelArg.context d, t1, t2))
+let incompatible_func_controls d c1 c2 =
+  RelArg.false_with d (IncompatibleFuncControls (RelArg.context d, c1, c2))
 
 let incompatible_funcs d t1 t2 =
   RelArg.false_with d (IncompatibleFuncs (RelArg.context d, t1, t2))
 
-let incompatible_async_sorts d t1 t2 =
-  RelArg.false_with d (IncompatibleAsyncSorts (RelArg.context d, t1, t2))
+let incompatible_async_sorts d s1 s2 =
+  RelArg.false_with d (IncompatibleAsyncSorts (RelArg.context d, s1, s2))
+
+let incompatible_async_scopes d t1 t2 =
+  RelArg.false_with d (IncompatibleAsyncScopes (RelArg.context d, t1, t2))
 
 let rec rel_list item_name d p rel eq xs1 xs2 =
   match xs1, xs2 with
@@ -1228,7 +1237,8 @@ let rec rel_typ d rel eq t1 t2 =
     | _ when Cons.eq con1 con2 ->
       rel_list "type arguments" d eq_typ rel eq ts1 ts2
     | Abs (tbs, t), _ when rel != eq ->
-      rel_typ d rel eq (open_ ts1 t) t2
+      let bound = open_ ts1 t in
+      rel_typ d rel eq bound t2 || failed_promote d t1 bound t2
     | _ ->
       incompatible_types d t1 t2
     )
@@ -1237,7 +1247,8 @@ let rec rel_typ d rel eq t1 t2 =
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ d rel eq (open_ ts1 t) t2
     | Abs (tbs, t), _ when rel != eq ->
-      rel_typ d rel eq (open_ ts1 t) t2
+      let bound = open_ ts1 t in
+      rel_typ d rel eq bound t2 || failed_promote d t1 bound t2
     | _ -> incompatible_types d t1 t2
     )
   | t1, Con (con2, ts2) ->
@@ -1253,8 +1264,8 @@ let rec rel_typ d rel eq t1 t2 =
     (p1 = Nat && p2 = Int) ||
     incompatible_prims d t1 t2
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
-    (s1 = s2 || incompatible_obj_sorts d t1 t2) &&
-    rel_fields t2 d rel eq tfs1 tfs2
+    (s1 = s2 || incompatible_obj_sorts d s1 s2) &&
+    rel_fields t1 t2 d rel eq tfs1 tfs2
   | Array t1', Array t2' ->
     rel_typ d rel eq t1' t2'
   | Opt t1', Opt t2' ->
@@ -1264,26 +1275,26 @@ let rec rel_typ d rel eq t1 t2 =
   | Prim Null, Opt t2' when rel != eq ->
     true
   | Variant fs1, Variant fs2 ->
-    rel_tags t2 d rel eq fs1 fs2
+    rel_tags t1 t2 d rel eq fs1 fs2
   | Tup ts1, Tup ts2 ->
     rel_list "tuple arguments" d rel_typ rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
-    (s1 = s2 || incompatible_func_sorts d t1 t2) &&
-    (c1 = c2 || incompatible_bounds d t1 t2) &&
-    (match rel_binds d eq eq tbs1 tbs2 with
+    (s1 = s2 || incompatible_func_sorts d s1 s2) &&
+    (c1 = c2 || incompatible_func_controls d c1 c2) &&
+    (match rel_binds (RelArg.push Bounds d) eq eq tbs1 tbs2 with
      | Some ts ->
-        rel_list "function parameters" d rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
-        rel_list "return types" d rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
+        rel_list "function parameters" (RelArg.push Domain d) rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
+        rel_list "return types" (RelArg.push CoDomain d) rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
      | None -> incompatible_funcs d t1 t2
     )
   | Async (s1, t11, t12), Async (s2, t21, t22) ->
-    (s1 = s2 || incompatible_async_sorts d t1 t2) &&
-    eq_typ d rel eq t11 t21 &&
+    (s1 = s2 || incompatible_async_sorts d s1 s2) &&
+    (eq_typ d rel eq t11 t21 || incompatible_async_scopes d t11 t21) &&
     rel_typ d rel eq t12 t22
   | _, _ -> incompatible_types d t1 t2
   end
 
-and rel_fields t2 d rel eq tfs1 tfs2 =
+and rel_fields t1 t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   let res = align_fields tfs1 tfs2 |>
     Seq.for_all (function
@@ -1293,12 +1304,13 @@ and rel_fields t2 d rel eq tfs1 tfs2 =
       rel_typ d' rel eq tf1.typ tf2.typ
     | Lib.This tf1 ->
       if rel != eq && not (RelArg.is_stable_sub d) then true
-      else missing_field d tf1.lab t2
+      else missing_field d Actual tf1.lab t2
     | Lib.That tf2 ->
-      unexpected_field d tf2.lab t2) in
+      missing_field d Expected tf2.lab t1) 
+  in
   res
 
-and rel_tags t2 d rel eq tfs1 tfs2 =
+and rel_tags t1 t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   let res = align_fields tfs1 tfs2 |>
     Seq.for_all (function
@@ -1306,9 +1318,10 @@ and rel_tags t2 d rel eq tfs1 tfs2 =
         add_src_field_update rel eq tf1 tf2;
         rel_typ d rel eq tf1.typ tf2.typ
       | Lib.This tf1 ->
-        missing_tag d tf1.lab t2
+        missing_tag d Actual tf1.lab t2
       | Lib.That tf2 ->
-        if rel != eq then true else unexpected_tag d tf2.lab t2) in
+        if rel != eq then true else missing_tag d Expected tf2.lab t1)
+  in
   res
 
 and rel_binds d rel eq tbs1 tbs2 =
@@ -2156,7 +2169,8 @@ and pp_typ' vs ppf t =
   match t with
   (* special, additional cases for printing second-class types *)
   | Typ c ->
-    fprintf ppf "@[<1>=@ @[(type@ %a)@]@]" (pp_kind' vs) (Cons.kind c)
+    let op, sbs, st = pps_of_kind' vs (Cons.kind c) in
+    fprintf ppf "@[<1>type %s%a %s@ %a@]" (Cons.name c) sbs () op st ()
   | Mut t ->
     fprintf ppf "@[<1>var@ %a@]" (pp_typ_un vs) t
   (* No cases for syntactic _ And _ & _ Or _ (already desugared) *)
@@ -2327,55 +2341,101 @@ let string_of_typ_expand typ : string =
   Lib.Format.with_str_formatter (fun ppf ->
       pp_typ_expand ppf) typ
 
-let string_of_context context =
+let string_of_context preposition context =
+  let is_non_trivial_item item = match item with
+    | ConsType c ->
+       (match Cons.kind c with
+        | Def ([], Prim p) when string_of_con c = string_of_prim p -> false
+        | Def ([], Any) when string_of_con c = "Any" -> false
+        | Def ([], Non) when string_of_con c = "None" -> false
+        |  _ -> true)
+    | _ -> true
+  in
+  let context = List.filter is_non_trivial_item context in
+  if context = [] then "" else
+  let emit_item item nested =
+    match item with
+    | Field label -> Printf.sprintf "`%s`" label, "in"
+    | ConsType c ->  Printf.sprintf "`%s`" (remove_hash_suffix (Cons.name c)), "in"
+    | NamedType name-> Printf.sprintf "`(%s : _)`" name, "in"
+    | Bounds -> "type parameters", "of"
+    | Domain -> "arguments", "of"
+    | CoDomain -> "results", "of"
+    | StableVariable name -> Printf.sprintf "`%s`" name, "of"
+  in
   let rec emit_context nested context =
     match context with
-    | [] -> "top level"
-    | (Field label)::rest -> Printf.sprintf "%s.%s" (emit_context nested rest) label
-    | (ConsType c)::rest when not nested ->
-       Printf.sprintf "%s (used by %s)" (remove_hash_suffix (Cons.name c)) (emit_context true rest)
-    | (ConsType c)::rest ->
-       Printf.sprintf "%s in %s" (remove_hash_suffix (Cons.name c)) (emit_context true rest)
-    | (NamedType name)::rest when not nested ->
-       Printf.sprintf "%s (used by %s)" name (emit_context true rest)
-    | (NamedType name)::rest ->
-       Printf.sprintf "%s in %s" name (emit_context true rest)
-    | (StableVariable name)::_ -> name
+    | [] -> "type"
+    | [item] ->
+       let desc, _ = emit_item item nested in
+       desc
+    | item::rest when not nested ->
+       let desc, _ = emit_item item nested in
+       Printf.sprintf "%s (used by %s)" desc (emit_context true rest)
+    | item::rest ->
+       let desc, prep = emit_item item nested in
+       Printf.sprintf "%s %s %s" desc prep (emit_context true rest)
   in
-    emit_context false context
+   "\n " ^ preposition ^ " " ^ emit_context false context
 
-let string_of_explanation explanation =
+let flip desc = match desc with Actual -> Expected | Expected -> Actual
+let string_of_desc desc = match desc with Actual -> "" | Expected -> "expected "
+let rec string_of_explanation explanation =
   let display_typ = Lib.Format.display pp_typ in
   match explanation with
   | IncompatibleTypes (context, t1, t2) ->
-    Format.asprintf "The type %a\n is not compatible with type %a\n of %s" display_typ t1 display_typ t2 (string_of_context context)
-  | MissingTag (context, lab, t) ->
-    Format.asprintf "Missing tag `#%s` in type %a\n of %s" lab display_typ t (string_of_context context)
-  | UnexpectedTag (context, lab, t) ->
-    Format.asprintf "Unsupported additional tag `#%s` in type %a\n of %s" lab display_typ t (string_of_context context)
-  | MissingField (context, lab, t) ->
-    Format.asprintf "Missing field `%s` in type %a\n of %s" lab display_typ t (string_of_context context)
-  | UnexpectedField (context, lab, t) ->
-    Format.asprintf "Unsupported additional field `%s` in type %a\n of %s" lab display_typ t (string_of_context context)
+    Format.asprintf "the type %a\n is not compatible with type %a%s" display_typ t1 display_typ t2 (string_of_context "in" context)
+  | FailedPromote (t1, bound, inner_explanation) ->
+    Format.asprintf "type variable %a\n was promoted to its bound %a\n and %s" display_typ t1 display_typ bound (string_of_explanation inner_explanation)
+  | MissingTag (context, desc, lab, t) ->
+    Format.asprintf "%scase `#%s` is missing from %stype %a%s" (string_of_desc desc) lab (string_of_desc (flip desc)) display_typ t (string_of_context "of" context)
+  | MissingField (context, desc, lab, t) ->
+    let sort = if is_typ t then "type" else "field" in
+    Format.asprintf "%s%s `%s` is missing from %stype %a%s" (string_of_desc desc) sort lab (string_of_desc (flip desc)) display_typ t (string_of_context "of" context)
   | FewerItems (context, desc) ->
-    Format.asprintf "Fewer %s in %s than expected" desc (string_of_context context)
+    Format.asprintf "there are fewer %s than expected%s" desc (string_of_context "in" context)
   | MoreItems (context, desc) ->
-    Format.asprintf "More %s in %s than expected" desc (string_of_context context)
+    Format.asprintf "there are more %s than expected%s" desc (string_of_context "in" context)
   | PromotionToAny (context, t) ->
-    Format.asprintf "Converting %a\n to `Any` is disallowed as it leads to data loss: %s" display_typ t (string_of_context context)
+    Format.asprintf "promoting %a\n to `Any` loses data%s" display_typ t (string_of_context "in" context)
   | IncompatiblePrims (context, t1, t2) ->
     let context = match context with h::tl -> tl | _ -> context in
-    Format.asprintf "The type %a\n is not compatible with type %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
-  | IncompatibleObjSorts (context, t1, t2) ->
-    Format.asprintf "Incompatible object sorts: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
-  | IncompatibleFuncSorts (context, t1, t2) ->
-    Format.asprintf "Incompatible function modifiers: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
-  | IncompatibleBounds (context, t1, t2) ->
-    Format.asprintf "Incompatible type parameters: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
+    Format.asprintf "the type %a\n is not compatible with type %a%s" display_typ t1 display_typ t2 (string_of_context "in" context)
+  | IncompatibleObjSorts (context, s1, s2) ->
+    let string_of_obj_sort = function
+      | Object -> "object"
+      | Actor -> "actor"
+      | Mixin -> "mixin"
+      | Module -> "module"
+      | Memory -> "memory"
+    in
+    Format.asprintf "of incompatible object sorts:\n %s does not match %s%s" (string_of_obj_sort s1) (string_of_obj_sort s2) (string_of_context "in" context)
+  | IncompatibleFuncSorts (context, s1, s2) ->
+    Format.asprintf "of incompatible function modifiers: %s\n does not match %s%s" (string_of_func_sort s1) (string_of_func_sort s2) (string_of_context "in" context)
+  | IncompatibleFuncControls (context, c1, c2) ->
+    let string_of_control = function
+      | Returns -> "regular function or one-shot shared function"
+      | Promises -> "shared function that returns a future"
+      | Replies -> "compiler-internal reply function"
+    in
+    Format.asprintf "of incompatible function controls: %s\n does not match %s%s" (string_of_control c1) (string_of_control c2) (string_of_context "in" context)
   | IncompatibleFuncs (context, t1, t2) ->
-    Format.asprintf "Incompatible function types: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
-  | IncompatibleAsyncSorts (context, t1, t2) ->
-    Format.asprintf "Incompatible async sorts: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
+    Format.asprintf "of incompatible function types: %a\n does not match %a%s" display_typ t1 display_typ t2 (string_of_context "in" context)
+  | IncompatibleAsyncSorts (context, s1, s2) ->
+    (* TODO: refactor with other string_of_async_sort function, look at other uses of this function *)
+    let string_of_async_sort = function
+      | Fut -> "async"
+      | Cmp -> "async*"
+    in
+    Format.asprintf "of incompatible async sorts: %s\n does not match %s%s" (string_of_async_sort s1) (string_of_async_sort s2) (string_of_context "in" context)
+  | IncompatibleAsyncScopes (context, t1, t2) ->
+    Format.asprintf "of incompatible async scopes: %a\n does not match %a%s" display_typ t1 display_typ t2 (string_of_context "in" context)
+
+let is_redundant_explanation t1 t2 = function
+  | IncompatibleTypes (_, t1', t2')
+  | IncompatibleFuncs (_, t1', t2')
+  | IncompatiblePrims (_, t1', t2') -> eq t1 t1' && eq t2 t2'
+  | _ -> false
 
 end
 
@@ -2396,6 +2456,7 @@ module type Pretty = sig
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
   val string_of_explanation : explanation -> string
+  val is_redundant_explanation : typ -> typ -> explanation -> bool
 end
 
 include MakePretty(ElideStamps)

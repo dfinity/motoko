@@ -43,6 +43,7 @@ wrong-call-args.mo:108.7-108.13: type error [M0096], expression of type
   (Nat, Nat)
 cannot produce expected type
   ()
+because there are more tuple arguments than expected
 wrong-call-args.mo:110.5-110.10: type error [M0098], cannot apply function of type
   <A, B>((A, B)) -> ()
 to argument of type
