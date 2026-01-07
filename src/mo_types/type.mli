@@ -307,7 +307,7 @@ val scope_bind : bind
 
 (* Signatures *)
 
-(* like sub, but disallows promotion to  Any or narrower object types
+(* like sub, but disallows promotion to Any or narrower object types
    that signal data loss *)
 val stable_sub : ?src_fields : Field_sources.t -> typ -> typ -> bool
 val stable_sub_explained : ?src_fields : Field_sources.t -> context -> typ -> typ -> compatibility

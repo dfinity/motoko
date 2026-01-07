@@ -1995,11 +1995,13 @@ let rec pp_typ_obj vs ppf o =
   (* TODO *)
   match o with
   | (Object, fs, tfs) ->
-    fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
+    fprintf ppf "@[<hv 2>{@;<0 0>%a%a@;<0 -2>}@]"
+      (pp_print_list ~pp_sep:semi (pp_typ_field vs)) tfs
       (pp_print_list ~pp_sep:semi (pp_field vs)) fs
   | (s, fs, tfs) ->
-    fprintf ppf "@[<hv 2>%s{@;<0 0>%a@;<0 -2>}@]"
+    fprintf ppf "@[<hv 2>%s{@;<0 0>%a%a@;<0 -2>}@]"
       (string_of_obj_sort s)
+      (pp_print_list ~pp_sep:semi (pp_typ_field vs)) tfs
       (pp_print_list ~pp_sep:semi (pp_field vs)) fs
 
 and pp_typ_variant vs ppf fs =
