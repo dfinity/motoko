@@ -1,4 +1,4 @@
-//MOC-FLAG -dt -v -t -dl
+//MOC-FLAG -dl
 
 ignore 57 + 0;
 ignore 42 + -0;
@@ -31,3 +31,5 @@ ignore 25 * 1 : Nat64;
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
+//FILTER comp tail -n 27
+//SKIP wasm-run

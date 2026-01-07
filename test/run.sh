@@ -114,6 +114,8 @@ function run () {
   shift
 
   if grep -q "^//SKIP $ext$" $(basename $file); then return 1; fi
+  local FILTER_LINE=$(grep "^//FILTER $ext " $(basename $file) | cut -d' ' -f3-)
+  if [[ "$FILTER_LINE" != "" ]]; then local FILTER="$FILTER_LINE"; fi
 
   if test -e $out/$base.$ext
   then
@@ -123,7 +125,7 @@ function run () {
 
   $ECHO -n " [$ext]"
   $ECHO "$@" >& $out/$base.$ext
-  "$@" >& $out/$base.$ext
+  "$@" |& ${FILTER:-cat} > $out/$base.$ext
   local ret=$?
 
   if [ $ret != 0 ]
