@@ -3,7 +3,7 @@ bad-async.mo:4.32-4.42: type error [M0096], expression of type
 cannot produce expected type
   async<$@anon-async-1.1> Nat
 because of incompatible async scopes: 
-  $foo1
+  $
  does not match 
   $@anon-async-1.1
 bad-async.mo:7.17-7.21: type error [M0087], ill-scoped await: expected async type from current scope $, found async type from other scope $@anon-async-1.1

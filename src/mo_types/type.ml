@@ -2356,7 +2356,7 @@ let string_of_context preposition context =
   let emit_item item nested =
     match item with
     | Field label -> Printf.sprintf "`%s`" label, "in"
-    | ConsType c ->  Printf.sprintf "`%s`" (remove_hash_suffix (Cons.name c)), "in"
+    | ConsType c ->  Printf.sprintf "`%s`" (string_of_con c), "in"
     | NamedType name-> Printf.sprintf "`(%s : _)`" name, "in"
     | Bounds -> "type parameters", "of"
     | Domain -> "arguments", "of"
@@ -2380,6 +2380,7 @@ let string_of_context preposition context =
 
 let flip desc = match desc with Actual -> Expected | Expected -> Actual
 let string_of_desc desc = match desc with Actual -> "" | Expected -> "expected "
+
 let rec string_of_explanation explanation =
   let display_typ = Lib.Format.display pp_typ in
   match explanation with
@@ -2448,7 +2449,7 @@ module type Pretty = sig
   val pps_of_kind : kind ->
     string *
     (Format.formatter -> unit -> unit) *
-      (Format.formatter -> unit -> unit)
+    (Format.formatter -> unit -> unit)
 
   val string_of_con : con -> string
   val string_of_typ : typ -> string

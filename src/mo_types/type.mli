@@ -373,7 +373,8 @@ module type Pretty = sig
   val pps_of_kind : kind ->
     string *
     (Format.formatter -> unit -> unit) *
-    (Format.formatter -> unit -> unit)
+      (Format.formatter -> unit -> unit)
+
   val string_of_con : con -> string
   val string_of_typ : typ -> string
   val string_of_kind : kind -> string

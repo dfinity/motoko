@@ -38,4 +38,4 @@ cannot produce expected type
 because of incompatible async scopes: 
   $
  does not match 
-  $Rec
+  $
