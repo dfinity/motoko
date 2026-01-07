@@ -114,7 +114,7 @@ function run () {
   shift
 
   if grep -q "^//SKIP $ext$" $(basename $file); then return 1; fi
-  local FILTER_LINE=$(grep "^//FILTER $ext " $(basename $file) | cut -d' ' -f3-)
+  local FILTER_LINE=$(grep -E -w "^//FILTER $ext (tail|head) " $(basename $file) | cut -d' ' -f3-)
   if [[ "$FILTER_LINE" != "" ]]; then local FILTER="$FILTER_LINE"; fi
 
   if test -e $out/$base.$ext
