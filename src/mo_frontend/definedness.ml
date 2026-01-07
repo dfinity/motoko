@@ -85,7 +85,7 @@ let rec exp msgs e : f = match e.it with
   (* Or anything that is occurring in a call (as this may call a closure): *)
   | CallE (par_opt, e1, _ts, (_, e2)) -> eagerify (Option.to_list par_opt @ [e1; !e2] |> exps msgs)
   (* And break, return, throw can be thought of as calling a continuation: *)
-  | BreakE (_, e)
+  | BreakE (_, _, e)
   | RetE e
   | ThrowE e            -> eagerify (exp msgs e)
   (* Uses are delayed by function expressions *)

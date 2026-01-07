@@ -730,8 +730,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let env' = {env with labs = V.Env.add id.it k env.labs} in
     Profiler.bump_label id.at id.it ;
     interpret_exp env' exp1 k
-  | BreakE (id, exp1) ->
-    interpret_exp env exp1 (find id.it env.labs)
+  | BreakE (kind, id_opt, exp1) ->
+    interpret_exp env exp1 (find (Syntax.break_label kind id_opt) env.labs)
   | DebugE exp1 ->
     if !Mo_config.Flags.release_mode then k V.unit else interpret_exp env exp1 k
   | RetE exp1 ->

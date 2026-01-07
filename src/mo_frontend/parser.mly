@@ -777,15 +777,14 @@ exp_un(B) :
       LabelE(x, Lib.Option.get rt (unit ()), e') @? at $sloc }
   | BREAK x=id eo=exp_nullary(ob)?
     { let e = Lib.Option.get eo (TupE([]) @? at $sloc) in
-      BreakE(x, e) @? at $sloc }
+      BreakE(Break, Some x, e) @? at $sloc }
   | BREAK
     { let e = TupE([]) @? at $sloc in
-      let x = auto_s @@ no_region in
-      BreakE(x, e) @? at $sloc }
+      BreakE(Break, None, e) @? at $sloc }
   | CONTINUE x=id?
-    { let x = Lib.Option.get x (auto_s @@ no_region) in
-      let x' = ("continue " ^ x.it) @@ x.at in
-      BreakE(x', TupE([]) @? no_region) @? at $sloc }
+    { let e = TupE([]) @? at $sloc in
+      let x = Option.map (fun x -> ("continue " ^ x.it) @@ x.at) x in
+      BreakE(Continue, x, e) @? at $sloc }
   | DEBUG e=exp_nest
     { DebugE(e) @? at $sloc }
   | IF b=exp_nullary(ob) e1=exp_nest %prec IF_NO_ELSE

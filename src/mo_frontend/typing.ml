@@ -2095,20 +2095,19 @@ and infer_exp'' env exp : T.typ =
   | DebugE exp1 ->
     if not env.pre then check_exp_strong env T.unit exp1;
     T.unit
-  | BreakE (id, exp1) ->
-    if id.it = Syntax.auto_s || id.it = Syntax.auto_continue_s then begin
-      match env.closest_loop with
-      | None ->
-        let op = if id.it = Syntax.auto_s then "break" else "continue" in
-        local_error env id.at "M0238" "%s outside of loop" op
-      | Some (flags, typ) ->
-        let typ = if id.it = Syntax.auto_s then
-          (flags.has_break <- true; typ)
-        else
-          (flags.has_continue <- true; T.unit)
-        in
-        if not env.pre then check_exp_strong env typ exp1
-    end else
+  | BreakE (kind, None, exp1) ->
+    (match env.closest_loop with
+    | None ->
+      let op = match kind with Break -> "break" | Continue -> "continue" in
+      local_error env exp.at "M0238" "%s outside of loop" op
+    | Some (flags, typ) ->
+      let typ = match kind with
+        | Break -> (flags.has_break <- true; typ)
+        | Continue -> (flags.has_continue <- true; T.unit)
+      in
+      if not env.pre then check_exp_strong env typ exp1);
+    T.Non
+  | BreakE (kind, Some id, exp1) ->
     (match T.Env.find_opt id.it env.labs with
     | Some t ->
       if not env.pre then check_exp env t exp1

@@ -164,8 +164,19 @@ type sugar = bool (* Is the source of a function body a block `<block>`,
 
 type loop_flags = { mutable has_break : bool; mutable has_continue : bool }
 
+let new_loop_flags () : loop_flags = { has_break = false; has_continue = false }
+
+type control = Break | Continue
+
 let auto_s = "<>auto"
 let auto_continue_s = "continue <>auto"
+
+let break_label kind (id_opt : id option) =
+  match kind, id_opt with
+  | Break, None -> auto_s
+  | Continue, None -> auto_continue_s
+  | _, Some {Source.it; _} -> it
+
 
 type id_ref = (string, mut' * exp option) Source.annotated_phrase
 and hole_sort = Named of string | Anon of int
@@ -206,7 +217,7 @@ and exp' =
   | LoopE of exp * exp option * loop_flags (* do-while loop *)
   | ForE of pat * exp * exp * loop_flags   (* iteration *)
   | LabelE of id * typ * exp                   (* label *)
-  | BreakE of id * exp                         (* break *)
+  | BreakE of control * id option * exp        (* break *)
   | RetE of exp                                (* return *)
   | DebugE of exp                              (* debugging *)
   | AsyncE of exp option * async_sort * typ_bind * exp (* future / computation *)
@@ -407,5 +418,3 @@ let contextual_dot_args e1 e2 dot_note =
     | { at; note = { note_eff; _ }; _ } ->
        { it = TupE ([e1; e2]); at; note = { note_eff = effect note_eff; note_typ = T.Tup ([e1.note.note_typ; e2.note.note_typ]) } }
   in args
-
-let new_loop_flags () : loop_flags = { has_break = false; has_continue = false }

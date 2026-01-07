@@ -295,7 +295,7 @@ and exp' at note = function
       | _ -> (forE (pat p) (exp e1) (exp e2)).it)
   | S.DebugE e -> if !Mo_config.Flags.release_mode then (unitE ()).it else (exp e).it
   | S.LabelE (l, t, e) -> I.LabelE (l.it, t.Source.note, exp e)
-  | S.BreakE (l, e) -> (breakE l.it (exp e)).it
+  | S.BreakE (kind, id_opt, e) -> (breakE (S.break_label kind id_opt) (exp e)).it
   | S.RetE e -> (retE (exp e)).it
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
   | S.AsyncE (par_opt, s, tb, e) ->
