@@ -20,6 +20,8 @@
 
   * Add privileged primitive for setting Candid type table cutoff (#5642).
 
+  * Split the "unused identifier" warning `M0194` into two separate warnings: `M0194` for general declarations and `M0240` for identifiers in shared pattern contexts (e.g. `caller` in `shared({caller})`) (#5779).
+
 ## 1.0.0 (2025-12-11)
 
 * motoko (`moc`)
