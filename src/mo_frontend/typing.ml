@@ -302,12 +302,15 @@ let _warn_in modes env at code fmt =
 (* Unused identifier detection *)
 
 let emit_unused_warnings env =
-  let emit (id, region, kind, shared) = 
+  let emit (id, region, kind, shared) =
     if shared then
-      warn env region "M0240" "unused identifier %s in shared pattern (delete or rename to wildcard `_` or `_%s`)" id id
-    else match kind with
-    | Scope.Declaration -> warn env region "M0194" "unused identifier %s (delete or rename to wildcard `_` or `_%s`)" id id
-    | Scope.FieldReference -> warn env region "M0198" "unused field %s in object pattern (delete or rewrite as `%s = _`)" id id
+      match kind with
+      | Scope.Declaration -> warn env region "M0240" "unused identifier %s in shared pattern (delete or rename to wildcard `_` or `_%s`)" id id
+      | Scope.FieldReference -> warn env region "M0241" "unused field %s in shared pattern (delete or rewrite as `%s = _`)" id id
+    else
+      match kind with
+      | Scope.Declaration -> warn env region "M0194" "unused identifier %s (delete or rename to wildcard `_` or `_%s`)" id id
+      | Scope.FieldReference -> warn env region "M0198" "unused field %s in object pattern (delete or rewrite as `%s = _`)" id id
   in
   let list = sorted_unused_warnings !(env.unused_warnings) in
   List.iter emit list

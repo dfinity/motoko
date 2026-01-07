@@ -247,6 +247,7 @@ let warning_codes = [
   "M0237", None, "Suggest redundant explicit arguments";
   "M0239", None, "Avoid binding a unit `()` result";
   "M0240", None, "Unused identifier in shared pattern warning";
+  "M0241", None, "Unused field in shared pattern warning";
   ]
 
 let try_find_explanation code =
