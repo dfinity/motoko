@@ -50,8 +50,6 @@ let
         # in the binaries. But curiously, we can remove them
         # an the binaries still work. They are essentially static otherwise.
         remove-references-to \
-          -t ${pkgs.darwin.Libsystem} \
-          -t ${pkgs.darwin.CF} \
           -t ${pkgs.libiconv} \
           $out/bin/*
       '' + ''

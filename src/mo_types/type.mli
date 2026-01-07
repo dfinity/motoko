@@ -193,8 +193,10 @@ val lookup_typ_field_opt : string -> field list -> con option
 val lookup_val_deprecation : string -> field list -> string option
 val lookup_typ_deprecation : string -> field list -> string option
 
-val compare_field : field -> field -> int
+val val_fields : field list -> field list
 
+val compare_field : field -> field -> int
+val align_fields : field list -> field list -> (field, field) Lib.these Seq.t
 
 (* Constructors *)
 
@@ -246,24 +248,28 @@ val cons_typs : typ list -> ConSet.t
 type compatibility = Compatible | Incompatible of explanation
 and explanation =
   | IncompatibleTypes of context * typ * typ
-  | MissingTag of context * lab * typ
-  | UnexpectedTag of context * lab * typ
-  | MissingField of context * lab * typ
-  | UnexpectedField of context * lab * typ
+  | FailedPromote of typ * typ * explanation
+  | MissingTag of context * desc * lab * typ
+  | MissingField of context * desc * lab * typ
   | FewerItems of context * string
   | MoreItems of context * string
   | PromotionToAny of context * typ
   | IncompatiblePrims of context * typ * typ
-  | IncompatibleObjSorts of context * typ * typ
-  | IncompatibleFuncSorts of context * typ * typ
-  | IncompatibleBounds of context * typ * typ
+  | IncompatibleObjSorts of context * obj_sort * obj_sort
+  | IncompatibleFuncSorts of context * func_sort * func_sort
+  | IncompatibleFuncControls of context * control * control
   | IncompatibleFuncs of context * typ * typ
-  | IncompatibleAsyncSorts of context * typ * typ
+  | IncompatibleAsyncSorts of context * async_sort * async_sort
+  | IncompatibleAsyncScopes of context * typ * typ
+and desc = Actual | Expected
 and context_item =
   | ConsType of con
   | NamedType of name
   | StableVariable of lab
   | Field of lab
+  | Bounds
+  | Domain
+  | CoDomain
 and context = context_item list
 
 exception Undecided (* raised if termination depth exceeded  *)
@@ -367,6 +373,7 @@ module type Pretty = sig
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
   val string_of_explanation : explanation -> string
+  val is_redundant_explanation : typ -> typ -> explanation -> bool
 end
 
 module type PrettyConfig = sig

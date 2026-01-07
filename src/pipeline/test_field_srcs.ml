@@ -104,7 +104,6 @@ let run_get_sources_test source =
     let* _typ, sscope =
       Mo_types.Cons.session ~scope:filename (fun () ->
         Mo_frontend.Typing.infer_prog
-          ~viper_mode:false
           senv
           None
           async_cap
@@ -162,7 +161,6 @@ let run_compare_typed_asts_test filename =
     let* _libs, progs, _sscope, _cache =
       Mo_types.Cons.session ~scope:filename (fun () ->
         Pipeline.load_progs_cached
-          ~viper_mode:false
           ~check_actors:false
           Pipeline.parse_file
           [filename]

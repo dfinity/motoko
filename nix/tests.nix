@@ -1,4 +1,4 @@
-{ pkgs, llvmEnv, esm, viper-server, commonBuildInputs, debugMoPackages, test-runner }:
+{ pkgs, llvmEnv, esm, commonBuildInputs, debugMoPackages, test-runner }:
 with debugMoPackages;
 let
   # The following were previously arguments to default.nix but flakes don't accept options yet.
@@ -57,7 +57,6 @@ let
         patchShebangs .
         ${llvmEnv}
         export ESM=${esm}
-        export VIPER_SERVER=${viper-server}
         type -p moc && moc --version
         ${if dir == "run-drun" 
           then "make -C ${dir}${pkgs.lib.optionalString (pkgs.system != "x86_64-darwin") " parallel -j4"} ${pkgs.lib.optionalString accept " accept"}"
@@ -147,7 +146,7 @@ let
     # test directory to be run by src/pipeline/test_field_srcs.ml. We create src
     # and test (the latter only with the wanted subdirectories) so that the dune
     # rule will be able to copy.
-    src = pkgs.runCommand "project-sources" {} ''
+    src = pkgs.runCommand "project-sources" { } ''
       mkdir -p $out/src $out/test
       cp -r ${../src}/* $out/src
       cp -r ${../test}/{run,run-drun,perf,bench} $out/test
@@ -243,7 +242,6 @@ fix_names
     trap-eop = enhanced_orthogonal_persistence_subdir "trap" [ moc ];
     run-deser = test_subdir "run-deser" [ deser ];
     perf = perf_subdir false "perf" [ moc test-runner pkgs.pocket-ic.server pkgs.cacert ];
-    viper = test_subdir "viper" [ moc pkgs.which pkgs.openjdk pkgs.z3 ];
     # TODO: profiling-graph is excluded because the underlying parity_wasm is deprecated and does not support passive data segments and memory64.
     inherit qc unit candid coverage;
   }

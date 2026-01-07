@@ -13,7 +13,6 @@
 #    -i: Only check mo to idl generation
 #    -p: Produce perf statistics
 #        only compiles and runs drun, writes stats to $PERF_OUT
-#    -v: Translate to Viper
 #
 
 function realpath() {
@@ -25,7 +24,6 @@ ACCEPT=no
 DTESTS=no
 IDL=no
 PERF=no
-VIPER=no
 WASMTIME_OPTIONS="-C cache=n -W nan-canonicalization=y -W memory64 -W multi-memory -W bulk-memory"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
@@ -55,9 +53,6 @@ while getopts "adpstirv" o; do
             ;;
         i)
             IDL=yes
-            ;;
-        v)
-            VIPER=yes
             ;;
     esac
 done
@@ -104,10 +99,8 @@ function normalize () {
 
     # Delete everything after Oom
     sed -e '/RTS error: Cannot grow memory/q' \
-        -e '/RTS error: Cannot allocate memory/q' |
-    # Delete Viper meta-output
-    sed -e '/^Silicon /d' \
-        > $1.norm
+        -e '/RTS error: Cannot allocate memory/q' > $1.norm
+
     mv $1.norm $1
   fi
 }
@@ -149,9 +142,6 @@ function run () {
 # separate files instead of merging them. It was created by copy&paste and
 # applying minor tweaks. If the 'run' function is changed, it is quite likely
 # that 'run_stderr' requires similar changes.
-#
-# Separation of stdout/stderr is necessary when e.g. producing .vpr files so
-# that diagnostic messages don't get interspersed with the generated Viper code.
 function run_stderr () {
   # first argument: extension of the output file
   # remaining argument: command line
@@ -305,7 +295,6 @@ do
     then
       if [[ $EXTRA_MOC_ARGS != *"--enhanced-orthogonal-persistence"* ]]
       then
-        SKIP_RUNNING=yes
         $ECHO " Skipped (not applicable to classical orthogonal persistence)"
         continue
       fi
@@ -342,10 +331,6 @@ do
         continue
       fi
     fi
-    if [ $VIPER = 'yes' ]
-    then
-      TEST_MOC_ARGS="$TEST_MOC_ARGS --package base pkg/base"
-    fi
     moc_with_flags="env $moc_extra_env moc $MOC_ARGS $moc_extra_flags $TEST_MOC_ARGS"
 
     # Typecheck
@@ -366,20 +351,6 @@ do
         if [ "$idl_succeeded" -eq 0 ]
         then
           run didc didc --check $out/$base.did
-        fi
-      elif [ $VIPER = 'yes' ]
-      then
-        run_stderr vpr $moc_with_flags --viper $base.mo -o $out/$base.vpr
-        vpr_succeeded=$?
-
-        normalize $out/$base.vpr
-        diff_files="$diff_files $base.vpr"
-
-        if [ "$vpr_succeeded" -eq 0 ]
-        then
-	  run silicon java -Xmx2048m -Xss16m -cp $VIPER_SERVER \
-	    viper.silicon.SiliconRunner --logLevel OFF --z3Exe $(which z3) \
-	    $out/$base.vpr
         fi
       else
         if [ "$SKIP_RUNNING" != yes -a "$PERF" != yes ]

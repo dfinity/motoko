@@ -14,7 +14,6 @@ A safe, simple, actor-based programming language for building [Internet Computer
 * [Concrete syntax](doc/md/examples/grammar.txt)
 * [Documentation sources](doc/md/)
 * [Base package documentation](doc/md/base/index.md)
-* [_Motoko-san_: a prototypical deductive verifier](src/viper/README.md)
 
 ## Introduction
 
