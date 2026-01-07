@@ -321,8 +321,8 @@ and parenthetical send = function
 and neutral (op : (binop, binop) Either.t) : exp -> bool =
   let add_like = function Either.(Left (AddOp | OrOp) | Right (AddOp | OrOp | SubOp)) -> true | _ -> false in
   let mul_like = function Either.(Left MulOp | Right (MulOp | DivOp)) -> true | _ -> false in
-  let rec strip e = match e.it with
-    | S.AnnotE (e, _) -> strip e
+  let rec examine e = match e.it with
+    | S.AnnotE (e, _) -> examine e
     | S.LitE {contents} ->
       let open Numerics in
       (match contents with
@@ -346,7 +346,7 @@ and neutral (op : (binop, binop) Either.t) : exp -> bool =
        | Int64Lit n when mul_like op && Int_64.(of_int 1 |> eq n) -> true
        | _ -> false)
     | _ -> false in
-  strip
+  examine
 
 and url e at =
     (* Set position explicitly *)
