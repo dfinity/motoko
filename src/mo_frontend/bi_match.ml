@@ -389,7 +389,7 @@ let bi_match_typs ctx =
       | Some inst -> match fs with
         | Lib.Both(tf1, tf2) ->
           (* NB: we assume c1, c2 closed *)
-          if Cons.eq tf1.typ tf2.typ then Some inst else None
+          if eq_con tf1.typ tf2.typ then Some inst else None
         | Lib.This(_) -> if rel != eq then Some inst else None
         | Lib.That(_) -> None) (Some inst)
 

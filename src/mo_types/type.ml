@@ -1328,7 +1328,7 @@ and rel_typ_fields t1 t2 d rel eq tfs1 tfs2 =
     Seq.for_all (function
     | Lib.Both(tf1, tf2) ->
       let d' = RelArg.push (Field tf2.lab) d in
-      eq_con d' eq tf1.typ tf2.typ || incompatible_cons d' tf1.typ tf2.typ
+      eq_con' d' eq tf1.typ tf2.typ || incompatible_cons d' tf1.typ tf2.typ
     | Lib.This tf1 ->
       if rel != eq && not (RelArg.is_stable_sub d) then true
       else missing_type_field d Actual tf1.lab t2
@@ -1369,7 +1369,7 @@ and eq_kind' eq k1 k2 : bool =
     )
   | _ -> false
 
-and eq_con d eq c1 c2 =
+and eq_con' d eq c1 c2 =
   match Cons.kind c1, Cons.kind c2 with
   | (Def (tbs1, t1)) as k1, (Def (tbs2, t2) as k2) ->
     eq_kind' eq k1 k2
@@ -1393,6 +1393,10 @@ let eq ?(src_fields = empty_srcs_tbl ()) t1 t2 : bool =
 let eq_kind ?(src_fields = empty_srcs_tbl ()) k1 k2 : bool =
   with_src_field_updates_predicate src_fields (fun () ->
     eq_kind' (ref SS.empty) k1 k2)
+
+let eq_con ?(src_fields = empty_srcs_tbl ()) c1 c2 : bool =
+  with_src_field_updates_predicate src_fields (fun () ->
+    eq_con' (RelArg.sub []) (ref SS.empty) c1 c2)
 
 let sub_explained ?(src_fields = empty_srcs_tbl ()) context t1 t2 =
   with_src_field_updates_predicate_general src_fields (fun () ->

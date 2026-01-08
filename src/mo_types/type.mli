@@ -282,6 +282,7 @@ exception Undecided (* raised if termination depth exceeded  *)
 
 val eq : ?src_fields : Field_sources.t -> typ -> typ -> bool
 val eq_kind : ?src_fields : Field_sources.t -> kind -> kind -> bool
+val eq_con : ?src_fields : Field_sources.t -> con -> con -> bool
 
 val sub : ?src_fields : Field_sources.t -> typ -> typ -> bool
 val sub_explained : ?src_fields : Field_sources.t -> context -> typ -> typ -> compatibility
