@@ -3,6 +3,8 @@
 
 * motoko (`moc`)
 
+  * Allow `break` and `continue` in loops without labels (#5702).
+
   * Explain subtype failures (#5643).
   
   * Removes the Viper support (#5751).
