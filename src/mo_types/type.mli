@@ -1,5 +1,6 @@
 (* Representation *)
 
+type id = string
 type lab = string
 type var = string
 type name = string
@@ -218,6 +219,11 @@ val promote : typ -> typ
 
 val opaque : typ -> bool
 val concrete : typ -> bool
+
+type path = IdP of id | DotP of path * lab
+val compare_path : path -> path -> int
+val paths : path -> typ -> path ConEnv.t
+
 val shared : typ -> bool
 val find_unshared : typ -> typ option
 
@@ -359,13 +365,16 @@ val string_of_obj_sort : obj_sort -> string
 val string_of_func_sort : func_sort -> string
 
 module type Pretty = sig
+  val set_con_map : path ConEnv.t -> unit
+  val clear_con_map : unit -> unit
   val pp_lab : Format.formatter -> lab -> unit
   val pp_typ : Format.formatter -> typ -> unit
   val pp_typ_expand : Format.formatter -> typ -> unit
   val pps_of_kind : kind ->
     string *
     (Format.formatter -> unit -> unit) *
-    (Format.formatter -> unit -> unit)
+      (Format.formatter -> unit -> unit)
+
   val string_of_con : con -> string
   val string_of_typ : typ -> string
   val string_of_kind : kind -> string

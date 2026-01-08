@@ -1,6 +1,7 @@
 open Field_sources
 
 (* Representation *)
+type id = string
 type lab = string
 type var = string
 type name = string
@@ -823,6 +824,7 @@ let cons t = cons' true t ConSet.empty
 let cons_kind k = cons_kind' true k ConSet.empty
 let cons_typs ts = List.fold_left (fun acc t -> cons t |> ConSet.union acc) ConSet.empty ts
 
+
 (* Checking for concrete types *)
 
 module S = Set.Make (Ord)
@@ -860,6 +862,52 @@ let concrete t =
       | Weak t -> go t
     end
   in go t
+
+(* Mapping constructors to type paths *)
+
+type path = IdP of id | DotP of path * lab
+
+let rec compare_path p1 p2 =
+  match (p1, p2) with
+  | IdP id1, IdP id2 -> String.compare id1 id2
+  | DotP (p1, l1), DotP (p2, l2) ->
+     (match compare_path p1 p2 with
+     | 0 -> String.compare l1 l2
+     | other -> other)
+  | IdP _, DotP _ -> -1
+  | DotP _, IdP _ -> 1
+
+let paths p t =
+  let cm = ref ConEnv.empty in
+  let seen = ref S.empty in
+  let rec go p t =
+    if  S.mem t !seen then () else
+    begin
+      seen := S.add t !seen;
+      match t with
+      | Typ c ->
+        cm := ConEnv.add c p (!cm)
+      | Named (_, t) -> go p t
+      | Obj (_, fs) ->
+        List.iter (fun f -> go (DotP (p, f.lab)) f.typ) fs
+      | Con (c, ts) ->
+        (match Cons.kind c with
+        | Abs (_, t) -> go p (open_ ts t)
+        | Def (_, t) -> go p (open_ ts t)
+        )
+      (* explicit match in case we add a constructor later *)
+      | Var _ | Pre
+      | Prim _ | Any | Non
+      | Array _ | Opt _ | Mut _
+      | Async _
+      | Tup _
+      | Variant _
+      | Func _
+      | Weak _ -> ()
+    end
+  in
+  go p t;
+  !cm
 
 (* stable or shared *)
 let serializable allow_mut t =
@@ -1889,6 +1937,11 @@ end
 
 module MakePretty(Cfg : PrettyConfig) = struct
 
+let con_map = ref (ConEnv.empty : path ConEnv.t)
+
+let set_con_map cm = con_map := cm
+let clear_con_map () = con_map := ConEnv.empty
+
 let remove_hash_suffix s =
   let len = String.length s in
   if len = 0 then s
@@ -1935,16 +1988,31 @@ let semi ppf () = fprintf ppf ";@ "
 module StringSet = Set.Make(String)
 
 let vs_of_cs cs =
-  let names = ConSet.fold (fun c ns -> StringSet.add (Cons.name c) ns) cs StringSet.empty in
+  let names = ConSet.fold (fun c ns ->
+      match ConEnv.find_opt c (!con_map) with
+      | Some (IdP id) -> StringSet.add id ns (* avoid required simple paths *)
+      | Some (DotP _) -> ns (* ignore qualified paths *)
+      | None -> (* avoid other anonymous cons *)
+        StringSet.add (Cons.name c) ns)
+      cs
+      StringSet.empty
+  in
   StringSet.fold (fun n vs -> (n, 0)::vs) names []
 
 let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s%s%d" x Cfg.par_sep i
 
+let rec string_of_path p = match p with
+  | IdP id -> id
+  | DotP (p1, lab) -> string_of_path p1 ^ "." ^ lab
+
 let string_of_con c =
-  let name = Cons.to_string Cfg.show_stamps Cfg.con_sep c in
-  if Cfg.show_hash_suffix then name
-  else remove_hash_suffix name
+  match ConEnv.find_opt c !con_map with
+  | Some path -> string_of_path path
+  | None ->
+    let name = Cons.to_string Cfg.show_stamps Cfg.con_sep c in
+    if Cfg.show_hash_suffix then name
+    else remove_hash_suffix name
 
 let rec can_sugar = function
   | Func(s, Promises, tbs, ts1, ts2)
@@ -2288,7 +2356,7 @@ let string_of_context preposition context =
   let emit_item item nested =
     match item with
     | Field label -> Printf.sprintf "`%s`" label, "in"
-    | ConsType c ->  Printf.sprintf "`%s`" (remove_hash_suffix (Cons.name c)), "in"
+    | ConsType c ->  Printf.sprintf "`%s`" (string_of_con c), "in"
     | NamedType name-> Printf.sprintf "`(%s : _)`" name, "in"
     | Bounds -> "type parameters", "of"
     | Domain -> "arguments", "of"
@@ -2312,6 +2380,7 @@ let string_of_context preposition context =
 
 let flip desc = match desc with Actual -> Expected | Expected -> Actual
 let string_of_desc desc = match desc with Actual -> "" | Expected -> "expected "
+
 let rec string_of_explanation explanation =
   let display_typ = Lib.Format.display pp_typ in
   match explanation with
@@ -2372,13 +2441,15 @@ let is_redundant_explanation t1 t2 = function
 end
 
 module type Pretty = sig
+  val set_con_map : path ConEnv.t -> unit
+  val clear_con_map : unit -> unit
   val pp_lab : Format.formatter -> lab -> unit
   val pp_typ : Format.formatter -> typ -> unit
   val pp_typ_expand : Format.formatter -> typ -> unit
   val pps_of_kind : kind ->
     string *
     (Format.formatter -> unit -> unit) *
-      (Format.formatter -> unit -> unit)
+    (Format.formatter -> unit -> unit)
 
   val string_of_con : con -> string
   val string_of_typ : typ -> string
