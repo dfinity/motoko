@@ -63,7 +63,7 @@ type env =
     reported_stable_memory : bool ref;
     errors_only : bool;
     srcs : Field_sources.t;
-    closest_loop : (Syntax.loop_flags * T.typ) option;
+    closest_loop : Syntax.loop_flags option;
   }
 and ret_env =
   | NoRet
@@ -2051,20 +2051,21 @@ and infer_exp'' env exp : T.typ =
     T.lub ~src_fields:env.srcs t1 t2
   | WhileE (exp1, exp2, loop_ref) ->
     if not env.pre then begin
-      let env' = { env with closest_loop = Some (loop_ref, T.unit) } in
+      let env' = { env with closest_loop = Some loop_ref } in
       check_exp_strong env' T.bool exp1;
       check_exp_strong env' T.unit exp2
     end;
     T.unit
   | LoopE (exp1, None, loop_ref) ->
     if not env.pre then begin
-      let env' = { env with closest_loop = Some (loop_ref, T.Non) } in
-      check_exp_strong env' T.unit exp1
-    end;
-    T.Non
+      let env' = { env with closest_loop = Some loop_ref } in
+      check_exp_strong env' T.unit exp1;
+      if loop_ref.has_break then T.unit else T.Non
+    end else
+      T.Non
   | LoopE (exp1, Some exp2, loop_ref) ->
     if not env.pre then begin
-      let env' = { env with closest_loop = Some (loop_ref, T.unit) } in
+      let env' = { env with closest_loop = Some loop_ref } in
       check_exp_strong env' T.unit exp1;
       check_exp_strong env' T.bool exp2
     end;
@@ -2079,7 +2080,7 @@ and infer_exp'' env exp : T.typ =
         if not (sub env exp1.at T.unit t1) then raise (Invalid_argument "");
         let t2' = T.as_opt_sub t2 in
         let ve = check_pat_exhaustive warn env t2' pat in
-        let env' = { (adjoin_vals env ve) with closest_loop = Some (loop_ref, T.unit) } in
+        let env' = { (adjoin_vals env ve) with closest_loop = Some loop_ref } in
         check_exp_strong env' T.unit exp2
       with Invalid_argument _ | Not_found ->
         local_error env exp1.at "M0082"
@@ -2100,12 +2101,11 @@ and infer_exp'' env exp : T.typ =
     | None ->
       let op = match kind with Break -> "break" | Continue -> "continue" in
       local_error env exp.at "M0238" "%s outside of loop" op
-    | Some (flags, typ) ->
-      let typ = match kind with
-        | Break -> (flags.has_break <- true; typ)
-        | Continue -> (flags.has_continue <- true; T.unit)
-      in
-      if not env.pre then check_exp_strong env typ exp1);
+    | Some flags ->
+      (match kind with
+      | Break -> flags.has_break <- true
+      | Continue -> flags.has_continue <- true);
+      if not env.pre then check_exp_strong env T.unit exp1);
     T.Non
   | BreakE (kind, Some id, exp1) ->
     (match T.Env.find_opt id.it env.labs with

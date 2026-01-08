@@ -44,7 +44,31 @@ func main4() {
     sum += n;
   }
 };
+func main5() {
+  var n = 0;
+  var sum = 0;
+  label l loop {
+    n += 1;
+    if (n == 2) continue;
+    if (n == 5) break l; // mixing unlabeled and labeled break/continue
+    sum += n;
+  };
+  assert (sum == 1 + 3 + 4);
+};
+func main6() {
+  var n = 0;
+  var sum = 0;
+  loop {
+    n += 1;
+    if (n == 2) continue;
+    if (n == 5) break;
+    sum += n;
+  };
+  assert (sum == 1 + 3 + 4);
+};
 main1();
 main2();
 main3();
 main4();
+main5();
+main6();
