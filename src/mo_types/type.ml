@@ -1453,7 +1453,7 @@ let rec singleton_typ co t =
   | Pre -> assert false
   | Prim Null | Any -> true
   | Tup ts -> List.for_all (singleton_typ co) ts
-  | Obj ((Object|Memory|Module), fs, []) -> List.for_all (singleton_field co) fs
+  | Obj ((Object|Memory|Module), fs, _) -> List.for_all (singleton_field co) fs
   | Variant [f] -> singleton_field co f
 
   | Non -> false
@@ -1992,17 +1992,20 @@ and can_omit n t =
   in go n t
 
 let rec pp_typ_obj vs ppf o =
-  (* TODO *)
   match o with
   | (Object, fs, tfs) ->
-    fprintf ppf "@[<hv 2>{@;<0 0>%a%a@;<0 -2>}@]"
-      (pp_print_list ~pp_sep:semi (pp_typ_field vs)) tfs
-      (pp_print_list ~pp_sep:semi (pp_field vs)) fs
+    let fields = List.map (fun f -> Either.Left f) fs in
+    let typ_fields = List.map (fun f -> Either.Right f) tfs in
+    let fs = typ_fields @ fields in
+    fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
+      (pp_print_list ~pp_sep:semi (pp_print_either ~left:(pp_field vs) ~right:(pp_typ_field vs))) fs
   | (s, fs, tfs) ->
-    fprintf ppf "@[<hv 2>%s{@;<0 0>%a%a@;<0 -2>}@]"
+    let fields = List.map (fun f -> Either.Left f) fs in
+    let typ_fields = List.map (fun f -> Either.Right f) tfs in
+    let fs = typ_fields @ fields in
+    fprintf ppf "@[<hv 2>%s{@;<0 0>%a@;<0 -2>}@]"
       (string_of_obj_sort s)
-      (pp_print_list ~pp_sep:semi (pp_typ_field vs)) tfs
-      (pp_print_list ~pp_sep:semi (pp_field vs)) fs
+      (pp_print_list ~pp_sep:semi (pp_print_either ~left:(pp_field vs) ~right:(pp_typ_field vs))) fs
 
 and pp_typ_variant vs ppf fs =
   match fs with

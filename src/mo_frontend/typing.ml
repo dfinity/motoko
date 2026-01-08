@@ -2292,10 +2292,12 @@ and infer_check_bases_fields env (check_fields : T.field list) (check_typ_fields
       | None -> Hashtbl.add field_map f.T.lab exp.at);
     tfs |> iter (fun tf ->
       match Hashtbl.find_opt typ_field_map tf.T.lab with
-      | Some at ->
-        info env at "type field also present in base, here";
-        error env exp.at "M0177" "ambiguous type field in base%a" display_lab tf.T.lab
-      | None -> Hashtbl.add typ_field_map tf.T.lab exp.at)
+      | Some (typ, at) ->
+        if not (Cons.eq typ tf.T.typ) then begin
+          info env at "type field also present in base, here";
+          error env exp.at "M0177" "ambiguous type field in base%a" display_lab tf.T.lab
+        end;
+      | None -> Hashtbl.add typ_field_map tf.T.lab (tf.T.typ, exp.at))
   ) stripped_bases exp_bases;
 
   let t_base = T.(fold_left (glb ~src_fields:env.srcs) (Obj (Object, [], [])) stripped_bases) in
@@ -3471,7 +3473,7 @@ and check_pat_fields_typ_dec env t fs tfs pfs te at : Scope.typ_env =
   (* Assumes fs, tfs, and pfs are sorted *)
   let typ_pfs, val_pfs = List.partition_map (fun pf -> match pf.it with
     | ValPF(id, p) -> Either.Right(id, p)
-    | TypPF(id) -> Either.Left(id, at)) pfs in
+    | TypPF(id) -> Either.Left(id, pf.at)) pfs in
   let cmp = fun tf (id, _) -> String.compare id.it tf.T.lab in
   (* Collect types in nested patterns *)
   let te = Lib.List.align cmp fs val_pfs |>
