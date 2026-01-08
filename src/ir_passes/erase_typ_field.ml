@@ -37,7 +37,7 @@ let transform prog =
     match t with
     (* The only interesting case *)
     | Obj (s, fs, _) ->
-      Obj (s, fs, [])
+      Obj (s, List.map (fun f -> t_field f) fs, [])
     | T.Prim _
     | Var _ -> t
     | Con (c, ts) ->
@@ -73,7 +73,7 @@ let transform prog =
     match Cons.kind c with
     | T.Def ([], T.Prim _) -> c
     | _ ->
-      match  ConRenaming.find_opt c (!con_renaming) with
+      match ConRenaming.find_opt c (!con_renaming) with
       | Some c' -> c'
       | None ->
         let clone = Cons.clone c (Abs ([], Pre)) in
