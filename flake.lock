@@ -3,11 +3,11 @@
     "candid-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1765407289,
-        "narHash": "sha256-KBwXZWWgSIAbKpWNARNhbeAfypm9MLuj8ZlDVCGt5tg=",
+        "lastModified": 1766069143,
+        "narHash": "sha256-hllvzZ/phhWbxuHhA1tME1Nc0ZAT9fMAZgwWsa9BLNs=",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "fe9b0d86f40f9fd0c331ce8fabaa8b01b86381f3",
+        "rev": "2e4a2cf6a66593e2cb3289535899eb232635bef2",
         "type": "github"
       },
       "original": {
@@ -71,11 +71,11 @@
     "ic-wasm-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1763575621,
-        "narHash": "sha256-gxfjS/X9EkVEEqDGCWWJQtNXuJk8Kc94o+hVfC5sw5Y=",
+        "lastModified": 1765912852,
+        "narHash": "sha256-FfMgwq6IBGn5hGuTpCEr3OxsiqAckWtRN9LETHFbLa0=",
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "65a9462fd63503182c7c5dd44f92839a21047e71",
+        "rev": "8c908cd12bf9e73a204c546b24e0b170df8f00d8",
         "type": "github"
       },
       "original": {
@@ -121,11 +121,11 @@
     "motoko-core-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1765446062,
-        "narHash": "sha256-NxzdUytTMiZ6km1h8msivQ5QaIYrHCqx6y+ZnN4K5ew=",
+        "lastModified": 1767368472,
+        "narHash": "sha256-JP8kVRWEuM4cKAUpXnwWcQe2C0vT/54YYZwQs569q3E=",
         "owner": "caffeinelabs",
         "repo": "motoko-core",
-        "rev": "a5b53056e7022f21c6d3d49a4814915593d8d978",
+        "rev": "c87170edd5766dc9fa243d95a5ef197849f7956f",
         "type": "github"
       },
       "original": {
@@ -237,7 +237,6 @@
         "ocaml-recovery-parser-src": "ocaml-recovery-parser-src",
         "ocaml-vlq-src": "ocaml-vlq-src",
         "rust-overlay": "rust-overlay",
-        "viper-server": "viper-server",
         "wasm-spec-src": "wasm-spec-src"
       }
     },
@@ -248,11 +247,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1765420988,
-        "narHash": "sha256-35VIWDwLN9gFLWLEJj70D8XRk8YuJjJZywefJRf3MXI=",
+        "lastModified": 1766198367,
+        "narHash": "sha256-f1L1rCEu2Zew6zdiZ38jJDZd65ktE7UN+Gqn2LHPiFI=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "4f8466786e8bc7a90047ebe9367ba66ea76b7845",
+        "rev": "66bb33fdfb50b1ee724381c3f5d6012dac6c89b3",
         "type": "github"
       },
       "original": {
@@ -295,18 +294,6 @@
         "owner": "numtide",
         "repo": "treefmt-nix",
         "type": "github"
-      }
-    },
-    "viper-server": {
-      "flake": false,
-      "locked": {
-        "narHash": "sha256-lP7CFmug2kecogQ+qFS2GzxNQEzBVODw7xXmTHmxblQ=",
-        "type": "file",
-        "url": "https://github.com/viperproject/viperserver/releases/download/v.22.11-release/viperserver.jar"
-      },
-      "original": {
-        "type": "file",
-        "url": "https://github.com/viperproject/viperserver/releases/download/v.22.11-release/viperserver.jar"
       }
     },
     "wasm-spec-src": {

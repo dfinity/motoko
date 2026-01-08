@@ -1,7 +1,7 @@
 name: "nightly-macos-test"
 on:
   schedule:
-    - cron: '0 0 * * *'  # Run at midnight UTC every day
+    - cron: "0 0 * * *"  # Run at midnight UTC every day
   workflow_dispatch:  # Allow manual triggering
   
 jobs:

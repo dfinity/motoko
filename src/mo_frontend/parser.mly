@@ -250,15 +250,13 @@ and objblock eo s id ty dec_fields =
 %token<string> FLOAT
 %token<Mo_values.Value.unicode> CHAR
 %token<bool> BOOL
-%token<string> ID
+%token<string> ID [@recover.expr "__error_recovery_var__"]
 %token<string> TEXT
 %token PIPE
 %token PRIM
 %token UNDERSCORE
 %token COMPOSITE
 %token WEAK
-
-%nonassoc IMPLIES (* see assertions.mly *)
 
 %nonassoc RETURN_NO_ARG IF_NO_ELSE LOOP_NO_WHILE TRY_CATCH_NO_FINALLY
 %nonassoc ELSE WHILE FINALLY

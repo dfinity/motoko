@@ -1,6 +1,14 @@
 # Motoko compiler changelog
 
+
 * motoko (`moc`)
+
+
+  * Print type constructors using available type paths (#5698).
+
+  * Explain subtype failures (#5643).
+
+  * Removes the Viper support (#5751).
 
   * Allows resolving local definitions for context-dot (#5731).
 
@@ -14,6 +22,8 @@
   ```
 
   * Add privileged primitive for setting Candid type table cutoff (#5642).
+
+  * Split unused identifier warnings into separate warnings for shared and non-shared contexts: `M0194` for general declarations, `M0240` for identifiers in shared pattern contexts (e.g. `c` in `shared({caller = c})`), `M0198` for unused fields in object patterns, and `M0241` for unused fields in shared patterns (e.g. `caller` in `shared({caller})`) (#5779).
 
 ## 1.0.0 (2025-12-11)
 
