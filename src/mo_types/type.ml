@@ -1167,7 +1167,8 @@ let rec rel_typ d rel eq t1 t2 =
     raise PreEncountered
   | Mut t1', Mut t2' ->
     eq_typ d rel eq t1' t2'
-  | Mut _, _ | _, Mut _
+  | Mut _, _ | _, Mut _ ->
+    false
   | Any, Any ->
     true
   | _, Any when rel != eq ->
@@ -2122,10 +2123,6 @@ and pp_control_cod sugar c vs ppf ts =
 and pp_typ' vs ppf t =
   match t with
   (* special, additional cases for printing second-class types *)
-  (*
-    | Typ c ->
-    fprintf ppf "@[<1>=@ @[(type@ %a)@]@]" (pp_kind' vs) (Cons.kind c)
-    *)
   | Mut t ->
     fprintf ppf "@[<1>var@ %a@]" (pp_typ_un vs) t
   (* No cases for syntactic _ And _ & _ Or _ (already desugared) *)
