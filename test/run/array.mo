@@ -1,3 +1,4 @@
+//MOC-FLAG -W M0074
 let a = [1, 2, 42];
 let aa = a : [Nat];
 

@@ -83,13 +83,7 @@ let experimental_stable_memory = ref experimental_stable_memory_default
 let typechecker_combine_srcs = ref false (* useful for the language server *)
 let blob_import_placeholders = ref false (* when enabled, blob:file imports resolve as empty blobs *)
 
-let default_warning_levels = M.empty
-  |> M.add "M0223" Allow (* don't report redundant instantions *)
-  |> M.add "M0235" Allow (* don't deprecate for non-caffeine *)
-  |> M.add "M0236" Allow (* don't suggest contextual dot notation *)
-  |> M.add "M0237" Allow (* don't report redundant explicit arguments *)
-
-let warning_levels = ref default_warning_levels
+let warning_levels = ref (M.empty)
 
 let set_warning_level code level =
   warning_levels := M.add code level !warning_levels

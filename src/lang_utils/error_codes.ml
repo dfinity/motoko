@@ -1,3 +1,5 @@
+open Mo_config.Flags
+
 (* A list of all error codes used in the compiler. The second field in
    each tuple represents a possible long-form description of the
    error. *)
@@ -208,49 +210,55 @@ let error_codes : (string * string option) list =
     "M0234", None; (* Field exists but is not a function *)
   ]
 
-(** Message codes that can be both used as warnings and errors *)
+(** Message codes that can be both used as warnings and errors.
+    The 4th field is the default warning level. *)
 let warning_codes = [
-  "M0005", None, "Case mismatch between import and filename";
-  "M0061", None, "Comparing abstract type to itself at supertype";
-  "M0062", None, "Comparing incompatible type at common supertype";
-  "M0074", None, "Array elements have inconsistent types";
-  "M0081", None, "If branches have inconsistent types";
-  "M0089", None, "Redundant ignore";
-  "M0101", None, "Switch with inconsistent branch types";
-  "M0128", None, "Function with system function name but wrong visibility";
-  "M0135", None, "Actor class has non-async return type";
-  "M0142", None, "An imported library should be a module or named actor class";
-  "M0145", None, "Pattern does not cover value"; (* Warn or Error *)
-  "M0146", None, "Pattern is never matched";
-  "M0154", Some([%blob "lang_utils/error_codes/M0154.md"]), "Deprecation annotation";
-  "M0155", Some([%blob "lang_utils/error_codes/M0155.md"]), "Inferred type Nat for subtraction";
-  "M0166", None, "Type intersection results in abstract type";
-  "M0167", None, "Type union results in bottom type";
-  "M0190", None, "Types inconsistent for alternative pattern variables, losing information";
-  "M0191", None, "Code requires Wasm features ... to execute";
-  "M0194", Some([%blob "lang_utils/error_codes/M0194.md"]), "Unused identifier warning";
-  "M0195", Some([%blob "lang_utils/error_codes/M0195.md"]), "warn that `system` capability is implicitly supplied";
-  "M0198", Some([%blob "lang_utils/error_codes/M0198.md"]), "Unused field pattern warning";
-  "M0199", Some([%blob "lang_utils/error_codes/M0199.md"]), "Deprecate experimental stable memory"; (* Warn or Error *)
-  "M0206", None, "Migration consumes, but does not produce, a declared field";
-  "M0207", None, "Migration consumes, but does not produce, an un-declared field";
-  "M0210", None, "Parenthetical note must be applied to a message send";
-  "M0211", None, "Parenthetical note has no attributes";
-  "M0212", Some([%blob "lang_utils/error_codes/M0212.md"]), "Unrecognised attribute in parenthetical note";
-  "M0215", None, "Field is lost in record used at supertype";
-  "M0217", None, "Redundant `persistent`";
-  "M0218", None, "Redundant `stable`";
-  "M0222", None, "Ignored `async*`";
-  "M0223", None, "Redundant type instantiation";
-  "M0235", None, "Deprecate for caffeine";
-  "M0236", None, "Suggest contextual dot notation";
-  "M0237", None, "Suggest redundant explicit arguments";
-  "M0239", None, "Avoid binding a unit `()` result";
+  "M0005", None, "Case mismatch between import and filename", Warn;
+  "M0061", None, "Comparing abstract type to itself at supertype", Error;
+  "M0062", None, "Comparing incompatible type at common supertype", Error;
+  "M0074", None, "Array elements have inconsistent types", Error;
+  "M0081", None, "If branches have inconsistent types", Error;
+  "M0089", None, "Redundant ignore", Warn;
+  "M0101", None, "Switch with inconsistent branch types", Error;
+  "M0128", None, "Function with system function name but wrong visibility", Warn;
+  "M0135", None, "Actor class has non-async return type", Warn;
+  "M0142", None, "An imported library should be a module or named actor class", Warn;
+  "M0145", None, "Pattern does not cover value", Warn; (* Warn or Error *)
+  "M0146", None, "Pattern is never matched", Warn;
+  "M0154", Some([%blob "lang_utils/error_codes/M0154.md"]), "Deprecation annotation", Warn;
+  "M0155", Some([%blob "lang_utils/error_codes/M0155.md"]), "Inferred type Nat for subtraction", Warn;
+  "M0166", None, "Type intersection results in abstract type", Error;
+  "M0167", None, "Type union results in bottom type", Error;
+  "M0190", None, "Types inconsistent for alternative pattern variables, losing information", Error;
+  "M0191", None, "Code requires Wasm features ... to execute", Warn;
+  "M0194", Some([%blob "lang_utils/error_codes/M0194.md"]), "Unused identifier warning", Warn;
+  "M0195", Some([%blob "lang_utils/error_codes/M0195.md"]), "warn that `system` capability is implicitly supplied", Warn;
+  "M0198", Some([%blob "lang_utils/error_codes/M0198.md"]), "Unused field pattern warning", Warn;
+  "M0199", Some([%blob "lang_utils/error_codes/M0199.md"]), "Deprecate experimental stable memory", Warn; (* Warn or Error *)
+  "M0206", None, "Migration consumes, but does not produce, a declared field", Warn;
+  "M0207", None, "Migration consumes, but does not produce, an un-declared field", Warn;
+  "M0210", None, "Parenthetical note must be applied to a message send", Warn;
+  "M0211", None, "Parenthetical note has no attributes", Warn;
+  "M0212", Some([%blob "lang_utils/error_codes/M0212.md"]), "Unrecognised attribute in parenthetical note", Warn;
+  "M0215", None, "Field is lost in record used at supertype", Warn;
+  "M0217", None, "Redundant `persistent`", Warn;
+  "M0218", None, "Redundant `stable`", Warn;
+  "M0222", None, "Ignored `async*`", Warn;
+  "M0223", None, "Redundant type instantiation", Allow;
+  "M0235", None, "Deprecate for caffeine", Allow;
+  "M0236", None, "Suggest contextual dot notation", Allow;
+  "M0237", None, "Suggest redundant explicit arguments", Allow;
+  "M0239", None, "Avoid binding a unit `()` result", Warn;
   ]
 
 let try_find_explanation code =
   match List.find_opt (fun (c, _) -> String.equal c code) error_codes with
   | None ->
-    List.find_opt (fun (c, _, _) -> String.equal c code) warning_codes
-    |> Option.map (fun (c, e, _ ) -> (c, e))
+    List.find_opt (fun (c, _, _, _) -> String.equal c code) warning_codes
+    |> Option.map (fun (c, e, _, _) -> (c, e))
   | o -> o
+
+let default_warning_level_overrides =
+  List.fold_left (fun acc (code, _, _, level) ->
+    if level = Warn then acc else M.add code level acc
+  ) M.empty warning_codes

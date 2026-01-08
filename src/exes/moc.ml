@@ -69,7 +69,7 @@ let argspec =
         | Flags.Warn -> "W"
         | Flags.Error -> "E"
       in
-      List.iter (fun (code, _, desc) ->
+      List.iter (fun (code, _, desc, _) ->
         let lvl = Flags.get_warning_level code in
         printf "%s (%s) %s\n" code (string_of_level lvl) desc
       ) Error_codes.warning_codes;
@@ -374,6 +374,7 @@ let () =
   (useful for debugging infinite loops)
   *)
   Internal_error.setup_handler ();
+  Flags.warning_levels := Error_codes.default_warning_level_overrides;
   Arg.parse_expand argspec add_arg usage;
   if !mode = Default then mode := (if !args = [] then Interact else Compile);
   Flags.compiled := !mode = Compile;
