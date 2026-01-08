@@ -1,7 +1,7 @@
 open Mo_types.Type
 
 type val_kind = Declaration | FieldReference
-type val_env = (typ * Source.region * val_kind * bool) Env.t  (* bool = shared *)
+type val_env = (typ * Source.region * val_kind * bool) Env.t  (* bool = bound in a `shared` pattern *)
 type lib_env = Mo_types.Type.typ Env.t
 type typ_env = con Env.t
 type con_env = ConSet.t
