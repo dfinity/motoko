@@ -128,6 +128,20 @@ let kind_of_field_pattern pf = match pf.it with
   | ValPF(id, { it = VarP pat_id; _ }) when id = pat_id -> Scope.FieldReference
   | _ -> Scope.Declaration
 
+let con_map env =
+  let choose c p1 p2 = if T.compare_path p1 p2 <= 0 then Some p1 else Some p2
+  in
+  let update p1 o = match o with
+    | None -> Some p1
+    | Some p2 -> if T.compare_path p1 p2 <= 0 then Some p1 else Some p2
+  in
+  let m = ref T.ConEnv.empty in
+  T.Env.iter (fun id (typ, _, _, _) ->
+      m := T.ConEnv.union choose (!m) (T.paths (T.IdP id) typ))
+    env.vals;
+  T.Env.iter (fun id c -> m := T.ConEnv.update c (update (T.IdP id)) !m) env.typs;
+  !m
+
 (* Error bookkeeping *)
 
 exception Recover
@@ -143,6 +157,10 @@ let display_lab = Lib.Format.display T.pp_lab
 let display_typ = Lib.Format.display T.pp_typ
 
 let display_typ_expand = Lib.Format.display T.pp_typ_expand
+
+let display_explanation t1 t2 ppf explanation =
+  if T.is_redundant_explanation t1 t2 explanation then () else
+  Format.fprintf ppf "\nbecause %s" (T.string_of_explanation explanation)
 
 let display_many display p xs =
   List.iter (display p) xs
@@ -227,19 +245,33 @@ let type_info at text : Diag.message =
   Diag.info_message at "type" text
 
 let error env at code fmt =
-  Format.kasprintf
-    (fun s -> Diag.add_msg env.msgs (type_error at code s); raise Recover) fmt
+  T.set_con_map (con_map env);
+  Format.kasprintf (fun s ->
+      T.clear_con_map ();
+      Diag.add_msg env.msgs (type_error at code s);
+      raise Recover)
+    fmt
 
 let local_error env at code fmt =
-  Format.kasprintf (fun s -> Diag.add_msg env.msgs (type_error at code s)) fmt
+  T.set_con_map (con_map env);
+  Format.kasprintf (fun s ->
+      T.clear_con_map ();
+      Diag.add_msg env.msgs (type_error at code s))
+    fmt
 
 let warn env at code fmt =
+  T.set_con_map (con_map env);
   Format.kasprintf (fun s ->
-    if not env.errors_only then Diag.add_msg env.msgs (type_warning at code s)) fmt
+      T.clear_con_map ();
+      if not env.errors_only then Diag.add_msg env.msgs (type_warning at code s))
+    fmt
 
 let info env at fmt =
+  T.set_con_map (con_map env);
   Format.kasprintf (fun s ->
-    if not env.errors_only then Diag.add_msg env.msgs (type_info at s)) fmt
+      T.clear_con_map ();
+      if not env.errors_only then Diag.add_msg env.msgs (type_info at s))
+    fmt
 
 let check_deprecation env at desc id depr =
   match depr with
@@ -389,20 +421,10 @@ let sub_explained env at t1 t2 =
       display_typ_expand t1
       display_typ_expand t2
 
-let incompatible_sub env at t1 t2 =
-  match sub_explained env at t1 t2 with
-  | T.Incompatible reason ->
-    let explanation =
-      if T.is_redundant_explanation t1 t2 reason then ""
-      else Printf.sprintf "\nbecause %s" (T.string_of_explanation reason)
-    in
-    Some explanation
-  | T.Compatible -> None
-
 let check_sub_explained env at t1 t2 on_incompatible =
-  match incompatible_sub env at t1 t2 with
-  | Some explanation -> on_incompatible explanation
-  | None -> ()
+  match sub_explained env at t1 t2 with
+  | T.Incompatible explanation -> on_incompatible explanation
+  | T.Compatible -> ()
 
 let eq env at t1 t2 =
   try T.eq ~src_fields:env.srcs t1 t2 with T.Undecided ->
@@ -633,14 +655,14 @@ let string_of_region r =
     { left =  { left with file = basename };
       right = { right with file = basename } }
 
-let associated_region env typ at =
+let associated_region env at ppf typ =
   match region_of_scope env typ with
   | Some r ->
-    Printf.sprintf "\n  scope %s is %s" (T.string_of_typ_expand typ) (string_of_region r);
+    Format.fprintf ppf "\n  scope %a is %s" T.pp_typ typ (string_of_region r);
   | None ->
     if eq env at typ (T.Con(C.top_cap,[])) then
-      Printf.sprintf "\n  scope %s is the global scope" (T.string_of_typ_expand typ)
-    else ""
+      Format.fprintf ppf "\n  scope %a is the global scope" T.pp_typ typ
+    else ()
 
 let scope_info env typ at =
   match region_of_scope env typ with
@@ -1884,14 +1906,14 @@ and infer_exp'' env exp : T.typ =
     begin match env.pre, typ_opt with
       | false, (_, Some typ) ->
         let t' = check_typ env' typ in
-        (match incompatible_sub env exp.at t t' with
-        | Some explanation ->
+        (match sub_explained env exp.at t t' with
+        | T.Incompatible explanation ->
           local_error env exp.at "M0192"
-            "body of type%a\ndoes not match expected type%a%s"
+            "body of type%a\ndoes not match expected type%a%a"
             display_typ_expand t
             display_typ_expand t'
-            explanation
-        | None -> detect_lost_fields env t' e)
+            (display_explanation t t') explanation
+        | T.Compatible -> detect_lost_fields env t' e)
       | _ -> ()
     end;
     t
@@ -2159,11 +2181,11 @@ and infer_exp'' env exp : T.typ =
        let (t2, t3) = T.as_async_sub s1 t0 t1 in
        if not (eq env exp.at t0 t2) then begin
           local_error env exp1.at "M0087"
-            "ill-scoped await: expected async type from current scope %s, found async type from other scope %s%s%s"
-           (T.string_of_typ_expand t0)
-           (T.string_of_typ_expand t2)
-           (associated_region env t0 exp.at)
-           (associated_region env t2 exp.at);
+            "ill-scoped await: expected async type from current scope %a, found async type from other scope %a%a%a"
+            T.pp_typ t0
+            T.pp_typ t2
+            (associated_region env exp.at) t0
+            (associated_region env exp.at) t2;
          scope_info env t0 exp.at;
          scope_info env t2 exp.at;
        end;
@@ -2510,11 +2532,11 @@ and check_exp' env0 t exp : T.typ =
     end;
     if not (eq env exp.at t1 t1') then begin
       local_error env exp.at "M0092"
-        "async at scope%a\ncannot produce expected scope%a%s%s"
+        "async at scope%a\ncannot produce expected scope%a%a%a"
         display_typ_expand t1
         display_typ_expand t1'
-        (associated_region env t1 exp.at) (*FIX ME?*)
-        (associated_region env t1' exp.at);
+        (associated_region env exp.at) t1 (*FIX ME?*)
+        (associated_region env exp.at) t1';
       scope_info env t1 exp.at;
       scope_info env t1' exp.at
     end;
@@ -2557,20 +2579,20 @@ and check_exp' env0 t exp : T.typ =
     let env', t2, codom = check_func_step env0.in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) in
     check_sub_explained env Source.no_region t2 codom (fun explanation ->
       error env exp.at "M0095"
-        "function return type%a\ndoes not match expected return type%a%s"
+        "function return type%a\ndoes not match expected return type%a%a"
         display_typ_expand t2
         display_typ_expand codom
-        explanation);
+        (display_explanation t2 codom) explanation);
     check_exp_strong env' t2 exp;
     t
   | CallE (par_opt, exp1, inst, exp2), _ ->
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
     check_sub_explained env exp1.at t' t (fun explanation ->
       local_error env0 exp.at "M0096"
-        "expression of type%a\ncannot produce expected type%a%s"
+        "expression of type%a\ncannot produce expected type%a%a"
         display_typ_expand t'
         display_typ_expand t
-        explanation);
+        (display_explanation t t') explanation);
     if not env.pre then check_parenthetical env (Some exp1.note.note_typ) par_opt;
     t'
   | TagE (id, exp1), T.Variant fs when List.exists (fun T.{lab; _} -> lab = id.it) fs ->
@@ -2584,15 +2606,15 @@ and check_exp' env0 t exp : T.typ =
     check_inferred env0 env t t' exp
 
 and check_inferred env0 env t t' exp =
-  (match incompatible_sub env exp.at t' t with
-  | Some explanation ->
+  (match sub_explained env exp.at t' t with
+  | T.Incompatible explanation ->
     local_error env0 exp.at "M0096"
-      "expression of type%a\ncannot produce expected type%a%s%s"
+      "expression of type%a\ncannot produce expected type%a%a%s"
       display_typ_expand t'
       display_typ_expand t
-      explanation
+      (display_explanation t' t) explanation
       (Suggest.suggest_conversion env.libs env.vals t' t)
-  | None ->
+  | T.Compatible ->
     detect_lost_fields env t exp.it);
   t'
 
@@ -3891,11 +3913,11 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
         | T.Compatible -> ()
         | T.Incompatible explanation ->
           local_error env focus "M0204"
-            "migration expression produces field `%s` of type%a\n, not the expected type%a\nbecause %s"
+            "migration expression produces field `%s` of type%a\n, not the expected type%a%a"
             tf.T.lab
             display_typ_expand typ
             display_typ_expand tf.T.typ
-            (T.string_of_explanation explanation)
+            (display_explanation imm_typ imm_expected) explanation
     ) stab_tfs;
    (* Construct the pre signature *)
    let pre_tfs = List.sort T.compare_field
