@@ -336,16 +336,11 @@ let _warn_in modes env at code fmt =
 (* Unused identifier detection *)
 
 let emit_unused_warnings env =
-  let is_in_shared_pat region =
-    let is_subregion sub super =
-      Source.Pos_ord.compare sub.left super.left >= 0 &&
-      Source.Pos_ord.compare sub.right super.right <= 0 &&
-      sub.left.file = super.left.file
-    in
-    List.exists (is_subregion region) !(env.shared_pat_regions)
+  let is_in_shared_pat pos = !(env.shared_pat_regions) |> List.exists Source.Pos_ord.(fun region ->
+    compare region.left pos <= 0 && compare pos region.right <= 0)
   in
   let emit (id, region, kind) =
-    if is_in_shared_pat region then
+    if is_in_shared_pat region.left then
       match kind with
       | Scope.Declaration -> warn env region "M0240" "unused identifier %s in shared pattern (delete or rename to wildcard `_` or `_%s`)" id id
       | Scope.FieldReference -> warn env region "M0241" "unused field %s in shared pattern (delete or rewrite as `%s = _`)" id id
