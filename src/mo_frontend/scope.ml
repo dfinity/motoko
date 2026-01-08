@@ -9,7 +9,7 @@ module S = Mo_def.Syntax
    - The field identifier in a field pattern cannot be renamed but can be bound to a new pattern. *)
 type val_kind = Declaration | FieldReference
 
-type val_env = (T.typ * Source.region * val_kind * bool) T.Env.t  (* bool = shared *)
+type val_env = (T.typ * Source.region * val_kind) T.Env.t
 type lib_env = T.typ T.Env.t
 type typ_env = T.con T.Env.t
 type con_env = T.ConSet.t
