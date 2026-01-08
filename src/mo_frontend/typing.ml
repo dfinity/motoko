@@ -1864,7 +1864,7 @@ and infer_exp'' env exp : T.typ =
     end;
     t
   | ObjE (exp_bases, exp_fields) ->
-    infer_check_bases_fields env [] [] exp.at exp_bases exp_fields
+    infer_check_bases_fields env [] exp.at exp_bases exp_fields
   | DotE (exp1, id, _) ->
     (match try_infer_dot_exp env exp.at exp1 id ("", (fun dot_typ -> true))  with
     | Ok t -> t
@@ -2204,7 +2204,7 @@ and try_infer_dot_exp env at exp id (desc, pred) =
   in
   match fields with
   | Error e -> Error e
-  | Ok((s, fs, tfs)) -> begin
+  | Ok((s, fs, _)) -> begin
     let suggest () =
       Suggest.suggest_id "field" id.it (List.map (fun f -> f.T.lab) fs)
     in
@@ -2242,7 +2242,7 @@ and infer_exp_field env rf =
   Field_sources.add_src env.srcs id.at;
   T.{lab = id.it; typ = t1; src = {empty_src with track_region = id.at}}
 
-and infer_check_bases_fields env (check_fields : T.field list) (check_typ_fields : T.typ_field list) exp_at exp_bases exp_fields =
+and infer_check_bases_fields env (check_fields : T.field list) exp_at exp_bases exp_fields =
   let open List in
   check_ids env "object" "field"
     (map (fun (ef : exp_field) -> ef.it.id) exp_fields);
@@ -2402,7 +2402,8 @@ and check_exp' env0 t exp : T.typ =
     List.iter2 (check_exp env) ts exps;
     t
   | ObjE (exp_bases, exp_fields), T.Obj(T.Object, fs, tfs) ->
-    let t' = infer_check_bases_fields env fs tfs exp.at exp_bases exp_fields in
+    (* TODO should we error if tfs is not empty? Record literals cannot produce type fields *)
+    let t' = infer_check_bases_fields env fs exp.at exp_bases exp_fields in
     let fs', tfs' = match T.promote t' with
       | T.Obj(T.Object, fs', tfs') -> fs', tfs'
       | _ -> [], []
@@ -3703,7 +3704,7 @@ and check_parenthetical env typ_opt = function
      end;
      let checked = T.[ cycles_fld; timeout_fld ] in
      let [@warning "-8"] par_infer env { it = ObjE (bases, fields); _ } =
-       infer_check_bases_fields env checked [] par.at bases fields in
+       infer_check_bases_fields env checked par.at bases fields in
      let attrs = infer_exp_wrapper par_infer T.as_immut env par in
      let [@warning "-8"] T.Object, attrs_flds, _ = T.as_obj attrs in
      if attrs_flds = [] then warn env par.at "M0211" "redundant empty parenthetical note";

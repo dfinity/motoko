@@ -1453,7 +1453,7 @@ let rec singleton_typ co t =
   | Pre -> assert false
   | Prim Null | Any -> true
   | Tup ts -> List.for_all (singleton_typ co) ts
-  | Obj ((Object|Memory|Module), fs, _) -> List.for_all (singleton_field co) fs
+  | Obj ((Object|Memory|Module), fs, []) -> List.for_all (singleton_field co) fs
   | Variant [f] -> singleton_field co f
 
   | Non -> false
