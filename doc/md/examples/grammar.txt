@@ -224,6 +224,7 @@
 <exp_nondec> ::= 
     <exp_bin>
     <exp_bin> ':=' <exp>
+    <exp_bin> '??' <exp_nest>
     <exp_bin> <binassign> <exp>
     'return' <exp>?
     <parenthetical>? 'async' <exp_nest>
