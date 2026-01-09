@@ -1,5 +1,6 @@
 (* Representation *)
 
+type id = string
 type lab = string
 type var = string
 type name = string
@@ -218,6 +219,11 @@ val promote : typ -> typ
 
 val opaque : typ -> bool
 val concrete : typ -> bool
+
+type path = IdP of id | DotP of path * lab
+val compare_path : path -> path -> int
+val paths : path -> typ -> path ConEnv.t
+
 val shared : typ -> bool
 val find_unshared : typ -> typ option
 
@@ -248,24 +254,28 @@ val cons_typs : typ list -> ConSet.t
 type compatibility = Compatible | Incompatible of explanation
 and explanation =
   | IncompatibleTypes of context * typ * typ
-  | MissingTag of context * lab * typ
-  | UnexpectedTag of context * lab * typ
-  | MissingField of context * lab * typ
-  | UnexpectedField of context * lab * typ
+  | FailedPromote of typ * typ * explanation
+  | MissingTag of context * desc * lab * typ
+  | MissingField of context * desc * lab * typ
   | FewerItems of context * string
   | MoreItems of context * string
   | PromotionToAny of context * typ
   | IncompatiblePrims of context * typ * typ
-  | IncompatibleObjSorts of context * typ * typ
-  | IncompatibleFuncSorts of context * typ * typ
-  | IncompatibleBounds of context * typ * typ
+  | IncompatibleObjSorts of context * obj_sort * obj_sort
+  | IncompatibleFuncSorts of context * func_sort * func_sort
+  | IncompatibleFuncControls of context * control * control
   | IncompatibleFuncs of context * typ * typ
-  | IncompatibleAsyncSorts of context * typ * typ
+  | IncompatibleAsyncSorts of context * async_sort * async_sort
+  | IncompatibleAsyncScopes of context * typ * typ
+and desc = Actual | Expected
 and context_item =
   | ConsType of con
   | NamedType of name
   | StableVariable of lab
   | Field of lab
+  | Bounds
+  | Domain
+  | CoDomain
 and context = context_item list
 
 exception Undecided (* raised if termination depth exceeded  *)
@@ -355,19 +365,23 @@ val string_of_obj_sort : obj_sort -> string
 val string_of_func_sort : func_sort -> string
 
 module type Pretty = sig
+  val set_con_map : path ConEnv.t -> unit
+  val clear_con_map : unit -> unit
   val pp_lab : Format.formatter -> lab -> unit
   val pp_typ : Format.formatter -> typ -> unit
   val pp_typ_expand : Format.formatter -> typ -> unit
   val pps_of_kind : kind ->
     string *
     (Format.formatter -> unit -> unit) *
-    (Format.formatter -> unit -> unit)
+      (Format.formatter -> unit -> unit)
+
   val string_of_con : con -> string
   val string_of_typ : typ -> string
   val string_of_kind : kind -> string
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
   val string_of_explanation : explanation -> string
+  val is_redundant_explanation : typ -> typ -> explanation -> bool
 end
 
 module type PrettyConfig = sig
