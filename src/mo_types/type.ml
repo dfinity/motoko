@@ -1228,7 +1228,7 @@ let rec rel_typ d rel eq t1 t2 =
   | Mut t1', Mut t2' ->
     eq_typ d rel eq t1' t2'
   | Mut _, _ | _, Mut _ ->
-    false
+    incompatible_types d t1 t2
   | Any, Any ->
     true
   | _, Any when rel != eq ->
