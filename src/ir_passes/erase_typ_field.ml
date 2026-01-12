@@ -35,9 +35,11 @@ let transform prog =
   (* Mostly boiler-plate homomorphic translation *)
   let rec t_typ t =
     match t with
-    (* The only interesting case *)
+    (* The only interesting cases *)
     | Obj (s, fs, _) ->
       Obj (s, List.map (fun f -> t_field f) fs, [])
+    | Named (n , t) -> (* erased! *)
+      t_typ t
     | T.Prim _
     | Var _ -> t
     | Con (c, ts) ->
@@ -53,8 +55,6 @@ let transform prog =
     | Any -> Any
     | Non -> Non
     | Pre -> Pre
-    | Named (n , t) -> (* erased! *)
-      t_typ t
     | Weak t -> Weak (t_typ t)
 
   and t_bind tb =

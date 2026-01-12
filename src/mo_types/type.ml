@@ -1708,7 +1708,8 @@ and combine_typ_fields rel lubs glbs tfs1 tfs2 =
   align_fields tfs1 tfs2
   |> Seq.fold_left (fun acc x -> match x with
       | Lib.Both(f1, f2) ->
-        if f1.typ == f2.typ then f1 :: acc else acc
+        if eq_con f1.typ f2.typ then f1 :: acc else
+        if rel == glbs then raise Mismatch else acc
       | Lib.This f1 -> cons_if_typ (rel == glbs) f1 acc
       | Lib.That f2 -> cons_if_typ (rel == glbs) f2 acc) []
   |> List.rev
