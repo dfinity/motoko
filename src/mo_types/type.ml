@@ -898,7 +898,7 @@ let paths p t =
       match t with
       | Named (_, t) -> go p t
       | Obj (_, fs, tfs) ->
-        List.iter (fun tf -> cm := ConEnv.add tf.typ p (!cm)) tfs;
+        List.iter (fun tf -> cm := ConEnv.add tf.typ (DotP(p, tf.lab)) (!cm)) tfs;
         List.iter (fun f -> go (DotP (p, f.lab)) f.typ) fs
       | Con (c, ts) ->
         (match Cons.kind c with
@@ -2221,7 +2221,7 @@ and pp_field vs ppf {lab; typ; src} =
 
 and pp_typ_field vs ppf {lab; typ = c; src} =
   let op, sbs, st = pps_of_kind' vs (Cons.kind c) in
-  fprintf ppf "@[<1>type %s%a %s@ %a@]" (Cons.name c) sbs () op st ()
+  fprintf ppf "@[<2>type %s%a %s@ %a@]" lab sbs () op st ()
 
 and pp_stab_field vs ppf {lab; typ; src} =
   match typ with
