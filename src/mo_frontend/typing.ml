@@ -558,7 +558,7 @@ and check_obj_path' env path : T.typ =
         id.it
         display_obj (T.Obj(s, fs, tfs))
         (Suggest.suggest_id "field" id.it
-          (List.map (fun f -> f.T.lab) (T.val_fields fs)))
+          (List.map (fun f -> f.T.lab) fs))
 
 let rec check_typ_path env path : T.con =
   let c = check_typ_path' env path in
@@ -588,7 +588,7 @@ and check_typ_path' env path : T.con =
           id.it
           display_obj (T.Obj(s, fs, tfs))
           (Suggest.suggest_id "type field" id.it
-             (List.map (fun f -> f.T.lab) (T.val_fields fs)))
+             (List.map (fun f -> f.T.lab) fs))
 
 (* Type helpers *)
 
@@ -1307,13 +1307,6 @@ let compare_pat_field pf1 pf2 = match pf1.it, pf2.it with
   | TypPF(_), _ -> -1
   | _, TypPF(_) -> 1
   | ValPF(id1, _), ValPF(id2, _) -> compare id1.it id2.it
-
-(* let compare_pat_typ_field tf pf = match tf, pf.it with
-  | T.{lab; typ = Typ t'; _}, TypPF(id) -> compare lab id.it
-  | T.{typ = Typ t'; _}, _ -> -1
-  | _, TypPF(_) -> 1
-  | T.{lab; _}, ValPF(id, _) -> compare lab id.it
-    *)
 
 let rec combine_pat_fields_srcs env t tfs (pfs : pat_field list) : unit =
   match tfs, pfs with
@@ -3916,7 +3909,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
           display_typ_expand typ
           (Suggest.suggest_id "field" lab stab_ids)
          "The actor should declare a corresponding `stable` field.")
-     (T.val_fields rng_tfs);
+     rng_tfs;
    (* Warn about any field in domain, not in range, and declared stable in actor *)
    (* This may indicate unintentional data loss. *)
    List.iter (fun T.{lab;typ;src} ->
@@ -3939,7 +3932,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
            display_typ_expand typ
            "This field will be removed from the actor, discarding its consumed value."
            "If this removal is unintended, declare the field in the actor and either remove the field from the parameter of the migration function or add it to the result of the migration function."
-   ) (T.val_fields dom_tfs);
+   ) dom_tfs;
    (* Warn the user about unrecognised attributes. *)
    let [@warning "-8"] T.Object, attrs_flds, _ = T.as_obj exp.note.note_typ in
    let unrecognised = List.(filter (fun {T.lab; _} -> lab <> T.migration_lab) attrs_flds |> map (fun {T.lab; _} -> lab)) in

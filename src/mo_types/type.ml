@@ -81,8 +81,6 @@ and kind =
 
 let empty_src = {depr = None; track_region = Source.no_region; region = Source.no_region}
 
-let val_fields fs = fs
-
 (* Stable signatures *)
 type stab_sig =
   | Single of field list

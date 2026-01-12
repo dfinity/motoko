@@ -184,7 +184,7 @@ let check_field_hashes env what at fields =
       if Hash.hash x.T.lab = Hash.hash y.T.lab
       then error env at "field names %s and %s in %s type have colliding hashes"
         x.T.lab y.T.lab what;
-    ) (T.val_fields fields)
+    ) fields
 
 
 let rec check_typ env typ : unit =
