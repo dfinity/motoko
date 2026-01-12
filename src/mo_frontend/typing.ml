@@ -2339,7 +2339,7 @@ and infer_check_bases_fields env (check_fields : T.field list) exp_at exp_bases 
     tfs |> iter (fun tf ->
       match Hashtbl.find_opt typ_field_map tf.T.lab with
       | Some (typ, at) ->
-        if not (Cons.eq typ tf.T.typ) then begin
+        if not (T.eq_con typ tf.T.typ) then begin
           info env at "type field also present in base, here";
           error env exp.at "M0177" "ambiguous type field in base%a" display_lab tf.T.lab
         end;
