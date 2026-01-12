@@ -1425,7 +1425,8 @@ let rec compatible_typ co t1 t2 =
     assert false
   | Mut t1', Mut t2' ->
     compatible_typ co t1' t2'
-  | Mut _, _ | _, Mut _
+  | Mut _, _ | _, Mut _ ->
+    false
   | Any, Any ->
     true
   | Any, _ | _, Any ->
