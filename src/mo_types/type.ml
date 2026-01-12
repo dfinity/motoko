@@ -789,7 +789,7 @@ let rec cons' inTyp t cs =
   match t with
   | Var _ | Prim _ | Any | Non | Pre -> cs
   | Con (c, ts) ->
-    List.fold_right (cons' inTyp) ts (cons_con inTyp c cs)
+    List.fold_right (cons' inTyp) ts (cons_con' inTyp c cs)
   | Opt t | Mut t | Array t | Weak t ->
     cons' inTyp t cs
   | Async (_, t1, t2) ->
@@ -807,7 +807,7 @@ let rec cons' inTyp t cs =
   | Named (_ , t) ->
     cons' inTyp t cs
 
-and cons_con inTyp c cs =
+and cons_con' inTyp c cs =
   if ConSet.mem c cs
   then cs
   else cons_kind' inTyp (Cons.kind c) (ConSet.add c cs)
@@ -820,7 +820,7 @@ and cons_field inTyp {lab; typ; src} cs =
 
 and cons_typ_field inTyp {typ = c; _} cs =
   if inTyp then
-    cons_con inTyp c cs
+    cons_con' inTyp c cs
   else
     (* don't add c unless mentioned in Cons.kind c *)
     cons_kind' inTyp (Cons.kind c) cs
@@ -834,6 +834,7 @@ and cons_kind' inTyp k cs =
 let cons t = cons' true t ConSet.empty
 let cons_kind k = cons_kind' true k ConSet.empty
 let cons_typs ts = List.fold_left (fun acc t -> cons t |> ConSet.union acc) ConSet.empty ts
+let cons_con t = cons_con' true t ConSet.empty
 
 
 (* Checking for concrete types *)
@@ -2212,6 +2213,10 @@ and pp_typ' vs ppf t =
   (* No cases for syntactic _ And _ & _ Or _ (already desugared) *)
   | t -> pp_typ_nobin vs ppf t
 
+and pp_con' vs ppf c =
+  let op, sbs, st = pps_of_kind' vs (Cons.kind c) in
+  fprintf ppf "@[<1>type %s%a %s@ %a@]" (Cons.name c) sbs () op st ()
+
 and pp_field vs ppf {lab; typ; src} =
   match typ with
   | Mut t' ->
@@ -2359,6 +2364,10 @@ let pp_typ ppf t =
   let vs = vs_of_cs (cons t) in
   pp_typ' vs ppf t
 
+let pp_con ppf t =
+  let vs = vs_of_cs (cons_con t) in
+  pp_con' vs ppf t
+
 let pp_typ_expand ppf t =
   let vs = vs_of_cs (cons t) in
   pp_typ_expand' vs ppf t
@@ -2421,17 +2430,18 @@ let string_of_desc desc = match desc with Actual -> "" | Expected -> "expected "
 
 let rec string_of_explanation explanation =
   let display_typ = Lib.Format.display pp_typ in
+  let display_con = Lib.Format.display pp_con in
   match explanation with
   | IncompatibleTypes (context, t1, t2) ->
     Format.asprintf "the type %a\n is not compatible with type %a%s" display_typ t1 display_typ t2 (string_of_context "in" context)
   | IncompatibleCons (context, c1, c2) ->
-    Format.asprintf "TODO"
+    Format.asprintf "the type %a\n is not compatible with type %a%s" display_con c1 display_con c2 (string_of_context "in" context)
   | FailedPromote (t1, bound, inner_explanation) ->
     Format.asprintf "type variable %a\n was promoted to its bound %a\n and %s" display_typ t1 display_typ bound (string_of_explanation inner_explanation)
   | MissingTag (context, desc, lab, t) ->
     Format.asprintf "%scase `#%s` is missing from %stype %a%s" (string_of_desc desc) lab (string_of_desc (flip desc)) display_typ t (string_of_context "of" context)
   | MissingField (context, desc, lab, t, is_typ) ->
-    let sort = if is_typ then "type" else "field" in
+    let sort = if is_typ then "type field" else "field" in
     Format.asprintf "%s%s `%s` is missing from %stype %a%s" (string_of_desc desc) sort lab (string_of_desc (flip desc)) display_typ t (string_of_context "of" context)
   | FewerItems (context, desc) ->
     Format.asprintf "there are fewer %s than expected%s" desc (string_of_context "in" context)
