@@ -126,6 +126,7 @@ and prim = function
   | ICReplyDeadlinePrim  -> Atom "ICReplyDeadlinePrim"
   | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
   | ICStableRead t    -> "ICStableRead" $$ [typ t]
+  | DataInspection t  -> "DataInspection" $$ [typ t]
 
 and mut = function
   | Const -> Atom "Const"

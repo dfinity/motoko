@@ -347,6 +347,7 @@ val motoko_async_helper_fld : field
 val motoko_stable_var_info_fld : field
 val motoko_gc_trigger_fld : field
 val motoko_runtime_information_fld : field
+val motoko_data_inspection_fld : field
 
 val cycles_fld : field
 val timeout_fld : field

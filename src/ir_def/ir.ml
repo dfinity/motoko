@@ -185,6 +185,7 @@ and prim =
   | ICStableWrite of Type.typ          (* serialize value of stable type to stable memory *)
   | ICStableRead of Type.typ           (* deserialize value of stable type from stable memory *)
   | ICStableSize of Type.typ
+  | DataInspection of Type.typ
 
 (* Declarations *)
 
@@ -335,3 +336,4 @@ let map_prim t_typ t_lab p =
   | ICStableWrite t -> ICStableWrite (t_typ t)
   | ICStableRead t -> ICStableRead (t_typ t)
   | ICStableSize t -> ICStableSize (t_typ t)
+  | DataInspection t -> DataInspection (t_typ t)

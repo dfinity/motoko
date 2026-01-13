@@ -740,6 +740,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | ICStableSize t1, [e1] ->
       typ e1 <: t1;
       T.nat64 <: t
+    | DataInspection t1, [e1] ->
+      typ e1 <: t1;
+      T.blob <: t
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"

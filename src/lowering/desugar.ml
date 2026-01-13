@@ -591,6 +591,34 @@ and export_runtime_information self_id =
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
+and export_data_inspection self_id expr =
+  let open T in
+  let {lab;typ;_} = motoko_data_inspection_fld in
+  let v = "$"^lab in
+  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
+  let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
+  let bind1  = typ_arg scope_con1 Scope scope_bound in
+  let bind2 = typ_arg scope_con2 Scope scope_bound in
+  let ret_typ = T.Prim T.Blob in
+  let caller = fresh_var "caller" caller in
+  ([ letD (var v typ) (
+        (* Write because of potentially stateful incremental data inspection. *)
+        funcE v (Shared Write) Promises [bind1] [] [ret_typ] (
+            (asyncE T.Fut bind2
+              (blockE [
+                letD caller (primE I.ICCallerPrim []);
+                expD (ifE (orE 
+                    (primE (I.RelPrim (principal, Operator.EqOp)) [varE caller; selfRefE principal])
+                    (primE (I.OtherPrim "is_controller") [varE caller]))
+                  (unitE()) 
+                  (primE (Ir.OtherPrim "trap")
+                    [textE "Unauthorized call of __motoko_inspect_data"]))
+                ]
+              (primE (I.DataInspection expr.note.Note.typ) [expr]))
+              (Con (scope_con1, []))))
+  )],
+  [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
+
 and build_stabs (df : S.dec_field) : stab option list = match df.it.S.dec.it with
   | S.TypD _ -> []
   | S.MixinD _ -> assert false
@@ -742,9 +770,33 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
                    note = f.T.typ }
                ) mem_fields vs)
             mem_ty)) in
+  let resolve_variable d =
+    match d.it with 
+    | I.VarD(i, t, _) -> Some(i, T.Mut t)
+    | I.LetD({it = I.VarP i; _} as p, _) -> Some(i, p.note)
+    | _ -> None (* TODO: Should we inspect other let more complex variable bindings? *)
+  in
+  let root_to_inspect = 
+    let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
+    let vars = List.filter_map resolve_variable ds in
+    let fields = List.map (fun (i,t) -> T.{lab = i; typ = t; src = T.empty_src}) vars in
+    let ty = T.Obj (T.Object, List.sort T.compare_field fields) in
+    newObjE T.Object 
+      (List.map
+        (fun (i, t) ->
+          { it = I.{name = i; var = i};
+            at = no_region;
+            note = t }
+          )
+      vars)
+    ty in
+
   let footprint_d, footprint_f = export_footprint self_id (with_stable_vars Fun.id) in
   let runtime_info_d, runtime_info_f = export_runtime_information self_id in
-  I.(ActorE (footprint_d @ runtime_info_d @ ds', footprint_f @ runtime_info_f @ fs,
+  let data_inspection_d, data_inspection_f = export_data_inspection self_id root_to_inspect in
+  let exported_declarations = footprint_d @ runtime_info_d @ data_inspection_d @ ds' in
+  let exported_fields = footprint_f @ runtime_info_f @ data_inspection_f @ fs in
+  I.(ActorE (exported_declarations, exported_fields,
      { meta;
        preupgrade = (primE (I.ICStableWrite mem_ty) []);
        postupgrade =

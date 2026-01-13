@@ -1290,6 +1290,7 @@ module RTS = struct
     E.add_func_import env "rts" "weak_ref_is_live" [I64Type] [I32Type];
     E.add_func_import env "rts" "get_dedup_table" [] [I64Type];
     E.add_func_import env "rts" "set_dedup_table" [I64Type] [];
+    E.add_func_import env "rts" "inspect_data" [I64Type] [I64Type];
     ()
 
 end (* RTS *)
@@ -10059,7 +10060,7 @@ module FuncDec = struct
     begin match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.define_built_in env name [] [] (fun env ->
-        (* THe GC trigger is also blocked during incremental (de)stabilization. 
+        (* The GC trigger is also blocked during incremental (de)stabilization. 
            This is checked in `Lifecycle.trans` being called by `message_start` *)
         message_start env (Type.Shared Type.Write) ^^
         (* Check that we are called from this or a controller, w/o allocation *)
@@ -11901,6 +11902,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | ICStableSize t, [e] ->
     SR.UnboxedWord64 Type.Nat64,
     E.trap_with env "Deprecated with enhanced orthogonal persistence"
+
+  | DataInspection t, [e] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae e ^^
+    E.call_import env "rts" "inspect_data"
 
   (* Other prims, unary *)
 
