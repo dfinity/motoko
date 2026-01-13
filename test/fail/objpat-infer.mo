@@ -6,7 +6,7 @@ ignore (switch (object {}) { case {a} 42 });
 
 // checks
 
-for ({} in [object {}].vals()) { Prim.debugPrint "hey" };
+for ({} in [object {}].values()) { Prim.debugPrint "hey" };
 
 // infers
 

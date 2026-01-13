@@ -59,7 +59,6 @@ actor {
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
-//SKIP comp-ref
 //CALL ingress print "DIDL\x00\x00"
 //CALL ingress __motoko_stabilize_before_upgrade "DIDL\x00\x00"
 //CALL upgrade ""

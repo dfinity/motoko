@@ -1,5 +1,4 @@
-# Order
-Order
+# base/Order
 
 ## Type `Order`
 ``` motoko no-repl
@@ -13,21 +12,21 @@ A type to represent an order.
 func isLess(order : Order) : Bool
 ```
 
-Check if an order is #less.
+Check if an order is `#less`.
 
 ## Function `isEqual`
 ``` motoko no-repl
 func isEqual(order : Order) : Bool
 ```
 
-Check if an order is #equal.
+Check if an order is `#equal`.
 
 ## Function `isGreater`
 ``` motoko no-repl
 func isGreater(order : Order) : Bool
 ```
 
-Check if an order is #greater.
+Check if an order is `#greater`.
 
 ## Function `equal`
 ``` motoko no-repl

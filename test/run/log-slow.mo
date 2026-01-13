@@ -1,5 +1,4 @@
 // These are rather long-running tests, not advisable for wasm-run!
-//SKIP comp-ref
 
 import Prim "mo:⛔";
 

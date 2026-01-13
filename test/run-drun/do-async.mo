@@ -47,6 +47,7 @@ actor a {
       let _ = await* doThrow();
       assert(false);
     } catch (e) { assert P.errorMessage(e) == "oops";};
+    ignore async* {};
   }
 };
 

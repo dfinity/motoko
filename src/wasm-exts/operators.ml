@@ -9,6 +9,7 @@ Base revision: WebAssembly/spec@a7a1856.
 The changes are:
   * Manual selective support for bulk-memory operations `memory_copy` and `memory_fill` (WebAssembly/spec@7fa2f20).
   * Support for passive data segments (incl. `MemoryInit`).
+  * Support for table index in `call_indirect` (reference-types proposal).
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
@@ -38,7 +39,7 @@ let br_table xs x = BrTable (xs, x)
 
 let return = Return
 let call x = Call x
-let call_indirect x = CallIndirect x
+let call_indirect x y = CallIndirect (x, y)
 
 let local_get x = LocalGet x
 let local_set x = LocalSet x

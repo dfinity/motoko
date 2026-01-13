@@ -58,6 +58,5 @@ actor {
 //SKIP run-low
 //SKIP run
 //SKIP run-ir
-//SKIP ic-ref-run
 //CALL ingress ser 0x4449444C0000
 //CALL ingress deser 0x4449444C0000

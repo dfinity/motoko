@@ -32,8 +32,6 @@ actor {
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
-// too slow on ic-ref-run:
-//SKIP comp-ref
 //CALL ingress sanityTest "DIDL\x00\x00"
 //CALL ingress __motoko_stabilize_before_upgrade "DIDL\x00\x00"
 //CALL upgrade ""

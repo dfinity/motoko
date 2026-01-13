@@ -1,5 +1,9 @@
 import Prim "mo:prim";
 
+(with migration =
+   func ({firstVariable : [var Nat]}) : {
+     firstVariable: Any
+   } = { firstVariable = () })
 actor {
    Prim.debugPrint("Version 1");
 
@@ -11,8 +15,8 @@ actor {
    };
 
    stable var firstVariable : Any = largeAllocation("first variable");
-   stable var secondVariable : [var Nat] = largeAllocation("second variable");
-   
+   stable var secondVariable : Any = largeAllocation("second variable");
+
    public func check(): async() {
       // Extra GC increments.
       await async {};

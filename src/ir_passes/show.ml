@@ -150,7 +150,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
     define_show t (invoke_prelude_show "@text_of_Blob" t (argE t)),
     []
   | T.(Prim Principal) ->
-    define_show t (primE IcUrlOfBlob [primE T.(CastPrim (Prim Principal, Prim Blob)) [argE t]]),
+    define_show t (primE IcUrlOfBlob [primE T.(CastPrim (principal, blob)) [argE t]]),
     []
   | T.(Prim Null) ->
     define_show t (textE "null"),
@@ -177,6 +177,11 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
   | T.Opt t' ->
     let t' = T.normalize t' in
     define_show t (invoke_text_of_option t' (varE (show_var_for t')) (argE t)),
+    [t']
+  | T.Weak t' ->
+    let t' = T.normalize t' in
+    define_show t (catE (textE ("weak "))
+                        (invoke_text_of_option t' (varE (show_var_for t')) (primE (OtherPrim "weak_get")  [argE t]))),
     [t']
   | T.Array t' ->
     let t' = T.normalize t' in
@@ -291,7 +296,7 @@ and t_exp' env = function
     NewObjE (sort, ids, t)
   | SelfCallE (ts, e1, e2, e3, e4) ->
     SelfCallE (ts, t_exp env e1, t_exp env e2, t_exp env e3, t_exp env e4)
-  | ActorE (ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, typ) ->
+  | ActorE (ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; low_memory; stable_record; stable_type}, typ) ->
     (* Until Actor expressions become their own units,
        we repeat what we do in `comp_unit` below *)
     let env1 = empty_env () in
@@ -301,6 +306,7 @@ and t_exp' env = function
     let heartbeat' = t_exp env1 heartbeat in
     let timer' = t_exp env1 timer in
     let inspect' = t_exp env1 inspect in
+    let low_memory' = t_exp env1 low_memory in
     let stable_record' = t_exp env1 stable_record in
     let decls = show_decls !(env1.params) in
     ActorE (decls @ ds', fields,
@@ -310,6 +316,7 @@ and t_exp' env = function
         heartbeat = heartbeat';
         timer = timer';
         inspect = inspect';
+        low_memory = low_memory';
         stable_record = stable_record';
         stable_type;
       },
@@ -342,7 +349,7 @@ and t_comp_unit = function
     let ds' = t_decs env ds in
     let decls = show_decls !(env.params) in
     ProgU (decls @ ds')
-  | ActorU (as_opt, ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, typ) ->
+  | ActorU (as_opt, ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; low_memory; stable_record; stable_type}, typ) ->
     let env = empty_env () in
     let ds' = t_decs env ds in
     let preupgrade' = t_exp env preupgrade in
@@ -350,6 +357,7 @@ and t_comp_unit = function
     let heartbeat' = t_exp env heartbeat in
     let timer' = t_exp env timer in
     let inspect' = t_exp env inspect in
+    let low_memory' = t_exp env low_memory in
     let stable_record' = t_exp env stable_record in
     let decls = show_decls !(env.params) in
     ActorU (as_opt, decls @ ds', fields,
@@ -359,6 +367,7 @@ and t_comp_unit = function
         heartbeat = heartbeat';
         timer = timer';
         inspect = inspect';
+        low_memory = low_memory';
         stable_record = stable_record';
         stable_type
       }, typ)

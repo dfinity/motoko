@@ -210,12 +210,39 @@ let prim trap =
      | [x; shift] -> k (Int Numerics.Int.(div (as_int x) (pow (of_int 2) (of_big_int (Nat32.to_big_int (as_nat32 shift))))))
      | _ -> failwith "rsh_Nat")
 
+  | "explode_Nat16" -> fun _ v k ->
+    let n, ff = as_nat16 v, Nat16.(of_int 0xFF) in
+    let byte_at p = Nat8 (Nat16.(shr n (of_int p) |> and_ ff |> to_int) |> Nat8.of_int) in
+    k (Tup [byte_at 8; byte_at 0])
+  | "explode_Int16" -> fun _ v k ->
+    let n, ff = as_int16 v, Int_16.(of_int 0xFF) in
+    let byte_at p = Nat8 (Int_16.(shr n (of_int p) |> and_ ff |> to_int) |> Nat8.of_int) in
+    k (Tup [byte_at 8; byte_at 0])
+  | "explode_Nat32" -> fun _ v k ->
+    let n, ff = as_nat32 v, Nat32.(of_int 0xFF) in
+    let byte_at p = Nat8 (Nat32.(shr n (of_int p) |> and_ ff |> to_int) |> Nat8.of_int) in
+    k (Tup (List.map byte_at [24; 16; 8; 0]))
+  | "explode_Int32" -> fun _ v k ->
+    let n, ff = as_int32 v, Int_32.(of_int 0xFF) in
+    let byte_at p = Nat8 (Int_32.(shr n (of_int p) |> and_ ff |> to_int) |> Nat8.of_int) in
+    k (Tup (List.map byte_at [24; 16; 8; 0]))
+  | "explode_Nat64" -> fun _ v k ->
+    let n, ff = as_nat64 v, Nat64.(of_int 0xFF) in
+    let byte_at p = Nat8 (Nat64.(shr n (of_int p) |> and_ ff |> to_int) |> Nat8.of_int) in
+    k (Tup (List.map byte_at [56; 48; 40; 32; 24; 16; 8; 0]))
+  | "explode_Int64" -> fun _ v k ->
+    let n, ff = as_int64 v, Int_64.(of_int 0xFF) in
+    let byte_at p = Nat8 (Int_64.(shr n (of_int p) |> and_ ff |> to_int) |> Nat8.of_int) in
+    k (Tup (List.map byte_at [56; 48; 40; 32; 24; 16; 8; 0]))
+
   | "conv_Char_Text" -> fun _ v k -> let str = match as_char v with
                                           | c when c <= 0o177 -> String.make 1 (Char.chr c)
                                           | code -> Lib.Utf8.encode [code]
                                in k (Text str)
   | "print" -> fun _ v k -> Printf.printf "%s\n%!" (as_text v); k unit
   | "trap" -> fun _ v k -> trap.trap ("explicit trap: " ^ (as_text v))
+  | "rts_in_upgrade" ->
+    fun _ v k -> as_unit v; k (Bool false) (* no upgrades in interpreters *)
   | "rts_version" -> fun _ v k -> as_unit v; k (Text "0.1")
   | (  "rts_memory_size"
      | "rts_heap_size"
@@ -226,9 +253,11 @@ let prim trap =
      | "rts_callback_table_size"
      | "rts_mutator_instructions"
      | "rts_collector_instructions"
+     | "rts_lifetime_instructions"
      | "rts_upgrade_instructions") ->
         fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "time" -> fun _ v k -> as_unit v; k (Value.Nat64 (Numerics.Nat64.of_int 42))
+  | "deadline" -> fun _ v k -> as_unit v; k (Value.Nat64 Numerics.Nat64.zero)
   | "idlHash" -> fun _ v k ->
     let s = as_text v in
     k (Nat32 (Nat32.wrapping_of_big_int (Big_int.big_int_of_int32 (Lib.Uint32.to_int32 (Idllib.IdlHash.idl_hash s)))))
@@ -282,6 +311,7 @@ let prim trap =
     | _ -> assert false
     )
   | "Array.tabulate" -> fun c v k ->
+    (* TODO: optimize these (https://github.com/dfinity/motoko/pull/5256#discussion_r2143573548) *)
     (match Value.as_tup v with
     | [len; g] ->
       let len_nat = Int.to_int (as_int len) in
@@ -293,10 +323,23 @@ let prim trap =
       in go (fun xs -> xs) k 0
     | _ -> assert false
     )
+  | "Array.tabulateVar" -> fun c v k ->
+    (match Value.as_tup v with
+    | [len; g] ->
+      let len_nat = Int.to_int (as_int len) in
+      let (_, g') = Value.as_func g in
+      let rec go prefix k i =
+        if i == len_nat
+        then k (Array (Array.of_list (prefix [])))
+        else g' c (Int (Int.of_int i)) (fun x -> go (fun tl -> prefix (Mut (ref x)::tl)) k (i + 1))
+      in go (fun xs -> xs) k 0
+    | _ -> assert false
+    )
 
 
-  | "blobOfPrincipal" -> fun _ v k -> k v
-  | "principalOfBlob" -> fun _ v k -> k v
+  | "cast"
+  | "blobOfPrincipal"
+  | "principalOfBlob"
   | "principalOfActor" -> fun _ v k -> k v
 
   | "blobToArray" -> fun _ v k ->
@@ -315,8 +358,6 @@ let prim trap =
     k (Blob (String.of_seq (Seq.map (fun v ->
       Char.chr (Nat8.to_int (Value.as_nat8 !(Value.as_mut v)))
     ) (Array.to_seq (Value.as_array v)))))
-
-  | "cast" -> fun _ v k -> k v
 
   (* calls never fail in the interpreter *)
   | "call_perform_status" -> fun _ v k -> k (Nat32 Nat32.zero)
@@ -389,11 +430,53 @@ let prim trap =
   | "canister_version" ->
       fun _ v k -> as_unit v; k (Nat64 (Numerics.Nat64.of_int 42))
 
+  | "canister_subnet" ->
+      fun _ v k -> as_unit v; k (Blob "")
+
+  | "root_key" ->
+      fun _ v k -> as_unit v; k (Blob "")
+
+  | "canister_self" ->
+      fun _ v k -> as_unit v; k (Blob "")
+
   (* fake *)
   | "setCandidLimits" ->
       fun _ v k -> k unit
   | "getCandidLimits" ->
-      fun _ v k -> k (Tup [
-        Nat32 Numerics.Nat32.zero; Nat32 Numerics.Nat32.zero; Nat32 Numerics.Nat32.zero])
+      fun _ v k -> k (Tup Numerics.Nat32.[
+        Nat32 zero; Nat32 zero; Nat32 zero])
+
+  | "setCandidTypeLimits" ->
+      fun _ v k -> k unit
+  | "getCandidTypeLimits" ->
+      fun _ v k -> k (Tup Numerics.Nat32.[
+        Nat32 zero; Nat32 zero])
+
+  | "alloc_weak_ref" ->
+     fun _ v k ->
+      (* TODO: model trapping on non-scalars *)
+       let w = Weak.create 1 in
+       Weak.set w 0 (Some v);
+       k (Weak w)
+
+  | "weak_get" ->
+     fun _ v k ->
+      (let w = as_weak v in
+       match Weak.get w 0 with
+       | Some v -> k (Opt v)
+       | None -> k (Null))
+
+  | "weak_ref_is_live" ->
+     fun _ v k ->
+       let w = as_weak v in
+       k (Bool (Weak.check w 0))
+
+  | "env_var_names" ->
+     fun _ v k ->
+       k (Array (Array.of_list []))
+
+  | "env_var" ->
+     fun _ v k ->
+       k Null
 
   | s -> trap.trap ("Value.prim: " ^ s)

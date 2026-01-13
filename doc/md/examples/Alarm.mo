@@ -1,6 +1,6 @@
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
-actor Alarm {
+persistent actor Alarm {
 
   let n = 5;
   var count = 0;

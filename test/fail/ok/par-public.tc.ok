@@ -1,0 +1,2 @@
+par-public.mo:2.34-2.40: type error [M0213], parenthetical notes aren't allowed on shared functions
+par-public.mo:2.34-2.40: warning [M0211], redundant empty parenthetical note

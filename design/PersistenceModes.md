@@ -5,8 +5,7 @@ This Motoko build includes two substantially different persistence modes in one 
 * [Classical Persistence](OldStableMemory.md) (default): 
     This is the traditional Motoko compiler design based on 32-bit memory and Candid-based stabilization for upgrades.
     This mode is known to have severe scalability problems on upgrades, because the stabilization may exceed upgrade instruction limit for stable data amounts, besides other problems such as exponential duplication or stack overflows depending on the data structures.
-    The mode is temporarily retained to allow beta testing of the new enhanced orthogonal persistence until the new persistence is officialized.
-* [Enhanced Orthogonal Persistence](OrthogonalPersistence.md) (new, for beta testing):
+* [Enhanced Orthogonal Persistence](OrthogonalPersistence.md) (new):
     This implements scalable persistence with 64-bit main memory that is retained across upgrades without stabilization to stable memory.
     The mode needs to be enabled by the compiler flag `--enhanced-orthogonal-persistence` and is intended to become the future default mode, deprecating classical persistence.
 
@@ -15,7 +14,7 @@ The reason for having one build instead of two separate branches and release art
 ## Compiler Flags
 
 * (no flag): Use classical persistence
-* `--enhanced-orthogonal-persistence`: Use enhanced orthogonal persistence. NOTE: This is currently in the **beta testing** phase.
+* `--enhanced-orthogonal-persistence`: Use enhanced orthogonal persistence.
 
 Certain compiler flags are only applicable to a specific persistence mode:
 

@@ -1,21 +1,21 @@
-import Text "mo:base/Text";
-import Map "mo:base/HashMap";
+import Text "mo:core/Text";
+import Map "mo:core/Map";
 
-actor Registry {
+persistent actor Registry {
 
-  let map = Map.HashMap<Text, Nat>(10, Text.equal, Text.hash);
+  let map = Map.empty<Text, Nat>();
 
   public func register(name : Text) : async () {
-    switch (map.get(name)) {
+    switch (Map.get(map, Text.compare, name)) {
       case null {
-        map.put(name, map.size());
+        Map.add(map, Text.compare, name, Map.size(map));
       };
-      case (?id) { };
+      case (?_) { };
     }
   };
 
   public func lookup(name : Text) : async ?Nat {
-    map.get(name);
+    Map.get(map, Text.compare, name);
   };
 };
 

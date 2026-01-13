@@ -8,6 +8,7 @@ The changes are:
  * Support for additional custom sections
  * Manual selective support for bulk-memory operations `memory_copy` and `memory_fill` (WebAssembly/spec@7fa2f20).
  * Support for passive data segments (incl. `MemoryInit`).
+ * Support for table index in `call_indirect` (reference-types proposal).
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
@@ -357,6 +358,7 @@ let encode (em : extended_module) =
 
     let table_type = function
       | TableType (lim, t) -> elem_type t; limits vu32 lim I32IndexType
+      | HugeTableType (lim, t) -> elem_type t; limits vu64 lim I64IndexType
 
     let memory_type = function
       | MemoryType (lim, it) -> limits vu64 lim it
@@ -420,7 +422,7 @@ let encode (em : extended_module) =
       | BrTable (xs, x) -> op 0x0e; vec var xs; var x
       | Return -> op 0x0f
       | Call x -> op 0x10; var x
-      | CallIndirect x -> op 0x11; var x; u8 0x00
+      | CallIndirect (x, y) -> op 0x11; var y; var x
 
       | Drop -> op 0x1a
       | Select -> op 0x1b
@@ -759,13 +761,23 @@ let encode (em : extended_module) =
 
     let (here_dir, asset_dir) = (0, 1) (* reversed indices in dir_names, below *)
     let source_names =
-      ref [ "prelude", (Promise.make (), asset_dir)
-          ; "prim", (Promise.make (), asset_dir)
-          ; "rts.wasm", (Promise.make (), asset_dir) ] (* make these appear last in .debug_line file_name_entries *)
+      [ "prelude", (Promise.make (), asset_dir)
+      ; "prim", (Promise.make (), asset_dir)
+      ; "internals", (Promise.make (), asset_dir)
+      ; "timers-api",  (Promise.make (), asset_dir)
+      ; "rts.wasm", (Promise.make (), asset_dir) ] (* make these appear last in .debug_line file_name_entries *)
+
+    (* Note: we use it like a key-value store and since file names are not unique, we need to add the directory index to the key *)
+    let source_names = ref (List.map (fun (n, ((_, i) as t)) -> (n, i), t) source_names)
+
     let dir_names = (* ditto, but reversed: 6.2.4.1 Standard Content Descriptions *)
       ref [ "<moc-asset>", (Promise.make (), asset_dir)
           ; Filename.dirname "", (Promise.make (), here_dir) ]
-    let source_path_indices = ref (List.map (fun (p, (_, i)) -> p, i) !source_names)
+
+    (* Initialize indices for source_names *)
+    let source_path_indices =
+      let n = List.length !source_names in
+      ref (List.mapi (fun i ((p, _), (_, _)) -> p, n - 1 - i) !source_names)
     let add_source_name =
       let source_adder dir_index _ = Promise.make (), dir_index in
       let add_source_path_index (_, _) = function
@@ -775,11 +787,11 @@ let encode (em : extended_module) =
       function
       | "" -> ()
       | ("prelude" | "prim" | "rts.wasm") as asset ->
-        add_source_path_index (add_string (source_adder asset_dir) source_names asset) asset
+        add_source_path_index (add_string (source_adder asset_dir) source_names (asset, asset_dir)) asset
       | path ->
         let dir, basename = Filename.(dirname path, basename path) in
         let _, dir_index = add_string (function [] -> assert false | (_, (_, i)) :: _ -> Promise.make (), i + 1) dir_names dir in
-        let promise = add_string (source_adder dir_index) source_names basename in
+        let promise = add_string (source_adder dir_index) source_names (basename, dir_index) in
         add_source_path_index promise path
 
     let code f =
@@ -1144,7 +1156,7 @@ let encode (em : extended_module) =
             strings t in
         strings dirs;
         strings sources in
-      custom_section ".debug_line_str" debug_line_strings_section_body (!dir_names, !source_names) true
+      custom_section ".debug_line_str" debug_line_strings_section_body (!dir_names, List.map (fun ((n, _), p) -> n, p) !source_names) true
 
     (* Debug line machine section, see DWARF5: "6.2 Line Number Information" *)
 
@@ -1251,7 +1263,7 @@ let encode (em : extended_module) =
       u32 0x6d736100l;
       u32 version;
       (* no use-case for encoding dylink section yet, but here would be the place *)
-      assert (em.dylink = None);
+      assert (em.dylink0 = []);
       type_section m.types;
       import_section m.imports;
       func_section m.funcs;

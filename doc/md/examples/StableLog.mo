@@ -1,10 +1,12 @@
-import Nat32 "mo:base/Nat32";
-import Nat64 "mo:base/Nat64";
-import Text "mo:base/Text";
-import Array "mo:base/Array";
-import StableMemory "mo:base/ExperimentalStableMemory";
+import Nat32 "mo:core/Nat32";
+import Nat64 "mo:core/Nat64";
+import Text "mo:core/Text";
+import Array "mo:core/Array";
+import VarArray "mo:core/VarArray";
 
-actor StableLog {
+import StableMemory "mo:base/ExperimentalStableMemory"; // deprecated
+
+persistent actor StableLog {
 
   func ensure(offset : Nat64) {
     let pages = (offset + 65536) >> 16;
@@ -14,7 +16,7 @@ actor StableLog {
     };
   };
 
-  stable var base : Nat64 = 0;
+  var base : Nat64 = 0; // implicitly `stable`
 
   public func log(t : Text) {
     let blob = Text.encodeUtf8(t);
@@ -27,7 +29,7 @@ actor StableLog {
   };
 
   public query func readLast(count : Nat) : async [Text] {
-    let a = Array.init<Text>(count, "");
+    let a = VarArray.repeat<Text>("", count);
     var offset = base;
     var k = 0;
     while (k < count and offset > 0) {

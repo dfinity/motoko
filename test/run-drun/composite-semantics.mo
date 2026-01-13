@@ -36,5 +36,4 @@ actor Composites {
 
 }
 
-//SKIP ic-ref-run
 //CALL query show 0x4449444C0000

@@ -38,8 +38,7 @@ let check_modes ms =
 let check_label lab : M.lab =
   match lab.it with
   | Named name -> Idllib.Escape.escape name
-  | Id id -> Idllib.Escape.escape_num id
-  | Unnamed id -> Idllib.Escape.escape_num id
+  | Id id | Unnamed id -> Idllib.Escape.escape_num id
 
 let is_tuple fs =
   List.length fs > 1 &&
@@ -70,7 +69,7 @@ let rec check_typ' env occs t =
   | BlobT -> M.Prim M.Blob
   | RecordT fs ->
      if is_tuple fs then
-       M.Tup (List.map (fun f -> check_typ' env occs f.it.typ) fs)
+       M.Tup (List.map (fun (f : typ_field) -> check_typ' env occs f.it.typ) fs)
      else
        let fs = List.map (check_field env occs) fs in
        M.Obj (M.Object, List.sort M.compare_field fs)
@@ -79,7 +78,7 @@ let rec check_typ' env occs t =
      M.Variant (List.sort M.compare_field fs)
   | FuncT (ms, ts1, ts2) ->
      let (s, c) = check_modes ms in
-     M.Func (M.Shared s, c, [M.scope_bind], check_typs' env occs ts1, check_typs' env occs ts2)
+     M.Func (M.Shared s, c, [M.scope_bind], check_arg_typs env occs ts1, check_arg_typs env occs ts2)
   | ServT ms ->
      let fs = List.map (check_meth env occs) ms in
      M.Obj (M.Actor, List.sort M.compare_field fs)
@@ -87,6 +86,12 @@ let rec check_typ' env occs t =
      (Diag.error_message t.at "M0162" "import" "Candid service constructor type not supported as Motoko type"))
   | PreT -> assert false
 and check_typs' env occs ts = List.map (check_typ' env occs) ts
+and check_arg_typ env occs (arg_typ : arg_typ) =
+  match arg_typ.it.name with
+  | Some name ->
+    M.Named (Idllib.Escape.escape name.it, check_typ' env occs arg_typ.it.typ)
+  | None -> check_typ' env occs arg_typ.it.typ
+and check_arg_typs env occs ats = List.map (check_arg_typ env occs) ats
 and check_field env occs f =
   M.{lab = check_label f.it.label; typ = check_typ' env occs f.it.typ; src = empty_src}
 and check_variant_field env occs f =

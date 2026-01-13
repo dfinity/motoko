@@ -57,7 +57,7 @@ module {
                         return;
                     };
                     let references = currentType.readReferences(current);
-                    for (next in references.vals()) {
+                    for (next in references.values()) {
                         pending.push(next);
                     };
                 };

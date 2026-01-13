@@ -1,34 +1,28 @@
-# Trie
-Functional key-value hash maps.
+# base/Trie
+Functional key-value hash map.
 
-This module provides an applicative (functional) hash map, called a trie.
-Notably, each operation produces a new trie rather than destructively updating an existing trie.
+Provides an applicative (purely functional) hash map, called a *trie*, where each operation returns a new version of the structure without mutating the original.
 
-Those looking for a more familiar (imperative,
-object-oriented) hash map should consider `TrieMap` or `HashMap` instead.
+Operations use `Key` records that group the key value with its precomputed hash.
 
-The basic `Trie` operations consist of:
-- `put` - put a key-value into the trie, producing a new version.
-- `get` - get a key's value from the trie, or `null` if none.
-- `remove` - remove a key's value from the trie
-- `iter` - visit every key-value in the trie.
+For imperative or object-oriented alternatives, see [`TrieMap`](../TrieMap) or [`HashMap`](../HashMap).
 
-The `put`, `get` and `remove` operations work over `Key` records,
-which group the hash of the key with its non-hash key value.
+:::warning Hash collision limit
+Each trie node supports at most 8 distinct keys with the same hash (`MAX_LEAF_SIZE = 8`). Exceeding this will cause a trap.
+:::
 
-LIMITATIONS: This data structure allows at most MAX_LEAF_SIZE=8 hash collisions:
-attempts to insert more than MAX_LEAF_SIZE keys (whether directly via `put` or indirectly via other operations) with the same hash value will trap.
-
-CREDITS: Based on Section 6 of ["Incremental computation via function caching", Pugh & Teitelbaum](https://dl.acm.org/citation.cfm?id=75305).
-
+:::info Credits
+Based on Section 6 of ["Incremental computation via function caching", Pugh & Teitelbaum](https://dl.acm.org/citation.cfm?id=75305).
+:::
 
 Example:
+
 ```motoko
 import Trie "mo:base/Trie";
 import Text "mo:base/Text";
 
 // we do this to have shorter type names and thus
-// better readibility
+// better readability
 type Trie<K, V> = Trie.Trie<K, V>;
 type Key<K> = Trie.Key<K>;
 
@@ -58,10 +52,10 @@ let t2 : Trie<Text, Nat> = Trie.put(t1, key "world", Text.equal, 24).0;
 // in our case we have already inserted the value 42 for the key "hello", so
 // `put` returns 42 as the second element of the tuple.
 let (t3, n) : (Trie<Text, Nat>, ?Nat) = Trie.put(
-  t2,
-  key "hello",
-  Text.equal,
-  0,
+ t2,
+ key "hello",
+ Text.equal,
+ 0,
 );
 assert (n == ?42);
 
@@ -86,9 +80,9 @@ assert(value == null);
 // where the second element of the tuple is the value that was removed, or `null` if
 // there was no value for the given key.
 let removedValue : ?Nat = Trie.remove(
-  t3,
-  key "hello",
-  Text.equal,
+ t3,
+ key "hello",
+ Text.equal,
 ).1;
 assert (removedValue == ?0);
 
@@ -96,7 +90,7 @@ assert (removedValue == ?0);
 // of type `Trie<K,V>` and returns an iterator of type `Iter<(K,V)>`:
 var sum : Nat = 0;
 for (kv in Trie.iter(t3)) {
-  sum += kv.1;
+ sum += kv.1;
 };
 assert(sum == 24);
 ```
@@ -106,7 +100,7 @@ assert(sum == 24);
 type Trie<K, V> = {#empty; #leaf : Leaf<K, V>; #branch : Branch<K, V>}
 ```
 
-Binary hash tries: either empty, a leaf node, or a branch node
+Binary hash tries: either empty, a leaf node, or a branch node.
 
 ## Type `Leaf`
 ``` motoko no-repl
@@ -135,8 +129,8 @@ type AssocList<K, V> = AssocList.AssocList<K, V>
 type Key<K> = { hash : Hash.Hash; key : K }
 ```
 
-A `Key` for the trie has an associated hash value
-- `hash` permits fast inequality checks, and permits collisions, while
+A `Key` for the trie has an associated hash value:
+- `hash` permits fast inequality checks, and permits collisions.
 - `key` permits precise equality checks, but is only used on values with equal hashes.
 
 ## Function `equalKey`
@@ -151,7 +145,9 @@ Equality function for two `Key<K>`s, in terms of equality of `K`'s.
 func isValid<K, V>(t : Trie<K, V>, _enforceNormal : Bool) : Bool
 ```
 
-@deprecated `isValid` is an internal predicate and will be removed in future.
+:::warning Deprecated function
+`isValid` is an internal predicate and will be removed in future.
+:::
 
 ## Type `Trie2D`
 ``` motoko no-repl
@@ -201,8 +197,6 @@ func size<K, V>(t : Trie<K, V>) : Nat
 
 Get the size in O(1) time.
 
-For a more detailed overview of how to use a `Trie`,
-see the [User's Overview](#overview).
 
 Example:
 ```motoko include=initialize
@@ -256,10 +250,9 @@ Replace the given key's value option with the given value, returning the modifie
 Also returns the replaced value if the key existed and `null` otherwise.
 Compares keys using the provided function `k_eq`.
 
-Note: Replacing a key's value by `null` removes the key and also shrinks the trie.
-
-For a more detailed overview of how to use a `Trie`,
-see the [User's Overview](#overview).
+:::note
+Replacing a key's value by `null` removes the key and also shrinks the trie.
+:::
 
 Example:
 ```motoko include=initialize
@@ -275,8 +268,6 @@ func put<K, V>(t : Trie<K, V>, k : Key<K>, k_eq : (K, K) -> Bool, v : V) : (Trie
 
 Put the given key's value in the trie; return the new trie, and the previous value associated with the key, if any.
 
-For a more detailed overview of how to use a `Trie`,
-see the [User's Overview](#overview).
 
 Example:
 ```motoko include=initialize
@@ -292,8 +283,6 @@ func get<K, V>(t : Trie<K, V>, k : Key<K>, k_eq : (K, K) -> Bool) : ?V
 
 Get the value of the given key in the trie, or return null if nonexistent.
 
-For a more detailed overview of how to use a Trie,
-see the [User's Overview](#overview).
 
 Example:
 ```motoko include=initialize
@@ -311,8 +300,6 @@ func find<K, V>(t : Trie<K, V>, k : Key<K>, k_eq : (K, K) -> Bool) : ?V
 
 Find the given key's value in the trie, or return `null` if nonexistent
 
-For a more detailed overview of how to use a `Trie`,
-see the [User's Overview](#overview).
 
 Example:
 ```motoko include=initialize
@@ -331,12 +318,11 @@ func merge<K, V>(tl : Trie<K, V>, tr : Trie<K, V>, k_eq : (K, K) -> Bool) : Trie
 Merge tries, preferring the left trie where there are collisions
 in common keys.
 
-note: the `disj` operation generalizes this `merge`
+:::note
+The `disj` operation generalizes this `merge`
 operation in various ways, and does not (in general) lose
 information; this operation is a simpler, special case.
-
-For a more detailed overview of how to use a `Trie`,
-see the [User's Overview](#overview).
+:::
 
 Example:
 ```motoko include=initialize
@@ -363,8 +349,6 @@ func mergeDisjoint<K, V>(tl : Trie<K, V>, tr : Trie<K, V>, k_eq : (K, K) -> Bool
 Merge tries like `merge`, but traps if there are collisions in common keys between the
 left and right inputs.
 
-For a more detailed overview of how to use a `Trie`,
-see the [User's Overview](#overview).
 
 Example:
 ```motoko include=initialize
@@ -388,8 +372,6 @@ Difference of tries. The output consists of pairs of
 the left trie whose keys are not present in the right trie; the
 values of the right trie are irrelevant.
 
-For a more detailed overview of how to use a `Trie`,
-see the [User's Overview](#overview).
 
 Example:
 ```motoko include=initialize
@@ -475,8 +457,6 @@ Returns an iterator of type `Iter` over the key-value entries of the trie.
 
 Each iterator gets a _persistent view_ of the mapping, independent of concurrent updates to the iterated map.
 
-For a more detailed overview of how to use a `Trie`,
-see the [User's Overview](#overview).
 
 Example:
 ```motoko include=initialize
@@ -588,8 +568,6 @@ func fold<K, V, X>(t : Trie<K, V>, f : (K, V, X) -> X, x : X) : X
 Fold over the key-value pairs of the trie, using an accumulator.
 The key-value pairs have no reliable or meaningful ordering.
 
-For a more detailed overview of how to use a `Trie`,
-see the [User's Overview](#overview).
 
 Example:
 ```motoko include=initialize
@@ -611,8 +589,6 @@ func some<K, V>(t : Trie<K, V>, f : (K, V) -> Bool) : Bool
 
 Test whether a given key-value pair is present, or not.
 
-For a more detailed overview of how to use a `Trie`,
-see the [User's Overview](#overview).
 
 Example:
 ```motoko include=initialize
@@ -640,8 +616,6 @@ func all<K, V>(t : Trie<K, V>, f : (K, V) -> Bool) : Bool
 
 Test whether all key-value pairs have a given property.
 
-For a more detailed overview of how to use a `Trie`,
-see the [User's Overview](#overview).
 
 Example:
 ```motoko include=initialize
@@ -671,11 +645,10 @@ func nth<K, V>(t : Trie<K, V>, i : Nat) : ?(Key<K>, V)
 
 Project the nth key-value pair from the trie.
 
-Note: This position is not meaningful; it's only here so that we
+:::note
+This position is not meaningful; it's only here so that we
 can inject tries into arrays using functions like `Array.tabulate`.
-
-For a more detailed overview of how to use a `Trie`,
-see the [User's Overview](#overview).
+:::
 
 Example:
 ```motoko include=initialize
@@ -704,8 +677,6 @@ func toArray<K, V, W>(t : Trie<K, V>, f : (K, V) -> W) : [W]
 
 Gather the collection of key-value pairs into an array of a (possibly-distinct) type.
 
-For a more detailed overview of how to use a `Trie`,
-see the [User's Overview](#overview).
 
 Example:
 ```motoko include=initialize
@@ -738,8 +709,6 @@ func filter<K, V>(t : Trie<K, V>, f : (K, V) -> Bool) : Trie<K, V>
 
 Filter the key-value pairs by a given predicate.
 
-For a more detailed overview of how to use a `Trie`,
-see the [User's Overview](#overview).
 
 Example:
 ```motoko include=initialize
@@ -763,8 +732,6 @@ func mapFilter<K, V, W>(t : Trie<K, V>, f : (K, V) -> ?W) : Trie<K, W>
 
 Map and filter the key-value pairs by a given predicate.
 
-For a more detailed overview of how to use a `Trie`,
-see the [User's Overview](#overview).
 
 Example:
 ```motoko include=initialize
@@ -803,8 +770,6 @@ Replace the given key's value in the trie,
 and only if successful, do the success continuation,
 otherwise, return the failure value
 
-For a more detailed overview of how to use a Trie,
-see the [User's Overview](#overview).
 
 Example:
 ```motoko include=initialize
@@ -841,10 +806,7 @@ assert (continuation == "fail");
 func putFresh<K, V>(t : Trie<K, V>, k : Key<K>, k_eq : (K, K) -> Bool, v : V) : Trie<K, V>
 ```
 
-Put the given key's value in the trie; return the new trie; assert that no prior value is associated with the key
-
-For a more detailed overview of how to use a `Trie`,
-see the [User's Overview](#overview).
+Put the given key's value in the trie; return the new trie; assert that no prior value is associated with the key.
 
 Example:
 ```motoko include=initialize
@@ -878,10 +840,9 @@ Remove the entry for the given key from the trie, by returning the reduced trie.
 Also returns the removed value if the key existed and `null` otherwise.
 Compares keys using the provided function `k_eq`.
 
-Note: The removal of an existing key shrinks the trie.
-
-For a more detailed overview of how to use a `Trie`,
-see the [User's Overview](#overview).
+:::note
+The removal of an existing key shrinks the trie.
+:::
 
 Example:
 ```motoko include=initialize
@@ -899,7 +860,7 @@ func removeThen<K, V, X>(t : Trie<K, V>, k : Key<K>, k_eq : (K, K) -> Bool, succ
 
 Remove the given key's value in the trie,
 and only if successful, do the success continuation,
-otherwise, return the failure value
+otherwise, return the failure value.
 
 ## Function `remove2D`
 ``` motoko no-repl

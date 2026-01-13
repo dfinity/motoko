@@ -18,6 +18,11 @@ sig
   val repeat : int -> ('a -> unit) -> 'a -> unit
 end
 
+type ('a, 'b) these =
+  | This of 'a
+  | That of 'b
+  | Both of 'a * 'b
+
 module List :
 sig
   val equal : ('a -> 'a -> bool) -> 'a list -> 'a list -> bool
@@ -26,7 +31,10 @@ sig
   val group : ('a -> 'a -> bool) -> 'a list -> 'a list list
   val take : int -> 'a list -> 'a list (* raises Failure *)
   val drop : int -> 'a list -> 'a list (* raises Failure *)
+  val replicate : 'a -> int -> 'a list
   val split_at : int -> 'a list -> ('a list * 'a list)
+  val split3 : ('a * 'b * 'c) list -> ('a list * 'b list * 'c list)
+  val mapi2 : (int -> 'a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list
 
   val hd_opt : 'a list -> 'a option
   val last : 'a list -> 'a (* raises Failure *)
@@ -42,6 +50,11 @@ sig
   val is_prefix : ('a -> 'a -> bool) -> 'a list -> 'a list -> bool
 
   val iter_pairs : ('a -> 'a -> unit) -> 'a list -> unit
+
+  val safe_map : ('a -> 'b) -> 'a list -> 'b list
+
+  (** Assumes the two lists have been sorted with respect to the comparison function *)
+  val align : ('a -> 'b -> int) -> 'a list -> 'b list -> ('a, 'b) these Seq.t
 end
 
 module List32 :
@@ -80,11 +93,6 @@ sig
     val set : ('a, 'b, 'c) Array1.t -> int64 -> 'a -> unit
     val sub : ('a, 'b, 'c) Array1.t -> int64 -> int64 -> ('a, 'b, 'c) Array1.t
   end
-end
-
-module Seq :
-sig
-  val for_all : ('a -> bool) -> 'a Seq.t -> bool
 end
 
 module Option :
@@ -156,10 +164,10 @@ sig
   val split : string -> char -> string list
   val breakup : string -> int -> string list
   val find_from_opt : (char -> bool) -> string -> int -> int option
-  val starts_with : string -> string -> bool
   val chop_prefix : string -> string -> string option
   val chop_suffix : string -> string -> string option
   val lightweight_escaped : string -> string
+  val levenshtein_distance : string -> string -> int
 end
 
 module CRC :
@@ -239,4 +247,10 @@ sig
    * "warning, file Array.mo has been located with a name of different case"
    *)
   val open_in : string -> (in_channel * string list)
+
+
+  (**
+   * Reads all bytes from the indicated file
+   *)
+  val contents : string -> string
 end

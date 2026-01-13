@@ -1,6 +1,6 @@
-//MOC-FLAG --package lib lib
-import _Unused1 "mo:lib/unused1"; // don't report package imports usage warning
-import _Unused2 "./lib/unused2"; // do report relative imports usage warning
+//MOC-FLAG --package pkg pkg
+import _Unused1 "mo:pkg/unused1"; // don't report package imports usage warning
+import _Unused2 "./pkg/unused2"; // do report relative imports usage warning
 
 func rec1() { rec1() }; // accepted, but reject as unused?
 
@@ -12,7 +12,7 @@ func g(x : ()) {};
 
 //let unused = 1;
 let _ok = 1;
-let hmm = _ok; // should we warn about the use of a silenced identifier? OCaml doens't actually, so perhaps not
+let hmm = _ok; // should we warn about the use of a silenced identifier? OCaml doesn't actually, so perhaps not
 
 do { func f() { g() ; }; //both f and g are only used recursively accept or reject?
      func g() { f() };

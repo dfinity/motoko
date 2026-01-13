@@ -10,9 +10,9 @@ module {
    var revoked : Bool;
  };
 
- public actor class Server() = {
-   var nextId : Nat = 0;
-   var clients : L.List<ClientData> = null;
+ public persistent actor class Server() = {
+   transient var nextId : Nat = 0;
+   transient var clients : L.List<ClientData> = null;
 
    public func subscribe(aclient : shared Text -> ()) : async T.Subscription {
      let c = {id = nextId; client = aclient; var revoked = false};

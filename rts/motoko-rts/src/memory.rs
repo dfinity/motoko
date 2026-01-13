@@ -6,6 +6,9 @@ use motoko_rts_macros::classical_persistence;
 use motoko_rts_macros::enhanced_orthogonal_persistence;
 use motoko_rts_macros::ic_mem_fn;
 
+#[enhanced_orthogonal_persistence]
+use crate::barriers::init_with_barrier;
+
 #[cfg(feature = "ic")]
 use crate::constants::MB;
 
@@ -82,4 +85,54 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, tag: Tag, len: usize) -> Value
     (*ptr).len = len;
 
     skewed_ptr
+}
+
+/// Allocate a new weak reference.
+#[enhanced_orthogonal_persistence]
+#[ic_mem_fn]
+pub unsafe fn alloc_weak_ref<M: Memory>(mem: &mut M, target: Value) -> Value {
+    use crate::barriers::allocation_barrier;
+
+    let weak_ref = mem.alloc_words(crate::types::size_of::<WeakRef>());
+    let weak_ref_obj = weak_ref.get_ptr() as *mut WeakRef;
+    (*weak_ref_obj).header.tag = TAG_WEAK_REF;
+    (*weak_ref_obj).header.init_forward(weak_ref);
+    init_with_barrier(mem, &mut (*weak_ref_obj).field, target);
+    allocation_barrier(weak_ref)
+}
+
+/// Check if a weak reference is still live.
+#[enhanced_orthogonal_persistence]
+#[ic_mem_fn]
+pub unsafe fn weak_ref_is_live<M: Memory>(_mem: &mut M, weak_ref: Value) -> bool {
+    if !weak_ref.is_non_null_ptr() {
+        crate::rts_trap_with(
+            "weak_ref_is_live: Invalid WeakRef pointer. This is a bug, report to the Motoko team.",
+        );
+    }
+    let weak_ref_obj = weak_ref.get_ptr() as *mut WeakRef;
+    return (*weak_ref_obj).is_live();
+}
+
+/// Get the dedup table.
+#[enhanced_orthogonal_persistence]
+#[ic_mem_fn]
+#[cfg(feature = "ic")]
+pub unsafe fn get_dedup_table<M: Memory>(_mem: &mut M) -> Value {
+    use crate::persistence::get_dedup_table_ptr;
+    *get_dedup_table_ptr()
+}
+
+/// Set the dedup table.
+#[enhanced_orthogonal_persistence]
+#[ic_mem_fn]
+#[cfg(feature = "ic")]
+pub unsafe fn set_dedup_table<M: Memory>(mem: &mut M, dedup_table: Value) {
+    use crate::persistence::set_dedup_table_ptr;
+    if !dedup_table.is_array() {
+        crate::rts_trap_with(
+            "set_dedup_table: Invalid dedup table pointer. This is a bug, report to the Motoko team.",
+        );
+    }
+    set_dedup_table_ptr(mem, dedup_table);
 }

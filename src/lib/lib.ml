@@ -12,6 +12,7 @@ struct
 
   let display pp ppf x =
     Format.fprintf ppf "@\n@[<v 2>  %a@]" pp x
+
 end
 
 module Fun =
@@ -209,11 +210,6 @@ struct
     else
       None
 
-  let starts_with prefix s = (* in OCaml 4.13 *)
-    match chop_prefix prefix s with
-    | Some _ -> true
-    | _ -> false
-
   let chop_suffix suffix s =
     let suffix_len = String.length suffix in
     let s_len = String.length s in
@@ -236,6 +232,40 @@ struct
       | c -> Buffer.add_char buf c
     done;
     Buffer.contents buf
+
+  (* Courtesy of Claude.ai *)
+  let levenshtein_distance s t =
+    let m = String.length s
+    and n = String.length t in
+
+    (* Ensure s is the shorter string for optimization *)
+    let (s, t, m, n) = if m > n then (t, s, n, m) else (s, t, m, n) in
+
+    (* Initialize the previous row *)
+    let previous_row = Array.init (m + 1) (fun i -> i) in
+
+    (* Compute the distance *)
+    for i = 1 to n do
+      let current_row = Array.make (m + 1) 0 in
+      current_row.(0) <- i;
+
+      for j = 1 to m do
+        let cost = if s.[j-1] = t.[i-1] then 0 else 1 in
+        current_row.(j) <- min
+          (min
+            (previous_row.(j) + 1)     (* Deletion *)
+            (current_row.(j-1) + 1)    (* Insertion *)
+          )
+          (previous_row.(j-1) + cost)  (* Substitution *)
+      done;
+
+      (* Swap rows *)
+      Array.blit current_row 0 previous_row 0 (m + 1)
+    done;
+
+    (* Return the distance *)
+    previous_row.(m)
+
 end
 
 module Utf8 =
@@ -293,6 +323,11 @@ struct
     | _ -> raise Utf8
 end
 
+type ('a, 'b) these =
+  | This of 'a
+  | That of 'b
+  | Both of 'a * 'b
+
 module List =
 struct
   let equal p xs ys =
@@ -314,22 +349,36 @@ struct
          grouping ((hd::l1)::acc) l2
     in grouping [] l
 
-  let rec take n xs =
+  let rec take n xs = (* present in OCaml 5.3 *)
     match n, xs with
     | _ when n <= 0 -> []
     | n, x::xs' when n > 0 -> x :: take (n - 1) xs'
     | _ -> failwith "take"
 
-  let rec drop n xs =
+  let rec drop n xs = (* present in OCaml 5.3 *)
     match n, xs with
     | 0, _ -> xs
     | n, _::xs' when n > 0 -> drop (n - 1) xs'
     | _ -> failwith "drop"
 
+  let rec replicate e = function
+    | 0 -> []
+    | n -> e :: replicate e (n - 1)
+
   let split_at n xs =
     if n <= List.length xs
     then (take n xs, drop n xs)
     else (xs, [])
+
+  let split3 l =
+    let rec loop (xs, ys, zs) = function
+      | [] -> (List.rev xs, List.rev ys, List.rev zs)
+      | (x, y, z) :: t -> loop (x :: xs, y :: ys, z :: zs) t
+    in loop ([], [], []) l
+
+  let mapi2 f xs ys =
+    let _, acc = List.fold_left2 (fun (i, acc) x y -> (1 + i, f i x y :: acc)) (0, []) xs ys in
+    List.rev acc
 
   let hd_opt = function
     | x :: _ -> Some x
@@ -395,6 +444,25 @@ struct
       (match list with
        | [] -> false
        | hd' :: tl' -> equal hd hd' && is_prefix equal tl tl')
+
+  (* tail-recursive map *)
+  let[@tail_mod_cons] rec safe_map f l = match l with
+    | [] -> []
+    | x :: xs ->
+      f x :: (safe_map[@tailcall]) f xs
+    [@@coverage off]
+
+  let align cmp xs ys =
+    let next (xs, ys) = match xs, ys with
+      | [], [] -> None
+      | x::xs', [] -> Some (This x, (xs', []))
+      | [], y::ys' -> Some (That y, ([], ys'))
+      | x::xs', y::ys' -> (match cmp x y with
+        | -1 -> Some (This x, (xs', ys))
+        | +1 -> Some (That y, (xs, ys'))
+        | _ -> Some (Both(x, y), (xs', ys')))
+    in
+    Seq.unfold next (xs, ys)
 end
 
 module List32 =
@@ -493,13 +561,6 @@ struct
     let set a i x = Array1.set a (index_of_int64 i) x
     let sub a i n = Array1.sub a (index_of_int64 i) (index_of_int64 n)
   end
-end
-
-module Seq =
-struct
-  let rec for_all p s = match s () with
-    | Seq.Nil -> true
-    | Seq.Cons (x, s') -> p x && for_all p s'
 end
 
 module Option =
@@ -667,6 +728,8 @@ struct
           ic, [message]
       end
     else ic, []
+
+    let contents file = In_channel.with_open_bin file In_channel.input_all
 end
 
 

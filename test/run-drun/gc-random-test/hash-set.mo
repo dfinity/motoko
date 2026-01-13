@@ -46,12 +46,12 @@ module {
 
         public func values() : Iter<T> {
             let combined = Buffer.Buffer<T>(0);
-            for (collisionList in table.vals()) {
-                for (value in collisionList.vals()) {
+            for (collisionList in table.values()) {
+                for (value in collisionList.values()) {
                     combined.add(value);
                 };
             };
-            combined.vals();
+            combined.values();
         };
     };
 };

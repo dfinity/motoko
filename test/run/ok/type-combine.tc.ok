@@ -23,16 +23,16 @@ type-combine.mo:427.22-427.29: warning [M0166], this intersection results in typ
   None
 because operand types are inconsistent,
 left operand is
-  A__68
+  A
 right operand is
-  B__38
+  B
 type-combine.mo:430.32-430.39: warning [M0166], this intersection results in type
   None
 because operand types are inconsistent,
 left operand is
-  A__71
+  A
 right operand is
-  B__41
+  B
 type-combine.mo:432.16-432.53: warning [M0166], this intersection results in type
   None
 because operand types are inconsistent,
@@ -65,9 +65,9 @@ type-combine.mo:453.22-453.28: warning [M0167], this union results in type
   Any
 because operand types are inconsistent,
 left operand is
-  A__99
+  A
 right operand is
-  B__60
+  B
 type-combine.mo:458.16-458.52: warning [M0167], this union results in type
   Any
 because operand types are inconsistent,

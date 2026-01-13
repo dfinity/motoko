@@ -135,7 +135,7 @@ Currently, converting between different number types requires going through `Nat
 ```
 func nat8ToNat16(n : Nat8) : Nat16 { Nat18.fromNat(Nat8.toNat(n)) }
 ```
-Obviously, that's both inconvenient and expensive. The base library should directly support the complete conversion matrix for all number types (nats, ints, and floats).
+Obviously, that's both inconvenient and expensive. The base package should directly support the complete conversion matrix for all number types (nats, ints, and floats).
 
 
 #### Blobs
@@ -300,7 +300,7 @@ This extension is easy to implement for type definitions, but much more involved
 On the plus side, the same mechanism can then be used to express any abstractions over shared types. For example, it would be possible to use equality over generic types:
 ```
 func contained<shared A>(x : A, ys : [A]) : Bool {
-  for (y in ys.vals()) { if (x == y) return true };
+  for (y in ys.values()) { if (x == y) return true };
   return false;
 }
 ```
@@ -370,7 +370,7 @@ becomes
 ```
 Result.chain(g(1),
   func(x) {
-    Result.chain(g(2), 
+    Result.chain(g(2),
       func(y) {
         Result.make(f(x, y))
       }
@@ -621,7 +621,7 @@ Note: the obvious "solution", namely storing closure environments inside the ori
 
 #### Upgrades and Memory
 
-The most difficult problem to solve in the programming model of the IC by far is the question of safe and robust upgrades. 
+The most difficult problem to solve in the programming model of the IC by far is the question of safe and robust upgrades.
 For this purpose, Motoko implements powerful and safe persistence, see [Enhanced Orthogonal Persistence](OrthogonalPersistence.md).
 
 #### Upgrades and Methods
@@ -666,13 +666,13 @@ Unfortunately, though, this is a more difficult problem than linking modules com
 Wasm component model offers a solution for secure intra-canister language interop on the IC.
 
 
-#### On-chain Linking
+#### Onchain Linking
 
 [Separate compilation](#separate-compilation) avoids the need to _compile_ applications in a monolitic manner, but it does not prevent the need to _deploy_ them in monolithic form. No matter how large an application and how small a change, upgrading always requires redeploying the entire code.
 
-Also, it is not possible to share modules on-chain between multiple applications. For features like [unicode support](#text), it would be desirable if respective modules of the language runtime would only have to be installed on the chain once and could be shared between applications.
+Also, it is not possible to share modules onchain between multiple applications. For features like [unicode support](#text), it would be desirable if respective modules of the language runtime would only have to be installed on the chain once and could be shared between applications.
 
-Supporting this would require a new mechanism in the IC that allows canisters to consist of more than just a single Wasm module, and linking these modules _dynamically_, "on-chain", reminiscent of dynamic linking in conventional operating systems. Unfortunately, there currently isn't any mechanism planned for the IC to support that.
+Supporting this would require a new mechanism in the IC that allows canisters to consist of more than just a single Wasm module, and linking these modules _dynamically_, "onchain", reminiscent of dynamic linking in conventional operating systems. Unfortunately, there currently isn't any mechanism planned for the IC to support that.
 
 
 ### Platform Support

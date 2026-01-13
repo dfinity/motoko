@@ -6,6 +6,7 @@ actor {
     type AliasName = ArrayStructure;
 
     stable var simpleArray: [var Float] = [var];
+    stable var nestedArray: [[Nat]] = [];
     stable var recursiveArray = ?[] : ArrayStructure;
 
     public func print() : async () {

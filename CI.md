@@ -9,12 +9,7 @@ This document distinguishes use-cases (requirements, goals) from
 implementations, to allow evaluating alternative implementations.
 
 The implementation is currently a careful choreography between Github, Github
-Actions, Hydra, the cachix nix cache, the internal nix cache and mergify.
-
-This file describes both the  pre-open-source setup (**internal**) which will
-gradually be updated or removed as we move away from the internal CI setup
-towards the open setup (**external**).
-
+Actions, and the Cachix nix cache.
 
 Knowing if it is broken
 -----------------------
@@ -23,16 +18,11 @@ Knowing if it is broken
 Everything is built and tested upon every push to a branch of the repository,
 and the resulting status is visible (at derivation granularity) to developers.
 
-**Implementation (external):**
+**Implementation:**
 All pushes to any branch are built by a Github Action job, on Linux and Darwin.
 
-**Implementation (internal):**
-All pushes to `master`, as well as to all branches with open PRs cause hydra to
-build the jobs described in `ci.nix` resp. `ci-pr.nix`.
-
-The build status is visible via the Github status (coarsly: only evaluation,
-`all-systems-go` and `all-jobs`) and via hydra directly (full per-job detail
-including logs).
+The build status is visible via the Github status (coarsely: only evaluation,
+`{debug,release}-systems-go`).
 
 This includes linux and darwin builds.
 
@@ -90,9 +80,10 @@ This can be done before approvals are in and/or CI has turned green, and will
 reliably be acted on once requirements are fulfilled.
 
 **Implementation:**
-Mergify reacts to the `automerge-squash` label. Once approved and CI passes, it
-merges master into the branch (using normal merge, which is important for
-stashed PRs) and then squash-merges the PR.
+Use the "Enable auto-merge (squash)" button of the GitHub PR web page.
+Alternatively from the CLI `gh pr merge --squash --auto` will do. Note that you have to update
+the PR with `master` first, so that the tests can run on the most recent codebase.
+From the command line issue `gh pr update-branch` to that effect.
 
 Render and provide various reports
 ----------------------------------
@@ -144,19 +135,18 @@ Dependencies are updated automatically
 --------------------------------------
 
 **Use-case:**
-Several dependencies, as pinned by `nix/souces.json`, should be updated without
+Several dependencies, as pinned by `flake.nix`, should be updated without
 human intervention. Some dependencies are updated daily, others weekly. For
 some dependency, it should only be _tested_ if it builds, but not merged.
 
 **Implementation:**
  * Multiple files (with different settings) in `.github/workflows/` use
-   [niv-updater-action](https://github.com/knl/niv-updater-action) to create
-   pull requests with the version bumps, as `dfinity-bot`, setting
-   `automerge-squash` or `autoclose`.
- * Mergify automatically approves PRs from `dfinity-bot`.
- * Once CI passes, mergify merges or closes PRs, as per label.
+   flake-updater to create pull requests with the version bumps,
+   as `github-actions[bot]`, setting `automerge-squash` or `autoclose`.
+ * A GH action automatically approves PRs from `github-actions[bot]`.
+ * Once CI passes, the `test.yml` GitHub action merges or closes PRs, as per label.
 
-Updates to the Changelog require no review
+(obsolete) Updates to the Changelog require no review
 ------------------------------------------
 
 **Use-case:**

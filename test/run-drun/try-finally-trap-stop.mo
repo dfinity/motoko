@@ -62,7 +62,6 @@ actor {
 
 }
 
-//SKIP ic-ref-run
 //SKIP run-low
 //SKIP run-ir
 //CALL ingress go "DIDL\x00\x00"

@@ -208,6 +208,8 @@ let transform prog =
     | Non -> Non
     | Pre -> Pre
     | Typ c -> Typ (t_con c)
+    | Named _ -> assert false (* removed by erase_typ_field *)
+    | Weak t -> Weak (t_typ t)
 
   and t_bind tb =
     { tb with bound = t_typ tb.bound }
@@ -255,7 +257,7 @@ let transform prog =
     | VarE (_, _) -> exp'
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
-    | PrimE (CPSAwait (Fut, cont_typ), [a; krb]) ->
+    | PrimE (CPSAwait (AwaitFut short, cont_typ), [a; krb]) ->
       begin match cont_typ with
         | Func(_, _, [], _, []) ->
           (* unit answer type, from await in `async {}` *)
@@ -264,19 +266,22 @@ let transform prog =
             switch_variantE (t_exp a -*- varE vkrb)
               [ ("suspend", wildP,
                   unitE()); (* suspend *)
-                ("schedule", varP schedule, (* resume later *)
-                  (* try await async (); schedule() catch e -> r(e) *)
-                 (let v = fresh_var "call" unit in
-                  letE v
-                    (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrb) 1)
-                       ([] -->* (projE (varE vkrb) 2 -*- unitE ())))
-                    (check_call_perform_status (varE v) (fun e -> projE (varE vkrb) 1 -*- e))))
+                ("schedule", varP schedule,
+                  (if short then (* resume immediately *)
+                     varE schedule -*- unitE ()
+                   else (* resume later *)
+                     (* try await async (); schedule() catch e -> r(e) *)
+                     let v = fresh_var "call" unit in
+                     letE v
+                       (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrb) 1)
+                          ([] -->* (projE (varE vkrb) 2 -*- unitE ())))
+                       (check_call_perform_status (varE v) (fun e -> projE (varE vkrb) 1 -*- e))))
               ]
               unit
           )).it
         | _ -> assert false
       end
-    | PrimE (CPSAwait (Cmp, cont_typ), [a; krb]) ->
+    | PrimE (CPSAwait (AwaitCmp, cont_typ), [a; krb]) ->
       begin match cont_typ with
       | Func(_, _, [], _, []) ->
          (t_exp a -*- t_exp krb).it
@@ -295,7 +300,7 @@ let transform prog =
           letP (tupP [varP nary_async; varP nary_reply; varP reject; varP clean]) def;
           let ic_reply = (* flatten v, here and below? *)
             let v = fresh_var "v" (T.seq ts1) in
-            v --> (ic_replyE ts1 (varE v)) in
+            v --> ic_replyE ts1 (varE v) in
           let ic_reject =
             let e = fresh_var "e" catch in
             e --> ic_rejectE (errorMessageE (varE e)) in
@@ -381,7 +386,7 @@ let transform prog =
     | FuncE (x, s, c, typbinds, args, ret_tys, exp) ->
       begin
         match s with
-        | Local  ->
+        | Local ->
           FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
         | Shared s' ->
           begin
@@ -402,7 +407,7 @@ let transform prog =
                 | t -> assert false in
               let k =
                 let v = fresh_var "v" t1 in
-                v --> (ic_replyE ret_tys (varE v)) in
+                v --> ic_replyE ret_tys (varE v) in
               let r =
                 let e = fresh_var "e" catch in
                 e --> ic_rejectE (errorMessageE (varE e)) in
@@ -442,7 +447,7 @@ let transform prog =
             | (Returns | Replies), _ -> assert false
           end
       end
-    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, typ) ->
+    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; low_memory; stable_record; stable_type}, typ) ->
       ActorE (t_decs ds, t_fields fs,
         {meta;
          preupgrade = t_exp preupgrade;
@@ -450,8 +455,9 @@ let transform prog =
          heartbeat = t_exp heartbeat;
          timer = t_exp timer;
          inspect = t_exp inspect;
+         low_memory = t_exp low_memory;
          stable_record = t_exp stable_record;
-         stable_type = t_typ stable_type;
+         stable_type = {pre = t_typ stable_type.pre; post = t_typ stable_type.post};
         },
         t_typ typ)
     | NewObjE (sort, ids, t) ->
@@ -523,7 +529,7 @@ let transform prog =
   and t_comp_unit = function
     | LibU _ -> raise (Invalid_argument "cannot compile library")
     | ProgU ds -> ProgU (t_decs ds)
-    | ActorU (args_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, t) ->
+    | ActorU (args_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; low_memory; stable_record; stable_type}, t) ->
       ActorU (Option.map t_args args_opt, t_decs ds, t_fields fs,
         { meta;
           preupgrade = t_exp preupgrade;
@@ -531,8 +537,12 @@ let transform prog =
           heartbeat = t_exp heartbeat;
           timer = t_exp timer;
           inspect = t_exp inspect;
+          low_memory = t_exp low_memory;
           stable_record = t_exp stable_record;
-          stable_type = t_typ stable_type;
+          stable_type = {
+            pre = t_typ stable_type.pre;
+            post = t_typ stable_type.post
+          }
         },
         t_typ t)
 

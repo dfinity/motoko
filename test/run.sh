@@ -7,13 +7,12 @@
 # Options:
 #
 #    -a: Update the files in ok/
-#    -d: Run on in drun (or, if not possible, in ic-ref-run)
+#    -d: Run on in `drun`
 #    -t: Only typecheck
 #    -s: Be silent in sunny-day execution
 #    -i: Only check mo to idl generation
 #    -p: Produce perf statistics
 #        only compiles and runs drun, writes stats to $PERF_OUT
-#    -v: Translate to Viper
 #
 
 function realpath() {
@@ -25,14 +24,13 @@ ACCEPT=no
 DTESTS=no
 IDL=no
 PERF=no
-VIPER=no
 WASMTIME_OPTIONS="-C cache=n -W nan-canonicalization=y -W memory64 -W multi-memory -W bulk-memory"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
-WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
 SKIP_VALIDATE=${SKIP_VALIDATE:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
+MOC_ARGS="--legacy-persistence --legacy-actors"
 
 export WASMTIME_NEW_CLI=1
 
@@ -55,9 +53,6 @@ while getopts "adpstirv" o; do
             ;;
         i)
             IDL=yes
-            ;;
-        v)
-            VIPER=yes
             ;;
     esac
 done
@@ -90,19 +85,22 @@ function normalize () {
     sed -e 's/wasm `unreachable` instruction executed/unreachable/g' | # cross-version normalisation
     sed -e 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' \
         -e 's/Motoko compiler (source .*)/Motoko compiler (source XXX)/ig' \
-        -e 's/Motoko compiler [^ ]* (source .*)/Motoko compiler (source XXX)/ig' |
+        -e 's/Motoko compiler [^ ]* (source .*)/Motoko compiler (source XXX)/ig' \
+        -e 's/Motoko (source .*)/Motoko (source XXX)/ig' |
 
     # Normalize canister id prefixes and timestamps in debug prints
     sed -e 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' \
-        -e 's/^20.*UTC: debug.print:/debug.print:/g' |
-    # Normalize instruction locations on traps, added by ic-ref ad6ea9e
-    sed -e 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |
+        -e 's/^20.*UTC: debug.print:/debug.print:/g' \
+        -e '/^ic_trap$/d' |
+
+    # Normalize the output of the test-runner.
+    # remove all lines containing PocketIC.
+    sed -e '/PocketIC/d' |
+
     # Delete everything after Oom
     sed -e '/RTS error: Cannot grow memory/q' \
-        -e '/RTS error: Cannot allocate memory/q' |
-    # Delete Viper meta-output
-    sed -e '/^Silicon /d' \
-        > $1.norm
+        -e '/RTS error: Cannot allocate memory/q' > $1.norm
+
     mv $1.norm $1
   fi
 }
@@ -144,9 +142,6 @@ function run () {
 # separate files instead of merging them. It was created by copy&paste and
 # applying minor tweaks. If the 'run' function is changed, it is quite likely
 # that 'run_stderr' requires similar changes.
-#
-# Separation of stdout/stderr is necessary when e.g. producing .vpr files so
-# that diagnostic messages don't get interspersed with the generated Viper code.
 function run_stderr () {
   # first argument: extension of the output file
   # remaining argument: command line
@@ -192,6 +187,14 @@ function run_if () {
   if test -e $out/$base.$ext
   then
     run "$@"
+    # Extract instruction count for performance mode.
+    if [ "$PERF" = "yes" -a -e $out/$base.drun-run ]; then
+      PERF_INSTRUCTION_COUNT=$(LANG=C perl -ne "s/_//g; print \$1 if /^debug\.print: instructions: ([0-9]+)\$/" $out/$base.drun-run)
+      # echo $PERF_INSTRUCTION_COUNT
+      # Remove the instruction count line from the output file so that tests with different
+      # performance numbers do not affect the .ok files.
+      sed -i '/^debug\.print: instructions: [0-9_]*$/d' $out/$base.drun-run
+    fi
   else
     return 1
   fi
@@ -206,15 +209,13 @@ then
 fi
 
 HAVE_drun=no
-HAVE_ic_ref_run=no
 HAVE_ic_wasm=no
 
 FLAGS_drun=
-FLAGS_ic_ref_run=-ref-system-api
 
 if [ $DTESTS = yes -o $PERF = yes ]
 then
-  if drun --help >& /dev/null
+  if test-runner --help >& /dev/null
   then
     HAVE_drun=yes
   else
@@ -232,22 +233,6 @@ then
   # then
   #   HAVE_ic_wasm=yes
   # fi
-fi
-
-if [ $DTESTS = yes ]
-then
-  if ic-ref-run --help >& /dev/null
-  then
-    HAVE_ic_ref_run=yes
-  else
-    if [ $ACCEPT = yes ]
-    then
-      echo "WARNING: Could not run ic-ref-run, cannot update expected test output"
-    else
-      echo "WARNING: Could not run ic-ref-run, will skip running some tests"
-      HAVE_ic_ref_run=no
-    fi
-  fi
 fi
 
 
@@ -322,15 +307,36 @@ do
         continue
       fi
     fi
-    if [ $VIPER = 'yes' ]
+    if grep -q "//INCREMENTAL-GC-ONLY" $base.mo
     then
-      TEST_MOC_ARGS="$TEST_MOC_ARGS --package base pkg/base"
+      if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
+      then
+        $ECHO " Skipped (not applicable to incremental gc)"
+        continue
+      fi
     fi
-    moc_with_flags="env $moc_extra_env moc $moc_extra_flags $TEST_MOC_ARGS"
+    if grep -q "//SKIP-SANITY-CHECKS" $base.mo
+    then
+      if [[ $EXTRA_MOC_ARGS == *"--sanity-checks"* ]]
+      then
+        $ECHO " Skipped (not applicable to --sanity-checks)"
+        continue
+      fi
+    fi
+    if [[ $moc_extra_flags == *"-measure-rts-stack"* ]]
+    then
+      if [[ $(uname -m) != "x86_64" ]]
+      then
+        $ECHO " Skipped (not applicable on experimental platforms)"
+        continue
+      fi
+    fi
+    moc_with_flags="env $moc_extra_env moc $MOC_ARGS $moc_extra_flags $TEST_MOC_ARGS"
 
     # Typecheck
     run tc $moc_with_flags --check $base.mo
     tc_succeeded=$?
+    normalize $out/$base.tc
 
     if [ "$tc_succeeded" -eq 0 -a "$ONLY_TYPECHECK" = "no" ]
     then
@@ -345,20 +351,6 @@ do
         if [ "$idl_succeeded" -eq 0 ]
         then
           run didc didc --check $out/$base.did
-        fi
-      elif [ $VIPER = 'yes' ]
-      then
-        run_stderr vpr $moc_with_flags --viper $base.mo -o $out/$base.vpr
-        vpr_succeeded=$?
-
-        normalize $out/$base.vpr
-        diff_files="$diff_files $base.vpr"
-
-        if [ "$vpr_succeeded" -eq 0 ]
-        then
-	  run silicon java -Xmx2048m -Xss16m -cp $VIPER_SERVER \
-	    viper.silicon.SiliconRunner --logLevel OFF --z3Exe $(which z3) \
-	    $out/$base.vpr
         fi
       else
         if [ "$SKIP_RUNNING" != yes -a "$PERF" != yes ]
@@ -411,7 +403,6 @@ do
         if [ $DTESTS = yes ]
         then
           run comp $moc_with_flags $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
-          run comp-ref $moc_with_flags $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
         elif [ $PERF = yes ]
         then
           run comp $moc_with_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
@@ -425,7 +416,6 @@ do
         if [ "$SKIP_VALIDATE" != yes ]
         then
           run_if wasm valid wasm-validate --enable-memory64 --enable-multi-memory $out/$base.wasm
-          run_if ref.wasm valid-ref wasm-validate --enable-memory64 --enable-multi-memory $out/$base.ref.wasm
         fi
 
         if [ -e $out/$base.wasm ]
@@ -433,7 +423,7 @@ do
           # Check filecheck
           if [ "$SKIP_RUNNING" != yes ]
           then
-            if grep -F -q CHECK $mangled
+            if grep -F -q ^//CHECK $mangled
             then
               $ECHO -n " [FileCheck]"
               wasm2wat --enable-memory64 --enable-multi-memory --no-check $out/$base.wasm > $out/$base.wat
@@ -451,16 +441,16 @@ do
             if [ $HAVE_drun = yes ]; then
               run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled
             fi
-            if [ $HAVE_ic_ref_run = yes ]; then
-              run_if ref.wasm ic-ref-run $WRAP_ic_ref_run $out/$base.ref.wasm $mangled
-            fi
           elif [ $PERF = yes ]
           then
             if [ $HAVE_drun = yes ]; then
-              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222> $out/$base.metrics
-              if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
+              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled
+              if [ -n "$PERF_OUT" ]
               then
-                LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_(?:cycles|instructions)_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
+                #LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_(?:cycles|instructions)_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
+                #LANG=C perl -ne "s/_//g; print \"gas/$base;\$1\n\" if /^debug\.print: instructions: ([0-9]+)\$/" $out/$base.drun-run >> $PERF_OUT;
+                echo "gas/$base;$PERF_INSTRUCTION_COUNT" >> $PERF_OUT;
+                unset PERF_INSTRUCTION_COUNT  # Clear for next test.
               fi
               run_if opt.wasm drun-run-opt $WRAP_drun $out/$base.opt.wasm $mangled
             fi
@@ -494,7 +484,7 @@ do
     # The file is a drun script, so a multi-canister project
     mkdir -p $out/$base
 
-    for runner in ic-ref-run drun
+    for runner in drun
     do
       if grep -q "# *SKIP $runner" $(basename $file)
       then
@@ -514,12 +504,32 @@ do
           continue
         fi
       fi
+      if grep -q "# SKIP-SANITY-CHECKS" $(basename $file)
+      then
+        if [[ $EXTRA_MOC_ARGS == *"--sanity-checks"* ]]
+        then
+          continue
+        fi
+      fi
       if grep -q "# DEFAULT-GC-ONLY" $(basename $file)
       then
         if [[ $EXTRA_MOC_ARGS == *"--copying-gc"* ]] || [[ $EXTRA_MOC_ARGS == *"--compacting-gc"* ]] || [[ $EXTRA_MOC_ARGS == *"--generational-gc"* ]] || [[ $EXTRA_MOC_ARGS == *"--incremental-gc"* ]]
         then
           continue
         fi
+      fi
+      if grep -q "# INCREMENTAL-GC-ONLY" $(basename $file)
+      then
+        if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
+        then
+          $ECHO " Skipped (not applicable to incremental gc)"
+          continue
+        fi
+      fi
+      if grep -q "# APPLICATION-SUBNET" $(basename $file)
+      then
+        # set drun args to use application subnet
+        EXTRA_DRUN_ARGS="--subnet-type application"
       fi
       
       have_var_name="HAVE_${runner//-/_}"
@@ -543,7 +553,7 @@ do
         fi
         moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $mo_file | cut -c11- | paste -sd' '))"
         flags_var_name="FLAGS_${runner//-/_}"
-        run $mo_base.$runner.comp moc $EXTRA_MOC_ARGS ${!flags_var_name} $moc_extra_flags --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
+        run $mo_base.$runner.comp moc $MOC_ARGS $EXTRA_MOC_ARGS ${!flags_var_name} $moc_extra_flags --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
       done
 
       # mangle drun script
@@ -551,7 +561,9 @@ do
 
       # run wrapper
       wrap_var_name="WRAP_${runner//-/_}"
-      run $runner ${!wrap_var_name} $out/$base/$base.$runner.drun
+      run $runner ${!wrap_var_name} $out/$base/$base.$runner.drun $EXTRA_DRUN_ARGS
+      # clear EXTRA_DRUN_ARGS.
+      EXTRA_DRUN_ARGS=""
     done
 
   ;;
@@ -610,7 +622,7 @@ do
     # files in cmp
     # Compatibility check
     $ECHO -n " [cmp]"
-    moc --stable-compatible $(<$base.cmp) > $out/$base.cmp 2>&1
+    moc $MOC_ARGS --stable-compatible $(<$base.cmp) > $out/$base.cmp 2>&1
     succeeded=$?
     if [ "$succeeded" -eq 0 ]
     then

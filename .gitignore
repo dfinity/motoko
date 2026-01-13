@@ -13,9 +13,6 @@ result*
 
 /samples/**/*.txt
 
-**/*.mo.vpr
-test/viper/tmp
-
 enable-internals
 
 # Editor configuration
@@ -32,3 +29,5 @@ Session.vim
 
 # Mac OS
 *DS_STORE*
+
+.direnv

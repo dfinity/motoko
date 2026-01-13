@@ -5,12 +5,6 @@
  (instrumentation (backend bisect_ppx --bisect-silent yes))
 )
 (executable
- (name mo_ide)
- (modules mo_ide)
- (libraries languageServer)
- (instrumentation (backend bisect_ppx --bisect-silent yes))
-)
-(executable
  (name mo_ld)
  (modules mo_ld)
  (libraries wasm_exts linking)

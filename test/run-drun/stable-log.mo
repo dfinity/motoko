@@ -56,14 +56,14 @@ actor {
 
   public func readAll() : async () {
     let ts = await readLast(count);
-    for (t in ts.vals()) {
+    for (t in ts.values()) {
       Prim.debugPrint(t);
     };
   };
 
   public func readExtra() : async () {
     let ts = await readLast(2*count);
-    for (t in ts.vals()) {
+    for (t in ts.values()) {
       Prim.debugPrint(t);
     }
   }
@@ -74,8 +74,6 @@ actor {
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
-// too slow on ic-ref-run:
-//SKIP comp-ref
 
 //CALL ingress populate "DIDL\x00\x00"
 //CALL ingress readAll "DIDL\x00\x00"

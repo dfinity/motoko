@@ -1,6 +1,4 @@
-# None
-The absent value
-
+# base/None
 The `None` type represents a type with _no_ value.
 
 It is often used to type code that fails to return control (e.g. an infinite loop)
@@ -13,9 +11,9 @@ type None = Prim.Types.None
 
 The empty type. A subtype of all types.
 
-## Value `impossible`
+## Function `impossible`
 ``` motoko no-repl
-let impossible : <A>None -> A
+func impossible<A>(_ : None) : A
 ```
 
 Turns an absurd value into an arbitrary type.

@@ -23,7 +23,7 @@ access will trap).
 
 # Stable Memory Accesses
 
-Direct stable memory accesses (`ExperimentalStableMemory` in Motoko's base library) has been deprecated.
+Direct stable memory accesses (`ExperimentalStableMemory` in Motoko's base package) has been deprecated.
 Instead, [stable regions](StableRegions.md) are available to explicitly access stable memory.
 
 However, generally, programmers do not need to use stable memory due to the support of orthogonal persistence,

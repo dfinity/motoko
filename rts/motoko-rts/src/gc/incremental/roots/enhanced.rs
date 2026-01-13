@@ -29,6 +29,16 @@ pub unsafe fn visit_roots<C, V: Fn(&mut C, *mut Value)>(
             visit_field(context, location);
         }
     }
+    #[cfg(feature = "ic")]
+    {
+        // Always visit the dedup table as well.
+        // Otherwise the dedup table will be garbage collected.
+        use crate::persistence::get_dedup_table_ptr;
+        let dedup_table = get_dedup_table_ptr();
+        if dedup_table.is_non_null_ptr() {
+            visit_field(context, dedup_table);
+        }
+    }
 }
 
 #[cfg(feature = "ic")]
@@ -50,7 +60,9 @@ pub unsafe fn root_set() -> Roots {
 
 #[cfg(feature = "ic")]
 unsafe fn static_variables_location() -> *mut Value {
-    &mut STATIC_VARIABLES as *mut Value
+    use core::ptr::addr_of_mut;
+
+    addr_of_mut!(STATIC_VARIABLES) as *mut Value
 }
 
 #[ic_mem_fn(ic_only)]
@@ -58,13 +70,15 @@ pub unsafe fn initialize_static_variables<M: crate::memory::Memory>(mem: &mut M,
     use crate::barriers::write_with_barrier;
     use crate::memory::alloc_array;
     use crate::types::{NULL_POINTER, TAG_ARRAY_M};
+    use core::ptr::addr_of_mut;
 
     let variables = alloc_array(mem, TAG_ARRAY_M, amount);
     let array = variables.as_array();
     for index in 0..amount {
         array.initialize(index, NULL_POINTER, mem);
     }
-    let location = &mut STATIC_VARIABLES as *mut Value;
+
+    let location = addr_of_mut!(STATIC_VARIABLES) as *mut Value;
     write_with_barrier(mem, location, variables);
 }
 

@@ -35,15 +35,16 @@ let rec exp e = match e.it with
   | TryE (e, cs, None) -> "TryE" $$ [exp e] @ List.map case cs
   | TryE (e, cs, Some (i, _)) -> "TryE" $$ [exp e] @ List.map case cs @ Atom ";" :: [id i]
 
-and system { meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type} = (* TODO: show meta? *)
+and system { meta; preupgrade; postupgrade; heartbeat; timer; inspect; low_memory; stable_record; stable_type} = (* TODO: show meta? *)
   "System" $$ [
       "Pre" $$ [exp preupgrade];
       "Post" $$ [exp postupgrade];
       "Heartbeat" $$ [exp heartbeat];
       "Timer" $$ [exp timer];
       "Inspect" $$ [exp inspect];
+      "LowMemory" $$ [exp low_memory];
       "StableRecord" $$ [exp stable_record];
-      "StableType" $$ [typ stable_type]
+      "StableType" $$ [typ stable_type.pre; typ stable_type.post]
     ]
 
 and lexp le = match le.it with
@@ -72,14 +73,16 @@ and prim = function
   | ActorDotPrim n    -> "ActorDotPrim" $$ [Atom n]
   | ArrayPrim (m, t)  -> "ArrayPrim"  $$ [mut m; typ t]
   | IdxPrim           -> Atom "IdxPrim"
+  | IdxBlobPrim       -> Atom "IdxBlobPrim"
   | NextArrayOffset   -> Atom "NextArrayOffset"
   | EqArrayOffset     -> Atom "EqArrayOffset"
   | DerefArrayOffset  -> Atom "DerefArrayOffset"
   | GetLastArrayOffset -> Atom "GetLastArrayOffset"
   | BreakPrim i       -> "BreakPrim"  $$ [id i]
   | RetPrim           -> Atom "RetPrim"
-  | AwaitPrim Type.Fut -> Atom "AwaitPrim"
-  | AwaitPrim Type.Cmp -> Atom "AwaitPrim*"
+  | AwaitPrim (Type.AwaitFut false) -> Atom "AwaitPrim"
+  | AwaitPrim (Type.AwaitFut true) -> Atom "AwaitPrim?"
+  | AwaitPrim Type.AwaitCmp -> Atom "AwaitPrim*"
   | AssertPrim        -> Atom "AssertPrim"
   | ThrowPrim         -> Atom "ThrowPrim"
   | ShowPrim t        -> "ShowPrim" $$ [typ t]
@@ -94,18 +97,21 @@ and prim = function
   | ActorOfIdBlob t   -> "ActorOfIdBlob" $$ [typ t]
   | BlobOfIcUrl       -> Atom "BlobOfIcUrl"
   | IcUrlOfBlob       -> Atom "IcUrlOfBlob"
-  | SelfRef t         -> "SelfRef"    $$ [typ t]
+  | SelfRef t         -> "SelfRef" $$ [typ t]
   | SystemTimePrim    -> Atom "SystemTimePrim"
   | SystemCyclesAddPrim -> Atom "SystemCyclesAddPrim"
   | SystemCyclesAcceptPrim -> Atom "SystemCyclesAcceptPrim"
   | SystemCyclesAvailablePrim -> Atom "SystemCyclesAvailablePrim"
   | SystemCyclesBalancePrim -> Atom "SystemCyclesBalancePrim"
   | SystemCyclesRefundedPrim -> Atom "SystemCyclesRefundedPrim"
+  | SystemCyclesBurnPrim -> Atom "SystemCyclesBurnPrim"
+  | SystemTimeoutSetPrim -> Atom "SystemTimeoutSetPrim"
   | SetCertifiedData  -> Atom "SetCertifiedData"
   | GetCertificate    -> Atom "GetCertificate"
   | OtherPrim s       -> Atom s
-  | CPSAwait (Type.Fut, t) -> "CPSAwait" $$ [typ t]
-  | CPSAwait (Type.Cmp, t) -> "CPSAwait*" $$ [typ t]
+  | CPSAwait (Type.AwaitFut false, t) -> "CPSAwait" $$ [typ t]
+  | CPSAwait (Type.AwaitFut true, t) -> "CPSAwait?" $$ [typ t]
+  | CPSAwait (Type.AwaitCmp, t) -> "CPSAwait*" $$ [typ t]
   | CPSAsync (Type.Fut, t) -> "CPSAsync" $$ [typ t]
   | CPSAsync (Type.Cmp, t) -> "CPSAsync*" $$ [typ t]
   | ICArgDataPrim     -> Atom "ICArgDataPrim"
@@ -117,6 +123,7 @@ and prim = function
   | ICCallPrim        -> Atom "ICCallPrim"
   | ICCallRawPrim     -> Atom "ICCallRawPrim"
   | ICMethodNamePrim  -> Atom "ICMethodNamePrim"
+  | ICReplyDeadlinePrim  -> Atom "ICReplyDeadlinePrim"
   | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
   | ICStableRead t    -> "ICStableRead" $$ [typ t]
   | DataInspection t  -> "DataInspection" $$ [typ t]

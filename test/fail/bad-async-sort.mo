@@ -9,6 +9,7 @@ actor {
 
   func anon1() : async () {
     await async* {}; // reject
+    await? async* {}; // reject
   };
 
   func anon2() : async () {

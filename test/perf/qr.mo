@@ -9,7 +9,6 @@ with the following changes:
 
 */
 
-
 /**
  * Module     : qr.mo
  * Copyright  : 2020 DFINITY Stiftung
@@ -27,6 +26,7 @@ import Option "./qr/option";
 import Symbol "./qr/symbol";
 import Version "./qr/version";
 import Prelude "./qr/prelude";
+import Prim "mo:⛔";
 
 actor QR {
 
@@ -41,39 +41,50 @@ actor QR {
     version : Version,
     level : ErrorCorrection,
     mode : Mode,
-    text : Text
+    text : Text,
   ) : async ?Matrix {
     Option.bind<Version, Matrix>(
       Version.new(Version.unbox(version)),
       func _ {
         Option.bind<List<Bool>, Matrix>(
           Generic.encode(version, mode, text),
-          func (data) {
+          func(data) {
             Option.bind<List<Bool>, Matrix>(
               Block.interleave(version, level, data),
-              func (code) {
+              func(code) {
                 let (arrays, maskRef) = Mask.generate(version, level, code);
-                ?#Matrix (
+                ?#Matrix(
                   Symbol.freeze(
-                  Symbol.applyVersions(version,
-                  Symbol.applyFormats(version, level, maskRef, arrays)))
-                )
-              }
-            )
-          }
-        )
-      }
-    )
+                    Symbol.applyVersions(
+                      version,
+                      Symbol.applyFormats(version, level, maskRef, arrays),
+                    )
+                  )
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   };
 
   public func show(matrix : Matrix) : async Text {
     let #Matrix arrays = matrix;
-    Array.foldl<[Bool], Text>(func (accum1, array) {
-      Array.foldl<Bool, Text>(func (accum2, bit) {
-        let text = if bit "##" else "  ";
-        text # accum2
-      }, "\n", array) # accum1
-    }, "", arrays)
+    Array.foldl<[Bool], Text>(
+      func(accum1, array) {
+        Array.foldl<Bool, Text>(
+          func(accum2, bit) {
+            let text = if bit "##" else "  ";
+            text # accum2;
+          },
+          "\n",
+          array,
+        ) # accum1;
+      },
+      "",
+      arrays,
+    );
   };
 
   public func go() : async () {
@@ -82,14 +93,21 @@ actor QR {
       (#Version 1, #Q, #Alphanumeric, "HELLO WORLD"),
       (#Version 2, #M, #Alphanumeric, "HTTPS://SDK.DFINITY.ORG"),
     ];
-    for ((version, level, mode, text) in tests.vals())  {
+    for ((version, level, mode, text) in tests.values()) {
       let result = await QR.encode(version, level, mode, text);
-      Prelude.printLn(switch result {
-        case (?matrix) "\n" # (await QR.show(matrix));
-        case _ "Error: Invalid input!";
-      })
+      Prelude.printLn(
+        switch result {
+          case (?matrix) "\n" # (await QR.show(matrix));
+          case _ "Error: Invalid input!";
+        }
+      );
     };
   };
-}
+
+  public func getPerfData() : async () {
+    Prim.debugPrint("instructions: " # debug_show (Prim.rts_lifetime_instructions()));
+  };
+};
 
 //CALL ingress go 0x4449444C0000
+//CALL ingress getPerfData 0x4449444C0000

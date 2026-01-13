@@ -1,0 +1,4 @@
+# CLASSICAL-PERSISTENCE-ONLY
+install $ID migrate-upgrade-instr-stable-region/old.wasm ""
+upgrade $ID migrate-upgrade-instr-stable-region/test.mo ""
+ingress $ID test "DIDL\x00\x00"

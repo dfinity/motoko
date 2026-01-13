@@ -17,6 +17,7 @@ let can_show t =
       | Prim (Nat64|Int64) -> true
       | Prim Float -> true
       | Tup ts' -> List.for_all go ts'
+      | Weak t'
       | Opt t' -> go t'
       | Array t' -> go (as_immut t')
       | Obj (Object, fs) ->
@@ -57,6 +58,12 @@ let rec show_val t v =
   | T.(Prim Null), Value.Null -> "null"
   | T.Opt _, Value.Null -> "null"
   | T.Opt t', Value.Opt v -> "?" ^ parens (show_val t' v)
+  | T.Weak t', Value.Weak w ->
+     (* TODO: suppress parens *)
+     let g_opt = Weak.get w 0 in
+     (match g_opt with
+     | None -> "(weak _)"
+     | Some v -> Printf.sprintf "(weak %s)" (parens (show_val t' v)))
   | T.Tup ts', Value.Tup vs ->
     Printf.sprintf "(%s%s)"
       (String.concat ", " (List.map2 show_val ts' vs))
@@ -71,9 +78,7 @@ let rec show_val t v =
   | T.Obj (_, fts), Value.Obj fs ->
     Printf.sprintf "{%s}"
       (String.concat "; "
-         (List.filter_map (fun ft ->
-            if T.is_typ ft.T.typ then None else
-            Some (show_field fs ft)) fts))
+         (List.map (show_field fs) (T.val_fields fts)))
   | T.Variant fs, Value.Variant (l, v) ->
     begin match List.find_opt (fun {T.lab = l'; _} -> l = l') fs with
     | Some {T.typ = T.Tup []; _} -> Printf.sprintf "#%s" l

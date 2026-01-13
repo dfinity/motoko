@@ -82,13 +82,14 @@ let html_of_func_sort : Syntax.func_sort -> t =
     | Shared Query -> keyword "shared query "
     | Shared Write -> keyword "shared ")
 
-let html_of_obj_sort : Syntax.obj_sort -> t =
+let html_of_obj_sort : 'note Syntax.sort -> t =
  fun sort ->
   Mo_types.Type.(
     match sort.Source.it with
     | Object -> empty
     | Actor -> keyword "actor "
     | Module -> keyword "module "
+    | Mixin -> keyword "mixin "
     | Memory -> keyword "memory ")
 
 let rec html_of_type : env -> Syntax.typ -> t =
@@ -108,6 +109,7 @@ let rec html_of_type : env -> Syntax.typ -> t =
   | Syntax.NamedT (id, t) ->
       string "(" ++ html_of_typ_item env (Some id, t) ++ string ")"
   | Syntax.OptT typ -> string "?" ++ html_of_type env typ
+  | Syntax.WeakT typ -> string "weak" ++ html_of_type env typ
   | Syntax.TupT typ_list ->
       string "("
       ++ join_with (string ", ") (List.map (html_of_typ_item env) typ_list)
@@ -207,12 +209,20 @@ let html_of_type_doc : env -> Extract.type_doc -> Xref.t -> t =
         ++ string " = "
         ++ html_of_type env ty)
 
-let html_of_arg : env -> Extract.function_arg_doc -> t =
+let html_of_named_arg : env -> Extract.function_arg_named -> t =
  fun env arg ->
   parameter arg.name
   ++ Option.fold ~none:empty
        ~some:(fun arg -> string " : " ++ html_of_type env arg)
        arg.typ
+
+let html_of_arg : env -> Extract.function_arg_doc -> t =
+ fun env -> function
+  | FAObject fields ->
+      string "{ "
+      ++ join_with (string "; ") (List.map (html_of_named_arg env) fields)
+      ++ string " }"
+  | FANamed arg -> html_of_named_arg env arg
 
 let rec html_of_declaration : env -> Xref.t -> Extract.declaration_doc -> t =
  fun env xref dec ->
@@ -290,7 +300,14 @@ and html_of_doc : env -> Extract.doc -> t =
     ++ p (html_of_comment (doc_comment |> Option.value ~default:"")))
 
 let html_of_docs : render_input -> Cow.Html.t =
- fun { all_modules; module_comment; declarations; lookup_type; current_path } ->
+ fun {
+       package_opt;
+       all_modules;
+       module_comment;
+       declarations;
+       lookup_type;
+       current_path;
+     } ->
   let env = { lookup_type } in
   let path_to_root =
     String.split_on_char '/' current_path
@@ -336,7 +353,11 @@ let html_of_docs : render_input -> Cow.Html.t =
     body
       (navigation
       ++ div ~cls:"documentation"
-           (h1 (string current_path)
+           (h1
+              (string
+                 (Printf.sprintf "%s%s"
+                    (match package_opt with Some s -> s ^ "/" | None -> "")
+                    current_path))
            ++ html_of_comment (Option.value ~default:"" module_comment)
            ++ list (List.map (html_of_doc env) declarations)))
   in
@@ -345,8 +366,8 @@ let html_of_docs : render_input -> Cow.Html.t =
 let render_docs : render_input -> string =
  fun input -> Format.asprintf "%s" (Cow.Html.to_string (html_of_docs input))
 
-let make_index : render_input list -> string =
- fun inputs ->
+let make_index : string option -> render_input list -> string =
+ fun package_opt inputs ->
   let header =
     head
       ~attrs:[ ("title", "Motoko docs") ]
@@ -362,7 +383,11 @@ let make_index : render_input list -> string =
   in
   let bdy =
     div ~cls:"index-container"
-      (h1 ~cls:"index-header" (string "Index of modules")
+      (h1 ~cls:"index-header"
+         (string
+            (match package_opt with
+            | None -> "Motoko package"
+            | Some s -> "Motoko " ^ s ^ " package"))
       ++ ul ~cls:"index-listing" ~licls:"index-item" (List.map make_link inputs)
       )
   in

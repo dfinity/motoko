@@ -14,4 +14,3 @@ a.go(); //OR-CALL ingress go "DIDL\x00\x00"
 
 //SKIP run-ir
 //SKIP run-low
-//SKIP ic-ref-run

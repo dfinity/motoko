@@ -1,5 +1,5 @@
-# Result
-Error handling with the Result type.
+# base/Result
+Error handling with the `Result` type.
 
 ## Type `Result`
 ``` motoko no-repl
@@ -62,7 +62,7 @@ assert(between10And20(21) == #err("Not smaller than 20."));
 func flatten<Ok, Error>(result : Result<Result<Ok, Error>, Error>) : Result<Ok, Error>
 ```
 
-Flattens a nested Result.
+Flattens a nested `Result`.
 
 ```motoko
 import Result "mo:base/Result";
@@ -90,7 +90,7 @@ Maps the `Err` type/value, leaving any `Ok` type/value unchanged.
 func fromOption<R, E>(x : ?R, err : E) : Result<R, E>
 ```
 
-Create a result from an option, including an error value to handle the `null` case.
+Create a `Result` from an option, including an error value to handle the `null` case.
 ```motoko
 import Result "mo:base/Result";
 assert(Result.fromOption(?42, "err") == #ok(42));
@@ -102,7 +102,7 @@ assert(Result.fromOption(null, "err") == #err("err"));
 func toOption<R, E>(r : Result<R, E>) : ?R
 ```
 
-Create an option from a result, turning all #err into `null`.
+Create an option from a `Result`, turning all #err into `null`.
 ```motoko
 import Result "mo:base/Result";
 assert(Result.toOption(#ok(42)) == ?42);

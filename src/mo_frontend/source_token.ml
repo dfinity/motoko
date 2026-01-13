@@ -13,6 +13,7 @@ type token =
   | RCURLY
   | AWAIT
   | AWAITSTAR
+  | AWAITQUEST
   | ASYNC
   | ASYNCSTAR
   | BREAK
@@ -27,6 +28,7 @@ type token =
   | IF
   | IGNORE
   | IN
+  | IMPLICIT
   | ELSE
   | SWITCH
   | LOOP
@@ -35,6 +37,7 @@ type token =
   | RETURN
   | SYSTEM
   | STABLE
+  | TRANSIENT
   | TRY
   | THROW
   | WITH
@@ -45,6 +48,7 @@ type token =
   | OBJECT
   | ACTOR
   | CLASS
+  | PERSISTENT
   | PUBLIC
   | PRIVATE
   | SHARED
@@ -58,10 +62,10 @@ type token =
   | BANG
   | AND
   | OR
-  | IMPLIES
-  | OLD
   | NOT
   | IMPORT
+  | INCLUDE
+  | MIXIN
   | MODULE
   | DEBUG_SHOW
   | TO_CANDID
@@ -111,6 +115,7 @@ type token =
   | ROTRASSIGN
   | NULL
   | DOT_NUM of string
+  | NUM_DOT_ID of string * string
   | NAT of string
   | FLOAT of string
   | CHAR of Mo_values.Value.unicode
@@ -118,16 +123,16 @@ type token =
   | ID of string
   | TEXT of string
   | PRIM
+  | PIPE
   | UNDERSCORE
+  | WEAK
   | COMPOSITE
-  | INVARIANT
   (* Trivia *)
   | LINEFEED of line_feed
   | SINGLESPACE
   | SPACE of int
   | TAB of int (* shudders *)
   | COMMENT of string
-  | PIPE
 
 let to_parser_token :
     token -> (Parser.token, line_feed trivia) result = function
@@ -143,6 +148,7 @@ let to_parser_token :
   | RCURLY -> Ok Parser.RCURLY
   | AWAIT -> Ok Parser.AWAIT
   | AWAITSTAR -> Ok Parser.AWAITSTAR
+  | AWAITQUEST -> Ok Parser.AWAITQUEST
   | ASYNC -> Ok Parser.ASYNC
   | ASYNCSTAR -> Ok Parser.ASYNCSTAR
   | BREAK -> Ok Parser.BREAK
@@ -156,12 +162,14 @@ let to_parser_token :
   | IF -> Ok Parser.IF
   | IGNORE -> Ok Parser.IGNORE
   | IN -> Ok Parser.IN
+  | IMPLICIT -> Ok Parser.IMPLICIT
   | ELSE -> Ok Parser.ELSE
   | SWITCH -> Ok Parser.SWITCH
   | LOOP -> Ok Parser.LOOP
   | WHILE -> Ok Parser.WHILE
   | FOR -> Ok Parser.FOR
   | RETURN -> Ok Parser.RETURN
+  | TRANSIENT -> Ok Parser.TRANSIENT
   | TRY -> Ok Parser.TRY
   | THROW -> Ok Parser.THROW
   | FINALLY -> Ok Parser.FINALLY
@@ -173,6 +181,7 @@ let to_parser_token :
   | OBJECT -> Ok Parser.OBJECT
   | ACTOR -> Ok Parser.ACTOR
   | CLASS -> Ok Parser.CLASS
+  | PERSISTENT -> Ok Parser.PERSISTENT
   | PUBLIC -> Ok Parser.PUBLIC
   | PRIVATE -> Ok Parser.PRIVATE
   | SHARED -> Ok Parser.SHARED
@@ -188,10 +197,10 @@ let to_parser_token :
   | BANG -> Ok Parser.BANG
   | AND -> Ok Parser.AND
   | OR -> Ok Parser.OR
-  | IMPLIES -> Ok Parser.IMPLIES
-  | OLD -> Ok Parser.OLD
   | NOT -> Ok Parser.NOT
   | IMPORT -> Ok Parser.IMPORT
+  | INCLUDE -> Ok Parser.INCLUDE
+  | MIXIN -> Ok Parser.MIXIN
   | MODULE -> Ok Parser.MODULE
   | DEBUG_SHOW -> Ok Parser.DEBUG_SHOW
   | TO_CANDID -> Ok Parser.TO_CANDID
@@ -240,6 +249,7 @@ let to_parser_token :
   | ROTLASSIGN -> Ok Parser.ROTLASSIGN
   | ROTRASSIGN -> Ok Parser.ROTRASSIGN
   | NULL -> Ok Parser.NULL
+  | NUM_DOT_ID (ns, id) -> Ok (Parser.NUM_DOT_ID (ns, id))
   | DOT_NUM s -> Ok (Parser.DOT_NUM s)
   | NAT s -> Ok (Parser.NAT s)
   | FLOAT s -> Ok (Parser.FLOAT s)
@@ -250,8 +260,8 @@ let to_parser_token :
   | PRIM -> Ok Parser.PRIM
   | UNDERSCORE -> Ok Parser.UNDERSCORE
   | COMPOSITE -> Ok Parser.COMPOSITE
-  | INVARIANT -> Ok Parser.INVARIANT
   | PIPE -> Ok Parser.PIPE
+  | WEAK -> Ok Parser.WEAK
   (*Trivia *)
   | SINGLESPACE -> Error (Space 1)
   | SPACE n -> Error (Space n)
@@ -272,6 +282,7 @@ let string_of_parser_token = function
   | Parser.RCURLY -> "RCURLY"
   | Parser.AWAIT -> "AWAIT"
   | Parser.AWAITSTAR -> "AWAIT*"
+  | Parser.AWAITQUEST -> "AWAIT?"
   | Parser.ASYNC -> "ASYNC"
   | Parser.ASYNCSTAR -> "ASYNC*"
   | Parser.BREAK -> "BREAK"
@@ -285,6 +296,7 @@ let string_of_parser_token = function
   | Parser.IF -> "IF"
   | Parser.IGNORE -> "IGNORE"
   | Parser.IN -> "IN"
+  | Parser.IMPLICIT -> "IMPLICIT"
   | Parser.ELSE -> "ELSE"
   | Parser.SWITCH -> "SWITCH"
   | Parser.LOOP -> "LOOP"
@@ -302,11 +314,13 @@ let string_of_parser_token = function
   | Parser.OBJECT -> "OBJECT"
   | Parser.ACTOR -> "ACTOR"
   | Parser.CLASS -> "CLASS"
+  | Parser.PERSISTENT -> "PERSISTENT"
   | Parser.PUBLIC -> "PUBLIC"
   | Parser.PRIVATE -> "PRIVATE"
   | Parser.SHARED -> "SHARED"
   | Parser.STABLE -> "STABLE"
   | Parser.SYSTEM -> "SYSTEM"
+  | Parser.TRANSIENT -> "TRANSIENT"
   | Parser.QUERY -> "QUERY"
   | Parser.SEMICOLON -> "SEMICOLON"
   | Parser.SEMICOLON_EOL -> "SEMICOLON_EOL"
@@ -320,6 +334,8 @@ let string_of_parser_token = function
   | Parser.OR -> "OR"
   | Parser.NOT -> "NOT"
   | Parser.IMPORT -> "IMPORT"
+  | Parser.INCLUDE -> "INCLUDE"
+  | Parser.MIXIN -> "MIXIN"
   | Parser.MODULE -> "MODULE"
   | Parser.DEBUG_SHOW -> "DEBUG_SHOW"
   | Parser.TO_CANDID -> "TO_CANDID"
@@ -371,6 +387,7 @@ let string_of_parser_token = function
   | Parser.ROTLASSIGN -> "ROTLASSIGN"
   | Parser.ROTRASSIGN -> "ROTRASSIGN"
   | Parser.NULL -> "NULL"
+  | Parser.NUM_DOT_ID _ -> "NUM_DOT_IDENT of string * string"
   | Parser.DOT_NUM _ -> "DOT_NUM of string"
   | Parser.NAT _ -> "NAT of string"
   | Parser.FLOAT _ -> "FLOAT of string"
@@ -381,10 +398,8 @@ let string_of_parser_token = function
   | Parser.PRIM -> "PRIM"
   | Parser.UNDERSCORE -> "UNDERSCORE"
   | Parser.COMPOSITE -> "COMPOSITE"
-  | Parser.INVARIANT -> "INVARIANT"
-  | Parser.IMPLIES -> "IMPLIES"
-  | Parser.OLD -> "OLD"
   | Parser.PIPE -> "PIPE"
+  | Parser.WEAK -> "WEAK"
 
 let is_lineless_trivia : token -> void trivia option = function
   | SINGLESPACE -> Some (Space 1)

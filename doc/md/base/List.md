@@ -1,6 +1,11 @@
-# List
+# base/List
 Purely-functional, singly-linked lists.
 A list of type `List<T>` is either `null` or an optional pair of a value of type `T` and a tail, itself of type `List<T>`.
+
+:::note Assumptions
+
+Runtime and space complexity assumes that `equal`, and other functions execute in `O(1)` time and space.
+:::
 
 To use this library, import it using:
 
@@ -26,9 +31,9 @@ Example:
 List.nil<Nat>() // => null
 ```
 
-Runtime: O(1)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |
 
 ## Function `isNil`
 ``` motoko no-repl
@@ -42,9 +47,9 @@ Example:
 List.isNil<Nat>(null) // => true
 ```
 
-Runtime: O(1)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |
 
 ## Function `push`
 ``` motoko no-repl
@@ -58,9 +63,9 @@ Example:
 List.push<Nat>(0, null) // => ?(0, null);
 ```
 
-Runtime: O(1)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |
 
 ## Function `last`
 ``` motoko no-repl
@@ -73,9 +78,9 @@ Example:
 List.last<Nat>(?(0, ?(1, null))) // => ?1
 ```
 
-Runtime: O(size)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(1)` |
 
 ## Function `pop`
 ``` motoko no-repl
@@ -90,9 +95,9 @@ Example:
 List.pop<Nat>(?(0, ?(1, null))) // => (?0, ?(1, null))
 ```
 
-Runtime: O(1)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |
 
 ## Function `size`
 ``` motoko no-repl
@@ -106,9 +111,9 @@ Example:
 List.size<Nat>(?(0, ?(1, null))) // => 2
 ```
 
-Runtime: O(size)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(1)` |
 
 ## Function `get`
 ``` motoko no-repl
@@ -117,18 +122,21 @@ func get<T>(l : List<T>, n : Nat) : ?T
 
 Access any item in a list, zero-based.
 
-NOTE: Indexing into a list is a linear operation, and usually an
+:::note Consideration
+Indexing into a list is a linear operation, and usually an
 indication that a list might not be the best data structure
 to use.
+:::
 
 Example:
+
 ```motoko include=initialize
 List.get<Nat>(?(0, ?(1, null)), 1) // => ?1
 ```
 
-Runtime: O(size)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(1)` |
 
 ## Function `reverse`
 ``` motoko no-repl
@@ -142,9 +150,9 @@ Example:
 List.reverse<Nat>(?(0, ?(1, ?(2, null)))) // => ?(2, ?(1, ?(0, null)))
 ```
 
-Runtime: O(size)
-
-Space: O(size)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
 ## Function `iterate`
 ``` motoko no-repl
@@ -160,11 +168,10 @@ List.iterate<Nat>(?(0, ?(1, ?(2, null))), func n { sum += n });
 sum // => 3
 ```
 
-Runtime: O(size)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
-Space: O(size)
-
-*Runtime and space assumes that `f` runs in O(1) time and space.
 
 ## Function `map`
 ``` motoko no-repl
@@ -180,10 +187,9 @@ import Nat = "mo:base/Nat"
 List.map<Nat, Text>(?(0, ?(1, ?(2, null))), Nat.toText) // => ?("0", ?("1", ?("2", null))
 ```
 
-Runtime: O(size)
-
-Space: O(size)
-*Runtime and space assumes that `f` runs in O(1) time and space.
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
 ## Function `filter`
 ``` motoko no-repl
@@ -198,9 +204,9 @@ Example:
 List.filter<Nat>(?(0, ?(1, ?(2, null))), func n { n != 1 }) // => ?(0, ?(2, null))
 ```
 
-Runtime: O(size)
-
-Space: O(size)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
 ## Function `partition`
 ``` motoko no-repl
@@ -217,11 +223,10 @@ Example:
 List.partition<Nat>(?(0, ?(1, ?(2, null))), func n { n != 1 }) // => (?(0, ?(2, null)), ?(1, null))
 ```
 
-Runtime: O(size)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
-Space: O(size)
-
-*Runtime and space assumes that `f` runs in O(1) time and space.
 
 ## Function `mapFilter`
 ``` motoko no-repl
@@ -245,11 +250,10 @@ List.mapFilter<Nat, Nat>(
 ) // => ?(4, ?(6, null))
 ```
 
-Runtime: O(size)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
-Space: O(size)
-
-*Runtime and space assumes that `f` runs in O(1) time and space.
 
 ## Function `mapResult`
 ``` motoko no-repl
@@ -273,11 +277,10 @@ List.mapResult<Nat, Nat, Text>(
 ); // => #ok ?(2, ?(4, ?(6, null))
 ```
 
-Runtime: O(size)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
-Space: O(size)
-
-*Runtime and space assumes that `f` runs in O(1) time and space.
 
 ## Function `append`
 ``` motoko no-repl
@@ -294,9 +297,9 @@ List.append<Nat>(
 ) // => ?(0, ?(1, ?(2, ?(3, ?(4, ?(5, null))))))
 ```
 
-Runtime: O(size(l))
-
-Space: O(size(l))
+| Runtime     | Space       |
+|-------------|-------------|
+| `O(size(l))`  | `O(size(l))`  |
 
 ## Function `flatten`
 ``` motoko no-repl
@@ -314,9 +317,9 @@ List.flatten<Nat>(
 ); // => ?(0, ?(1, ?(2, ?(3, ?(4, ?(5, null))))))
 ```
 
-Runtime: O(size*size)
-
-Space: O(size*size)
+| Runtime     | Space       |
+|-------------|-------------|
+| `O(size*size)`  | `O(size*size)`  |
 
 ## Function `take`
 ``` motoko no-repl
@@ -335,9 +338,9 @@ List.take<Nat>(
 ); // => ?(0, ?(1, null))
 ```
 
-Runtime: O(n)
-
-Space: O(n)
+| Runtime     | Space       |
+|-------------|-------------|
+| `O(n)`  | `O(n)`  |
 
 ## Function `drop`
 ``` motoko no-repl
@@ -354,9 +357,9 @@ List.drop<Nat>(
 ); // => ?(2, null)
 ```
 
-Runtime: O(n)
-
-Space: O(1)
+| Runtime     | Space       |
+|-------------|-------------|
+| `O(n)`  | `O(1)`  |
 
 ## Function `foldLeft`
 ``` motoko no-repl
@@ -370,7 +373,6 @@ left to right.
 Example:
 ```motoko include=initialize
 import Nat "mo:base/Nat";
-
 List.foldLeft<Nat, Text>(
   ?(1, ?(2, ?(3, null))),
   "",
@@ -378,11 +380,10 @@ List.foldLeft<Nat, Text>(
 ) // => "123"
 ```
 
-Runtime: O(size(list))
+| Runtime        | Space (Heap) | Space (Stack) |
+|----------------|--------------|----------------|
+| `O(size(list))`  | `O(1)`         | `O(1)`    |
 
-Space: O(1) heap, O(1) stack
-
-*Runtime and space assumes that `combine` runs in O(1) time and space.
 
 ## Function `foldRight`
 ``` motoko no-repl
@@ -396,7 +397,6 @@ right to left.
 Example:
 ```motoko include=initialize
 import Nat "mo:base/Nat";
-
 List.foldRight<Nat, Text>(
   ?(1, ?(2, ?(3, null))),
   "",
@@ -404,11 +404,10 @@ List.foldRight<Nat, Text>(
 ) // => "123"
 ```
 
-Runtime: O(size(list))
+| Runtime       | Space (Heap) | Space (Stack)     |
+|---------------|--------------|-------------------|
+| `O(size(list))` | `O(1)`         | `O(size(list))`  |
 
-Space: O(1) heap, O(size(list)) stack
-
-*Runtime and space assumes that `combine` runs in O(1) time and space.
 
 ## Function `find`
 ``` motoko no-repl
@@ -420,18 +419,16 @@ if such an element exists.
 
 Example:
 ```motoko include=initialize
-
 List.find<Nat>(
   ?(1, ?(2, ?(3, null))),
   func n { n > 1 }
 ); // => ?2
 ```
 
-Runtime: O(size)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(1)` |
 
-Space: O(1)
-
-*Runtime and space assumes that `f` runs in O(1) time and space.
 
 ## Function `some`
 ``` motoko no-repl
@@ -443,18 +440,16 @@ the given predicate `f` is true.
 
 Example:
 ```motoko include=initialize
-
 List.some<Nat>(
   ?(1, ?(2, ?(3, null))),
   func n { n > 1 }
 ) // => true
 ```
 
-Runtime: O(size(list))
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(1)` |
 
-Space: O(1)
-
-*Runtime and space assumes that `f` runs in O(1) time and space.
 
 ## Function `all`
 ``` motoko no-repl
@@ -466,18 +461,16 @@ elements.
 
 Example:
 ```motoko include=initialize
-
 List.all<Nat>(
   ?(1, ?(2, ?(3, null))),
   func n { n > 1 }
 ); // => false
 ```
 
-Runtime: O(size)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(1)` |
 
-Space: O(1)
-
-*Runtime and space assumes that `f` runs in O(1) time and space.
 
 ## Function `merge`
 ``` motoko no-repl
@@ -490,7 +483,6 @@ by the given relation `lessThanOrEqual`.
 
 Example:
 ```motoko include=initialize
-
 List.merge<Nat>(
   ?(1, ?(2, ?(4, null))),
   ?(2, ?(4, ?(6, null))),
@@ -498,11 +490,10 @@ List.merge<Nat>(
 ); // => ?(1, ?(2, ?(2, ?(4, ?(4, ?(6, null))))))),
 ```
 
-Runtime: O(size(l1) + size(l2))
+| Runtime                    | Space                  |
+|----------------------------|------------------------|
+| `O(size(l1) + size(l2))`     | `O(size(l1) + size(l2))` |
 
-Space: O(size(l1) + size(l2))
-
-*Runtime and space assumes that `lessThanOrEqual` runs in O(1) time and space.
 
 ## Function `compare`
 ``` motoko no-repl
@@ -522,11 +513,10 @@ List.compare<Nat>(
 ) // => #less
 ```
 
-Runtime: O(size(l1))
+| Runtime                    | Space                  |
+|----------------------------|------------------------|
+| `O(size(l1))`     | `O(1)` |
 
-Space: O(1)
-
-*Runtime and space assumes that argument `compare` runs in O(1) time and space.
 
 ## Function `equal`
 ``` motoko no-repl
@@ -546,11 +536,10 @@ List.equal<Nat>(
 ); // => false
 ```
 
-Runtime: O(size(l1))
+| Runtime                    | Space                  |
+|----------------------------|------------------------|
+| `O(size(l1))`     | `O(1)` |
 
-Space: O(1)
-
-*Runtime and space assumes that argument `equal` runs in O(1) time and space.
 
 ## Function `tabulate`
 ``` motoko no-repl
@@ -568,11 +557,10 @@ List.tabulate<Nat>(
 ) // => ?(0, ?(2, (?4, null)))
 ```
 
-Runtime: O(n)
+| Runtime                    | Space                  |
+|----------------------------|------------------------|
+| `O(n)`     | `O(n)` |
 
-Space: O(n)
-
-*Runtime and space assumes that `f` runs in O(1) time and space.
 
 ## Function `make`
 ``` motoko no-repl
@@ -588,9 +576,9 @@ List.make<Nat>(
 ) // => ?(0, null)
 ```
 
-Runtime: O(1)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |
 
 ## Function `replicate`
 ``` motoko no-repl
@@ -607,9 +595,9 @@ List.replicate<Nat>(
 ) // => ?(0, ?(0, ?(0, null)))
 ```
 
-Runtime: O(n)
-
-Space: O(n)
+| Runtime                    | Space                  |
+|----------------------------|------------------------|
+| `O(n)`     | `O(n)` |
 
 ## Function `zip`
 ``` motoko no-repl
@@ -629,9 +617,9 @@ List.zip<Nat, Text>(
 ) // => ?((0, "0"), ?((1, "1"), null))
 ```
 
-Runtime: O(min(size(xs), size(ys)))
-
-Space: O(min(size(xs), size(ys)))
+| Runtime                    | Space                  |
+|----------------------------|------------------------|
+| `O(min(size(xs), size(ys)))`     | `O(min(size(xs), size(ys)))` |
 
 ## Function `zipWith`
 ``` motoko no-repl
@@ -656,11 +644,10 @@ List.zipWith<Nat, Char, Text>(
 ) // => ?("0a", ?("1b", null))
 ```
 
-Runtime: O(min(size(xs), size(ys)))
+| Runtime                    | Space                  |
+|----------------------------|------------------------|
+| `O(min(size(xs), size(ys)))`     | `O(min(size(xs), size(ys)))` |
 
-Space: O(min(size(xs), size(ys)))
-
-*Runtime and space assumes that `f` runs in O(1) time and space.
 
 ## Function `split`
 ``` motoko no-repl
@@ -677,9 +664,9 @@ List.split<Nat>(
 ) // => (?(0, ?(1, null)), ?(2, null))
 ```
 
-Runtime: O(n)
-
-Space: O(n)
+| Runtime     | Space       |
+|-------------|-------------|
+| `O(n)`  | `O(n)`  |
 
 ## Function `chunks`
 ``` motoko no-repl
@@ -703,9 +690,9 @@ List.chunks<Nat>(
 */
 ```
 
-Runtime: O(size)
-
-Space: O(size)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
 ## Function `fromArray`
 ``` motoko no-repl
@@ -720,9 +707,9 @@ List.fromArray<Nat>([ 0, 1, 2, 3, 4])
 // =>  ?(0, ?(1, ?(2, ?(3, ?(4, null)))))
 ```
 
-Runtime: O(size)
-
-Space: O(size)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
 ## Function `fromVarArray`
 ``` motoko no-repl
@@ -737,9 +724,9 @@ List.fromVarArray<Nat>([var 0, 1, 2, 3, 4])
 // =>  ?(0, ?(1, ?(2, ?(3, ?(4, null)))))
 ```
 
-Runtime: O(size)
-
-Space: O(size)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
 ## Function `toArray`
 ``` motoko no-repl
@@ -753,9 +740,9 @@ List.toArray<Nat>(?(0, ?(1, ?(2, ?(3, ?(4, null))))))
 // => [0, 1, 2, 3, 4]
 ```
 
-Runtime: O(size)
-
-Space: O(size)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
 ## Function `toVarArray`
 ``` motoko no-repl
@@ -769,9 +756,9 @@ List.toVarArray<Nat>(?(0, ?(1, ?(2, ?(3, ?(4, null))))))
 // => [var 0, 1, 2, 3, 4]
 ```
 
-Runtime: O(size)
-
-Space: O(size)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
 ## Function `toIter`
 ``` motoko no-repl
@@ -789,6 +776,6 @@ sum
 // => 10
 ```
 
-Runtime: O(1)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |

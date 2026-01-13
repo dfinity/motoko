@@ -58,7 +58,6 @@ actor {
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
-//SKIP comp-ref
 //CALL ingress print "DIDL\x00\x00"
 //CALL upgrade ""
 //CALL ingress increase "DIDL\x00\x00"

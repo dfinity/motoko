@@ -56,10 +56,20 @@ let opt_typ : Buffer.t -> env -> Syntax.typ option -> unit =
 let adoc_of_typ_bind : Buffer.t -> env -> Syntax.typ_bind -> unit =
  fun buf env -> Plain.plain_of_typ_bind buf (render_fns env)
 
-let adoc_of_function_arg : Buffer.t -> env -> function_arg_doc -> unit =
+let adoc_of_named_arg : Buffer.t -> env -> function_arg_named -> unit =
  fun buf env arg ->
   Buffer.add_string buf arg.name;
   opt_typ buf env arg.typ
+
+let adoc_of_function_arg : Buffer.t -> env -> function_arg_doc -> unit =
+ fun buf env -> function
+  | FAObject fields ->
+      bprintf buf "{ ";
+      Plain.sep_by buf "; " (adoc_of_named_arg buf env) fields;
+      bprintf buf " }"
+  | FANamed arg ->
+      Buffer.add_string buf arg.name;
+      opt_typ buf env arg.typ
 
 let adoc_header : Buffer.t -> int -> string -> unit =
  fun buf lvl s -> bprintf buf "%s %s\n\n" (String.make (lvl + 1) '=') s
@@ -167,9 +177,19 @@ and adoc_of_doc : Buffer.t -> env -> doc -> unit =
   adoc_of_declaration buf env xref doc_comment declaration
 
 let render_docs : Common.render_input -> string =
- fun Common.{ module_comment; declarations; current_path; lookup_type; _ } ->
+ fun Common.
+       {
+         package_opt;
+         module_comment;
+         declarations;
+         current_path;
+         lookup_type;
+         _;
+       } ->
   let buf = Buffer.create 1024 in
-  bprintf buf "[[module.%s]]\n= %s\n\n" current_path current_path;
+  bprintf buf "[[module.%s]]\n= %s%s\n\n" current_path
+    (match package_opt with Some s -> s ^ "/" | None -> "")
+    current_path;
   Option.iter (bprintf buf "%s\n\n") module_comment;
   let env = { lookup_type } in
   List.iter (adoc_of_doc buf env) declarations;

@@ -1,7 +1,3 @@
-(unknown location): warning [M0169], stable variable config_royalty_address of previous type
-  var Text
- will be discarded. This may cause data loss. Are you sure?
-(unknown location): warning [M0169], stable variable config_royalty_fee of previous type
-  var Nat64
- will be discarded. This may cause data loss. Are you sure?
-TRUE
+(unknown location): Compatibility error [M0169], the stable variable `config_royalty_address` of the previous version cannot be implicitly discarded. The variable can only be dropped by an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function
+(unknown location): Compatibility error [M0169], the stable variable `config_royalty_fee` of the previous version cannot be implicitly discarded. The variable can only be dropped by an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function
+FALSE

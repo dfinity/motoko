@@ -1,0 +1,12 @@
+stdin:5.6-5.17: warning [M0145], this pattern of type
+  ?Nat
+does not cover value
+  null
+stdin:8.6-8.36: warning [M0145], this pattern of type
+  ?(x : Nat, y : Nat, z : Nat)
+does not cover value
+  null
+stdin:9.6-9.18: warning [M0145], this pattern of type
+  ?Nat
+does not cover value
+  null

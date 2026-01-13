@@ -1,17 +1,17 @@
-import Cycles = "mo:base/ExperimentalCycles";
+import Cycles = "mo:core/Cycles";
 import Lib = "PiggyBank";
 
-actor Alice {
+persistent actor Alice {
 
   public func test() : async () {
 
-    Cycles.add<system>(10_000_000_000_000);
-    let porky = await Lib.PiggyBank(Alice.credit, 1_000_000_000);
+    let porky = await
+      (with cycles = 10_000_000_000_000)
+      Lib.PiggyBank(Alice.credit, 1_000_000_000);
 
     assert (0 == (await porky.getSavings()));
 
-    Cycles.add<system>(1_000_000);
-    await porky.deposit();
+    await (with cycles = 1_000_000) porky.deposit();
     assert (1_000_000 == (await porky.getSavings()));
 
     await porky.withdraw(500_000);
@@ -20,8 +20,7 @@ actor Alice {
     await porky.withdraw(500_000);
     assert (0 == (await porky.getSavings()));
 
-    Cycles.add<system>(2_000_000_000);
-    await porky.deposit();
+    await (with cycles = 2_000_000_000) porky.deposit();
     let refund = Cycles.refunded();
     assert (1_000_000_000 == refund);
     assert (1_000_000_000 == (await porky.getSavings()));

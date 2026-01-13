@@ -50,6 +50,7 @@ let is_candid_keyword = function
   | "empty"
   | "oneway"
   | "query"
+  | "composite_query"
   -> true
   | _
   -> false
@@ -80,8 +81,11 @@ let is_motoko_keyword = function
   | "func"
   | "if"
   | "ignore"
-  | "in"
+  | "implicit"
   | "import"
+  | "in"
+  | "include"
+  | "mixin"
   | "module"
   | "not"
   | "null"
@@ -90,6 +94,7 @@ let is_motoko_keyword = function
   | "label"
   | "let"
   | "loop"
+  | "persistent"
   | "private"
   | "public"
   | "query"
@@ -98,12 +103,14 @@ let is_motoko_keyword = function
   | "stable"
   | "switch"
   | "system"
+  | "transient"
   | "try"
   | "throw"
   | "to_candid"
   | "true"
   | "type"
   | "var"
+  | "weak"
   | "while"
   | "with"
   -> true

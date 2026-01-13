@@ -1,0 +1,4 @@
+
+install $ID check-system-subnet/check-system-subnet.mo ""
+ingress $ID test "DIDL\x00\x00"
+

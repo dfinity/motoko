@@ -1,0 +1,89 @@
+name: 'Performance Benchmarking'
+description: 'Runs performance benchmarks and updates test/bench numbers'
+
+inputs:
+  head_sha:
+    required: true
+    description: "The head SHA of the pull request"
+  head_ref:
+    required: true
+    description: "The head ref of the pull request"
+  base_ref:
+    required: true
+    description: "The base ref of the pull request"
+  pr_number:
+    required: true
+    description: "The pull request number"
+  is_fork:
+    required: true
+    description: "Whether this is a fork PR"
+  token:
+    required: true
+    description: "Token for pushing commits"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Discover `test/bench` changes
+      if: ${{ inputs.is_fork == 'false' }}
+      run: |
+        # git diff --no-index $(nix build --print-out-paths .#tests.bench)/share test/bench/ok | patch -f -u -p1 -R
+        BENCH_RESULT=$(nix build --print-out-paths .#tests.bench)
+        if ! git diff --no-index $BENCH_RESULT/share test/bench/ok | patch -f -u -p1 -R; then
+          echo "Patch failed, copying fresh .ok files directly"
+          cp $BENCH_RESULT/share/*.ok test/bench/ok/
+          git add test/bench/ok/
+        fi
+        git switch ${{ inputs.head_ref }}
+        git branch --show-current
+      shell: bash
+
+    - name: Commit `test/bench` changes
+      uses: EndBug/add-and-commit@v9
+      with:
+        default_author: github_actions
+        author_name: Cycle and memory benchmark updater
+        github_token: ${{ inputs.token }}
+        committer_name: GitHub Actions
+        committer_email: actions@github.com
+        message: "Updating `test/bench` numbers"
+        commit: -- test/bench/ok
+
+    - name: Calculate performance delta
+      run: |
+        from="$(git merge-base origin/${{ inputs.base_ref }} HEAD)"
+        to="${{ inputs.head_sha }}"
+        echo "Comparing changes from $from to $to"
+        nix build -f perf-delta.nix -o perf-delta.txt \
+          --argstr ref HEAD \
+          --argstr from "$from" \
+          --argstr to "$to"
+      shell: bash
+
+    - name: Read performance delta
+      id: perf
+      uses: juliangruber/read-file-action@v1
+      with:
+        path: ./perf-delta.txt
+
+    - name: Find performance comment
+      if: ${{ inputs.is_fork == 'false' }}
+      uses: peter-evans/find-comment@v3
+      id: fc
+      with:
+        issue-number: ${{ inputs.pr_number }}
+        comment-author: 'github-actions[bot]'
+        body-includes: '<!-- perf comment -->'
+
+    # Forks can't add comments so this job does not run on forks, see
+    # motoko#2864.
+    - name: Create or update performance comment
+      if: ${{ inputs.is_fork == 'false' }}
+      uses: peter-evans/create-or-update-comment@v4
+      with:
+        comment-id: ${{ steps.fc.outputs.comment-id }}
+        issue-number: ${{ inputs.pr_number }}
+        body: |
+          <!-- perf comment -->
+          ${{ steps.perf.outputs.content }}
+        edit-mode: replace

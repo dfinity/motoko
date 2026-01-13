@@ -18,6 +18,7 @@ type flags = {
   package_urls : package_urls;
   actor_aliases : actor_aliases;
   actor_idl_path : actor_idl_path;
+  include_all_libs : bool;
   }
 
 type package_map = filepath Flags.M.t
@@ -28,9 +29,10 @@ type resolved_flags = {
   aliases : aliases;
   actor_idl_path : actor_idl_path;
   }
+
 val resolve_flags : flags -> resolved_flags Diag.result
 
 val resolve : flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
 
 (* Exported for tests *)
-val append_extension : (filepath -> bool) -> filepath -> filepath
+val append_mo_extension : (filepath -> bool) -> filepath -> filepath

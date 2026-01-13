@@ -10,7 +10,7 @@ let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 (* Argument handling *)
 
-type mode = Default | Check | StableCompatible | Compile | Run | Interact | PrintDeps | Explain | Viper
+type mode = Default | Check | StableCompatible | Compile | Run | Interact | PrintDeps | Explain
 
 let mode = ref Default
 let args = ref []
@@ -36,13 +36,14 @@ let valid_metadata_names =
      "motoko:stable-types";
      "motoko:compiler"]
 
-let argspec = [
+let argspec = 
+  Args.ai_args
+  @ [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
   "-g", Arg.Set Flags.debug_info, " generate source-level debug information";
   "-r", Arg.Unit (set_mode Run), " interpret programs";
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
-  "--viper", Arg.Unit (set_mode Viper), " emit viper code";
   "--stable-compatible",
     Arg.Tuple [
       Arg.String (fun fp -> Flags.pre_ref := Some fp);
@@ -61,10 +62,23 @@ let argspec = [
 
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-p", Arg.Set_int Flags.print_depth, "<n>  set print depth";
-  "--hide-warnings", Arg.Clear Flags.print_warnings, " hide warnings";
-  "-Werror", Arg.Set Flags.warnings_are_errors, " treat warnings as errors";
+  "--warn-help",
+    Arg.Unit (fun () ->
+      let string_of_level = function
+        | Flags.Allow -> "A"
+        | Flags.Warn -> "W"
+        | Flags.Error -> "E"
+      in
+      List.iter (fun (code, _, desc) ->
+        let lvl = Flags.get_warning_level code in
+        printf "%s (%s) %s\n" code (string_of_level lvl) desc
+      ) Error_codes.warning_codes;
+      printf "\nLegend: A - allowed (warning disabled); W - warn (warning enabled); E - error (treated as error)\n";
+      exit 0),
+    " show available warning codes, current lint level, and descriptions";
   ]
-
+ 
+  @ Mo_args.warning_args
   @ Args.error_args
 
   @ [
@@ -149,19 +163,19 @@ let argspec = [
 
   "--generational-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Generational),
-  " use generational GC (only available with classical persistence)";
+  " use generational GC (only available with legacy/classical persistence)";
 
   "--incremental-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Incremental),
-  " use incremental GC (default with enhanced orthogonal persistence)";
+  " use incremental GC (default, works with both enhanced orthogonal persistence and legacy/classical persistence)";
 
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.MarkCompact),
-  " use compacting GC (only available with classical persistence)";
+  " use compacting GC (only available with legacy/classical persistence)";
 
   "--copying-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Copying),
-  " use copying GC (default and only available with classical persistence)";
+  " use copying GC (only available with legacy/classical persistence)";
 
   "--force-gc",
   Arg.Unit (fun () -> Flags.force_gc := true),
@@ -193,20 +207,34 @@ let argspec = [
 
   (* persistence *)
   "--enhanced-orthogonal-persistence",
-  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true),
-  " Use enhanced orthogonal persistence (experimental): Scalable and fast upgrades using a persistent 64-bit main memory.";
+  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true;
+                      Flags.explicit_enhanced_orthogonal_persistence := true),
+  " use enhanced orthogonal persistence (default): Scalable and fast upgrades using a persistent 64-bit main memory. Also, enable upgrade from classical to enhanced orthogonal persistence";
 
+  (* persistence *)
+  "--legacy-persistence",
+  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := false),
+  " use legacy (classical) persistence. This also enables the usage of --copying-gc, --compacting-gc, and --generational-gc. Deprecated in favor of the new enhanced orthogonal persistence, which is default. Legacy persistence will be removed in the future.";
+
+  "-unguarded-enhanced-orthogonal-persistence",
+  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true; Flags.explicit_enhanced_orthogonal_persistence := false),
+  Args._UNDOCUMENTED_ "  (internal testing only)";
+  ]
+
+  @ Args.persistent_actors_args
+
+  @ [
   "--stabilization-instruction-limit",
   Arg.Int (fun limit -> Flags.(stabilization_instruction_limit := {
-    upgrade = limit; 
-    update_call = limit;
+    upgrade = Int64.of_int limit;
+    update_call = Int64.of_int limit;
   })),
   "<n>  set instruction limit for incremental graph-copy-based stabilization and destabilization (for testing)";
 
   "--stable-memory-access-limit",
   Arg.Int (fun limit -> Flags.(stable_memory_access_limit := {
-    upgrade = limit; 
-    update_call = limit;
+    upgrade = Int64.of_int limit;
+    update_call = Int64.of_int limit;
   })),
   "<n>  set stable memory access limit for incremental graph-copy-based stabilization and destabilization (for testing)";
 
@@ -251,9 +279,6 @@ let process_files files : unit =
     exit_on_none (Pipeline.run_files_and_stdin files)
   | Check ->
     Diag.run (Pipeline.check_files files)
-  | Viper ->
-    let (s, _) = Diag.run (Pipeline.viper_files files) in
-    printf "%s" s
   | StableCompatible ->
     begin
       match (!Flags.pre_ref, !Flags.post_ref) with
@@ -310,7 +335,7 @@ let process_files files : unit =
          exit 1)
     end
   | Explain ->
-     match List.find_opt (fun (c, _) -> String.equal c !explain_code) Error_codes.error_codes with
+     match Error_codes.try_find_explanation !explain_code with
      | Some (_, Some(explanation)) ->
         printf "%s" explanation
      | Some (_, None) ->

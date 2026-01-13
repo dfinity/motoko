@@ -157,7 +157,7 @@ module {
         /// buffer.add(12);
         ///
         /// var sum = 0;
-        /// for (element in buffer.vals()) {
+        /// for (element in buffer.values()) {
         ///   sum += element;
         /// };
         /// sum // => 33
@@ -166,7 +166,7 @@ module {
         /// Runtime: O(1)
         ///
         /// Space: O(1)
-        public func vals() : { next : () -> ?X } = object {
+        public func values() : { next : () -> ?X } = object {
             // FIXME either handle modification to underlying list
             // or explicitly warn users in documentation
             var nextIndex = 0;
@@ -201,7 +201,7 @@ module {
     ///
     /// *Runtime and space assumes that `equal` runs in O(1) time and space.
     public func contains<X>(buffer : Buffer<X>, element : X, equal : (X, X) -> Bool) : Bool {
-        for (current in buffer.vals()) {
+        for (current in buffer.values()) {
             if (equal(current, element)) {
                 return true;
             };

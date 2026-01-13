@@ -1,4 +1,4 @@
-position: 8
-label: 'References'
+position: 13
+label: 'Motoko references'
 collapsible: true # make the category collapsible
-collapsed: true 
+collapsed: true

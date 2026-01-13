@@ -31,10 +31,9 @@ The `motoko` repository defines the following nix derivations, as attributes of
 the top-level `default.nix`:
 
 * `moc`: contains `bin/moc`
-* `mo-ide`: contains `bin/mo-ide`
 * `mo-doc`: contains `bin/mo-doc`
 * `didc`: contains `bin/didc`
-* `base-src`: contains the base library, directly in the top level directory,
+* `base-src`: contains the base package, directly in the top level directory,
   as `*.mo` files. It does not contain extra files (test files, for example)
 
 
@@ -138,20 +137,6 @@ The check can also emit warning messages, e.g. if stable variables are dropped.
 
 With [enhanced orthogonal persistence](OrthogonalPersistence.md), the stable compatibility is also integrated in the runtime
 system, to atomically guarantee memory compatibility during an upgrade.
-
-Invoking the IDE
-----------------
-
-In order to start the language server, `dfx` invokes
-```
-mo-ide --canister-main some/path/main.mo \
-    { --package pkgname pkgpath }        \
-    { --actor-alias alias url }          \
-    [ --actor-idl actorpath ]
-```
-with `stdin` and `stdout` connected to the LSP client.
-
-This may _read_ the same files as `moc` would.
 
 Listing dependencies
 --------------------

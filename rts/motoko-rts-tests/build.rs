@@ -7,7 +7,7 @@ fn main() {
             println!("cargo:rustc-link-lib=static=tommath_wasm64");
         }
 
-        "wasm32-wasi" => {
+        "wasm32-wasip1" => {
             println!("cargo:rustc-link-search=native=../_build");
             println!("cargo:rustc-link-lib=static=tommath_wasm32");
         }

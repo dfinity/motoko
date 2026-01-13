@@ -1,6 +1,6 @@
-import Principal = "mo:base/Principal";
+import Principal = "mo:core/Principal";
 
-actor {
+persistent actor {
 
    var c = 0;
 

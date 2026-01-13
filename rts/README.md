@@ -6,9 +6,10 @@ This directory contains the parts of the Motoko runtime implemented in Rust.
 tl;dr
 -----
 
-If you just want to get RTS wasm files in this directory, run
+If you just want to get RTS wasm files in this directory, make sure you're in
+the Nix shell (either using `nix develop` or using `direnv`) then run:
 
-    nix-shell --run 'make -C rts'
+    make -C rts
 
 from the top-level directory of the Motoko repository.
 
@@ -17,13 +18,13 @@ Compilation
 
 Running `make` should produce RTS Wasm files (different versions).
 
-If run within `nix-shell`, the environment variables `WASM_CLANG` and `WASM_LD`
+If run within the Nix shell, the environment variables `WASM_CLANG` and `WASM_LD`
 should point to suitable binaries (we track a specific unreleased version of
-`llvm`). If not present, the `Makefile` will try to use `clang-13` and
-`wasm-ld-13`.
+`llvm`). If not present, the `Makefile` will try to use `clang-19` and
+`wasm-ld-19`.
 
 The runtime compiles and links in [libtommath]. It needs the source, so
-`nix-build` and `nix-shell` will set the environment variable `TOMMATHSRC` to
+`nix build` and `nix develop` will set the environment variable `TOMMATHSRC` to
 point to the source in `/nix/store`.
 
 If not present, the `Makefile` will look in `../../libtommath`, i.e. parallel
@@ -59,33 +60,22 @@ Rust build
 ----------
 
 To build Motoko RTS in nix we need pre-fetch Rust dependencies. This works in
-`nix-build` by:
+`nix build` by:
 
- * Building a directory with vendored sources in `default.nix`
+ * Building a directory with vendored sources in `nix/rts.nix`
 
  * Configuring `cargo` to use that vendored directory (see `preBuild`)
 
-If you change dependencies (e.g. bump versions, add more crates),
-
- 1. Make sure that `motoko-rts-tests/Cargo.lock` is up to date. This can be
-    done by running `cargo build --target=wasm32-wasi` in `motoko-rts-tests/`
-    directory.
- 2. In `default.nix`, invalidate the `sha256` of `rtsDeps` (e.g. change one
-    character)
- 3. Run `nix-build -A rts`. You should get an error message about the actual
-    checksum.
- 4. Set that as `sha256` of `rtsDeps` in `default.nix`
-
-Warning: nix will happily use a stale version of the dependencies if you do not
-do step 3.
+If you change dependencies (e.g. bump versions, add more crates), Make sure that
+`motoko-rts-tests/Cargo.lock` is up to date. This can be done by running
+`cargo build --target=wasm32-wasip1` in `motoko-rts-tests/` directory.
 
 **Updating rustc**:
 
-1. Update Rust version in `nix/default.nix`, in the line with
-   `moz_overlay.rustChannelOf { ... }`.
-   CAVEAT: there is a second `rustChannelOf` for the stable `rustc` too.
-2. Invalidate `rustStdDepsHash` in `default.nix`.
-3. Run `nix-build -A rts`. You should get an error message about the expected
+1. Update the Rust version of `rust-nightly` in `nix/pkgs.nix`
+   CAVEAT: there is a second `rust-stable` for the stable `rustc` too.
+2. Invalidate `rustStdDepsHash` in `nix/rts.nix`.
+3. Run `nix build .#rts`. You should get an error message about the expected
    value of `rustStdDepsHash`.
 4. Update `rustStdDepsHash` with the expected value in the error message.
 
@@ -98,22 +88,22 @@ Sometimes you want to also bump the  `.toml` dependencies...
 
 E.g. when you get `perhaps a crate was updated and forgotten to be
 re-vendored?`, proceed as follows:
-[Invalid recipe deleted. Try `cabal update in `rts/motoko-rts*`,
+[Invalid recipe deleted. Try `cargo update in `rts/motoko-rts*`,
  invalidate hashes: {`cargoVendorTools.cargoSha256`, `rustStdDepsHash`, `rtsDeps.sha256`}
- all at the same time and then `nix-build -A rts -K` to examine the build products.]
+ all at the same time and then `nix build .#rts -K` to examine the build products.]
 
 Running RTS tests
 -----------------
 
-- Build tests using rustc WASI target: `cargo build --target=wasm32-wasi`
-- Run with wasmtime: `wasmtime target/wasm32-wasi/debug/motoko-rts-tests.wasm`
+- Build tests using rustc WASI target: `cargo build --target=wasm32-wasip1`
+- Run with wasmtime: `wasmtime target/wasm32-wasip1/debug/motoko-rts-tests.wasm`
 
 Debugging the RTS
 -----------------
 
 It is possible to build the RTS and test suite for i686 and debug using native
 debug tools like gdb and rr. You first need to build tommath-related files.
-This is easiest to do in `nix-shell`:
+This is easiest to do in the Nix shell:
 
 - (in `rts/`) `make _build/libtommath_i686.a` (this step requires headers and
   libraries for the target)
@@ -132,6 +122,6 @@ Now you should see an i686 executable
 `rts/motoko-rts-tests/target/i686-unknown-linux-gnu/debug/motoko-rts-tests`
 that you can debug with e.g. `gdb`.
 
-Ideally all of these steps would be done in `nix-shell` or outside, but the
-last command does not work in `nix-shell` because of missing i686 libraries and
+Ideally all of these steps would be done in `nix develop` or outside, but the
+last command does not work in `nix develop` because of missing i686 libraries and
 I couldn't figure out how to install those in nix.

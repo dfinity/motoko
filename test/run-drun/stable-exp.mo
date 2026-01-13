@@ -23,56 +23,56 @@ actor {
    a[0] += 1;
    let v = a[0];
 
-   for (a in a1.vals())
+   for (a in a1.values())
      { assert a[0] == v };
 
-   for (a1 in a2.vals())
-   for (a in a1.vals())
+   for (a1 in a2.values())
+   for (a in a1.values())
      { assert a[0] == v };
 
-   for (a2 in a3.vals())
-   for (a1 in a2.vals())
-   for (a in a1.vals())
+   for (a2 in a3.values())
+   for (a1 in a2.values())
+   for (a in a1.values())
      { assert a[0] == v };
 
-   for (a3 in a4.vals())
-   for (a2 in a3.vals())
-   for (a1 in a2.vals())
-   for (a in a1.vals())
+   for (a3 in a4.values())
+   for (a2 in a3.values())
+   for (a1 in a2.values())
+   for (a in a1.values())
      { assert a[0] == v };
 
-   for (a4 in a5.vals())
-   for (a3 in a4.vals())
-   for (a2 in a3.vals())
-   for (a1 in a2.vals())
-   for (a in a1.vals())
+   for (a4 in a5.values())
+   for (a3 in a4.values())
+   for (a2 in a3.values())
+   for (a1 in a2.values())
+   for (a in a1.values())
      { assert a[0] == v };
 
-   for (a5 in a6.vals())
-   for (a4 in a5.vals())
-   for (a3 in a4.vals())
-   for (a2 in a3.vals())
-   for (a1 in a2.vals())
-   for (a in a1.vals())
+   for (a5 in a6.values())
+   for (a4 in a5.values())
+   for (a3 in a4.values())
+   for (a2 in a3.values())
+   for (a1 in a2.values())
+   for (a in a1.values())
      { assert a[0] == v };
 
-   for (a6 in a7.vals())
-   for (a5 in a6.vals())
-   for (a4 in a5.vals())
-   for (a3 in a4.vals())
-   for (a2 in a3.vals())
-   for (a1 in a2.vals())
-   for (a in a1.vals())
+   for (a6 in a7.values())
+   for (a5 in a6.values())
+   for (a4 in a5.values())
+   for (a3 in a4.values())
+   for (a2 in a3.values())
+   for (a1 in a2.values())
+   for (a in a1.values())
      { assert a[0] == v };
 
-   for (a7 in a8.vals())
-   for (a6 in a7.vals())
-   for (a5 in a6.vals())
-   for (a4 in a5.vals())
-   for (a3 in a4.vals())
-   for (a2 in a3.vals())
-   for (a1 in a2.vals())
-   for (a in a1.vals())
+   for (a7 in a8.values())
+   for (a6 in a7.values())
+   for (a5 in a6.values())
+   for (a4 in a5.values())
+   for (a3 in a4.values())
+   for (a2 in a3.values())
+   for (a1 in a2.values())
+   for (a in a1.values())
      { assert a[0] == v };
 
    P.debugPrint("...upgraded");
@@ -83,8 +83,6 @@ actor {
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
-// too slow on ic-ref-run:
-//SKIP comp-ref
 
 //CALL upgrade ""
 //CALL upgrade ""

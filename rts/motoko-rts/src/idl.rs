@@ -66,6 +66,8 @@ const IDL_PRIM_lowest: i32 = -17;
 const IDL_EXT_blob: i32 = -129;
 #[enhanced_orthogonal_persistence]
 const IDL_EXT_tuple: i32 = -130;
+#[enhanced_orthogonal_persistence]
+const IDL_EXT_weak: i32 = -131;
 
 unsafe fn leb128_decode(buf: *mut Buf) -> u32 {
     let value = crate::leb128::leb128_decode(buf);
@@ -157,7 +159,7 @@ unsafe fn alloc<M: Memory>(mem: &mut M, size: Words<usize>) -> *mut u8 {
 /// * traps if the type description is not well-formed. In particular, it traps if any index into
 ///   the type description table is out of bounds, so that subsequent code can trust these values
 ///
-/// * returns a pointer to the first byte after the IDL header
+/// * advances `buf` until the first byte after the IDL header
 ///
 /// * allocates a type description table, and returns it
 ///   (via pointer argument, for lack of multi-value returns in C ABI)
@@ -174,6 +176,7 @@ unsafe fn parse_idl_header<M: Memory>(
     mem: &mut M,
     extended: bool,
     buf: *mut Buf,
+    typtbl_max: usize,
     typtbl_out: *mut *mut *mut u8,
     typtbl_size_out: *mut usize,
     main_types_out: *mut *mut u8,
@@ -208,6 +211,13 @@ unsafe fn parse_idl_header<M: Memory>(
 
     // Allocate the type table to be passed out
     let typtbl: *mut *mut u8 = alloc(mem, Words(n_types as usize)) as *mut _;
+
+    // Set up a limited buffer to detect absurd type tables
+    let full_end = if extended {
+        (*buf).end
+    } else {
+        buf.limit_size(typtbl_max)
+    };
 
     // Go through the table
     for i in 0..n_types {
@@ -291,6 +301,9 @@ unsafe fn parse_idl_header<M: Memory>(
             buf.advance(n as usize);
         }
     }
+
+    // Restore limit
+    (*buf).end = full_end;
 
     // Now that we have the indices, we can go through it again
     // and validate that all service method types are really function types
@@ -738,15 +751,20 @@ pub(crate) unsafe fn memory_compatible(
             )
         }
         (IDL_PRIM_reserved, IDL_PRIM_reserved) | (IDL_PRIM_empty, IDL_PRIM_empty) => true,
-        (_, IDL_PRIM_reserved) | (IDL_PRIM_empty, _) | (IDL_PRIM_nat, IDL_PRIM_int) => {
-            variance != TypeVariance::Invariance
-        }
+        (_, IDL_PRIM_reserved) => false, // information lost
+        (IDL_PRIM_empty, _) | (IDL_PRIM_nat, IDL_PRIM_int) => variance != TypeVariance::Invariance,
         (_, IDL_CON_alias) | (IDL_CON_alias, _) => false,
+        (IDL_EXT_weak, IDL_EXT_weak) => {
+            let t11 = sleb128_decode(&mut tb1);
+            let t21 = sleb128_decode(&mut tb2);
+            memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+        }
         (IDL_CON_opt, IDL_CON_opt) => {
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);
             memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
         }
+        (IDL_PRIM_null, IDL_CON_opt) => true,
         (_, IDL_CON_opt) => false,
         (IDL_CON_vec, IDL_CON_vec) => {
             let t11 = sleb128_decode(&mut tb1);
@@ -841,48 +859,69 @@ pub(crate) unsafe fn memory_compatible(
             }
             true
         }
-        (IDL_CON_record, IDL_CON_record) => {
+        (IDL_CON_record, IDL_CON_record) if !main_actor => {
+            // field preserving object/record subtyping
+            // see stable_sub in type.ml
             let mut n1 = leb128_decode(&mut tb1);
             let n2 = leb128_decode(&mut tb2);
-            let mut tag1 = 0;
-            let mut t11 = 0;
-            let mut advance = true;
             for _ in 0..n2 {
                 let tag2 = leb128_decode(&mut tb2);
                 let t21 = sleb128_decode(&mut tb2);
                 if n1 == 0 {
-                    // Additional fields are only supported in the main actor type.
-                    if variance == TypeVariance::Invariance || !main_actor {
-                        return false;
-                    }
-                    continue;
+                    return false;
                 };
-                if advance {
-                    loop {
-                        tag1 = leb128_decode(&mut tb1);
-                        t11 = sleb128_decode(&mut tb1);
-                        n1 -= 1;
-                        // Do not skip fields during invariance check.
-                        if variance == TypeVariance::Invariance || !(tag1 < tag2 && n1 > 0) {
-                            break;
-                        }
-                    }
-                };
+                let tag1 = leb128_decode(&mut tb1);
+                let t11 = sleb128_decode(&mut tb1);
+                n1 -= 1;
+                if tag1 < tag2 {
+                    return false; // discarded field
+                }
                 if tag1 > tag2 {
-                    // Additional fields are only supported in the main actor type.
-                    if variance == TypeVariance::Invariance || !main_actor {
-                        return false;
-                    }
-                    advance = false; // reconsider this field in next round
-                    continue;
+                    return false; // new field
                 };
                 if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
                 {
                     return false;
                 }
-                advance = true;
             }
-            variance != TypeVariance::Invariance || n1 == 0
+            return n1 == 0;
+        }
+        (IDL_CON_record, IDL_CON_record) if main_actor => {
+            // memory compatibility
+            assert!(variance == TypeVariance::Covariance);
+            let mut n1 = leb128_decode(&mut tb1);
+            let mut n2 = leb128_decode(&mut tb2);
+            let mut tag1: u32;
+            let mut t11: i32;
+            let mut tag2: u32;
+            let mut t21: i32;
+            while n1 > 0 && n2 > 0 {
+                tag1 = leb128_decode(&mut tb1);
+                t11 = sleb128_decode(&mut tb1);
+                tag2 = leb128_decode(&mut tb2);
+                t21 = sleb128_decode(&mut tb2);
+                n1 -= 1;
+                n2 -= 1;
+                while tag1 != tag2 {
+                    if tag1 < tag2 {
+                        return false; // discarded field
+                    };
+                    if tag1 > tag2 {
+                        if n2 > 0 {
+                            tag2 = leb128_decode(&mut tb2);
+                            t21 = sleb128_decode(&mut tb2);
+                            n2 -= 1;
+                            continue;
+                        };
+                        return true;
+                    };
+                }
+                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+                {
+                    return false;
+                }
+            }
+            return n1 == 0; // false if any remaining fields discarded
         }
         (IDL_CON_variant, IDL_CON_variant) => {
             let n1 = leb128_decode(&mut tb1);
@@ -1230,7 +1269,7 @@ pub(crate) unsafe fn sub(
 
 #[no_mangle]
 unsafe extern "C" fn idl_sub_buf_words(typtbl_size1: usize, typtbl_size2: usize) -> usize {
-    return BitRel::words(typtbl_size1, typtbl_size2);
+    BitRel::words(typtbl_size1, typtbl_size2)
 }
 
 #[no_mangle]
@@ -1278,11 +1317,11 @@ unsafe extern "C" fn idl_sub(
     t1: i32,
     t2: i32,
 ) -> bool {
-    debug_assert!(rel_buf != (0 as *mut usize));
-    debug_assert!(typtbl1 != (0 as *mut *mut u8));
-    debug_assert!(typtbl2 != (0 as *mut *mut u8));
-    debug_assert!(typtbl_end1 != (0 as *mut u8));
-    debug_assert!(typtbl_end2 != (0 as *mut u8));
+    debug_assert!(rel_buf != 0 as *mut usize);
+    debug_assert!(typtbl1 != 0 as *mut *mut u8);
+    debug_assert!(typtbl2 != 0 as *mut *mut u8);
+    debug_assert!(typtbl_end1 != 0 as *mut u8);
+    debug_assert!(typtbl_end2 != 0 as *mut u8);
 
     let rel = BitRel {
         ptr: rel_buf,
@@ -1290,7 +1329,7 @@ unsafe extern "C" fn idl_sub(
         size1: typtbl_size1,
         size2: typtbl_size2,
     };
-    debug_assert!(t1 < (typtbl_size1 as i32) && t2 < (typtbl_size2 as i32));
+    debug_assert!(t1 < typtbl_size1 as i32 && t2 < typtbl_size2 as i32);
     return sub(
         &rel,
         true,

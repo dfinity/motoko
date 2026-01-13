@@ -529,6 +529,9 @@ pub const TAG_ONE_WORD_FILLER: Tag = 41;
 #[enhanced_orthogonal_persistence]
 pub const TAG_FREE_SPACE: Tag = 43;
 
+#[enhanced_orthogonal_persistence]
+pub const TAG_WEAK_REF: Tag = 45;
+
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean
 // a slice of an array object (i.e. compressed array tag + start index) for
@@ -540,7 +543,7 @@ pub const TAG_FREE_SPACE: Tag = 43;
 // a lower boundary to distinguish slice information from
 // the actual tag values.
 #[enhanced_orthogonal_persistence]
-pub const TAG_ARRAY_SLICE_MIN: Tag = 44;
+pub const TAG_ARRAY_SLICE_MIN: Tag = 46;
 
 pub const TAG_SPACING: Tag = 2;
 
@@ -561,12 +564,17 @@ pub const TAG_ARRAY_SLICE_MIN: Tag = 52;
 
 #[enhanced_orthogonal_persistence]
 pub fn is_object_tag(tag: Tag) -> bool {
-    tag >= TAG_OBJECT && tag <= TAG_REGION
+    tag >= TAG_OBJECT && tag <= TAG_REGION || tag == TAG_WEAK_REF
 }
 
 #[classical_persistence]
 pub fn is_object_tag(tag: Tag) -> bool {
     tag >= TAG_OBJECT && tag <= TAG_NULL
+}
+
+#[enhanced_orthogonal_persistence]
+pub fn is_weak_ref_tag(tag: Tag) -> bool {
+    tag == TAG_WEAK_REF
 }
 
 pub fn is_blob_tag(tag: Tag) -> bool {
@@ -707,13 +715,6 @@ impl Array {
     pub unsafe fn set<M: Memory>(self: *mut Self, idx: usize, value: Value, mem: &mut M) {
         let slot_addr = self.element_address(idx) as *mut Value;
         write_with_barrier(mem, slot_addr, value);
-    }
-
-    /// Write a scalar value to an array element.
-    /// No need for a write barrier.
-    pub unsafe fn set_scalar(self: *mut Self, idx: usize, value: Value) {
-        debug_assert!(value.is_scalar());
-        self.set_raw(idx, value);
     }
 
     /// Note: Only directly used by graph destabilization. No write barrier is applied.
@@ -1187,6 +1188,28 @@ impl FreeSpace {
     }
 }
 
+/// Marks a weak reference to an object.
+#[repr(C)] // See the note at the beginning of this module
+pub struct WeakRef {
+    pub header: Obj,
+    pub field: Value,
+}
+
+#[cfg(feature = "enhanced_orthogonal_persistence")]
+impl WeakRef {
+    pub unsafe fn is_live(&self) -> bool {
+        let field_tag = self.header.tag;
+        match field_tag {
+            TAG_WEAK_REF => {
+                return self.field.is_non_null_ptr();
+            }
+            _ => {
+                crate::rts_trap_with("weak_ref_is_live: Called on a non-weak reference.");
+            }
+        }
+    }
+}
+
 /// Returns the heap block size in words.
 /// Handles both objects with header and forwarding pointer
 /// and special blocks such as `OneWordFiller`, `FwdPtr`, and `FreeSpace`
@@ -1199,6 +1222,9 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<usize> {
             let size = object.size();
             size_of::<Object>() + Words(size)
         }
+
+        #[cfg(feature = "enhanced_orthogonal_persistence")]
+        TAG_WEAK_REF => size_of::<WeakRef>(),
 
         // `block_size` is not used during the incremental mark phase and
         // therefore, does not support array slicing.

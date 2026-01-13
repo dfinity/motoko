@@ -13,9 +13,7 @@ let rec idents_in_pattern : Syntax.pat -> string list =
   | Syntax.VarP id -> [ id.it ]
   | Syntax.TupP ps -> List.concat_map idents_in_pattern ps
   | Syntax.ObjP pfs ->
-      List.concat_map
-        (fun (pf : Syntax.pat_field) -> idents_in_pattern pf.it.Syntax.pat)
-        pfs
+      List.concat_map idents_in_pattern (List.filter_map Syntax.pf_pattern pfs)
   | Syntax.AltP (p, _)
   | Syntax.OptP p
   | Syntax.TagP (_, p)
@@ -29,10 +27,10 @@ let from_module =
     List.fold_left
       (fun acc exp_field ->
         match exp_field.it.Syntax.dec.it with
-        | Syntax.ExpD _ -> acc
+        | Syntax.ExpD _ | Syntax.MixinD _ | Syntax.IncludeD _ -> acc
         | Syntax.LetD
             ( { it = Syntax.VarP id; _ },
-              { it = Syntax.ObjBlockE (_, _, decs); _ },
+              { it = Syntax.ObjBlockE (_, _, _, decs); _ },
               _ ) ->
             let mk_nested x = mk_xref (Xref.XNested (id.it, x)) in
             {
@@ -69,7 +67,7 @@ let from_module =
                   (mk_xref (Xref.XValue id.it), None)
                   acc.values;
             }
-        | Syntax.ClassD (_, id, _, _, _, _, _, _) ->
+        | Syntax.ClassD (_, _, _, id, _, _, _, _, _) ->
             {
               acc with
               types = StringMap.add id.it (mk_xref (Xref.XType id.it)) acc.types;
@@ -150,7 +148,7 @@ let lookup_type : t -> Syntax.path -> Xref.t option =
           let* sub_ns =
             List.fold_left
               (fun ns id ->
-                let* ns = ns in
+                let* ns in
                 let* sub_ns = StringMap.find_opt id ns.values in
                 snd sub_ns)
               sub_ns xs

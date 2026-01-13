@@ -1,7 +1,6 @@
 // Nothing to run here (but do compile and validate)
 
 //SKIP drun-run
-//SKIP ic-ref-run
 
 actor control {
 

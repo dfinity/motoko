@@ -1,10 +1,18 @@
-# Nat
+# base/Nat
 Natural numbers with infinite precision.
 
-Most operations on natural numbers (e.g. addition) are available as built-in operators (e.g. `1 + 1`).
+:::note
+Most operations on integer numbers (e.g. addition) are available as built-in operators (e.g. `1 + 1`).
 This module provides equivalent functions and `Text` conversion.
+:::
+
+:::info Function form for higher-order use
+
+Several arithmetic and comparison functions (e.g. `add`, `sub`, `equal`, `less`, `pow`) are defined in this module to enable their use as first-class function values, which is not possible with operators like `+`, `-`, `==`, etc., in Motoko. This allows you to pass these operations to higher-order functions such as `map`, `foldLeft`, or `sort`.
+:::
 
 Import from the base library to use this module.
+
 ```motoko name=import
 import Nat "mo:base/Nat";
 ```
@@ -22,7 +30,7 @@ func toText(n : Nat) : Text
 ```
 
 Converts a natural number to its textual representation. Textual
-representation _do not_ contain underscores to represent commas.
+representation _does not_ contain underscores to represent commas.
 
 Example:
 ```motoko include=import
@@ -37,8 +45,9 @@ func fromText(text : Text) : ?Nat
 Creates a natural number from its textual representation. Returns `null`
 if the input is not a valid natural number.
 
-Note: The textual representation _must not_ contain underscores.
-
+:::note
+The textual representation _must not_ contain underscores.
+:::
 Example:
 ```motoko include=import
 Nat.fromText "1234" // => ?1234
@@ -82,10 +91,6 @@ ignore Nat.equal(1, 1); // => true
 1 == 1 // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `==` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `==`
-as a function value at the moment.
 
 Example:
 ```motoko include=import
@@ -110,10 +115,6 @@ ignore Nat.notEqual(1, 2); // => true
 1 != 2 // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `!=` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `!=`
-as a function value at the moment.
 
 ## Function `less`
 ``` motoko no-repl
@@ -129,10 +130,6 @@ ignore Nat.less(1, 2); // => true
 1 < 2 // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `<` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `<`
-as a function value at the moment.
 
 ## Function `lessOrEqual`
 ``` motoko no-repl
@@ -148,10 +145,6 @@ ignore Nat.lessOrEqual(1, 2); // => true
 1 <= 2 // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `<=` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `<=`
-as a function value at the moment.
 
 ## Function `greater`
 ``` motoko no-repl
@@ -167,10 +160,6 @@ ignore Nat.greater(2, 1); // => true
 2 > 1 // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `>` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `>`
-as a function value at the moment.
 
 ## Function `greaterOrEqual`
 ``` motoko no-repl
@@ -186,10 +175,6 @@ ignore Nat.greaterOrEqual(2, 1); // => true
 2 >= 1 // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `>=` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `>=`
-as a function value at the moment.
 
 ## Function `compare`
 ``` motoko no-repl
@@ -226,10 +211,6 @@ ignore Nat.add(1, 2); // => 3
 1 + 2 // => 3
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `+` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `+`
-as a function value at the moment.
 
 Example:
 ```motoko include=import
@@ -252,10 +233,6 @@ ignore Nat.sub(2, 1); // => 1
 2 - 1 : Nat // => 1
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `-` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `-`
-as a function value at the moment.
 
 Example:
 ```motoko include=import
@@ -277,10 +254,6 @@ ignore Nat.mul(2, 3); // => 6
 2 * 3 // => 6
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `*` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `*`
-as a function value at the moment.
 
 Example:
 ```motoko include=import
@@ -305,10 +278,6 @@ ignore Nat.div(6, 2); // => 3
 6 / 2 // => 3
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `/` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `/`
-as a function value at the moment.
 
 ## Function `rem`
 ``` motoko no-repl
@@ -324,10 +293,6 @@ ignore Nat.rem(6, 4); // => 2
 6 % 4 // => 2
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `%` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `%`
-as a function value at the moment.
 
 ## Function `pow`
 ``` motoko no-repl
@@ -343,10 +308,6 @@ ignore Nat.pow(2, 3); // => 8
 2 ** 3 // => 8
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `**` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `**`
-as a function value at the moment.
 
 ## Function `bitshiftLeft`
 ``` motoko no-repl
@@ -360,12 +321,6 @@ Example:
 Nat.bitshiftLeft(1, 3); // => 8
 ```
 
-Note: The reason why this function is defined in this library (in absence
-of the `<<` operator) is so that you can use it as a function
-value to pass to a higher order function. While `Nat` is not defined in terms
-of bit patterns, conceptually it can be regarded as such, and the operation
-is provided as a high-performance version of the corresponding arithmetic
-rule.
 
 ## Function `bitshiftRight`
 ``` motoko no-repl
@@ -379,9 +334,3 @@ Example:
 Nat.bitshiftRight(8, 3); // => 1
 ```
 
-Note: The reason why this function is defined in this library (in absence
-of the `>>` operator) is so that you can use it as a function
-value to pass to a higher order function. While `Nat` is not defined in terms
-of bit patterns, conceptually it can be regarded as such, and the operation
-is provided as a high-performance version of the corresponding arithmetic
-rule.

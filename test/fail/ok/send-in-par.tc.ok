@@ -1,0 +1,2 @@
+send-in-par.mo:1.23-1.37: type error [M0038], misplaced await
+send-in-par.mo:1.29-1.37: type error [M0037], misplaced async expression; try enclosing in an async function

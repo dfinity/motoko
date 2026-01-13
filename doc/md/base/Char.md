@@ -1,5 +1,4 @@
-# Char
-Characters
+# base/Char
 
 ## Type `Char`
 ``` motoko no-repl
@@ -8,25 +7,25 @@ type Char = Prim.Types.Char
 
 Characters represented as Unicode code points.
 
-## Value `toNat32`
+## Function `toNat32`
 ``` motoko no-repl
-let toNat32 : (c : Char) -> Nat32
+func toNat32(c : Char) : Nat32
 ```
 
 Convert character `c` to a word containing its Unicode scalar value.
 
-## Value `fromNat32`
+## Function `fromNat32`
 ``` motoko no-repl
-let fromNat32 : (w : Nat32) -> Char
+func fromNat32(w : Nat32) : Char
 ```
 
 Convert `w` to a character.
 Traps if `w` is not a valid Unicode scalar value.
 Value `w` is valid if, and only if, `w < 0xD800 or (0xE000 <= w and w <= 0x10FFFF)`.
 
-## Value `toText`
+## Function `toText`
 ``` motoko no-repl
-let toText : (c : Char) -> Text
+func toText(c : Char) : Text
 ```
 
 Convert character `c` to single character text.
@@ -38,30 +37,30 @@ func isDigit(c : Char) : Bool
 
 Returns `true` when `c` is a decimal digit between `0` and `9`, otherwise `false`.
 
-## Value `isWhitespace`
+## Function `isWhitespace`
 ``` motoko no-repl
-let isWhitespace : (c : Char) -> Bool
+func isWhitespace(c : Char) : Bool
 ```
 
 Returns the Unicode _White_Space_ property of `c`.
 
-## Value `isLowercase`
+## Function `isLowercase`
 ``` motoko no-repl
-let isLowercase : (c : Char) -> Bool
+func isLowercase(c : Char) : Bool
 ```
 
 Returns the Unicode _Lowercase_ property of `c`.
 
-## Value `isUppercase`
+## Function `isUppercase`
 ``` motoko no-repl
-let isUppercase : (c : Char) -> Bool
+func isUppercase(c : Char) : Bool
 ```
 
 Returns the Unicode _Uppercase_ property of `c`.
 
-## Value `isAlphabetic`
+## Function `isAlphabetic`
 ``` motoko no-repl
-let isAlphabetic : (c : Char) -> Bool
+func isAlphabetic(c : Char) : Bool
 ```
 
 Returns the Unicode _Alphabetic_ property of `c`.

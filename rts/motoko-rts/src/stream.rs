@@ -145,7 +145,6 @@ impl Stream {
     }
 
     /// Ingest a single byte into the stream.
-    #[inline]
     #[export_name = "stream_write_byte"]
     pub fn cache_byte(self: *mut Self, byte: u8) {
         unsafe {

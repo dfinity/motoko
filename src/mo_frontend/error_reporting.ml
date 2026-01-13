@@ -18,6 +18,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_UNDERSCORE -> UNDERSCORE
       | T_COMPOSITE -> COMPOSITE
       | T_TYPE -> TYPE
+      | T_TRANSIENT -> TRANSIENT
       | T_TRY -> TRY
       | T_THROW -> THROW
       | T_FINALLY -> FINALLY
@@ -45,6 +46,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_BANG -> BANG
       | T_QUERY -> QUERY
       | T_PUBLIC -> PUBLIC
+      | T_PERSISTENT -> PERSISTENT
       | T_PRIVATE -> PRIVATE
       | T_PRIM -> PRIM
       | T_POWOP -> POWOP
@@ -58,9 +60,12 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_NOT -> NOT
       | T_NEQOP -> NEQOP
       | T_NAT -> NAT "<nat>"
+      | T_NUM_DOT_ID -> NUM_DOT_ID ("<num>","<id>")
       | T_MULOP -> MULOP
       | T_MULASSIGN -> MULASSIGN
       | T_MODULE -> MODULE
+      | T_INCLUDE -> INCLUDE
+      | T_MIXIN -> MIXIN
       | T_MODOP -> MODOP
       | T_MODASSIGN -> MODASSIGN
       | T_MINUSASSIGN -> MINUSASSIGN
@@ -78,6 +83,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_IGNORE -> IGNORE
       | T_IF -> IF
       | T_ID -> ID "<id>"
+      | T_IMPLICIT -> IMPLICIT
       | T_HASH -> HASH
       | T_GTOP -> GTOP
       | T_GT -> GT
@@ -112,6 +118,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_BOOL -> BOOL false
       | T_AWAIT -> AWAIT
       | T_AWAITSTAR -> AWAITSTAR
+      | T_AWAITQUEST -> AWAITQUEST
       | T_ASYNC -> ASYNC
       | T_ASYNCSTAR -> ASYNCSTAR
       | T_ASSIGN -> ASSIGN
@@ -120,11 +127,8 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_ANDOP -> ANDOP
       | T_ANDASSIGN -> ANDASSIGN
       | T_AND -> AND
-      | T_IMPLIES -> IMPLIES
-      | T_OLD -> OLD
       | T_ADDOP -> ADDOP
       | T_ACTOR -> ACTOR
-      | T_INVARIANT -> INVARIANT
       | T_WRAPADDOP -> WRAPADDOP
       | T_WRAPSUBOP -> WRAPSUBOP
       | T_WRAPMULOP -> WRAPMULOP
@@ -134,3 +138,4 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_WRAPMULASSIGN -> WRAPMULASSIGN
       | T_WRAPPOWASSIGN -> WRAPPOWASSIGN
       | T_PIPE -> PIPE
+      | T_WEAK -> WEAK

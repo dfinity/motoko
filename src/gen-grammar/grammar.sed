@@ -12,8 +12,9 @@ s/<id>/ID/g
 /^<parse_module_header> ::=/,+2d
 /^<stab_field> ::=/,+2d
 /^<typ_dec> ::=/,+2d
-/^<parse_stab_sig> ::=/,+2d
+/^<parse_stab_sig> ::=/,+5d
 /.*PRIM.*/d
+/.*NUM_DOT_ID.*/d
 /^<bl> ::=/,+2d
 /^<ob> ::=/,+2d
 s/<start> //g
@@ -43,6 +44,7 @@ s/ACTOR/\'actor\'/g
 s/COMPOSITE/\'composite\'/g
 s/IGNORE/\'ignore\'/g
 s/IMPORT/\'import\'/g
+s/IMPLICIT/\'implicit\'/g
 s/XOROP/\'^\'/g
 s/XORASSIGN/\'^=\'/g
 s/WHILE/\'while\'/g
@@ -51,6 +53,7 @@ s/SHROP/\' >>\'/g
 s/SHRASSIGN/\'>>=\'/g
 s/UNDERSCORE/\'_\'/g
 s/TYPE/\'type\'/g
+s/TRANSIENT/\'transient\'/g
 s/TRY/\'try\'/g
 s/THROW/\'throw\'/g
 s/FINALLY/\'finally\'/g
@@ -71,9 +74,11 @@ s/ROTLASSIGN/\'<<>=\'/g
 s/RETURN/\'return\'/g
 s/RCURLY/\'}\'/g
 s/RBRACKET/\']\'/g
+s/AWAITQUEST/\'await?\'/g
 s/QUEST/\'?\'/g
 s/BANG/\'!\'/g
 s/QUERY/\'query\'/g
+s/PERSISTENT/\'persistent\'/g
 s/PIPE/\'|>\'/g
 s/PUBLIC/\'public\'/g
 s/PRIVATE/\'private\'/g
@@ -103,6 +108,8 @@ s/LCURLY/\'{\'/g
 s/LBRACKET/\'[\'/g
 s/LABEL/\'label\'/g
 s/CONTINUE/\'continue\'/g
+s/MIXIN/\'mixin\'/g
+s/INCLUDE/\'include\'/g
 s/IN/\'in\'/g
 s/IF/\'if\'/g
 s/TO_CANDID/\'to_candid\'/g
@@ -148,5 +155,6 @@ s/DO/\'do\'/g
 s/OR/\'or\'/g
 s/AND/\'and\'/g
 s/WITH/\'with\'/g
+s/WEAK/\'weak\'/g
 /'return'$/d
 s/'return' <exp>/'return' <exp>?/

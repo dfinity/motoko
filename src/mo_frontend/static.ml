@@ -22,7 +22,7 @@ let err m at =
        at
        "M0014"
        "type"
-       "non-static expression in library or module")
+       "non-static expression in library, module or migration expression")
 
 let pat_err m at =
   let open Diag in
@@ -35,6 +35,7 @@ let pat_err m at =
 
 let rec exp m e = match e.it with
   (* Plain values *)
+  | HoleE (s, e) -> exp m !e
   | (PrimE _ | LitE _ | ActorUrlE _ | FuncE _) -> ()
   | (TagE (_, exp1) | OptE exp1) -> exp m exp1
   | TupE es -> List.iter (exp m) es
@@ -44,15 +45,17 @@ let rec exp m e = match e.it with
       | Const ->  List.iter (exp m) es
       | Var -> err m e.at
     end
-  | ObjBlockE (_, _, dfs) -> dec_fields m dfs
-  | ObjE (bases, efs) -> List.iter (exp m) bases; exp_fields m efs
+  | ObjBlockE (eo, _, _, dfs) ->
+    Option.iter (exp m) eo; dec_fields m dfs
+  | ObjE (bases, efs) ->
+    List.iter (exp m) bases; exp_fields m efs
 
   (* Variable access. Dangerous, due to loops. *)
-  | (VarE _ | ImportE _) -> ()
+  | (VarE _ | ImportE _ | ImplicitLibE _) -> ()
 
   (* Projections. These are a form of evaluation. *)
   | ProjE (exp1, _)
-  | DotE (exp1, _) -> exp m exp1
+  | DotE (exp1, _, _) -> exp m exp1
   | IdxE (exp1, exp2) -> err m e.at
 
   (* Transparent *)
@@ -86,8 +89,6 @@ let rec exp m e = match e.it with
   | ThrowE _
   | TryE _
   | BangE _
-  | ImpliesE _
-  | OldE _
   -> err m e.at
 
 and dec_fields m dfs = List.iter (fun df -> dec m df.it.dec) dfs
@@ -97,10 +98,10 @@ and exp_fields m efs = List.iter (fun (ef : exp_field) ->
   exp m ef.it.exp) efs
 
 and dec m d = match d.it with
-  | TypD _ | ClassD _ -> ()
+  | TypD _ | ClassD _ | MixinD _ -> ()
   | ExpD e -> exp m e
   | LetD (p, e, fail) -> pat m p; exp m e; Option.iter (exp m) fail
-  | VarD _ -> err m d.at
+  | VarD _ | IncludeD _ -> err m d.at
 
 and pat m p = match p.it with
   | (WildP | VarP _) -> ()
@@ -110,7 +111,7 @@ and pat m p = match p.it with
   patterns here.
   *)
   | TupP ps -> List.iter (pat m) ps
-  | ObjP fs -> List.iter (fun (f : pat_field) -> pat m f.it.pat) fs
+  | ObjP fs -> List.iter (pat_field m) fs
 
   (* TODO:
     claudio: what about singleton variant patterns? These are irrefutable too.
@@ -120,6 +121,10 @@ and pat m p = match p.it with
 
   (* Everything else is forbidden *)
   | _ -> pat_err m p.at
+
+and pat_field m pf = match pf.it with
+  | ValPF(_, p) -> pat m p
+  | TypPF(_) -> ()
 
 let prog p =
   Diag.with_message_store (fun m -> List.iter (dec m) p.it; Some ())

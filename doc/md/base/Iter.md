@@ -1,5 +1,4 @@
-# Iter
-Iterators
+# base/Iter
 
 ## Type `Iter`
 ``` motoko no-repl
@@ -108,7 +107,7 @@ func filter<A>(xs : Iter<A>, f : A -> Bool) : Iter<A>
 Takes a function and an iterator and returns a new iterator that produces
 elements from the original iterator if and only if the predicate is true.
 ```motoko
-import Iter "o:base/Iter";
+import Iter "mo:base/Iter";
 let iter = Iter.range(1, 3);
 let mappedIter = Iter.filter(iter, func (x : Nat) : Bool { x % 2 == 1 });
 assert(?1 == mappedIter.next());
@@ -131,12 +130,31 @@ assert(?10 == iter.next());
 // ...
 ```
 
+## Function `concat`
+``` motoko no-repl
+func concat<A>(a : Iter<A>, b : Iter<A>) : Iter<A>
+```
+
+Takes two iterators and returns a new iterator that produces
+elements from the original iterators sequentally.
+```motoko
+import Iter "mo:base/Iter";
+let iter1 = Iter.range(1, 2);
+let iter2 = Iter.range(5, 6);
+let concatenatedIter = Iter.concat(iter1, iter2);
+assert(?1 == concatenatedIter.next());
+assert(?2 == concatenatedIter.next());
+assert(?5 == concatenatedIter.next());
+assert(?6 == concatenatedIter.next());
+assert(null == concatenatedIter.next());
+```
+
 ## Function `fromArray`
 ``` motoko no-repl
 func fromArray<A>(xs : [A]) : Iter<A>
 ```
 
-Creates an iterator that produces the elements of an Array in ascending index order.
+Creates an iterator that produces the elements of an `Array` in ascending index order.
 ```motoko
 import Iter "mo:base/Iter";
 let iter = Iter.fromArray([1, 2, 3]);
@@ -151,8 +169,8 @@ assert(null == iter.next());
 func fromArrayMut<A>(xs : [var A]) : Iter<A>
 ```
 
-Like `fromArray` but for Arrays with mutable elements. Captures
-the elements of the Array at the time the iterator is created, so
+Like `fromArray` but for `Array`s with mutable elements. Captures
+the elements of the `Array` at the time the iterator is created, so
 further modifications won't be reflected in the iterator.
 
 ## Value `fromList`
@@ -167,7 +185,7 @@ Like `fromArray` but for Lists.
 func toArray<A>(xs : Iter<A>) : [A]
 ```
 
-Consumes an iterator and collects its produced elements in an Array.
+Consumes an iterator and collects its produced elements in an `Array`.
 ```motoko
 import Iter "mo:base/Iter";
 let iter = Iter.range(1, 3);
@@ -179,7 +197,7 @@ assert([1, 2, 3] == Iter.toArray(iter));
 func toArrayMut<A>(xs : Iter<A>) : [var A]
 ```
 
-Like `toArray` but for Arrays with mutable elements.
+Like `toArray` but for `Array`s with mutable elements.
 
 ## Function `toList`
 ``` motoko no-repl

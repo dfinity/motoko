@@ -113,6 +113,8 @@ let char = '\'' (character | byte+) '\''
 let text = '"' character* '"'
 let id = ((letter  | '_') ((letter | digit | '_')*))
 let privileged_id = "@" id
+let num_dot_ident =
+    num '.' id
 
 let reserved = ([^'\"''('')'';'] # space)+  (* hack for table size *)
 
@@ -181,6 +183,11 @@ rule token mode = parse
 
   | '.' (num as s) { DOT_NUM s }
   | nat as s { NAT s }
+  | num_dot_ident as s {
+      match Lib.String.split s '.' with
+      | [n; id] -> NUM_DOT_ID (n, id)
+      | _ -> assert false
+    }
   | float as s { FLOAT s }
   | char as s { CHAR (char lexbuf s) }
   | text as s { TEXT (text lexbuf s) }
@@ -203,6 +210,7 @@ rule token mode = parse
   | "assert" { ASSERT }
   | "await" { AWAIT }
   | "await*" { AWAITSTAR }
+  | "await?" { AWAITQUEST }
   | "break" { BREAK }
   | "case" { CASE }
   | "catch" { CATCH }
@@ -222,10 +230,10 @@ rule token mode = parse
   | "if" { IF }
   | "ignore" { IGNORE }
   | "in" { IN }
-  | "invariant" as s { if mode.verification then INVARIANT else ID s }
-  | "implies" as s { if mode.verification then IMPLIES else ID s }
-  | "old" as s { if mode.verification then OLD else ID s }
+  | "implicit" { IMPLICIT }
   | "import" { IMPORT }
+  | "include" { INCLUDE }
+  | "mixin" { MIXIN }
   | "module" { MODULE }
   | "not" { NOT }
   | "null" { NULL }
@@ -234,6 +242,7 @@ rule token mode = parse
   | "label" { LABEL }
   | "let" { LET }
   | "loop" { LOOP }
+  | "persistent" { PERSISTENT}
   | "private" { PRIVATE }
   | "public" { PUBLIC }
   | "query" { QUERY }
@@ -242,12 +251,14 @@ rule token mode = parse
   | "stable" { STABLE }
   | "switch" { SWITCH }
   | "system" { SYSTEM }
+  | "transient" { TRANSIENT }
   | "try" { TRY }
   | "throw" { THROW }
   | "to_candid" { TO_CANDID }
   | "true" { BOOL true }
   | "type" { TYPE }
   | "var" { VAR }
+  | "weak" { WEAK }
   | "while" { WHILE }
   | "with" { WITH }
 

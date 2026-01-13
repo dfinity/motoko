@@ -291,8 +291,10 @@ impl MotokoHeapInner {
     }
 }
 
+#[incremental_gc]
 struct DummyMemory {}
 
+#[incremental_gc]
 impl Memory for DummyMemory {
     unsafe fn alloc_words(&mut self, _n: Words<usize>) -> Value {
         unreachable!()

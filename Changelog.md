@@ -1,14 +1,298 @@
 # Motoko compiler changelog
 
+
 * motoko (`moc`)
 
-  * **For beta testing:** Support __enhanced orthogonal persistence__, enabled with new moc flag `--enhanced-orthogonal-persistence` (#4193).
+  * Omit `blob:*` imports from `moc --print-deps` (#5781).
 
-    This implements scalable and efficient orthogonal persistence (stable variables) for Motoko:
+  * Print type constructors using available type paths (#5698).
+
+  * Explain subtype failures (#5643).
+
+  * Removes the Viper support (#5751).
+
+  * Allows resolving local definitions for context-dot (#5731).
+
+  Extends contextual-dot resolution to consider local definitions first, to make the following snippet type check. Local definitions take precedence over definitions that are in scope via modules.
+
+  ```motoko
+  func first<A>(self : [A]) : A {
+    return self[0]
+  };
+  assert [1, 2, 3].first() == 1
+  ```
+
+  * Add privileged primitive for setting Candid type table cutoff (#5642).
+
+  * Split unused identifier warnings into separate warnings for shared and non-shared contexts: `M0194` for general declarations, `M0240` for identifiers in shared pattern contexts (e.g. `c` in `shared({caller = c})`), `M0198` for unused fields in object patterns, and `M0241` for unused fields in shared patterns (e.g. `caller` in `shared({caller})`) (#5779).
+
+  * bugfix: The source region for `do { ... }` blocks now includes the `do` keyword too (#5785).
+
+## 1.0.0 (2025-12-11)
+
+* motoko (`moc`)
+
+  * Shorter, simpler error messages for generic functions (#5650).
+    The compiler now tries to point to the first problematic expression in the function call, rather than the entire function call with type inference details.
+    Simple errors only mention closed types; verbose errors with unsolved type variables are only shown when necessary.
+
+  * Improved error messages for context dot: only the receiver type variables are solved, remaining type variables stay unsolved, not solved to `Any` or `Non` (#5634).
+
+  * Fixed the type instantiation hint to have the correct arity (#5634).
+
+  * Fix for #5618 (compiling dotted `await`s) (#5622).
+
+  * Improved type inference of the record update syntax (#5625).
+
+  * New flag `--error-recovery` to enable reporting of multiple syntax errors (#5632).
+
+  * Improved solving and error messages for invariant type parameters (#5464).
+    Error messages now include suggested type instantiations when there is no principal solution.
+
+    Invariant type parameters with bounds like `Int  <:  U  <:  Any` (when the upper bound is `Any`) can now be solved by choosing the lower bound (`Int` here) when it has no proper supertypes other than `Any`.
+    This means that when choosing between **exactly two** solutions: the lower bound and `Any` as the upper bound, the lower bound is chosen as the solution for the invariant type parameter (`U` here).
+    Symmetrically, with bounds like `Non  <:  U  <:  Nat` (when the lower bound is `Non`), the upper bound (`Nat` here) is chosen when it has no proper subtypes other than `Non`.
+
+    For example, the following code now compiles without explicit type arguments:
+
+    ```motoko
+    import VarArray "mo:core/VarArray";
+    let varAr = [var 1, 2, 3];
+    let result = VarArray.map(varAr, func x = x : Int);
+    ```
+
+    This compiles because the body of `func x = x : Int` has type `Int`, which implies that `Int  <:  U  <:  Any`.
+    Since `Int` has no proper supertypes other than `Any`, it can be chosen as the solution for the invariant type parameter `U`, resulting in the output type `[var Int]`.
+
+    However, note that if the function body was of type `Nat`, it would not compile, because `Nat` is a proper subtype of `Int` (`Nat <: Int`).
+    In this case, there would be no principal solution with `Nat  <:  U  <:  Any`, and the error message would suggest:
+
+    ```
+    Hint: Add explicit type instantiation, e.g. <Nat, Nat>
+    ```
+
+    The suggested type instantiation can be used to fix the code:
+
+    ```motoko
+    let result = VarArray.map<Nat, Nat>(varAr, func x = x);
+    ```
+
+    Note that the error message suggests only one possible solution, but there may be alternatives. In the example above, `<Nat, Int>` would also be a valid instantiation.
+
+  * Fixes type inference of deferred funcs that use `return` in their body (#5615).
+    Avoids confusing errors like `Bool does not have expected type T` on `return` expressions. Should type check successfully now.
+
+  * Add warning `M0239` that warns when binding a unit `()` value by `let` or `var` (#5599).
+
+  * Use `self` parameter, not `Self` type, to enable contextual dot notation (#5574).
+
+  * Add (caffeine) warning `M0237` (#5588).
+    Warns if explicit argument could have been inferred and omitted,
+    e.g. `a.sort(Nat.compare)` vs `a.sort()`.
+    (allowed by default, warn with `-W 0237`).
+
+  * Add (caffeine) warning `M0236` (#5584).
+    Warns if contextual dot notation could have been used,
+    e.g. `Map.filter(map, ...)` vs `map.filter(...)`.
+    Does not warn for binary `M.equals(e1, e2)` or `M.compareXXX(e1, e2)`.
+    (allowed by default, warn with `-W 0236`).
+
+  * Add (caffeine) deprecation code `M0235` (#5583).
+    Deprecates any public types and values with special doc comment
+    `/// @deprecated M0235`.
+    (allowed by default, warn with `-W 0235`).
+
+  * Experimental support for `implicit` argument declarations (#5517).
+
+  * Experimental support for Mixins (#5459).
+
+  * bugfix: importing of `blob:file:` URLs in subdirectories should work now (#5507, #5569).
+
+  * bugfix: escape `composite_query` fields on the Candid side, as it is a keyword (#5617).
+
+  * bugfix: implement Candid spec improvements (#5504, #5543, #5505).
+    May now cause rejection of certain type-incorrect Candid messages that were accepted before.
+
+## 0.16.3 (2025-09-29)
+
+* motoko (`moc`)
+
+  * Added `Prim.getSelfPrincipal<system>() : Principal` to get the principal of the current actor (#5518).
+
+  * Contextual dot notation (#5458):
+
+    Writing `e0.f(<Ts>)(e1,...,en)` is short-hand for `M.f(<Ts>)(e0, e1, ..., en)`, provided:
+
+    * `f` is not already a field or special member of `e0`.
+    * There is a unique module `M` with member `f` in the context that declares:
+      * a public type `Self<T1,..., Tn>` that can be instantiated to the type of `e0`;
+      * a public field `f` that accepts `(e0, e2, ..., en)` as arguments.
+
+  * Added an optional warning for **redundant type instantiations** in generic function calls (#5468).
+    Note that this warning is off by default.
+    It can be enabled with the `-W M0223` flag.
+
+  * Added `-A` and `-W` flags to disable and enable warnings given their message codes (#5496).
+
+    For example, to disable the warning for redundant `stable` keyword, use `-A M0217`.
+    To enable the warning for redundant type instantiations, use `-W M0223`.
+    Multiple warnings can be disabled or enabled by comma-separating the message codes, e.g. `-A M0217,M0218`.
+    Both flags can be used multiple times.
+
+  * Added `-E` flag to treat specified warnings as errors given their message codes (#5502).
+
+  * Added `--warn-help` flag to show available warning codes, current lint level (**A**llowed, **W**arn or **E**rror), and descriptions (#5502).
+
+  * `moc.js` : Added `setExtraFlags` method for passing some of the `moc` flags (#5506).
+
+## 0.16.2 (2025-09-12)
+
+* motoko (`moc`)
+
+  * Added primitives to access canister environment variables (#5443):
+
+    ```motoko
+    Prim.envVarNames : <system>() -> [Text]
+    Prim.envVar : <system>(name : Text) -> ?Text
+    ```
+
+    These require `system` capability to prevent supply-chain attacks.
+
+  * Added ability to import `Blob`s from the local file system by means of the `blob:file:` URI scheme (#4935).
+
+## 0.16.1 (2025-08-25)
+
+* motoko (`moc`)
+
+  * bugfix: fix compile-time exception showing `???` type when using 'improved type inference' (#5423).
+
+  * Allow inference of invariant type parameters, but only when the bound/solution is an 'isolated' type (meaning it has no proper subtypes nor supertypes other than `Any`/`None`) (#5359).
+    This addresses the limitation mentioned in #5180.
+    Examples of isolated types include all primitive types except `Nat` and `Int`, such as `Bool`, `Text`, `Blob`, `Float`, `Char`, `Int32`, etc.
+    `Nat` and `Int` are not isolated because `Nat` is a subtype of `Int` (`Nat <: Int`).
+
+    For example, the following code now works without explicit type arguments:
+
+    ```motoko
+    import VarArray "mo:core/VarArray";
+    let varAr = [var 1, 2, 3];
+    let result = VarArray.map(varAr, func x = debug_show (x) # "!"); // [var Text]
+    ```
+
+  * `ignore` now warns when its argument has type `async*`, as it will have no effect (#5419).
+
+  * bugfix: fix rare compiler crash when using a label and identifier of the same name in the same scope (#5283, #5412).
+
+  * bugfix: `moc` now warns about parentheticals on `async*` calls, and makes sure that they get discarded (#5415).
+
+## 0.16.0 (2025-08-19)
+
+* motoko (`moc`)
+
+  * Breaking change: add new type constructor `weak T` for constructing weak references.
+
+    ```motoko
+        Prim.allocWeakRef: <T>(value : T) -> weak T
+        Prim.weakGet: <T>weak T -> ?(value : T)
+        Prim.isLive: weak Any -> Bool
+    ```
+
+    A weak reference can only be allocated from a value whose type representation is always a heap reference; `allowWeakRef` will trap on values of other types.
+    A weak reference does not count as a reference to its value and allows the collector to collect the value once no other references to it remain.
+    `weakGet` will return `null`, and `isLive` will return false once the value of the reference has been collected by the garbage collector.
+    The type constructor `weak T` is covariant.
+
+    Weak reference operations are only supported with --enhanced-orthogonal-persistence and cannot be used with the classic compiler.
+
+  * bugfix: the EOP dynamic stable compatibility check incorrectly rejected upgrades from `Null` to `?T` (#5404).
+
+  * More explanatory upgrade error messages with detailing of cause (#5391).
+
+  * Improved type inference for calling generic functions (#5180).
+    This means that type arguments can be omitted when calling generic functions in _most common cases_.
+    For example:
+
+    ```motoko
+    let ar = [1, 2, 3];
+    Array.map(ar, func x = x * 2);  // Needs no explicit type arguments anymore!
+    ```
+
+    Previously, type arguments were usually required when there was an anonymous not annotated function in arguments.
+    The reason being that the type inference algorithm cannot infer the type of `func`s in general,
+    e.g. `func x = x * 2` cannot be inferred without knowing the type of `x`.
+
+    Now, the improved type inference can handle such `func`s when there is enough type information from other arguments.
+    It works by splitting the type inference into two phases:
+    1. In the first phase, it infers part of the instantiation from the non-`func` arguments.
+       The goal is to infer all parameters of the `func` arguments, e.g. `x` in the example above.
+       The `ar` argument in the example above is used to infer the partial instantiation `Array.map<Nat, O>`, leaving the second type argument `O` to be inferred in the second phase.
+       With this partial instantiation, it knows that `x : Nat`.
+    2. In the second phase, it completes the instantiation by inferring the bodies of the `func` arguments; assuming that all parameters were inferred in the first phase.
+       In the example above, it knows that `x : Nat`, so inferring the body `x * 2` will infer the type `O` to be `Nat`.
+       With this, the full instantiation `Array.map<Nat, Nat>` is inferred, and the type arguments can be omitted.
+
+    Limitations:
+    - Invariant type parameters must be explicitly provided in most cases.
+      e.g. `VarArray.map` must have the return type annotation:
+      ```motoko
+      let result = VarArray.map<Nat, Nat>(varAr, func x = x * 2);
+      ```
+      Or the type of the result must be explicitly provided:
+      ```motoko
+      let result : [var Nat] = VarArray.map(varAr, func x = x * 2);
+      ```
+
+    - When there is not enough type information from the non-`func` arguments, the type inference will not be able to infer the `func` arguments.
+      However this is not a problem in most cases.
+
+## 0.15.1 (2025-07-30)
+
+* motoko (`moc`)
+
+  * bugfix: `persistent` imported actor classes incorrectly rejected as non-`persistent` (#5667).
+
+  * Allow matching type fields of modules and objects in patterns (#5056)
+    This allows importing a type from a module without requiring an indirection or extra binding.
+
+    ```
+    // What previously required indirection, ...
+    import Result "mo:core/Result";
+    type MyResult<Ok> = Result.Result<Ok, Text>;
+
+    // or rebinding, ...
+    import Result "mo:core/Result";
+    type Result<Ok, Err> = Result.Result<Ok, Err>;
+    type MyResult<Ok> = Result<Ok, Text>;
+
+    // can now be written more concisely as:
+    import { type Result } "mo:core/Result";
+    type MyResult<Ok> = Result<Ok, Text>;
+    ```
+
+## 0.15.0 (2025-07-25)
+
+* motoko (`moc`)
+
+  * Breaking change: the `persistent` keyword is now required on actors and actor classes (#5320, #5298).
+    This is a transitional restriction to force users to declare transient declarations as `transient` and actor/actor classes as `persistent`.
+    New error messages and warnings will iteratively guide you to insert `transient` and `persistent` as required, after which any `stable` keywords can be removed. Use the force.
+
+    In the near future, the `persistent` keyword will be made optional again, and `let` and `var` declarations within actor and actor classes will be `stable` (by default) unless declared `transient`, inverting the previous default for non-`persistent` actors.
+    The goal of this song and dance is to *always* default actor declarations to stable unless declared `transient` and make the `persistent` keyword redundant.
+
+  * Breaking change: enhanced orthogonal persistence is now the default compilation mode for `moc` (#5305).
+    Flag `--enhanced-orthogonal-persistence` is on by default.
+    Users not willing or able to migrate their code can opt in to the behavior of moc prior to this release with the new flag `--legacy-persistence`.
+    Flag `--legacy-persistence` is required to select the legacy `--copying-gc` (the previous default), `--compacting-gc`,  or `generational-gc`.
+
+    As a safeguard, to protect users from unwittingly, and irreversibly, upgrading from legacy to enhanced orthogonal persistence, such upgrades will fail unless the new code is compiled with flag `--enhanced-orthogonal-persistence` explicitly set.
+    New projects should not require the flag at all (#5308) and will simply adopt enhanced mode.
+
+    To recap, enhanced orthogonal persistence implements scalable and efficient orthogonal persistence (stable variables) for Motoko:
     * The Wasm main memory (heap) is retained on upgrade with new program versions directly picking up this state.
     * The Wasm main memory has been extended to 64-bit to scale as large as stable memory in the future.
     * The runtime system checks that data changes of new program versions are compatible with the old state.
-    
+
     Implications:
     * Upgrades become extremely fast, only depending on the number of types, not on the number of heap objects.
     * Upgrades will no longer hit the IC instruction limit, even for maximum heap usage.
@@ -18,7 +302,370 @@
     * The garbage collector is fixed to incremental GC and cannot be chosen.
     * `Float.format(#hex prec, x)` is no longer supported (expected to be very rarely used in practice).
     * The debug print format of `NaN` changes (originally `nan`).
-    
+
+  * Fixed file indices in the DWARF encoding of the `debug_line` section. This change is only relevant when using the `-g` flag (#5281).
+
+  * Improved large array behavior under the incremental GC (#5314)
+
+## 0.14.14 (2025-06-30)
+
+* motoko (`moc`)
+
+  * Lazy WASM imports: avoids unnecessary function imports from the runtime, improving compatibility with more runtime versions (#5276).
+
+  * Improved stable compatibility error messages to be more concise and clear during canister upgrades (#5271).
+
+## 0.14.13 (2025-06-17)
+
+* motoko (`moc`)
+
+  * Introduce `await?` to synchronize `async` futures, avoiding the commit point when already fulfilled (#5215).
+
+  * Adds a `Prim.Array_tabulateVar` function, that allows faster initialization of mutable arrays (#5256).
+
+  * optimization: accelerate IR type checking with caching of sub, lub and check_typ tests (#5260).
+    Reduces need for `-no-check-ir` flag.
+
+## 0.14.12 (2025-06-12)
+
+  * Added the `rootKey` primitive (#4994).
+
+  * optimization: for `--enhanced-orthogonal-persistence`, reduce code-size and compile-time by sharing more static allocations (#5233, #5242).
+
+  * bugfix: fix `-fshared-code` bug (#5230).
+
+  * bugfix: avoid stack overflow and reduce code complexity for large EOP canisters (#5218).
+
+## 0.14.11 (2025-05-16)
+
+* motoko (`moc`)
+
+  * Enhance syntax error messages with examples and support _find-references_ and _go-to-definition_
+    functionality for fields in the language server (Serokell, Milestone-3) (#5076).
+
+  * bugfix: `mo-doc` now correctly extracts record-patterned function arguments (#5128).
+
+## 0.14.10 (2025-05-12)
+
+* motoko (`moc`)
+
+  * Added new primitives for cost calculation:
+    `costCall`, `costCreateCanister`, `costHttpRequest`, `costSignWithEcdsa`, `costSignWithSchnorr` (#5001).
+
+## 0.14.9 (2025-04-25)
+
+* motoko (`moc`)
+
+  * Added new primitives for exploding fixed-width numbers to bytes:
+    `explodeNat16`, `explodeInt16`, `explodeNat32`, `explodeInt32`, `explodeNat64`, `explodeInt64` (#5057).
+
+## 0.14.8 (2025-04-17)
+
+* motoko (`moc`)
+
+  * Add random-access indexing to `Blob`, support special methods `get` and `keys` (#5018).
+
+  * Officializing **enhanced orthogonal persistence** (EOP) after a successful beta testing phase (#5035).
+
+    EOP needs to be explicitly enabled by the `--enhanced-orthogonal-persistence` compiler flag or via `args` in `dfx.json`:
+    ```
+      "type" : "motoko"
+      ...
+      "args" : "--enhanced-orthogonal-persistence"
+    ```
+
+  * Add support for parser error recovery to improve LSP (Serokell, Milestone-2) (#4959).
+
+  * We now provide a proper `motoko-mode` for `emacs` (#5043).
+
+  * bugfix: Avoid generating new Candid `type`s arising from equal homonymous Motoko `type` (if possible)
+    in service definitions (#4309, #5013).
+
+  * bugfix: Provide a more consistent framework for dealing with internally generated type indentifiers,
+    fixing caching bugs, e.g. in the VSCode plugin (#5055).
+
+## 0.14.7 (2025-04-04)
+
+* motoko (`moc`)
+
+  * Preserve and infer named types both to improve displayed types in error messages, and to preserve function signatures when deriving Candid types (#4943).
+    The names remain semantically insignificant and are ignored when comparing types for subtyping and equality.
+
+    For example,
+    ``` motoko
+    func add(x : Int, y : Int) : (res : Int) = x + y;
+    ```
+    now has inferred type:
+    ``` motoko
+    (x : Int, y: Int) -> (res : Int)
+    ```
+    Previously, the type would be inferred as:
+    ``` motoko
+    (Int, Int) -> Int
+    ```
+
+  * Refine the `*.most` stable signature file format to distinguish stable variables that are strictly required by the migration function rather than propagated from the actor body (#4991).
+    This enables the stable compatibility check to verify that a migration function will not fail due to missing required fields.
+    Required fields are declared `in`, not `stable`, in the actor's pre-signature.
+
+  * Added improved LSP cache for typechecking (thanks to Serokell) (#4931).
+
+  * Reduce enhanced-orthogonal-persistence memory requirements using incremental allocation within partitions (#4979).
+
+* motoko-base
+
+  * Deprecated `ExperimentalCycles.add`, use a parenthetical `(with cycles = <amount>) <send>` instead (dfinity/motoko-base#703).
+
+## 0.14.6 (2025-04-01)
+
+* motoko (`moc`)
+
+  * To prevent implicit data loss due to upgrades, stable fields may no longer be dropped or promoted to lossy supertypes (#4970).
+    Removing a stable variable, or promoting its type to a lossy supertype by, for example, dropping nested record fields,
+    now requires an explicit migration expression.
+    Promotion to non-lossy supertypes, such as `Nat` to `Int` or `{#version1}` to `{#version1; #version2}`, is still supported.
+
+  * Now we detect (and warn for) fields in literal objects and record extensions,
+    (as well as `public` fields or types in `object` and `class`) that are inaccessible
+    due to a user-specified type constraint (#4978, #4981).
+
+  * We now provide release artefacts for `Darwin-arm64` and `Linux-aarch64` platforms (#4952).
+
+## 0.14.5 (2025-03-25)
+
+* motoko (`moc`)
+
+  * Performance improvements to the default timer mechanism (#3872, #4967).
+
+* documentation (`mo-doc`)
+
+  * Changed extracted `let` bindings with manifest function type to appear as `func`s (#4963).
+
+## 0.14.4 (2025-03-18)
+
+* motoko (`moc`)
+
+  * Added `canisterSubnet` primitive (#4857).
+
+* motoko-base
+
+  * Added `burn : <system>Nat -> Nat` to `ExperimentalCycles` (dfinity/motoko-base#699).
+
+  * Added `ExperimentalInternetComputer.subnet` (dfinity/motoko-base#700).
+
+## 0.14.3 (2025-03-04)
+
+* motoko (`moc`)
+
+  * Added primitive predicate `isReplicatedExecution` (#4929).
+
+* motoko-base
+
+  * Added `isRetryPossible : Error -> Bool` to `Error` (dfinity/motoko-base⁠#692).
+
+  * Made `ExperimentalInternetComputer.replyDeadline` to return
+    an optional return type (dfinity/motoko-base⁠#693).
+    _Caveat_: Breaking change (minor).
+
+  * Added `isReplicated : () -> Bool` to `ExperimentalInternetComputer` (dfinity/motoko-base#694).
+
+## 0.14.2 (2025-02-26)
+
+* motoko (`moc`)
+
+  * Added support for sending `cycles` and setting a `timeout` in parentheticals.
+    This is an **experimental feature**, with new syntax, and now also allowing best-effort
+    message sends. The legacy call `Cycles.add<system>` is still supported (#4608).
+
+    For example, if one wants to attach cycles to a message send, one can prefix it with a parenthetical
+    ``` motoko
+    (with cycles = 5_000) Coins.mine(forMe);
+    ```
+    Similarly a timeout for _best-effort_ execution (also called _bounded-wait_) can be specified like
+    ``` motoko
+    let worker = (with timeout = 15) async { /* worker loop */ };
+    ```
+    A common base for fields optionally goes before the `with` and can be customised with both fields
+    after it. Please consult the documentation for more usage information.
+
+  * bugfix: `mo-doc` will now generate documentation for `actor`s and `actor class`es (#4905).
+
+  * bugfix: Error messages now won't suggest privileged/internal names (#4916).
+
+## 0.14.1 (2025-02-13)
+
+* motoko (`moc`)
+
+  * bugfix: Be more precise when reporting type errors in `migration` fields (#4888).
+
+## 0.14.0 (2025-02-05)
+
+* motoko (`moc`)
+
+  * Add `.values()` as an alias to `.vals()` for arrays and `Blob`s (#4876).
+
+  * Support explicit, safe migration of persistent data allowing arbitrary
+    transformations on a selected subset of stable variables.
+    Additional static checks warn against possible data loss (#4812).
+
+    As a very simple example:
+    ``` motoko
+    import Nat32 "mo:base/Nat32";
+
+    (with migration =
+      func (old : { var size : Nat32 }) : { var length : Nat } =
+        { var length = Nat32.toNat(old.size) }
+    )
+    persistent actor {
+      var length : Nat = 0;
+    }
+    ```
+    may be used during an upgrade to rename the stable field `size` to `length`,
+    and change its type from `Nat32` to `Nat`.
+
+    See the documentation for full details.
+
+## 0.13.7 (2025-02-03)
+
+* motoko (`moc`)
+
+  * Support passing cycles in primitive `call_raw` (resp. `ExperimentalInternetComputer.call`) (#4868).
+
+## 0.13.6 (2025-01-21)
+
+* motoko (`moc`)
+
+  * Support the low Wasm memory hook: `system func lowmemory() : async* () { ... }` (#4849).
+
+  * Breaking change (minor) (#4854):
+
+    * For enhanced orthogonal persistence: The Wasm persistence modes used internally for canister upgrades have been changed to lower case names,
+      `keep` and `replace` and instead of `Keep` and `Replace`:
+
+      If using actor class instances with enhanced orthogonal persistence, you would need to recompile the program and upgrade with latest `moc` and `dfx`.
+      Otherwise, no action is needed.
+
+  * bugfix: Checks and mitigations that timer servicing works (#4846).
+
+  * bugfix: Some valid upgrades deleting a stable variable could fail the `--enhanced-orthogonal-persistence` stable compatibility check due to a bug (#4855).
+
+## 0.13.5 (2024-12-06)
+
+* motoko (`moc`)
+
+  * Breaking change (minor) (#4786):
+
+    * Add new keyword `transient` with exactly the same meaning as the old keyword `flexible` (but a more familiar reading).
+
+    * Add keyword `persistent`.
+
+      When used to modify the `actor` keyword in an actor or actor class definition, the keyword declares that the default stability of a
+      `let` or `var` declaration is `stable` (not `flexible` or `transient`).
+
+      For example, a stateful counter can now be declared as:
+      ``` motoko
+      persistent actor {
+        // counts increments since last upgrade
+        transient var invocations = 0;
+
+        // counts increments since first installation
+        var value = 0; 	// implicitly `stable`
+
+        public func inc() : async () {
+          value += 1;
+          invocations += 1;
+        }
+      }
+      ```
+      On upgrade, the transient variable `invocations` will be reset to `0` and `value`, now implicitly `stable`, will retain its current value.
+
+      Legacy actors and classes declared without the `persistent` keyword have the same semantics as before.
+
+  * Added new primitive `replyDeadline : () -> Nat64` to obtain when a response for a best-effort message is due (#4795).
+
+  * bugfix: fail-fast by limiting subtyping depth to avoid reliance on unpredictable stack overflow (#3057, #4798).
+
+* motoko-base
+
+  * Added `Text.fromList` and `Text.toList` functions (dfinity/motoko-base#676).
+
+  * Added `Text.fromArray/fromVarArray` functions (dfinity/motoko-base#674).
+
+  * Added `replyDeadline` to `ExperimentalInternetComputer` (dfinity/motoko-base⁠#677).
+
+## 0.13.4 (2024-11-29)
+
+* motoko (`moc`)
+
+  * refactoring: Updating and simplifying the runtime system dependencies (#4677).
+
+* motoko-base
+
+  * Breaking change (minor): `Float.format(#hex)` is no longer supported.
+    This is because newer versions of Motoko (such as with enhanced orthogonal persistence)
+    rely on the Rust-native formatter that does not offer this functionality.
+    It is expected that this formatter is very rarely used in practice (dfinity/motoko-base⁠#589).
+
+  * Formatter change (minor): The text formatting of `NaN`, positive or negative,
+    will be `NaN` in newer Motoko versions, while it was `nan` or `-nan` in older versions (dfinity/motoko-base⁠#589).
+
+## 0.13.3 (2024-11-13)
+
+* motoko (`moc`)
+
+  * typing: suggest conversions between primitive types from imported libraries
+    and, with `--ai-errors`, all available package libraries (#4747).
+
+* motoko-base
+
+  * Add modules `OrderedMap` and `OrderedSet` to replace `RBTree` with improved functionality, performance
+    and ergonomics avoiding the need for preupgrade hooks (thanks to Serokell) (dfinity/motoko-base⁠#662).
+
+## 0.13.2 (2024-10-18)
+
+* motoko (`moc`)
+
+  * Made the `actor`'s _self_ identifier available in the toplevel block. This also allows using
+    functions that refer to _self_ from the initialiser (e.g. calls to `setTimer`) (#4719).
+
+  * bugfix: `actor <exp>` now correctly performs definedness tracking (#4731).
+
+## 0.13.1 (2024-10-07)
+
+* motoko (`moc`)
+
+  * Improved error messages for unbound identifiers and fields that avoid reporting large types and use an edit-distance based metric to suggest alternatives (#4720).
+
+  * Flag `--ai-errors` to tailor error messages to AI clients (#4720).
+
+  * Compilation units containing leading type definitions are now rejected with an improved error message (#4714).
+
+  * bugfix: `floatToInt64` now behaves correctly in the interpreter too (#4712).
+
+## 0.13.0 (2024-09-17)
+
+* motoko (`moc`)
+
+  * Added a new primitive `cyclesBurn : <system> Nat -> Nat` for burning the canister's cycles
+    programmatically (#4690).
+
+  * **For beta testing:** Support __enhanced orthogonal persistence__, enabled with new `moc` flag `--enhanced-orthogonal-persistence` (#4193).
+
+    This implements scalable and efficient orthogonal persistence (stable variables) for Motoko:
+    * The Wasm main memory (heap) is retained on upgrade with new program versions directly picking up this state.
+    * The Wasm main memory has been extended to 64-bit to scale as large as stable memory in the future.
+    * The runtime system checks that data changes of new program versions are compatible with the old state.
+
+    Implications:
+    * Upgrades become extremely fast, only depending on the number of types, not on the number of heap objects.
+    * Upgrades will no longer hit the IC instruction limit, even for maximum heap usage.
+    * The change to 64-bit increases the memory demand on the heap, in worst case by a factor of two.
+    * For step-wise release handling, the IC initially only offers a limited capacity of the 64-bit space (e.g. 4GB or 6GB), that will be gradually increased in future to the capacity of stable memory.
+    * There is moderate performance regression of around 10% for normal execution due to combined related features (precise tagging, change to incremental GC, and handling of compile-time-known data).
+    * The garbage collector is fixed to incremental GC and cannot be chosen.
+    * `Float.format(#hex prec, x)` is no longer supported (expected to be very rarely used in practice).
+    * The debug print format of `NaN` changes (originally `nan`).
+
     To activate enhanced orthogonal persistence under `dfx`, the following command-line argument needs to be specified in `dfx.json`:
 
     ```
@@ -28,10 +675,11 @@
       "args" : "--enhanced-orthogonal-persistence"
     ...
     ```
+    BREAKING CHANGE (Minor): changes some aspects of `Float` formatting.
 
     For more information, see:
     * The Motoko design documentation `design/OrthogonalPersistence.md`
-    * The Motoko user documentation `doc/md/canister-maintenance//upgrades.md`.
+    * The Motoko user documentation `doc/md/canister-maintenance/upgrades.md`.
 
   * Candid decoding: impose an upper limit on the number of values decoded or skipped in a single candid payload,
     as a linear function, `max_values`, of binary payload size.
@@ -80,6 +728,10 @@
         callbackTableSize : Nat;
     }
     ```
+
+* motoko-base
+
+  * Added `Iter.concat` function (thanks to AndyGura) (dfinity/motoko-base⁠#650).
 
 ## 0.12.0 (2024-07-26)
 

@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "dune": "^0.2.1"
+  }
+}

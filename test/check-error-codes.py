@@ -8,8 +8,7 @@ import glob
 import sys
 
 if len(sys.argv) != 2:
-    print("""USAGE: python check-error-codes.py path/to/error-codes.ml
-""")
+    print("USAGE: python check-error-codes.py ../src/lang_utils/error_codes.ml")
     sys.exit(2)
 
 registered_codes = set()
@@ -18,7 +17,7 @@ tested_codes = set()
 # This list should only contain errors that are impossible or hard to
 # exercise in our test suite (or defunct)
 known_untested_codes = {
-    "M0000", # internal compiler error
+    # See issue 5050... "M0000", # internal compiler error
     "M0005", # case mismatch, hard to test on linux
     "M0020", # unresolved import, seems to be an internal error?
     "M0021", # infer forwart import type. internal, because imports are topologically sorted?
@@ -41,7 +40,9 @@ known_untested_codes = {
     "M0162", # Candid service constructor type not supported as Motoko type
     "M0164", # unknown record or variant label in textual representation
     "M0165", # odd expected type
+    "M0181", # defunct viper error
     "M0191", # compiler warning about wasm features (hard to trigger)
+    "M0232", # cannot infer type of implicit argument
     }
 
 def populate_error_codes():
@@ -61,10 +62,9 @@ def populate_error_codes():
 
 def populate_tested_codes():
     tc_ok = glob.glob("./**/*.tc.ok", recursive=True)
-    comp_ref_ok = glob.glob("./**/*.comp-ref.ok", recursive=True)
     comp_ok = glob.glob("./**/*.comp.ok", recursive=True)
     cmp_ok = glob.glob("./**/*.cmp.ok", recursive=True)
-    paths = tc_ok + comp_ref_ok + comp_ok + cmp_ok
+    paths = tc_ok + comp_ok + cmp_ok
     for path in paths:
         with open(path) as fp:
             for line in fp:

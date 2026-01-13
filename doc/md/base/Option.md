@@ -1,6 +1,4 @@
-# Option
-Typesafe nulls
-
+# base/Option
 Optional values can be seen as a typesafe `null`. A value of type `?Int` can
 be constructed with either `null` or `?42`. The simplest way to get at the
 contents of an optional is to use pattern matching:
@@ -137,6 +135,7 @@ func assertSome(x : ?Any)
 ```
 
 Asserts that the value is not `null`; fails otherwise.
+
 @deprecated Option.assertSome will be removed soon; use an assert expression instead
 
 ## Function `assertNull`
@@ -145,6 +144,7 @@ func assertNull(x : ?Any)
 ```
 
 Asserts that the value _is_ `null`; fails otherwise.
+
 @deprecated Option.assertNull will be removed soon; use an assert expression instead
 
 ## Function `unwrap`

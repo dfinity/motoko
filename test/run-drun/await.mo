@@ -62,7 +62,7 @@ actor a {
 
     func p():async (Text,Text) { ("fst","snd"); };
     let h = async {
-       let (a,b) = ("a","b"); /* await p(a,b);*/
+       let (a,b) = await p();
        Prim.debugPrint a;
        Prim.debugPrint b;
     };

@@ -41,7 +41,7 @@ let bigint_of_double (f : Wasm.F64.t) : Big_int.big_int =
 
   (* Fraction part of IEEE 754 double, 52 bits from the float, with an implicit
      1 at the 53rd bit *)
-  let frac = Int64.(logor (shift_right_logical (shift_left bits 12) 12) (shift_left (of_int 1) 52)) in
+  let frac = Int64.(logor (shift_right_logical (shift_left bits 12) 12) (shift_left one 52)) in
 
   if Int64.(equal exp bits_11) then
     (* Exponent is fully set: NaN or inf *)
@@ -55,7 +55,7 @@ let bigint_of_double (f : Wasm.F64.t) : Big_int.big_int =
 
   let a = Big_int.big_int_of_int64 frac in
 
-  let a = if Int64.(compare exp (of_int 0)) < 0 then
+  let a = if Int64.(compare exp zero) < 0 then
     (* Exponent < 0, shift right *)
     Big_int.(shift_right_big_int a (- (Int64.to_int exp)))
   else
@@ -64,7 +64,7 @@ let bigint_of_double (f : Wasm.F64.t) : Big_int.big_int =
   in
 
   (* Negate the number if sign bit is set (double is negative) *)
-  if Int64.shift_right_logical bits 63 = Int64.of_int 1 && a <> Big_int.zero_big_int then
+  if Int64.(shift_right_logical bits 63 = one) then
     Big_int.minus_big_int a
   else
     a
@@ -224,6 +224,10 @@ sig
   val compare : t -> t -> int
   val to_int : t -> int
   val of_int : int -> t
+  val to_int32 : t -> Int32.t
+  val of_int32 : Int32.t -> t
+  val to_int64 : t -> Int64.t
+  val of_int64 : Int64.t -> t
   val to_big_int : t -> Big_int.big_int
   val of_big_int : Big_int.big_int -> t
   val of_string : string -> t
@@ -260,8 +264,12 @@ struct
   let le = le_big_int
   let ge = ge_big_int
   let compare = compare_big_int
-  let to_int = int_of_big_int
+  let to_int i = int_of_big_int i
   let of_int = big_int_of_int
+  let to_int32 = int32_of_big_int
+  let of_int32 = big_int_of_int32
+  let to_int64 = int64_of_big_int
+  let of_int64 = big_int_of_int64
   let of_big_int i = i
   let to_big_int i = i
   let to_pretty_string i = group_num (string_of_big_int i)
@@ -274,7 +282,7 @@ struct
   let pow x y =
     if gt y max_int
     then raise (Invalid_argument "Int.pow")
-    else power_big_int_positive_int x (int_of_big_int y)
+    else power_big_int_positive_int x (to_int y)
 end
 
 module Nat : NumType with type t = Big_int.big_int =
@@ -345,6 +353,8 @@ struct
   let div a b = let res = Rep.div a b in check res
   let pow a b = let res = Rep.pow a b in check res
   let of_int i = let res = Rep.of_int i in check res
+  let of_int32 i = let res = Rep.of_int32 i in check res
+  let of_int64 i = let res = Rep.of_int64 i in check res
   let of_big_int i = let res = Rep.of_big_int i in check res
   let of_string s = let res = Rep.of_string s in check res
 

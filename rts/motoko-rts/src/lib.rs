@@ -1,15 +1,19 @@
 //! Implements Motoko runtime system
 
+// See: https://doc.rust-lang.org/nightly/edition-guide/rust-2024/static-mut-references.html
+#![allow(static_mut_refs)]
 #![no_std]
 #![feature(
     arbitrary_self_types,
     core_intrinsics,
-    panic_info_message,
     proc_macro_hygiene,
     // // We do not need simd but this flag enables `core::arch:wasm64`.
     // // See https://github.com/rust-lang/rust/issues/90599
-    simd_wasm64
+    simd_wasm64,
+    arbitrary_self_types_pointers,
+    stmt_expr_attributes
 )]
+#![allow(internal_features)]
 
 // c.f. https://os.phil-opp.com/heap-allocation/#dynamic-memory
 extern crate alloc;
@@ -67,14 +71,14 @@ mod visitor;
 use motoko_rts_macros::*;
 
 #[ic_mem_fn(ic_only)]
-unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
-    text::text_of_str(mem, "0.1")
+fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
+    unsafe { text::text_of_str(mem, "0.1") }
 }
 
 #[non_incremental_gc]
 #[ic_mem_fn(ic_only)]
-unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<usize>) -> types::Value {
-    mem.alloc_words(n)
+fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<usize>) -> types::Value {
+    unsafe { mem.alloc_words(n) }
 }
 
 #[incremental_gc]
@@ -87,7 +91,7 @@ extern "C" {
     fn rts_trap(msg: *const u8, len: u32) -> !;
 }
 
-pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {
+pub(crate) fn trap_with_prefix(prefix: &str, msg: &str) -> ! {
     // Rust currently doesn't support stack-allocated dynamically-sized arrays or alloca, so we
     // have a max bound to the message size here.
     //
@@ -116,14 +120,14 @@ pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {
     }
 
     assert!(b_idx <= u32::MAX as usize);
-    rts_trap(c_str.as_ptr(), b_idx as u32);
+    unsafe { rts_trap(c_str.as_ptr(), b_idx as u32) }
 }
 
-pub(crate) unsafe fn idl_trap_with(msg: &str) -> ! {
-    trap_with_prefix("IDL error: ", msg);
+pub(crate) fn idl_trap_with(msg: &str) -> ! {
+    trap_with_prefix("IDL error: ", msg)
 }
 
-pub(crate) unsafe fn rts_trap_with(msg: &str) -> ! {
+pub(crate) fn rts_trap_with(msg: &str) -> ! {
     trap_with_prefix("RTS error: ", msg)
 }
 
@@ -131,24 +135,17 @@ pub(crate) unsafe fn rts_trap_with(msg: &str) -> ! {
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     unsafe {
-        if let Some(msg) = info.payload().downcast_ref::<&str>() {
-            println!(1000, "RTS panic: {}", msg);
-        } else if let Some(args) = info.message() {
-            let mut buf = [0 as u8; 1000];
-            let mut fmt = print::WriteBuf::new(&mut buf);
-            let _ = core::fmt::write(&mut fmt, *args);
-            print::print(&fmt);
-        } else {
-            println!(1000, "RTS panic: weird payload");
-        }
-
+        let message = info.message();
         if let Some(location) = info.location() {
             println!(
                 1000,
-                "panic occurred in file '{}' at line {}",
+                "panic occurred in file '{}' at line {}: {}",
                 location.file(),
                 location.line(),
+                message,
             );
+        } else {
+            println!(1000, "RTS panic: {message}");
         }
 
         rts_trap_with("RTS panicked");

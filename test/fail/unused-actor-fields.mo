@@ -1,5 +1,6 @@
+//MOC-FLAG -A=M0240
 actor {
-    let _noUnusedWarning = ();
+    let _noUnusedWarning = 1;
 
     class TestClass(classParameter1 : Nat, classParameter2 : Int) {
         let field1 = 1;
@@ -34,7 +35,6 @@ actor {
         };
     };
 
-    public func publicActorFunction(): async() {};
-    public func otherPublicActorFunction(unusedParameter2: Text) {
-    };
+    public shared ({ caller }) func publicActorFunction() : async () {};
+    public func otherPublicActorFunction(unusedParameter2 : Text) {};
 };

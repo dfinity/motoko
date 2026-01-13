@@ -1,6 +1,6 @@
-shared(msg) actor class Counter(init : Nat) {
+shared(msg) persistent actor class Counter(init : Nat) {
 
-  let owner = msg.caller;
+  transient let owner = msg.caller;
 
   var count = init;
 

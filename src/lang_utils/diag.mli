@@ -1,6 +1,6 @@
 (* A common data type for diagnostic messages *)
 
-type severity = Warning | Error | Info
+type severity
 type error_code = string
 
 type message = {
@@ -18,6 +18,7 @@ val warning_message : Source.region -> error_code -> string -> string -> message
 val error_message : Source.region -> error_code -> string -> string -> message
 
 val string_of_message : message -> string
+val is_treated_as_error : message -> bool
 val print_messages : messages -> unit
 
 (*
@@ -60,5 +61,4 @@ type msg_store
 val is_error_free : msg_store -> bool
 val add_msg : msg_store -> message -> unit
 val add_msgs : msg_store -> messages -> unit
-val with_message_store : (msg_store -> 'a option) -> 'a result
-
+val with_message_store : ?allow_errors:bool -> (msg_store -> 'a option) -> 'a result

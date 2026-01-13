@@ -83,6 +83,15 @@ let find id env =
     let dom = V.Env.keys env in
     trap no_region "unbound identifier %s in domain %s" id (String.concat " " dom)
 
+let lookup_actor env at aid id =
+  match V.Env.find_opt aid !(env.actor_env) with
+  | None -> trap at "Unknown actor \"%s\"" aid
+  | Some actor_value ->
+     let fs = V.as_obj actor_value in
+     match V.Env.find_opt id fs with
+     | None -> trap at "Actor \"%s\" has no method \"%s\"" aid id
+     | Some field_value -> field_value
+
 (* Tracing *)
 
 let trace_depth = ref 0
@@ -207,22 +216,23 @@ let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value 
     );
     k (V.Async async)
 
-let await env at async k =
-  if env.flags.trace then trace "=> await %s" (string_of_region at);
+let await env at short async k =
+  let adorn, schedule = if short then "?", (|>) () else "", Scheduler.queue in
+  if env.flags.trace then trace "=> await%s %s" adorn (string_of_region at);
   decr trace_depth;
   get_async async (fun v ->
-    Scheduler.queue (fun () ->
-      if env.flags.trace then
-        trace "<- await %s%s" (string_of_region at) (string_of_arg env v);
-      incr trace_depth;
-      k v
+      schedule (fun () ->
+        if env.flags.trace then
+          trace "<- await%s %s%s" adorn (string_of_region at) (string_of_arg env v);
+        incr trace_depth;
+        k v
       )
     )
-    (let r = Option.get (env.throws) in
+    (let r = Option.get env.throws in
      fun v ->
-       Scheduler.queue (fun () ->
+       schedule (fun () ->
          if env.flags.trace then
-           trace "<- await %s threw %s" (string_of_region at) (string_of_arg env v);
+           trace "<- await%s %s threw %s" adorn (string_of_region at) (string_of_arg env v);
          incr trace_depth;
          r v))
 
@@ -344,10 +354,31 @@ let blob_vals t at =
     in k (V.Obj (V.Env.singleton "next" next))
   )
 
+let blob_get t at =
+  V.local_func 1 1 (fun c v k ->
+    let n = V.as_int v in
+    if Numerics.Nat.lt n (Numerics.Nat.of_int (String.length t))
+    then k V.(Nat8 (Numerics.Nat8.of_int (Char.code (String.get t (Numerics.Nat.to_int n)))))
+    else trap at "blob index out of bounds"
+  )
+
 let blob_size t at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
     k (V.Int (Numerics.Nat.of_int (String.length t)))
+  )
+
+let blob_keys t at =
+  V.local_func 0 1 (fun c v k ->
+    V.as_unit v;
+    let i = ref 0 in
+    let next =
+      V.local_func 0 1 (fun c v k' ->
+        if !i = String.length t
+        then k' V.Null
+        else let v = V.Opt (V.Int (Numerics.Nat.of_int !i)) in incr i; k' v
+      )
+    in k (V.Obj (V.Env.singleton "next" next))
   )
 
 let text_chars t at =
@@ -412,23 +443,38 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   last_env := env;
   Profiler.bump_region exp.at ;
   match exp.it with
+  | HoleE (_, e) -> interpret_exp_mut env (!e) k
   | PrimE s ->
     k (V.Func (CC.call_conv_of_typ exp.note.note_typ,
        Prim.prim { Prim.trap = trap exp.at "%s" } s
     ))
   | VarE id ->
-    begin match Lib.Promise.value_opt (find id.it env.vals) with
-    | Some v -> k v
-    | None -> trap exp.at "accessing identifier before its definition"
-    end
+    (match id.note with
+    | (_, None) ->
+      begin match Lib.Promise.value_opt (find id.it env.vals) with
+      | Some v -> k v
+      | None -> trap exp.at "accessing identifier before its definition"
+      end
+    | (_, Some exp) ->
+    interpret_exp_mut env exp k)
   | ImportE (f, ri) ->
     (match !ri with
     | Unresolved -> assert false
     | LibPath {path; _} ->
       k (find path env.libs)
+    | ImportedValuePath path ->
+      if !Mo_config.Flags.blob_import_placeholders then
+        trap exp.at "blob import placeholder"
+      else begin
+        let contents = Lib.FilePath.contents path in
+        assert T.(exp.note.note_typ = Prim Blob);
+        k (V.Blob contents)
+      end
     | IDLPath _ -> trap exp.at "actor import"
     | PrimPath -> k (find "@prim" env.libs)
     )
+  | ImplicitLibE lib ->
+    k (find lib env.libs)
   | LitE lit ->
     k (interpret_lit env lit)
   | ActorUrlE url ->
@@ -482,8 +528,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | _ -> assert false)
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-  | ObjBlockE (obj_sort, _, dec_fields) ->
-    interpret_obj env obj_sort.it dec_fields k
+  | ObjBlockE (_exp_opt, obj_sort, (self_id_opt, _), dec_fields) ->
+    (* NB: we ignore the migration expression _exp_opt *)
+    interpret_obj env obj_sort.it self_id_opt dec_fields k
   | ObjE (exp_bases, exp_fields) ->
     let fields fld_env = interpret_exp_fields env exp_fields fld_env (fun env -> k (V.Obj env)) in
     let open V.Env in
@@ -503,28 +550,20 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exps env exp_bases [] (fun objs -> fields (merges (strip objs)))
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
-  | DotE (exp1, id) ->
+  | DotE (exp1, id, _) when T.(sub exp1.note.note_typ (Obj (Actor, []))) ->
+    interpret_exp env exp1 (fun v1 -> k V.(Tup [v1; Text id.it]))
+  | DotE (exp1, id, _) ->
     interpret_exp env exp1 (fun v1 ->
       match v1 with
       | V.Obj fs ->
         k (find id.it fs)
-      | V.Blob aid when T.sub exp1.note.note_typ (T.Obj (T.Actor, [])) ->
-        begin match V.Env.find_opt aid !(env.actor_env) with
-        (* not quite correct: On the platform, you can invoke and get a reject *)
-        | None -> trap exp.at "Unknown actor \"%s\"" aid
-        | Some actor_value ->
-          let fs = V.as_obj actor_value in
-          match V.Env.find_opt id.it fs with
-          | None -> trap exp.at "Actor \"%s\" has no method \"%s\"" aid id.it
-          | Some field_value -> k field_value
-        end
       | V.Array vs ->
         let f = match id.it with
           | "size" -> array_size
           | "get" -> array_get
           | "put" -> array_put
           | "keys" -> array_keys
-          | "vals" -> array_vals
+          | "vals" | "values" -> array_vals
           | s -> assert false
         in k (f vs exp.at)
       | V.Text s ->
@@ -536,7 +575,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | V.Blob b when T.sub exp1.note.note_typ (T.blob)->
         let f = match id.it with
           | "size" -> blob_size
-          | "vals" -> blob_vals
+          | "keys" -> blob_keys
+          | "get" -> blob_get
+          | "vals" | "values" -> blob_vals
           | s -> assert false
         in k (f b exp.at)
       | _ -> assert false
@@ -558,8 +599,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | IdxE (exp1, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
-        k (try (V.as_array v1).(Numerics.Int.to_int (V.as_int v2))
-           with Invalid_argument s -> trap exp.at "%s" s)
+        k V.(let i = Numerics.Int.to_int (as_int v2) in
+             match v1 with
+             | Blob s ->
+               Nat8 (s.[i] |> Char.code |> Numerics.Nat8.of_int)
+             | _ ->
+               try (as_array v1).(i)
+               with Invalid_argument s -> trap exp.at "%s" s)
       )
     )
   | FuncE (name, shared_pat, _typbinds, pat, _typ, _sugar, exp2) ->
@@ -570,17 +616,30 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | T.Shared _ -> make_message env name exp.note.note_typ v
       | T.Local -> v
     in k v'
-  | CallE (exp1, typs, exp2) ->
-    interpret_exp env exp1 (fun v1 ->
-      interpret_exp env exp2 (fun v2 ->
-        let call_conv, f = V.as_func v1 in
-        check_call_conv exp1 call_conv;
-        check_call_conv_arg env exp v2 call_conv;
-        last_region := exp.at; (* in case the following throws *)
-        let c = context env in
-        f c v2 k
-      )
-    )
+  | CallE (par, exp1, typs, (_, exp2)) ->
+    let exp2 = !exp2 in
+    interpret_par env par
+      (fun v ->
+        ignore (V.as_obj v);
+        let exp1, exp2 = match exp1.it with
+          (* Contextual dot call *)
+          | DotE (exp1, _, n) when Option.is_some !n ->
+             let func_exp = Option.get !n in
+             let args = contextual_dot_args exp1 exp2 func_exp in
+             func_exp, args
+          | _ -> exp1, exp2 in
+        interpret_exp env exp1 (fun v1 ->
+         let v1 = begin match v1 with
+                  | V.(Tup [Blob aid; Text id]) -> lookup_actor env exp1.at aid id
+                  | _ -> v1
+                  end in
+         interpret_exp env exp2 (fun v2 ->
+             let call_conv, f = V.as_func v1 in
+             check_call_conv exp1 call_conv;
+             check_call_conv_arg env exp v2 call_conv;
+             last_region := exp.at; (* in case the following throws *)
+             let c = context env in
+             f c v2 k)))
   | BlockE decs ->
     let k' =
       if T.is_unit exp.note.note_typ (* TODO: peeking at types violates erasure semantics, revisit! *)
@@ -602,14 +661,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       then k v1
       else interpret_exp env exp2 k
     )
-  | ImpliesE (exp1, exp2) ->
-    interpret_exp env exp1 (fun v1 ->
-      interpret_exp env exp2 (fun v2 ->
-        k V.(Bool (as_bool v1 <= as_bool v2))
-      )
-    )
-  | OldE exp1 ->
-    interpret_exp env exp1 (fun v1 -> k v1)
   | IfE (exp1, exp2, exp3) ->
     interpret_exp env exp1 (fun v1 ->
       if V.as_bool v1
@@ -681,34 +732,42 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (Option.get env.rets)
   | ThrowE exp1 ->
     interpret_exp env exp1 (Option.get env.throws)
-  | AsyncE (T.Fut, _, exp1) ->
-    async env
-      exp.at
-      (fun k' r ->
-        let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r}
-        in interpret_exp env' exp1 k')
-      k
-  | AsyncE (T.Cmp, _, exp1) ->
+  | AsyncE (par, T.Fut, _, exp1) ->
+    interpret_par env par
+      (fun v ->
+        ignore (V.as_obj v);
+        async env
+          exp.at
+          (fun k' r ->
+            let env' = { env with labs = V.Env.empty; rets = Some k'; throws = Some r }
+            in interpret_exp env' exp1 k')
+          k)
+  | AsyncE (par, T.Cmp, _, exp1) ->
+    assert (par = None);
     k (V.Comp (fun k' r ->
       let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r}
       in interpret_exp env' exp1 k'))
-  | AwaitE (T.Fut, exp1) ->
+  | AwaitE (T.AwaitFut short, exp1) ->
     interpret_exp env exp1
-      (fun v1 -> await env exp.at (V.as_async v1) k)
-  | AwaitE (T.Cmp, exp1) ->
+      (fun v1 -> await env exp.at short (V.as_async v1) k)
+  | AwaitE (T.AwaitCmp, exp1) ->
     interpret_exp env exp1
-      (fun v1 -> (V.as_comp v1) k (Option.get env.throws))
+      (fun v1 -> V.as_comp v1 k (Option.get env.throws))
   | AssertE (Runtime, exp1) ->
     interpret_exp env exp1 (fun v ->
       if V.as_bool v
       then k V.unit
       else trap exp.at "assertion failure"
     )
-  | AssertE (_, exp1) -> k V.unit
   | AnnotE (exp1, _typ) ->
     interpret_exp env exp1 k
   | IgnoreE exp1 ->
     interpret_exp env exp1 (fun _v -> k V.unit)
+
+and interpret_par env par k =
+  match par with
+  | Some exp -> interpret_exp env exp k
+  | None -> V.Obj V.Env.empty |> k
 
 and interpret_exps env exps vs (k : V.value list V.cont) =
   match exps with
@@ -779,8 +838,15 @@ and declare_pat_fields pfs ve : val_env =
   match pfs with
   | [] -> ve
   | pf::pfs' ->
-    let ve' = declare_pat pf.it.pat in
-    declare_pat_fields pfs' (V.Env.adjoin ve ve')
+     match pf_pattern pf with
+     | Some pat ->
+        let ve' = declare_pat pat in
+        declare_pat_fields pfs' (V.Env.adjoin ve ve')
+     | None ->
+        declare_pat_fields pfs' ve
+
+and declare_defined_id id v =
+  V.Env.singleton id.it (Lib.Promise.make_fulfilled v)
 
 and define_id env id v =
   define_id' env id.it v
@@ -797,19 +863,20 @@ and define_pat env pat v =
      false
 
 and match_lit lit v : bool =
+  let open Numerics in
   match !lit, v with
   | NullLit, V.Null -> true
   | BoolLit b, V.Bool b' -> b = b'
-  | NatLit n, V.Int n' -> Numerics.Int.eq n n'
-  | Nat8Lit n, V.Nat8 n' -> Numerics.Nat8.eq n n'
-  | Nat16Lit n, V.Nat16 n' -> Numerics.Nat16.eq n n'
-  | Nat32Lit n, V.Nat32 n' -> Numerics.Nat32.eq n n'
-  | Nat64Lit n, V.Nat64 n' -> Numerics.Nat64.eq n n'
-  | IntLit i, V.Int i' -> Numerics.Int.eq i i'
-  | Int8Lit i, V.Int8 i' -> Numerics.Int_8.eq i i'
-  | Int16Lit i, V.Int16 i' -> Numerics.Int_16.eq i i'
-  | Int32Lit i, V.Int32 i' -> Numerics.Int_32.eq i i'
-  | Int64Lit i, V.Int64 i' -> Numerics.Int_64.eq i i'
+  | NatLit n, V.Int n' -> Int.eq n n'
+  | Nat8Lit n, V.Nat8 n' -> Nat8.eq n n'
+  | Nat16Lit n, V.Nat16 n' -> Nat16.eq n n'
+  | Nat32Lit n, V.Nat32 n' -> Nat32.eq n n'
+  | Nat64Lit n, V.Nat64 n' -> Nat64.eq n n'
+  | IntLit i, V.Int i' -> Int.eq i i'
+  | Int8Lit i, V.Int8 i' -> Int_8.eq i i'
+  | Int16Lit i, V.Int16 i' -> Int_16.eq i i'
+  | Int32Lit i, V.Int32 i' -> Int_32.eq i i'
+  | Int64Lit i, V.Int64 i' -> Int_64.eq i i'
   | FloatLit z, V.Float z' -> z = z'
   | CharLit c, V.Char c' -> c = c'
   | TextLit u, V.Text u' -> u = u'
@@ -865,9 +932,11 @@ and match_pats pats vs ve : val_env option =
 and match_pat_fields pfs vs ve : val_env option =
   match pfs with
   | [] -> Some ve
-  | pf::pfs' ->
-    let v = V.Env.find pf.it.id.it vs in
-    begin match match_pat pf.it.pat v with
+  | { it = TypPF(_); _ }::pfs' ->
+     match_pat_fields pfs' vs ve
+  | { it = ValPF(id, p); _ }::pfs' ->
+    let v = V.Env.find id.it vs in
+    begin match match_pat p v with
     | Some ve' -> match_pat_fields pfs' vs (V.Env.adjoin ve ve')
     | None -> None
     end
@@ -885,16 +954,21 @@ and match_shared_pat env shared_pat c =
 
 (* Objects *)
 
-and interpret_obj env obj_sort dec_fields (k : V.value V.cont) =
+and interpret_obj env obj_sort self_id dec_fields (k : V.value V.cont) =
   match obj_sort with
   | T.Actor ->
      let self = V.fresh_id() in
+     let self' = V.Blob self in
+     (* Define self_id eagerly *)
+     let env' = match self_id with
+     | Some id -> adjoin_vals env (declare_defined_id id self')
+     | None -> env in
      let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
-     let env' = adjoin_vals { env with self = self } ve_in in
-     interpret_dec_fields env' dec_fields ve_ex
+     let env'' = adjoin_vals { env' with self } ve_in in
+     interpret_dec_fields env'' dec_fields ve_ex
      (fun obj ->
         (env.actor_env := V.Env.add self obj !(env.actor_env);
-          k (V.Blob self)))
+          k self'))
   | _ ->
      let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
      let env' = adjoin_vals env ve_in in
@@ -929,10 +1003,14 @@ and interpret_block env decs ro (k : V.value V.cont) =
 and declare_dec dec : val_env =
   match dec.it with
   | ExpD _
-  | TypD _ -> V.Env.empty
+  | TypD _
+  | MixinD (_) -> V.Env.empty
+  | IncludeD _ ->
+     (* TODO support mixins in the interpreter *)
+    assert false
   | LetD (pat, _, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
-  | ClassD (_, id, _, _, _, _, _, _) -> declare_id {id with note = ()}
+  | ClassD (_eo, _, _, id, _, _, _, _, _) -> declare_id {id with note = ()}
 
 and declare_decs decs ve : val_env =
   match decs with
@@ -962,11 +1040,21 @@ and interpret_dec env dec (k : V.value V.cont) =
     )
   | TypD _ ->
     k V.unit
-  | ClassD (shared_pat, id, _typbinds, pat, _typ_opt, obj_sort, id', dec_fields) ->
+  | MixinD _ -> k V.unit
+  | IncludeD (_, _arg, _note) ->
+     (* TODO
+        - evaluate arg and bind it against note.pat
+        - define note.imports from mixin as local lets
+        - declare/eval note.decs
+        - Do we need to recreate the renaming pass?
+      *)
+     trap dec.at "Mixins are not yet supported in the interpreter"
+  | ClassD (_eo, shared_pat, obj_sort, id, _typbinds, pat, _typ_opt, id', dec_fields) ->
+    (* NB: we ignore the migration expression _eo *)
     let f = interpret_func env id.it shared_pat pat (fun env' k' ->
       if obj_sort.it <> T.Actor then
         let env'' = adjoin_vals env' (declare_id id') in
-        interpret_obj env'' obj_sort.it dec_fields (fun v' ->
+        interpret_obj env'' obj_sort.it None dec_fields (fun v' ->
           define_id env'' id' v';
           k' v')
       else
@@ -978,9 +1066,7 @@ and interpret_dec env dec (k : V.value V.cont) =
               rets = Some k'';
               throws = Some r }
             in
-            interpret_obj env''' obj_sort.it dec_fields (fun v' ->
-              define_id env''' id' v';
-              k'' v'))
+            interpret_obj env''' obj_sort.it (Some id') dec_fields k'')
           k')
     in
     let v = V.Func (CC.call_conv_of_typ dec.note.note_typ, f) in
@@ -1070,13 +1156,14 @@ let interpret_prog flags scope p : (V.value * scope) option =
 (* Libraries *)
 
 (* Import a module unchanged, and a class constructor as an asynchronous function.
-   The conversion will be unnecessary once we declare classes as asynchronous. *)
+   The conversion will be unnecessary once we declare classes as asynchronous. FIXME: is this correct? *)
 let import_lib env lib =
   let { body = cub; _ } = lib.it in
   match cub.it with
   | Syntax.ModuleU _ ->
     Fun.id
-  | Syntax.ActorClassU (_sp, id, _tbs, _p, _typ, _self_id, _dec_fields) ->
+  | Syntax.ActorClassU (_persistence, _sp, _eo, id, _tbs, _p, _typ, _self_id, _dec_fields) ->
+    (* NB: we ignore the migration expression _eo *)
     fun v -> V.Obj (V.Env.from_list
       [ (id.it, v);
         ("system",
@@ -1088,7 +1175,6 @@ let import_lib env lib =
             then k v
             else trap cub.at "actor class configuration unsupported in interpreter")))) ])
   | _ -> assert false
-
 
 let interpret_lib flags scope lib : scope =
   let env = env_of_scope flags state scope in

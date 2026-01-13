@@ -169,7 +169,7 @@ let eq_prim =
 let structural_equality t =
   let rec go t =
     match t with
-    | T.Var _ | T.Pre | T.Non | T.Async _ | T.Mut _ -> assert false
+    | T.Var _ | T.Pre | T.Non | T.Async _ | T.Mut _ | T.Weak _ -> assert false
     | T.Any | T.Typ _ -> fun v1 v2 -> Bool true
     | T.Prim T.Error
     | T.Prim T.Region -> assert false
@@ -185,7 +185,7 @@ let structural_equality t =
           let v1 = as_array v1 in
           let v2 = as_array v2 in
           Bool (
-            Array.length v1 == Array.length v2 &&
+            Array.length v1 = Array.length v2 &&
             Lib.Array.for_all2 (fun x y -> as_bool (eq_elem x y)) v1 v2
           )
     | T.Opt t -> (
@@ -215,18 +215,15 @@ let structural_equality t =
               (match (v1, v2) with
                | Blob s1, Blob s2 -> Bool (s1 = s2)
                | _, _ -> Bool (v1 == v2) (* HACK *))
-        | T.Module | T.Memory -> assert false
+        | T.Module | T.Mixin | T.Memory -> assert false
         | T.Object ->
             fun v1 v2 ->
               let v1 = as_obj v1 in
               let v2 = as_obj v2 in
               Bool
                 (List.for_all
-                   (fun f ->
-                     T.is_typ f.T.typ ||
-                     as_bool
-                       (go f.T.typ (Env.find f.T.lab v1) (Env.find f.T.lab v2)))
-                   fs) )
+                   (fun f -> as_bool (go f.T.typ (Env.find f.T.lab v1) (Env.find f.T.lab v2)))
+                   (T.val_fields fs)))
     | T.Variant fs ->
         fun v1 v2 ->
           let l1, v1 = as_variant v1 in
@@ -235,8 +232,14 @@ let structural_equality t =
           else
             go (List.find (fun f -> f.T.lab = l1) fs).T.typ v1 v2
     | T.Func (s, c, tbs, ts1, ts2) ->
-        assert (T.is_shared_sort s);
-        fun v1 v2 -> Bool (v1 == v2)  (* HACK *)
+       assert (T.is_shared_sort s);
+      (fun v1 v2 -> match v1, v2 with
+       | Tup [Blob _; Text _], Tup [Blob _; Text _] -> Bool (v1 = v2) (* public methods *)
+       | Func _, Tup [Blob _; Text _]
+       | Tup [Blob _; Text _], Func _ -> assert false; (* mixed, cannot determine equality *)
+       | Func _, Func _ -> Bool (v1 == v2)  (* both internal, HACK *)
+       | _ -> failwith "illegal shared function")
+    | T.Named (n, t1) -> go t1
   in
   go t
 

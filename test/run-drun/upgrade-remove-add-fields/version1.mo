@@ -1,5 +1,18 @@
 import Prim "mo:prim";
 
+(with migration =
+  func (x: {
+    var instance : {
+      var firstField : Nat;
+      var secondField : Nat;
+      var thirdField : Nat
+    }
+  }) : {
+    var instance : {
+      var secondField : Nat;
+    }
+  } = { var instance = x.instance }
+)
 actor {
     stable var instance = {
         var secondField = 0;

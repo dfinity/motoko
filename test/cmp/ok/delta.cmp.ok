@@ -1,0 +1,49 @@
+(unknown location): Compatibility error [M0170], the new type of stable variable `CanisterMap` is not compatible with the previous version.
+ The previous type
+  {
+    DTCTArchives : SBuffer<CreditsActorData>;
+    var ICPfundsActor : [ICPfundsActor];
+    LedgerArchives : TrieMap<Text, [CanisterId]>;
+    Ledgers : TrieMap<CoinCode, CanisterId>;
+    USCTArchives : SBuffer<CreditsActorData>;
+    ...
+    var mobileActor : [MobileActor];
+    var pendingUSCTActor : [Actor];
+    var roadMapCanisterId : CanisterId;
+    var statsActor : [StatsActor];
+    totalCredit : TotalCredit
+  }
+ is not a subtype of
+  {
+    DTCTArchives : SBuffer<CreditsActorData>;
+    var ICPfundsActor : [ICPfundsActor];
+    LedgerArchives : TrieMap<Text, [CanisterId]>;
+    Ledgers : TrieMap<CoinCode, CanisterId>;
+    USCTArchives : SBuffer<CreditsActorData>;
+    ...
+    var mobileActor : [MobileActor];
+    var pendingUSCTActor : [Actor];
+    var roadMapCanisterId : CanisterId;
+    var statsActor : [StatsActor];
+    totalCredit : TotalCredit
+  }
+ because expected field `dailyMiningCount2` is missing from type 
+  actor {
+    _appendReferee : shared (DID, Nat, AccountReferee, Nat) -> ();
+    _childRewardTimeAndReferees :
+      shared query ([Uid], DID, ADLevel, [Timestamp]) ->
+        async RefereesRewardResult;
+    _compareMobile : shared query [(MobileNumber, Nat)] -> async Bool;
+    _delete : shared (Uid, IdentityToken, Text, ?DID, Bool) -> async Uid;
+    _depositSafetyCode : shared (DID, Text) -> ();
+    ...
+    withdrawalUSCT :
+      shared (Nat, MoneyAddress, IdentityToken) -> async Balance;
+    xf820MobErr : shared Text -> async [Text];
+    xfMobAndCountry : shared () -> async Bool;
+    xfMobDid : shared (Text, Index, Text, Text) -> async Bool;
+    xfMobErr : shared (Text, Text, Text) -> async Text
+  }
+ of `Account` (used by `Account` in `AccountActor` in `Actor` in `AccountActorData` in `elements` in `Buffer` in `SBuffer` in `accountCanisters` in `CanisterMap`).
+ Write an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
+FALSE

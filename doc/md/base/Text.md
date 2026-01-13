@@ -1,4 +1,4 @@
-# Text
+# base/Text
 Utility functions for `Text` values.
 
 A `Text` value represents human-readable text as a sequence of characters of type `Char`.
@@ -18,8 +18,9 @@ Import the module from the base library:
 import Text "mo:base/Text";
 ```
 
-Note: `Text` values are represented as ropes of UTF-8 character sequences with O(1) concatenation.
-
+:::note
+`Text` values are represented as ropes of UTF-8 character sequences with O(1) concatenation.
+:::
 
 ## Type `Text`
 ``` motoko no-repl
@@ -34,9 +35,9 @@ let emoji = "👋";
 let concat = hello # " " # emoji; // "Hello! 👋"
 ```
 
-## Value `fromChar`
+## Function `fromChar`
 ``` motoko no-repl
-let fromChar : (c : Char) -> Text
+func fromChar(c : Char) : Text
 ```
 
 Converts the given `Char` to a `Text` value.
@@ -44,6 +45,36 @@ Converts the given `Char` to a `Text` value.
 ```motoko include=import
 let text = Text.fromChar('A'); // "A"
 ```
+
+## Function `fromArray`
+``` motoko no-repl
+func fromArray(a : [Char]) : Text
+```
+
+Converts the given `[Char]` to a `Text` value.
+
+```motoko include=import
+let text = Text.fromArray(['A', 'v', 'o', 'c', 'a', 'd', 'o']); // "Avocado"
+```
+
+| Runtime   | Space     |
+|-----------|-----------|
+| O(a.size()) | O(a.size()) |
+
+## Function `fromVarArray`
+``` motoko no-repl
+func fromVarArray(a : [var Char]) : Text
+```
+
+Converts the given `[var Char]` to a `Text` value.
+
+```motoko include=import
+let text = Text.fromVarArray([var 'E', 'g', 'g', 'p', 'l', 'a', 'n', 't']); // "Eggplant"
+```
+
+| Runtime   | Space     |
+|-----------|-----------|
+| O(a.size()) | O(a.size()) |
 
 ## Function `toIter`
 ``` motoko no-repl
@@ -75,8 +106,9 @@ Equivalent to `Iter.toArray(t.chars())`.
 assert Text.toArray("Café") == ['C', 'a', 'f', 'é'];
 ```
 
-Runtime: O(t.size())
-Space: O(t.size())
+| Runtime   | Space     |
+|-----------|-----------|
+| O(t.size()) | O(t.size()) |
 
 ## Function `toVarArray`
 ``` motoko no-repl
@@ -91,8 +123,9 @@ Equivalent to `Iter.toArrayMut(t.chars())`.
 assert Text.toVarArray("Café") == [var 'C', 'a', 'f', 'é'];
 ```
 
-Runtime: O(t.size())
-Space: O(t.size())
+| Runtime   | Space     |
+|-----------|-----------|
+| O(t.size()) | O(t.size()) |
 
 ## Function `fromIter`
 ``` motoko no-repl
@@ -104,6 +137,38 @@ Creates a `Text` value from a `Char` iterator.
 ```motoko include=import
 let text = Text.fromIter(['a', 'b', 'c'].vals()); // "abc"
 ```
+
+## Function `fromList`
+``` motoko no-repl
+func fromList(cs : List.List<Char>) : Text
+```
+
+Create a text from a character list.
+Example:
+```motoko include=initialize
+fromList(?('H', ?('e', ?('l', ?('l', ?('o', null))))));
+// => "Hello"
+```
+
+| Runtime   | Space     |
+|-----------|-----------|
+| O(size cs) | O(size cs) |
+
+## Function `toList`
+``` motoko no-repl
+func toList(t : Text) : List.List<Char>
+```
+
+Create a character list from a text.
+Example:
+```motoko include=initialize
+toList("Hello");
+// => ?('H', ?('e', ?('l', ?('l', ?('o', null)))))
+```
+
+| Runtime   | Space     |
+|-----------|-----------|
+| O(t.size()) | O(t.size()) |
 
 ## Function `size`
 ``` motoko no-repl
@@ -129,7 +194,9 @@ Returns a hash obtained by using the `djb2` algorithm ([more details](http://www
 let hash = Text.hash("abc");
 ```
 
-Note: this algorithm is intended for use in data structures rather than as a cryptographic hash function.
+:::info
+This algorithm is intended for use in data structures rather than as a cryptographic hash function.
+:::
 
 ## Function `concat`
 ``` motoko no-repl
@@ -413,9 +480,9 @@ import Char "mo:base/Char";
 Text.compareWith("abc", "ABC", func(c1, c2) { Char.compare(c1, c2) }) // #greater
 ```
 
-## Value `encodeUtf8`
+## Function `encodeUtf8`
 ``` motoko no-repl
-let encodeUtf8 : Text -> Blob
+func encodeUtf8(_ : Text) : Blob
 ```
 
 Returns a UTF-8 encoded `Blob` from the given `Text`.
@@ -424,9 +491,9 @@ Returns a UTF-8 encoded `Blob` from the given `Text`.
 let blob = Text.encodeUtf8("Hello");
 ```
 
-## Value `decodeUtf8`
+## Function `decodeUtf8`
 ``` motoko no-repl
-let decodeUtf8 : Blob -> ?Text
+func decodeUtf8(_ : Blob) : ?Text
 ```
 
 Tries to decode the given `Blob` as UTF-8.
@@ -436,25 +503,30 @@ Returns `null` if the blob is not valid UTF-8.
 let text = Text.decodeUtf8("\48\65\6C\6C\6F"); // ?"Hello"
 ```
 
-## Value `toLowercase`
+## Function `toLowercase`
 ``` motoko no-repl
-let toLowercase : Text -> Text
+func toLowercase(_ : Text) : Text
 ```
 
 Returns the text argument in lowercase.
-WARNING: Unicode compliant only when compiled, not interpreted.
+
+:::warning Compliance
+Unicode compliant only when compiled, not interpreted.
+:::
 
 ```motoko include=import
 let text = Text.toLowercase("Good Day"); // ?"good day"
 ```
 
-## Value `toUppercase`
+## Function `toUppercase`
 ``` motoko no-repl
-let toUppercase : Text -> Text
+func toUppercase(_ : Text) : Text
 ```
 
 Returns the text argument in uppercase. Unicode compliant.
-WARNING: Unicode compliant only when compiled, not interpreted.
+:::warning Compliance
+Unicode compliant only when compiled, not interpreted.
+:::
 
 ```motoko include=import
 let text = Text.toUppercase("Good Day"); // ?"GOOD DAY"

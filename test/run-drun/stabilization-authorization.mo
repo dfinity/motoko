@@ -37,6 +37,7 @@ actor a {
   };
 };
 
+//SKIP-SANITY-CHECKS
 //CALL ingress run "DIDL\x00\x00"
 //SKIP run
 //SKIP run-ir

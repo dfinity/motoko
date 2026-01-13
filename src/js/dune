@@ -1,7 +1,14 @@
 (library
+ (name astjs)
+ (modules astjs)
+ (libraries mo_def)
+ (preprocess (pps js_of_ocaml-ppx))
+)
+
+(library
  (name common)
  (modules common)
- (libraries checkseum.ocaml mo_config pipeline idllib)
+ (libraries checkseum.ocaml mo_config pipeline idllib astjs)
  (preprocess (pps js_of_ocaml-ppx))
 )
 
@@ -28,4 +35,3 @@
  (libraries lib idllib lang_utils)
  (preprocess (pps js_of_ocaml-ppx))
 )
-

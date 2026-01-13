@@ -1,6 +1,4 @@
-# Prelude
-General utilities
-
+# base/Prelude
 This prelude file proposes standard library features that _may_
 belong in the _language_ (compiler-internal) prelude sometime, after
 some further experience and discussion.  Until then, they live here.
@@ -10,11 +8,13 @@ some further experience and discussion.  Until then, they live here.
 func nyi() : None
 ```
 
+:::warning
 Not yet implemented
+:::
 
 Mark incomplete code with the `nyi` and `xxx` functions.
 
-Each have calls are well-typed in all typing contexts, which
+Each have calls that are well-typed in all typing contexts, which
 trap in all execution contexts.
 
 ## Function `xxx`

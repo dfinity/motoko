@@ -1,0 +1,14 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+install $ID strict-migration/version0.mo ""
+# should fail:
+upgrade $ID strict-migration/version1.mo ""
+# should succeed:
+upgrade $ID strict-migration/version2.mo ""
+# should fail:
+upgrade $ID strict-migration/version3.mo ""
+# should succeed:
+upgrade $ID strict-migration/version4.mo ""
+# should fail:
+upgrade $ID strict-migration/version5.mo ""
+# should succeed:
+upgrade $ID strict-migration/version6.mo ""

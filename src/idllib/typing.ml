@@ -114,8 +114,8 @@ let rec check_typ env t =
   | PrincipalT -> t
   | VarT id -> ignore (find_type env id); t
   | FuncT (ms, t1, t2) ->
-     let t1' = List.map (fun t -> check_typ env t) t1 in
-     let t2' = List.map (fun t -> check_typ env t) t2 in
+     let t1' = List.map (fun t -> check_arg_typ env t) t1 in
+     let t2' = List.map (fun t -> check_arg_typ env t) t2 in
      if List.length ms > 1 then
        error env t.at "cannot have more than one mode"
      else if List.length ms = 1 && (List.hd ms).it = Oneway && List.length t2 > 0 then
@@ -136,7 +136,8 @@ let rec check_typ env t =
   | ClassT _ ->
      error env t.at "service constructor not supported"
   | PreT -> assert false
-
+and check_arg_typ env arg_typ =
+  { arg_typ with it = { name = arg_typ.it.name; typ = check_typ env arg_typ.it.typ}}
 and check_fields env fs =
   let _, fields =
     List.fold_left (fun (fenv, fields) f ->
@@ -220,7 +221,7 @@ let check_main_service env actor_opt =
   match actor_opt with
   | None -> None
   | Some {it=ClassT (args, t); at; _} ->
-     let args = List.map (check_typ env) args in
+     let args = List.map (check_arg_typ env) args in
      let t = check_service env t in
      Some (ClassT (args, t) @@ at)
   | Some t -> Some (check_service env t)

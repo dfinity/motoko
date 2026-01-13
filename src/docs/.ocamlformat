@@ -1,4 +1,4 @@
-version=0.26.1
-ocaml-version=4.12
+version=0.27.0
+ocaml-version=4.14
 break-infix=fit-or-vertical
 doc-comments=before

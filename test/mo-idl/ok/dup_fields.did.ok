@@ -13,6 +13,6 @@ type Info =
    name: int;
  };
 service : {
-  f: (Tup) -> () query;
-  f_: (opt Tup) -> () oneway;
+  f: (user: Tup) -> () query;
+  f_: (user: opt Tup) -> () oneway;
 }

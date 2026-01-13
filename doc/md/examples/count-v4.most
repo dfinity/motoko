@@ -1,4 +1,4 @@
+// Version: 1.0.0
 actor {
-  stable var newState : Nat;
-  stable var state : Int
+  stable var state : Float
 };

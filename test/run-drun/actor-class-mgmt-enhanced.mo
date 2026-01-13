@@ -75,34 +75,32 @@ actor a {
   };
 
   public func go () : async () {
-    // To get lots of cycles in both drun and ic-ref-run
+    // To get lots of cycles in drun
     if (Cycles.balance() == 0)
       await Cycles.provisional_top_up_actor(a, 100_000_000_000_000);
 
     do {
-      Cycles.add<system>(2_000_000_000_000);
+      let cycles = 2_000_000_000_000;
+
       let c0 = await
-        Cs.C (0, ?(Prim.principalOfActor a));
+        (with cycles) Cs.C (0, ?(Prim.principalOfActor a), true);
       assert ({args = 0; upgrades = 0} == (await c0.observe()));
 
-      Cycles.add<system>(2_000_000_000_000);
       let c1 = await
-        (system Cs.C)(#new default_settings)(1, null);
+        (with cycles) (system Cs.C)(#new default_settings)(1, null, true);
       assert ({args = 1; upgrades = 0} == (await c1.observe()));
       assert (c1 != c0);
 
-      Cycles.add<system>(2_000_000_000_000);
       let c2 = await
-        (system Cs.C)(#new settings)(2, null);
+        (with cycles) (system Cs.C)(#new settings)(2, null, true);
       assert ({args = 2; upgrades = 0} == (await c2.observe()));
       assert (c2 != c1);
 
-      Cycles.add<system>(2_000_000_000_000);
       let {canister_id = p} = await
-         ic00.create_canister default_settings;
+         (with cycles) ic00.create_canister default_settings;
       // no need to add cycles
       let c3 = await
-        (system Cs.C)(#install p)(3, null);
+        (system Cs.C)(#install p)(3, null, true);
       assert ({args = 3; upgrades = 0} == (await c3.observe()));
       assert (Prim.principalOfActor c3 == p);
       assert (c3 != c2);
@@ -110,32 +108,32 @@ actor a {
       // no need to add cycles
       // upgrade by using enhanced orthogonal persistence
       let c4 = await
-        (system Cs.C)(#upgrade c3)(4, null);
+        (system Cs.C)(#upgrade c3)(4, null, true);
       assert ({args = 4; upgrades = 1} == (await c4.observe()));
       assert (c4 == c3);
 
       // upgrade by using graph-copy-based stabilization
       await useIncrementalStabilization(c4).__motoko_stabilize_before_upgrade();
       let c5 = await
-        (system Cs.C)(#upgrade c4)(5, null);
+        (system Cs.C)(#upgrade c4)(5, null, true);
       await useIncrementalStabilization(c5).__motoko_destabilize_after_upgrade();
       assert ({args = 5; upgrades = 2} == (await c5.observe()));
       assert (c5 == c4);
 
       let c6 = await
-        (system Cs.C)(#upgrade_with_persistence { wasm_memory_persistence = #Keep ; canister = c5 })(6, null);
+        (system Cs.C)(#upgrade_with_persistence { wasm_memory_persistence = #keep ; canister = c5 })(6, null, true);
       assert ({args = 6; upgrades = 3} == (await c6.observe()));
       assert (c6 == c5);
 
       // no need to add cycles
       let c7 = await
-        (system Cs.C)(#reinstall c6)(7, null);
+        (system Cs.C)(#reinstall c6)(7, null, true);
       assert ({args = 7; upgrades = 0} == (await c7.observe()));
       assert (c7 == c6);
 
       // no need to add cycles
       let c8 = await
-        (system Cs.C)(#upgrade_with_persistence { wasm_memory_persistence = #Replace ; canister = c7 })(8, null);
+        (system Cs.C)(#upgrade_with_persistence { wasm_memory_persistence = #replace ; canister = c7 })(8, null, true);
       assert ({args = 8; upgrades = 0} == (await c8.observe()));
       assert (c8 == c7);
 

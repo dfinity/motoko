@@ -28,7 +28,16 @@ let o3 = do ? {
    sum
 };
 print(o3);
+
 assert (o3 == ? 6);
+let o3Values = do ? {
+   var sum = 0;
+   for(o in [?1, ?2, ?3].values()) {
+     sum += o!
+   };
+   sum
+};
+assert (o3Values == ? 6);
 
 let o4 = do ? {
    var sum = 0;
@@ -39,6 +48,15 @@ let o4 = do ? {
 };
 print o4;
 assert (o4 == null);
+
+let o4Values = do ? {
+   var sum = 0;
+   for(o in [?1, ?2, null].values()) {
+     sum += o!
+   };
+   sum
+};
+assert (o4Values == null);
 
 /* nesting */
 

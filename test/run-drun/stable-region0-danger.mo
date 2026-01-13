@@ -33,8 +33,6 @@ actor {
 //SKIP run-low
 //SKIP run-ir
 //SKIP run-drun
-// too slow on ic-ref-run:
-//SKIP comp-ref
 //CALL ingress sanityTest "DIDL\x00\x00"
 //CALL upgrade ""
 //CALL ingress sanityTest "DIDL\x00\x00"

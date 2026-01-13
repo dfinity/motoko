@@ -10,8 +10,9 @@ Your participation is an important factor in the success of the Internet Compute
 
 ## Contents of this repository
 
-This repository contains source code for the canister interface description language—often referred to as Candid or IDL. Candid provides a common language for specifying the signature of a canister service and interacting with canisters running on the
-Internet Computer.
+This repository contains source code for the Motoko compiler and some related tooling. 
+Motoko is a high-level programming language for implementing canisters that run on the Internet Computer Protocol, 
+tailored to the unique requirements of this environment.
 
 ## Before you contribute
 

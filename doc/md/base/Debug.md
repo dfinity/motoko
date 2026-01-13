@@ -1,4 +1,4 @@
-# Debug
+# base/Debug
 Utility functions for debugging.
 
 Import from the base library to use this module.
@@ -13,8 +13,11 @@ func print(text : Text)
 
 Prints `text` to output stream.
 
-NOTE: The output is placed in the replica log. When running on mainnet,
-this function has no effect.
+:::note
+When running on ICP, all output is written to the [canister log](https://internetcomputer.org/docs/building-apps/canister-management/logs) with the exclusion of any output
+produced during the execution of non-replicated queries and composite queries.
+In other environments, like the interpreter and stand-alone Wasm engines, the output is written to standard out.
+:::
 
 ```motoko include=import
 Debug.print "Hello New World!";
@@ -33,9 +36,11 @@ observe the trap as an `Error` value, thrown at `await`, with code
 `#canister_error` and message `m`. Here `m` is a more descriptive `Text`
 message derived from the provided `t`. See example for more details.
 
-NOTE: Other execution environments that cannot handle traps may only
+:::note
+Other execution environments that cannot handle traps may only
 propagate the trap and terminate execution, with or without some
 descriptive message.
+:::
 
 ```motoko
 import Debug "mo:base/Debug";

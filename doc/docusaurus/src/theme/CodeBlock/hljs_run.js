@@ -78,10 +78,11 @@ export function registerMotoko() {
         $pattern: "[a-zA-Z_]\\w*",
         keyword:
           "actor and await break case catch class" +
-          " continue composite debug do else for func if in import" +
-          " module not object or label let loop private" +
-          " public return shared try throw query switch" +
-          " type var while with stable flexible system debug_show assert ignore from_candid to_candid",
+          " continue composite debug do else finally for func if implicit import in include" +
+          " mixin module not object or label let loop persistent private" +
+          " public return shared transient try throw query switch" +
+          " type var weak while with stable flexible system debug_show assert ignore from_candid to_candid" +
+          " persistent transient",
         literal: "true false null",
         built_in:
           "Any None Null Bool Int Int8 Int16 Int32 Int64" +
@@ -114,8 +115,8 @@ export function registerMotoko() {
         },
         {
           className: "class",
-          begin: "\\b(actor( class)?|module|object)\\b",
-          keywords: "actor class module object",
+          begin: "\\b(actor( class)?|module|object|mixin)\\b",
+          keywords: "actor class module object mixin",
           end: "(\\(|<|{)",
           contains: [hljs.UNDERSCORE_TITLE_MODE],
           illegal: "[\\w\\d]",

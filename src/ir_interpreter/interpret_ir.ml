@@ -71,6 +71,15 @@ let find id env =
   with Not_found ->
     trap no_region "unbound identifier %s" id
 
+let lookup_actor env at aid id =
+  match V.Env.find_opt aid !(env.actor_env) with
+  | None -> trap at "Unknown actor \"%s\"" aid
+  | Some actor_value ->
+     let fs = V.as_obj actor_value in
+     match V.Env.find_opt id fs with
+     | None -> trap at "Actor \"%s\" has no method \"%s\"" aid id
+     | Some field_value -> field_value
+
 (* Tracing *)
 
 let trace_depth = ref 0
@@ -170,15 +179,23 @@ let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value 
     );
   k (V.Async async)
 
-let await env at async k =
-  if env.flags.trace then trace "=> await %s" (string_of_region at);
+let await env at short async k r =
+  let adorn, schedule = if short then "?", (|>) () else "", Scheduler.queue in
+  if env.flags.trace then trace "=> await%s %s" adorn (string_of_region at);
   decr trace_depth;
   get_async async (fun v ->
-    Scheduler.queue (fun () ->
+      schedule (fun () ->
       if env.flags.trace then
-        trace "<- await %s%s" (string_of_region at) (string_of_arg env v);
+        trace "<- await%s %s%s" adorn (string_of_region at) (string_of_arg env v);
       incr trace_depth;
       k v)
+    )
+    (fun v ->
+      schedule (fun () ->
+      if env.flags.trace then
+        trace "<- await%s %s threw %s" adorn (string_of_region at) (string_of_arg env v);
+      incr trace_depth;
+      r v)
     )
 
 
@@ -311,6 +328,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exps env es [] (fun vs ->
       match p, vs with
       | CallPrim typs, [v1; v2] ->
+        let v1 = match v1 with
+          | V.(Tup [Blob aid; Text id]) -> lookup_actor env exp.at aid id
+          | _ -> v1 in
         let call_conv, f = V.as_func v1 in
         check_call_conv (List.hd es) call_conv;
         check_call_conv_arg env exp v2 call_conv;
@@ -320,7 +340,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k (try Operator.unop op ot v1 with Invalid_argument s -> trap exp.at "%s" s)
       | BinPrim (ot, op), [v1; v2] ->
         k (try Operator.binop op ot v1 v2 with _ ->
-          trap exp.at "arithmetic overflow")
+        trap exp.at "arithmetic overflow")
       | RelPrim (ot, op), [v1; v2] ->
         k (Operator.relop op ot v1 v2)
       | TupPrim, exps ->
@@ -335,16 +355,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let fs = V.as_obj v1 in
         k (try find n fs with _ -> assert false)
       | ActorDotPrim n, [v1] ->
-        let id = V.as_blob v1 in
-        begin match V.Env.find_opt id !(env.actor_env) with
-        (* not quite correct: On the platform, you can invoke and get a reject *)
-        | None -> trap exp.at "Unknown actor \"%s\"" id
-        | Some actor_value ->
-          let fs = V.as_obj actor_value in
-          match V.Env.find_opt n fs with
-          | None -> trap exp.at "Actor \"%s\" has no method \"%s\"" id n
-          | Some field_value -> k field_value
-        end
+        (* delay error handling to the point when the method gets applied *)
+        k V.(Tup [v1; Text n])
       | ArrayPrim (mut, _), vs ->
         let vs' =
           match mut with
@@ -360,13 +372,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k (V.Bool Numerics.Int.(to_int (V.as_int v1) = to_int (V.as_int v2)))
       | GetLastArrayOffset,  [v1] ->
         k (V.Int Numerics.Int.(of_int (Array.length (V.as_array v1) - 1)))
+      | IdxBlobPrim, [v1; v2] ->
+        k V.(Nat8 Numerics.((as_blob v1).[Int.to_int (as_int v2)] |> Char.code |> Nat8.of_int))
       | BreakPrim id, [v1] -> find id env.labs v1
       | RetPrim, [v1] -> Option.get env.rets v1
       | ThrowPrim, [v1] -> Option.get env.throws v1
-      | AwaitPrim Type.Fut, [v1] ->
+      | AwaitPrim (T.AwaitFut short), [v1] ->
         assert env.flavor.has_await;
-        await env exp.at (V.as_async v1) k (Option.get env.throws)
-      | AwaitPrim Type.Cmp, [v1] ->
+        await env exp.at short (V.as_async v1) k (Option.get env.throws)
+      | AwaitPrim T.AwaitCmp, [v1] ->
         assert env.flavor.has_await;
         (V.as_comp v1) k (Option.get env.throws)
       | AssertPrim, [v1] ->
@@ -395,13 +409,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
             k
         | _ -> assert false
         end
-      | CPSAwait _, [v1; v2] ->
+      | CPSAwait (sort, _), [v1; v2] ->
         assert (not env.flavor.has_await && env.flavor.has_async_typ);
         begin match V.as_tup v2 with
          | [vf; vr] ->
            let (_, f) = V.as_func vf in
            let (_, r) = V.as_func vr in
-           await env exp.at (V.as_async v1)
+           await env exp.at (sort <> T.AwaitFut false) (V.as_async v1)
              (fun v -> f (context env) v k)
              (fun e -> r (context env) e k) (* TBR *)
         | _ -> assert false
@@ -447,6 +461,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let e = V.Tup [V.Variant ("canister_reject", V.unit); v1] in
         Scheduler.queue (fun () -> reject e)
       | ICCallPrim, [v1; v2; kv; rv; cv] ->
+        let v1 = match v1 with
+          | V.(Tup [Blob aid; Text id]) -> lookup_actor env exp.at aid id
+          | _ -> v1 in
         let call_conv, f = V.as_func v1 in
         check_call_conv (List.hd es) call_conv;
         check_call_conv_arg env exp v2 call_conv;
@@ -455,6 +472,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         f (V.Tup[vc; kv; rv; cv]) v2 k
       | ICCallerPrim, [] ->
         k env.caller
+      | ICReplyDeadlinePrim, [] ->
+        k (V.Nat64 Numerics.Nat64.zero)
       | ICStableRead t, [] ->
         let (_, tfs) = T.as_obj t in
         let ve = List.fold_left
@@ -463,7 +482,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         in
         k (V.Obj ve)
       | SelfRef _, [] ->
-        k (V.Blob env.self)
+        k (context env)
       | SystemTimePrim, [] ->
         k (V.Nat64 (Numerics.Nat64.of_int 42))
       | SystemCyclesRefundedPrim, [] -> (* faking it *)
@@ -572,13 +591,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
 
 and interpret_actor env ds fs k =
     let self = V.fresh_id () in
-    let env0 = {env with self = self} in
+    let self' = V.Blob self in
     let ve = declare_decs ds V.Env.empty in
-    let env' = adjoin_vals env0 ve in
+    let env' = adjoin_vals { env with self } ve in
     interpret_decs env' ds (fun _ ->
       let obj = interpret_fields env' fs in
       env.actor_env := V.Env.add self obj !(env.actor_env);
-      k (V.Blob self)
+      k self'
     )
 
 and interpret_lexp env lexp (k : (V.value ref) V.cont) =
@@ -675,7 +694,6 @@ and declare_pats pats ve : val_env =
   | pat::pats' ->
     let ve' = declare_pat pat in
     declare_pats pats' (V.Env.adjoin ve ve')
-
 
 and define_id env id v =
   Lib.Promise.fulfill (find id env.vals) v

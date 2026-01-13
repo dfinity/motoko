@@ -1,0 +1,24 @@
+name: Extract Changelog for Release
+description: Extracts the changelog section for a given version from `Changelog.md` and outputs it as `release_body`
+inputs:
+  version:
+    description: The version number to extract the changelog for
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Extract changelog section
+      id: extract_changelog
+      shell: bash
+      run: |
+        export VERSION="${{ inputs.version }}"
+        perl -0777 -ne '/^# Motoko compiler changelog\n\n## (??{quotemeta($ENV{VERSION})}) \(\d\d\d\d-\d\d-\d\d\)\n\n(.*?)^##/sm or die "Changelog does not look right for this version\n" ; print $1' Changelog.md > changelog-extract.md
+        cat changelog-extract.md
+        # need to mangle to use with $GITHUB_OUTPUT,
+        # see https://github.com/svenstaro/upload-release-action/blob/master/README.md
+        # under "Example for feeding a file from repo to the body tag"
+        echo "RELEASE_BODY=$(perl -0777 -p -e 's/%/%25/g; s/\n/%0A/g; s/\r/%0D/g' changelog-extract.md)" >> "$GITHUB_OUTPUT"
+outputs:
+  release_body:
+    description: The extracted changelog body for the given version
+    value: ${{ steps.extract_changelog.outputs.RELEASE_BODY }}

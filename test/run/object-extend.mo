@@ -65,4 +65,19 @@ func mux<A <: { a : Int }, B <: { b : Char }>(a : A, b : B) : { a : Int; b : Cha
 
 // extending iterators
 let tb_ok : { next : () -> ?Char; bar : Nat } = { "Text base".chars() with bar = 42 };
-let ab_ok : { next : () -> ?Text; bar : Nat } = { ["Array base"].vals() with bar = 42 };
+let ab_ok : { next : () -> ?Text; bar : Nat } = { ["Array base"].values() with bar = 42 };
+
+// detecting lost fields
+let ab_ok_warn : { next : () -> ?Text; bar : Nat } = { ab_ok with bur = 42 };
+let foo_warn : { foo : Text } = { foo = "FOO"; quux = "QUUX" };
+let bar_warn : { foo : Text } = object { public let foo = "FOO"; public let quux = "QUUX" };
+object obj_warn : { foo : Text } { public let foo = "FOO"; public let quux = "QUUX" };
+class() : { foo : Text } = { public let (foo, quux) = ("FOO", "QUUX") };
+
+// don't confuse with types
+let bar_type_warn_type : { foo : Text } = object { public let foo = "FOO"; public type Quux = Text };
+
+let bar_type_warn : { type Quux = Text; foo : Text } = object { public let foo = "FOO"; public let Quux = "QUUX"; public type Quux = Text };
+
+object obj_warn_type : { foo : Text } { public let foo = "FOO"; public type Quux = Text };
+class() : { foo : Text } = { public let foo = "FOO"; public type Quux = Text };

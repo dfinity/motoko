@@ -1,0 +1,60 @@
+name: Update flake.lock (daily)
+on:
+  # Manual override, one can start the workflow by running:
+  # curl -H "Accept: application/vnd.github.everest-preview+json" \
+  #  -H "Authorization: token $(gh auth token)" \
+  #  --request POST \
+  #  --data '{"event_type": "flake-updater-nudge", "client_payload": {}}' \
+  #  https://api.github.com/repos/dfinity/motoko/dispatches
+  # https://help.github.com/en/actions/reference/events-that-trigger-workflows#external-events-repository_dispatch
+  repository_dispatch:
+    types: flake-updater-nudge
+  workflow_dispatch:
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    # Run every day at midnight
+    - cron: "0 0 * * *"
+jobs:
+  flake-updater:
+    name: "Update flake.lock"
+    timeout-minutes: 2 # if this takes more than 2 minutes then something's wrong
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Install Determinate Nix
+        uses: DeterminateSystems/nix-installer-action@main
+      - name: Create GitHub App Token
+        uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ vars.GENERIC_CI_RW_APP_ID }}
+          private-key: ${{ secrets.GENERIC_CI_RW_APP_PRIVATE_KEY }}
+      - name: Update flake.lock
+        uses: DeterminateSystems/update-flake-lock@main
+        with:
+          branch: "update_flake_lock_action_daily"
+          inputs: |
+            flake-utils
+            nix-update-flake
+            esm
+            candid-src
+            ic-wasm-src
+            libtommath-src
+            motoko-base-src
+            motoko-core-src
+            ocaml-vlq-src
+            wasm-spec-src
+            ocaml-recovery-parser-src
+          pr-title: "chore: daily `flake.lock` update"
+          pr-labels: |
+            automerge-squash
+          pr-body: |
+            Automated changes by the [update-flake-lock](https://github.com/DeterminateSystems/update-flake-lock) GitHub Action.
+            as defined in [.github/workflows/update-flake-lock.yml]({{ env.GITHUB_SERVER_URL }}/{{ env.GITHUB_REPOSITORY }}/blob/master/.github/workflows/update-flake-lock.yml)
+            and run in: {{ env.GITHUB_SERVER_URL }}/{{ env.GITHUB_REPOSITORY }}/actions/runs/{{ env.GITHUB_RUN_ID }}/attempts/{{ env.GITHUB_RUN_ATTEMPT }}:
+
+            ```
+            {{ env.GIT_COMMIT_MESSAGE }}
+            ```
+          token: ${{ steps.app-token.outputs.token }}

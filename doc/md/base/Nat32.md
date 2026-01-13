@@ -1,9 +1,18 @@
-# Nat32
+# base/Nat32
 Provides utility functions on 32-bit unsigned integers.
 
-Note that most operations are available as built-in operators (e.g. `1 + 1`).
+:::note
+Most operations on integer numbers (e.g. addition) are available as built-in operators (e.g. `1 + 1`).
+This module provides equivalent functions and `Text` conversion.
+:::
+
+:::info Function form for higher-order use
+
+Several arithmetic and comparison functions (e.g. `add`, `sub`, `equal`, `less`, `pow`) are defined in this module to enable their use as first-class function values, which is not possible with operators like `+`, `-`, `==`, etc., in Motoko. This allows you to pass these operations to higher-order functions such as `map`, `foldLeft`, or `sort`.
+:::
 
 Import from the base library to use this module.
+
 ```motoko name=import
 import Nat32 "mo:base/Nat32";
 ```
@@ -27,9 +36,9 @@ Example:
 Nat32.maximumValue; // => 4294967295 : Nat32
 ```
 
-## Value `toNat`
+## Function `toNat`
 ``` motoko no-repl
-let toNat : Nat32 -> Nat
+func toNat(_ : Nat32) : Nat
 ```
 
 Converts a 32-bit unsigned integer to an unsigned integer with infinite precision.
@@ -39,9 +48,9 @@ Example:
 Nat32.toNat(123); // => 123 : Nat
 ```
 
-## Value `fromNat`
+## Function `fromNat`
 ``` motoko no-repl
-let fromNat : Nat -> Nat32
+func fromNat(_ : Nat) : Nat32
 ```
 
 Converts an unsigned integer with infinite precision to a 32-bit unsigned integer.
@@ -105,9 +114,9 @@ Example:
 Nat32.toNat64(123); // => 123 : Nat64
 ```
 
-## Value `fromIntWrap`
+## Function `fromIntWrap`
 ``` motoko no-repl
-let fromIntWrap : Int -> Nat32
+func fromIntWrap(_ : Int) : Nat32
 ```
 
 Converts a signed integer with infinite precision to a 32-bit unsigned integer.
@@ -170,10 +179,6 @@ ignore Nat32.equal(1, 1); // => true
 (1 : Nat32) == (1 : Nat32) // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `==` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `==`
-as a function value at the moment.
 
 Example:
 ```motoko include=import
@@ -198,10 +203,6 @@ ignore Nat32.notEqual(1, 2); // => true
 (1 : Nat32) != (2 : Nat32) // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `!=` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `!=`
-as a function value at the moment.
 
 ## Function `less`
 ``` motoko no-repl
@@ -217,10 +218,6 @@ ignore Nat32.less(1, 2); // => true
 (1 : Nat32) < (2 : Nat32) // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `<` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `<`
-as a function value at the moment.
 
 ## Function `lessOrEqual`
 ``` motoko no-repl
@@ -236,10 +233,6 @@ ignore Nat32.lessOrEqual(1, 2); // => true
 (1 : Nat32) <= (2 : Nat32) // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `<=` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `<=`
-as a function value at the moment.
 
 ## Function `greater`
 ``` motoko no-repl
@@ -255,10 +248,6 @@ ignore Nat32.greater(2, 1); // => true
 (2 : Nat32) > (1 : Nat32) // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `>` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `>`
-as a function value at the moment.
 
 ## Function `greaterOrEqual`
 ``` motoko no-repl
@@ -274,10 +263,6 @@ ignore Nat32.greaterOrEqual(2, 1); // => true
 (2 : Nat32) >= (1 : Nat32) // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `>=` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `>=`
-as a function value at the moment.
 
 ## Function `compare`
 ``` motoko no-repl
@@ -314,10 +299,6 @@ ignore Nat32.add(1, 2); // => 3
 (1 : Nat32) + (2 : Nat32) // => 3
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `+` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `+`
-as a function value at the moment.
 
 Example:
 ```motoko include=import
@@ -339,10 +320,6 @@ ignore Nat32.sub(2, 1); // => 1
 (2 : Nat32) - (1 : Nat32) // => 1
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `-` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `-`
-as a function value at the moment.
 
 Example:
 ```motoko include=import
@@ -364,10 +341,6 @@ ignore Nat32.mul(2, 3); // => 6
 (2 : Nat32) * (3 : Nat32) // => 6
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `*` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `*`
-as a function value at the moment.
 
 Example:
 ```motoko include=import
@@ -389,10 +362,6 @@ ignore Nat32.div(6, 2); // => 3
 (6 : Nat32) / (2 : Nat32) // => 3
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `/` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `/`
-as a function value at the moment.
 
 ## Function `rem`
 ``` motoko no-repl
@@ -408,10 +377,6 @@ ignore Nat32.rem(6, 4); // => 2
 (6 : Nat32) % (4 : Nat32) // => 2
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `%` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `%`
-as a function value at the moment.
 
 ## Function `pow`
 ``` motoko no-repl
@@ -426,10 +391,6 @@ ignore Nat32.pow(2, 3); // => 8
 (2 : Nat32) ** (3 : Nat32) // => 8
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `**` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `**`
-as a function value at the moment.
 
 ## Function `bitnot`
 ``` motoko no-repl
@@ -444,10 +405,6 @@ ignore Nat32.bitnot(0) // => 4294967295
 ^(0 : Nat32) // => 4294967295
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `^` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `^`
-as a function value at the moment.
 
 ## Function `bitand`
 ``` motoko no-repl
@@ -462,10 +419,6 @@ ignore Nat32.bitand(1, 3); // => 1
 (1 : Nat32) & (3 : Nat32) // => 1
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `&` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `&`
-as a function value at the moment.
 
 ## Function `bitor`
 ``` motoko no-repl
@@ -480,10 +433,6 @@ ignore Nat32.bitor(1, 3); // => 3
 (1 : Nat32) | (3 : Nat32) // => 3
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `|` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `|`
-as a function value at the moment.
 
 ## Function `bitxor`
 ``` motoko no-repl
@@ -498,10 +447,6 @@ ignore Nat32.bitxor(1, 3); // => 2
 (1 : Nat32) ^ (3 : Nat32) // => 2
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `^` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `^`
-as a function value at the moment.
 
 ## Function `bitshiftLeft`
 ``` motoko no-repl
@@ -516,10 +461,6 @@ ignore Nat32.bitshiftLeft(1, 3); // => 8
 (1 : Nat32) << (3 : Nat32) // => 8
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `<<` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `<<`
-as a function value at the moment.
 
 ## Function `bitshiftRight`
 ``` motoko no-repl
@@ -534,10 +475,6 @@ ignore Nat32.bitshiftRight(8, 3); // => 1
 (8 : Nat32) >> (3 : Nat32) // => 1
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `>>` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `>>`
-as a function value at the moment.
 
 ## Function `bitrotLeft`
 ``` motoko no-repl
@@ -552,10 +489,6 @@ ignore Nat32.bitrotLeft(1, 3); // => 8
 (1 : Nat32) <<> (3 : Nat32) // => 8
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `<<>` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `<<>`
-as a function value at the moment.
 
 ## Function `bitrotRight`
 ``` motoko no-repl
@@ -570,10 +503,6 @@ ignore Nat32.bitrotRight(1, 1); // => 2147483648
 (1 : Nat32) <>> (1 : Nat32) // => 2147483648
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `<>>` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `<>>`
-as a function value at the moment.
 
 ## Function `bittest`
 ``` motoko no-repl
@@ -624,9 +553,9 @@ Example:
 Nat32.bitflip(5, 2); // => 1
 ```
 
-## Value `bitcountNonZero`
+## Function `bitcountNonZero`
 ``` motoko no-repl
-let bitcountNonZero : (x : Nat32) -> Nat32
+func bitcountNonZero(x : Nat32) : Nat32
 ```
 
 Returns the count of non-zero bits in `x`.
@@ -636,9 +565,9 @@ Example:
 Nat32.bitcountNonZero(5); // => 2
 ```
 
-## Value `bitcountLeadingZero`
+## Function `bitcountLeadingZero`
 ``` motoko no-repl
-let bitcountLeadingZero : (x : Nat32) -> Nat32
+func bitcountLeadingZero(x : Nat32) : Nat32
 ```
 
 Returns the count of leading zero bits in `x`.
@@ -648,9 +577,9 @@ Example:
 Nat32.bitcountLeadingZero(5); // => 29
 ```
 
-## Value `bitcountTrailingZero`
+## Function `bitcountTrailingZero`
 ``` motoko no-repl
-let bitcountTrailingZero : (x : Nat32) -> Nat32
+func bitcountTrailingZero(x : Nat32) : Nat32
 ```
 
 Returns the count of trailing zero bits in `x`.
@@ -658,6 +587,19 @@ Returns the count of trailing zero bits in `x`.
 Example:
 ```motoko include=import
 Nat32.bitcountTrailingZero(16); // => 4
+```
+
+## Function `explode`
+``` motoko no-repl
+func explode(x : Nat32) : (msb : Nat8, Nat8, Nat8, lsb : Nat8)
+```
+
+Returns the upper (i.e. most significant), lower (least significant)
+and in-between bytes of `x`.
+
+Example:
+```motoko include=import
+Nat32.explode 0xaa885511 // => (170, 136, 85, 17)
 ```
 
 ## Function `addWrap`
@@ -673,10 +615,12 @@ ignore Nat32.addWrap(4294967295, 1); // => 0
 (4294967295 : Nat32) +% (1 : Nat32) // => 0
 ```
 
-Note: The reason why this function is defined in this library (in addition
+:::info
+The reason why this function is defined in this library (in addition
 to the existing `+%` operator) is so that you can use it as a function
 value to pass to a higher order function. It is not possible to use `+%`
 as a function value at the moment.
+:::
 
 ## Function `subWrap`
 ``` motoko no-repl
@@ -691,10 +635,6 @@ ignore Nat32.subWrap(0, 1); // => 4294967295
 (0 : Nat32) -% (1 : Nat32) // => 4294967295
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `-%` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `-%`
-as a function value at the moment.
 
 ## Function `mulWrap`
 ``` motoko no-repl
@@ -709,10 +649,6 @@ ignore Nat32.mulWrap(2147483648, 2); // => 0
 (2147483648 : Nat32) *% (2 : Nat32) // => 0
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `*%` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `*%`
-as a function value at the moment.
 
 ## Function `powWrap`
 ``` motoko no-repl
@@ -727,7 +663,3 @@ ignore Nat32.powWrap(2, 32); // => 0
 (2 : Nat32) **% (32 : Nat32) // => 0
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `**%` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `**%`
-as a function value at the moment.

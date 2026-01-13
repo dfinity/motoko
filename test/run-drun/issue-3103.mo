@@ -15,5 +15,4 @@ actor a {
 //SKIP run-ir
 //SKIP run-low
 //SKIP comp
-//SKIP comp-ref
 

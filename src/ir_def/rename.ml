@@ -1,19 +1,39 @@
 open Source
 open Ir
 
-module Renaming = Map.Make(String)
+(* Identifiers and labels reside in different namespaces
+   so we need to distinguish them when renaming to avoid capture  *)
+
+module Binder = struct
+  type t = Id of id | Lab of id
+  let compare t1 t2 =
+    match t1, t2 with
+    | (Id id1, Id id2) -> String.compare id1 id2
+    | (Lab lab1, Lab lab2) -> String.compare lab1 lab2
+    | (Id _, Lab _) -> -1
+    | (Lab _, Id _) -> 1
+end
+
+module Renaming = Map.Make(Binder)
+
 
 (* One traversal for each syntactic category, named by that category *)
 
 let fresh_id id = Construct.fresh_id id ()
 
 let id rho i =
-  try Renaming.find i rho
-  with Not_found -> i
+  match Renaming.find_opt (Binder.Id i) rho with
+  | Some i1 -> i1
+  | None -> i
+
+let lab rho l =
+  match Renaming.find_opt (Binder.Lab l) rho with
+  | Some l1 -> l1
+  | None -> l
 
 let id_bind rho i =
   let i' = fresh_id i in
-  (i', Renaming.add i i' rho)
+  (i', Renaming.add (Binder.Id i) i' rho)
 
 let rec ids_bind rho = function
   | [] -> rho
@@ -21,19 +41,23 @@ let rec ids_bind rho = function
     let (i', rho') = id_bind rho i in
     ids_bind rho' is'
 
+let lab_bind rho i =
+  let i' = fresh_id i in
+  (i', Renaming.add (Binder.Lab i) i' rho)
+
 let arg_bind rho a =
-  let i' = fresh_id a.it in
-  ({a with it = i'}, Renaming.add a.it i' rho)
+  let i', rho' = id_bind rho a.it in
+  ({a with it = i'}, rho')
 
 let rec prim rho p =
-  Ir.map_prim Fun.id (id rho) p (* rename BreakPrim id etc *)
+  Ir.map_prim Fun.id (lab rho) p (* rename BreakPrim id etc *)
 
 and exp rho e  =  {e with it = exp' rho e.it}
 and exp' rho = function
   | VarE (m, i)         -> VarE (m, id rho i)
   | LitE _ as e         -> e
   | PrimE (p, es)       -> PrimE (prim rho p, List.map (exp rho) es)
-  | ActorE (ds, fs, { meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, t) ->
+  | ActorE (ds, fs, { meta; preupgrade; postupgrade; heartbeat; timer; inspect; low_memory; stable_record; stable_type}, t) ->
     let ds', rho' = decs rho ds in
     ActorE
       (ds',
@@ -44,6 +68,7 @@ and exp' rho = function
         heartbeat = exp rho' heartbeat;
         timer = exp rho' timer;
         inspect = exp rho' inspect;
+        low_memory = exp rho' low_memory;
         stable_type = stable_type;
         stable_record = exp rho' stable_record;
        },
@@ -55,7 +80,7 @@ and exp' rho = function
   | IfE (e1, e2, e3)    -> IfE (exp rho e1, exp rho e2, exp rho e3)
   | SwitchE (e, cs)     -> SwitchE (exp rho e, cases rho cs)
   | LoopE e1            -> LoopE (exp rho e1)
-  | LabelE (i, t, e)    -> let i',rho' = id_bind rho i in
+  | LabelE (i, t, e)    -> let i', rho' = lab_bind rho i in
                            LabelE(i', t, exp rho' e)
   | AsyncE (s, tb, e, t) -> AsyncE (s, tb, exp rho e, t)
   | DeclareE (i, t, e)  -> let i',rho' = id_bind rho i in
@@ -200,7 +225,7 @@ let comp_unit rho cu = match cu with
   | LibU (ds, e) ->
     let ds', rho' = decs rho ds
     in LibU (ds', exp rho' e)
-  | ActorU (as_opt, ds, fs, { meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type }, t) ->
+  | ActorU (as_opt, ds, fs, { meta; preupgrade; postupgrade; heartbeat; timer; inspect; low_memory; stable_record; stable_type }, t) ->
     let as_opt', rho' = match as_opt with
       | None -> None, rho
       | Some as_ ->
@@ -215,6 +240,7 @@ let comp_unit rho cu = match cu with
         heartbeat = exp rho'' heartbeat;
         timer = exp rho'' timer;
         inspect = exp rho'' inspect;
+        low_memory = exp rho'' low_memory;
         stable_record = exp rho'' stable_record;
         stable_type = stable_type;
       }, t)

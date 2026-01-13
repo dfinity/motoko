@@ -1,0 +1,58 @@
+# This is a test blueprint action that will be called from
+# test.yml, where the actual CI is invoked from.
+# It will call the tests defined in the flake.nix file.
+# These are: common-tests, gc-tests, and tests (debug, release)
+# They all take the same install steps, use cachix, and a nix
+# command like the following:
+#   - run: nix profile install .#nix-build-uncached
+#   - name: "Run common tests"
+#     run: |
+#       cachix watch-exec ic-hs-test -- \
+#         nix-build-uncached --max-jobs auto \
+#           -E '(builtins.getFlake (toString ./.)).packages.${builtins.currentSystem}.common-tests'
+
+# The main workflow from test.yml will call this workflow with different
+# inputs, and this workflow will call the tests defined in the flake.nix file.
+
+name: Test Blueprint
+description: Runs Motoko tests using nix and cachix
+
+inputs:
+  os:
+    required: true
+    description: "OS to run tests on (ubuntu-latest, macos-15-intel, ubuntu-24.04-arm, macos-latest)"
+  test-target:
+    required: true
+    description: "The test target to run (e.g. common-tests, gc-tests, release-systems-go, debug-systems-go)"
+  test-name:
+    required: true
+    description: "Name of the test to display in logs"
+  cachix-auth-token:
+    required: true
+    description: "Cachix authentication token"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Free Disk Space (Ubuntu)
+      if: inputs.os == 'ubuntu-latest' || inputs.os == 'ubuntu-24.04-arm'
+      uses: jlumbroso/free-disk-space@main
+      with:
+        swap-storage: false
+
+    - uses: cachix/install-nix-action@v31
+
+    - uses: cachix/cachix-action@v16
+      with:
+        name: ic-hs-test
+        authToken: ${{ inputs.cachix-auth-token }}
+
+    - run: nix profile install .#nix-build-uncached
+      shell: bash
+
+    - name: "Run ${{ inputs.test-name }}"
+      run: |
+        cachix watch-exec ic-hs-test -- \
+        nix-build-uncached --max-jobs auto \
+        -E '(builtins.getFlake (toString ./.)).packages.${builtins.currentSystem}.${{ inputs.test-target }}'
+      shell: bash

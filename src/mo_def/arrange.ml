@@ -5,22 +5,29 @@ open Source
 open Syntax
 open Wasm.Sexpr
 
+type type_rep_config =
+  | Without_type_rep
+  | With_type_rep of Field_sources.srcs_map option
+
 module type Config = sig
   val include_sources : bool
   val include_types : bool
+  val include_type_rep : type_rep_config
   val include_docs : Trivia.trivia_info Trivia.PosHashtbl.t option
+  val include_parenthetical : bool
   val main_file : string option
 end
 
-module Default = struct
+module Default : Config = struct
   let include_sources = false
   let include_types = false
+  let include_type_rep = Without_type_rep
+  let include_parenthetical = true (* false for vscode *)
   let include_docs = None
   let main_file = None
 end
 
 module Type_pretty = Mo_types.Type.MakePretty (Mo_types.Type.ElideStamps)
-
 
 module Make (Cfg : Config) = struct
   let ($$) head inner = Node (head, inner)
@@ -51,13 +58,23 @@ module Make (Cfg : Config) = struct
   | Mo_types.Type.Triv -> Atom "Triv"
   | Mo_types.Type.Await -> Atom "Await"
 
-  let annot_typ t it = if Cfg.include_types then ":" $$ [it; typ t] else it
-  let annot note = annot_typ note.note_typ
+  let annot_typ t it =
+    if Cfg.include_types
+    then ":" $$ [it; typ t]
+    else it
 
-  let id i = Atom i.it
+  let id i = source i.at ("ID" $$ [Atom i.it])
   let tag i = Atom ("#" ^ i.it)
 
-  let rec exp e = source e.at (annot e.note (match e.it with
+  let obj_sort s = match s.it with
+    | Type.Object -> Atom "Object"
+    | Type.Actor -> Atom "Actor"
+    | Type.Mixin -> Atom "Mixin"
+    | Type.Module -> Atom "Module"
+    | Type.Memory -> Atom "Memory"
+
+  let rec exp e = source e.at (annot_typ e.note.note_typ (match e.it with
+    | HoleE (_, e) -> "HoleE" $$ [exp !e]
     | VarE x              -> "VarE"      $$ [id x]
     | LitE l              -> "LitE"      $$ [lit !l]
     | ActorUrlE e         -> "ActorUrlE" $$ [exp e]
@@ -69,10 +86,18 @@ module Make (Cfg : Config) = struct
     | FromCandidE e       -> "FromCandidE" $$ [exp e]
     | TupE es             -> "TupE"      $$ exps es
     | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
-    | ObjBlockE (s, t, dfs) -> "ObjBlockE" $$ [obj_sort s; match t with None -> Atom "_" | Some t -> typ t] @ List.map dec_field dfs
+    | ObjBlockE (eo, s, nt, dfs) -> "ObjBlockE" $$
+                                               parenthetical eo
+                                               [obj_sort s;
+                                                match nt with
+                                                | None, None -> Atom "_"
+                                                | None, Some t -> typ t
+                                                | Some id, Some t -> id.it $$ [Atom ":"; typ t]
+                                                | Some id, None -> Atom id.it
+                                                ] @ List.map dec_field dfs
     | ObjE ([], efs)      -> "ObjE"      $$ List.map exp_field efs
     | ObjE (bases, efs)   -> "ObjE"      $$ exps bases @ [Atom "with"] @ List.map exp_field efs
-    | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
+    | DotE (e, x, ol)     -> "DotE"      $$ [exp e; match !ol with None -> id x | Some e -> exp e]
     | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
     | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ exps es
     | IdxE (e1, e2)       -> "IdxE"      $$ [exp e1; exp e2]
@@ -87,13 +112,11 @@ module Make (Cfg : Config) = struct
         Atom (if sugar then "" else "=");
         exp e'
       ]
-    | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ inst ts @ [exp e2]
+    | CallE (par_opt, e1, ts, (_, e2)) -> "CallE" $$ parenthetical par_opt ([exp e1] @ inst ts @ [exp !e2])
     | BlockE ds           -> "BlockE"  $$ List.map dec ds
     | NotE e              -> "NotE"    $$ [exp e]
     | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
     | OrE (e1, e2)        -> "OrE"     $$ [exp e1; exp e2]
-    | ImpliesE (e1, e2)   -> "ImpliesE"$$ [exp e1; exp e2]
-    | OldE e              -> "OldE"    $$ [exp e]
     | IfE (e1, e2, e3)    -> "IfE"     $$ [exp e1; exp e2; exp e3]
     | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
     | WhileE (e1, e2)     -> "WhileE"  $$ [exp e1; exp e2]
@@ -104,20 +127,13 @@ module Make (Cfg : Config) = struct
     | DebugE e            -> "DebugE"  $$ [exp e]
     | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
     | RetE e              -> "RetE"    $$ [exp e]
-    | AsyncE (Type.Fut, tb, e) -> "AsyncE"  $$ [typ_bind tb; exp e]
-    | AsyncE (Type.Cmp, tb, e) -> "AsyncE*" $$ [typ_bind tb; exp e]
-    | AwaitE (Type.Fut, e)     -> "AwaitE"  $$ [exp e]
-    | AwaitE (Type.Cmp, e)     -> "AwaitE*" $$ [exp e]
+    | AsyncE (par_opt, Type.Fut, tb, e) -> "AsyncE" $$ parenthetical par_opt [typ_bind tb; exp e]
+    | AsyncE (None, Type.Cmp, tb, e) -> "AsyncE*" $$ [typ_bind tb; exp e]
+    | AsyncE (Some _ , Type.Cmp, tb, e) -> assert false;
+    | AwaitE (Type.AwaitFut false, e)   -> "AwaitE" $$ [exp e]
+    | AwaitE (Type.AwaitFut true, e)    -> "AwaitE?" $$ [exp e]
+    | AwaitE (Type.AwaitCmp, e)  -> "AwaitE*" $$ [exp e]
     | AssertE (Runtime, e)       -> "AssertE" $$ [exp e]
-    | AssertE (Static, e)        -> "Static_AssertE" $$ [exp e]
-    | AssertE (Invariant, e)     -> "Invariant" $$ [exp e]
-    | AssertE (Precondition, e)  -> "Precondition" $$ [exp e]
-    | AssertE (Postcondition, e) -> "Postcondition" $$ [exp e]
-    | AssertE (Loop_entry, e)    -> "Loop_entry" $$ [exp e]
-    | AssertE (Loop_continue, e) -> "Loop_continue" $$ [exp e]
-    | AssertE (Loop_exit, e)     -> "Loop_exit" $$ [exp e]
-    | AssertE (Loop_invariant, e)-> "Loop_invariant" $$ [exp e]
-    | AssertE (Concurrency s, e) -> "Concurrency"^s $$ [exp e]
     | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
     | OptE e              -> "OptE"    $$ [exp e]
     | DoOptE e            -> "DoOptE"  $$ [exp e]
@@ -125,6 +141,7 @@ module Make (Cfg : Config) = struct
     | TagE (i, e)         -> "TagE"    $$ [id i; exp e]
     | PrimE p             -> "PrimE"   $$ [Atom p]
     | ImportE (f, _fp)    -> "ImportE" $$ [Atom f]
+    | ImplicitLibE l      -> "ImplicitLibE" $$ [Atom l]
     | ThrowE e            -> "ThrowE"  $$ [exp e]
     | TryE (e, cs, None)  -> "TryE"    $$ [exp e] @ List.map catch cs
     | TryE (e, cs, Some f)-> "TryE"    $$ [exp e] @ List.map catch cs @ Atom ";" :: [exp f]
@@ -174,13 +191,17 @@ module Make (Cfg : Config) = struct
 
   and catch c = "catch" $$ [pat c.it.pat; exp c.it.exp]
 
-  and pat_field pf = source pf.at (pf.it.id.it $$ [pat pf.it.pat])
+  and pat_field pf = source pf.at (match pf.it with
+    | ValPF(id, p) -> "ValPF" $$ [Atom id.it; pat p]
+    | TypPF(id) -> "TypPF" $$ [Atom id.it])
 
-  and obj_sort s = match s.it with
-    | Type.Object -> Atom "Object"
-    | Type.Actor -> Atom "Actor"
-    | Type.Module -> Atom "Module"
-    | Type.Memory -> Atom "Memory"
+  (* conditionally include parenthetical to avoid breaking lsp *)
+  and parenthetical eo sexps =
+    if Cfg.include_parenthetical then
+      (match eo with None -> Atom "_" | Some e -> exp e) ::
+      sexps
+    else sexps
+
 
   and shared_pat sp = match sp.it with
     | Type.Local -> Atom "Local"
@@ -211,10 +232,10 @@ module Make (Cfg : Config) = struct
       | Flexible -> Atom "Flexible"
       | Stable -> Atom "Stable")
 
-  and typ_field (tf : typ_field) = match tf.it with
-    | ValF (id, t, m) -> id.it $$ [typ t; mut m]
-    | TypF (id', tbs, t) ->
-        "TypF" $$ [id id'] @ List.map typ_bind tbs @ [typ t]
+  and typ_field (tf : typ_field) = source tf.at (match tf.it with
+    | ValF (lab, t, m) -> "ValF" $$ [id lab; typ t; mut m]
+    | TypF (lab, tbs, t) -> "TypF" $$ id lab :: List.map typ_bind tbs @ [typ t])
+
   and typ_item ((id, ty) : typ_item) =
     match id with
     | None -> [typ ty]
@@ -252,7 +273,8 @@ module Make (Cfg : Config) = struct
   | AndT (t1, t2) -> "AndT" $$ [typ t1; typ t2]
   | OrT (t1, t2) -> "OrT" $$ [typ t1; typ t2]
   | ParT t -> "ParT" $$ [typ t]
-  | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]))
+  | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]
+  | WeakT t -> "WeakT" $$ [typ t]))
 
   and dec d = trivia d.at (source d.at (match d.it with
     | ExpD e -> "ExpD" $$ [exp e]
@@ -261,15 +283,22 @@ module Make (Cfg : Config) = struct
     | VarD (x, e) -> "VarD" $$ [id x; exp e]
     | TypD (x, tp, t) ->
       "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
-    | ClassD (sp, x, tp, p, rt, s, i', dfs) ->
-      "ClassD" $$ shared_pat sp :: id x :: List.map typ_bind tp @ [
+    | ClassD (eo, sp, s, x, tp, p, rt, i, dfs) ->
+      "ClassD" $$
+        parenthetical eo
+        (shared_pat sp :: id x :: List.map typ_bind tp @ [
         pat p;
         (match rt with None -> Atom "_" | Some t -> typ t);
-        obj_sort s; id i'
-      ] @ List.map dec_field dfs))
+        obj_sort s;
+        id i
+      ] @ List.map dec_field dfs)
+    | MixinD (_, dfs) -> "MixinD" $$ List.map dec_field dfs
+    | IncludeD (i, e, _) -> "IncludeD" $$ [id i; exp e]))
 
   and prog p = "Prog" $$ List.map dec p.it
 end
+
+module type S = module type of Make (Default)
 
 (* Defaults *)
 include Make (Default)

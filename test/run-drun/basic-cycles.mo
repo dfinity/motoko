@@ -8,6 +8,7 @@ actor a {
   let available : () -> Nat = Prim.cyclesAvailable;
   let accept : <system>Nat -> Nat = Prim.cyclesAccept;
   let add : <system>Nat -> () = Prim.cyclesAdd;
+  let burn : <system>Nat -> Nat = Prim.cyclesBurn;
 
   let refunded : () -> Nat = Prim.cyclesRefunded;
 
@@ -68,7 +69,7 @@ actor a {
 
   public func iter() : async () {
 
-     for (amount in tests.vals()) {
+     for (amount in tests.values()) {
        Prim.debugPrint(debug_show {balance = balance()});
        if (balance() < amount) {
          await provisional_top_up_actor(a, amount - balance());
@@ -91,6 +92,7 @@ actor a {
   public func go() : async (){
     await overflow();
     await iter();
+    assert 1000 == burn<system> 1000
   }
 };
 

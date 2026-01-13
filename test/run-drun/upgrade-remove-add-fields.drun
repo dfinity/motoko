@@ -1,5 +1,4 @@
 # ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
-# SKIP ic-ref-run
 install $ID upgrade-remove-add-fields/version0.mo ""
 ingress $ID increase "DIDL\x00\x01\x7d\x0F"
 ingress $ID show "DIDL\x00\x00"
@@ -9,7 +8,7 @@ ingress $ID show "DIDL\x00\x00"
 upgrade $ID upgrade-remove-add-fields/version1.mo ""
 ingress $ID increase "DIDL\x00\x01\x7d\x0F"
 ingress $ID show "DIDL\x00\x00"
-upgrade $ID upgrade-remove-add-fields/version1.mo ""
+upgrade $ID upgrade-remove-add-fields/version1b.mo ""
 ingress $ID increase "DIDL\x00\x01\x7d\x0F"
 ingress $ID show "DIDL\x00\x00"
 upgrade $ID upgrade-remove-add-fields/version2.mo ""

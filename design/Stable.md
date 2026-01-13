@@ -132,9 +132,9 @@ One way to store it would be in a Motoko-specific custom section;
 another alternative is as a separate internal asset.
 In either case, it is probably sufficient to use a textual representation.
 
-Like for the IDL, the System would need to provide a way to extract this information from an on-chain canister.
+Like for the IDL, the System would need to provide a way to extract this information from an onchain canister.
 
-For even higher safety, [enhanced orthogonal persistence](OrthogonalPersistence.md) integrates the compatibility check in the runtime system, 
+For even higher safety, [enhanced orthogonal persistence](OrthogonalPersistence.md) integrates the compatibility check in the runtime system,
 such that it is atomically guarded and cannot be bypassed e.g. by skipping a `dfx` stable compatibility warning.
 
 ## Upgrade Hooks

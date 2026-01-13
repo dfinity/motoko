@@ -1,13 +1,20 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
+debug.print: {accepted = 10_000_000_000_000}
 debug.print: 0
 debug.print: 1
-debug.print: rrkah-fqaaa-aaaaa-aaaaq-cai
+debug.print: 42_000_000
+debug.print: lxzze-o7777-77777-aaaaa-cai
+debug.print: {accepted = 5_000_000_000_000}
 debug.print: 1
 debug.print: 2
-debug.print: ryjl3-tyaaa-aaaaa-aaaba-cai
+debug.print: 0
+debug.print: lqy7q-dh777-77777-aaaaq-cai
+debug.print: {accepted = 2_500_000_000_000}
 debug.print: 2
 debug.print: 3
-debug.print: r7inp-6aaaa-aaaaa-aaabq-cai
+debug.print: 0
+debug.print: lz3um-vp777-77777-aaaba-cai
 debug.print: 2
+debug.print: 0
 ingress Completed: Reply: 0x4449444c0000

@@ -49,7 +49,7 @@ The `run.sh` script supports different kinds of tests:
 
 These consist of a single Motoko file, e.g. `foo.mo`, which will be
 typechecked, interpreted (in various variants) and run on `wasmtime` or (with
-`-d`) `drun`/`ic-ref-run`.
+`-d`) `drun`.
 
 With comments of the form `//SKIP run-low` individual phases can be skipped.
 Similarly, mentioning the `uname` output (like `//SKIP Darwin`) skips the test
@@ -58,8 +58,7 @@ when running on that OS.
 Comments of the form `//MOC-FLAG --package prim .` pass additional flags to
 `moc`.
 
-Comments of the form `//CALL` will be picked up and passed to `drun` or
-`ic-ref-run` as additional calls to be made.  The variant `//OR-CALL` will
+Comments of the form `//CALL` will be picked up and passed to `drun` as additional calls to be made.  The variant `//OR-CALL` will
 remove that line. This allows different behavior with the interpreter and in
 `drun`. See existing files for details.
 
@@ -190,5 +189,7 @@ To run it against a local copy of the test data, pass `-i ../candid/tests/`.
 
 To mark certain tests as known-to-be-failing, pass `--expect-fail` in the
 invocation to `candid-tests` in `default.nix`.
+
+To view the generated Motoko code for the tests, pass `--diag`.
 
 See `candid-tests --help` for instructions.

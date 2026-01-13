@@ -1,1 +1,4 @@
-@dfinity/languages
+* @caffeinelabs/team-languages
+Changelog.md
+doc/docusaurus/package-lock.json
+flake.lock

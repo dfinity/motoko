@@ -1,9 +1,9 @@
-import Debug "mo:base/Debug";
-import Float "mo:base/Float";
+import Runtime "mo:core/Runtime";
+import Float "mo:core/Float";
 
-actor Counter_v5 {
-  stable var state : Int = 0;
-  stable var newState : Float = Float.fromInt(state);
+persistent actor Counter_v5 {
+  var state : Int = 0; // implicitly `stable`
+  var newState : Float = Float.fromInt(state); // implicitly `stable`
 
   public func increment() : async () {
     newState += 0.5;
@@ -14,7 +14,7 @@ actor Counter_v5 {
   };
 
   public query func read() : async Int {
-    Debug.trap("No longer supported: Use `readFloat`");
+    Runtime.trap("No longer supported: Use `readFloat`");
   };
 
   public query func readFloat() : async Float {
