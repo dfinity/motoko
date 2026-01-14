@@ -211,7 +211,7 @@ let rec match_pat ctxt desc pat t sets =
       | _ -> assert false
     in match_tup ctxt [] descs pats ts sets
   | ObjP pat_fields ->
-    let _, fs, _ = T.as_obj (T.promote t) in
+    let _, fs = T.as_obj (T.promote t) in
     let ldescs =
       match desc with
       | Obj ldescs -> ldescs

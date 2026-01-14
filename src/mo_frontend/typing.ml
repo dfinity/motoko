@@ -2311,7 +2311,7 @@ and infer_check_bases_fields env (check_fields : T.field list) exp_at exp_bases 
   (* removing explicit fields from the bases *)
   let strip (base_t, base) =
     let s, base_fs, base_tfs =
-      try T.as_obj base_t with Invalid_argument _ ->
+      try T.as_obj' base_t with Invalid_argument _ ->
         error env base.at "M0093"
           "expected object type, but expression produces type%a"
           display_typ_expand base_t in
@@ -2326,7 +2326,7 @@ and infer_check_bases_fields env (check_fields : T.field list) exp_at exp_bases 
   let field_map = Hashtbl.create 0 in
   let typ_field_map = Hashtbl.create 0 in
   iter2 (fun t exp ->
-    let _, fs, tfs = T.as_obj t in
+    let _, fs, tfs = T.as_obj' t in
     fs |> iter (fun f ->
       (* do not allow var fields for now (to avoid aliasing) *)
       if not (!Flags.experimental_field_aliasing) && T.is_mut f.T.typ then begin
@@ -3710,7 +3710,7 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
   let _, scope = infer_block env decs at false in
   let t = object_of_scope env s dec_fields scope at in
   leave_scope env (private_identifiers scope.Scope.val_env) initial_usage;
-  let (_, fs, _) = T.as_obj t in
+  let (_, fs) = T.as_obj t in
   if not env.pre then begin
     if s = T.Actor || s = T.Mixin then begin
       List.iter (fun T.{lab; typ; _} ->
@@ -3761,7 +3761,7 @@ and check_parenthetical env typ_opt = function
      let [@warning "-8"] par_infer env { it = ObjE (bases, fields); _ } =
        infer_check_bases_fields env checked par.at bases fields in
      let attrs = infer_exp_wrapper par_infer T.as_immut env par in
-     let [@warning "-8"] T.Object, attrs_flds, _ = T.as_obj attrs in
+     let [@warning "-8"] T.Object, attrs_flds = T.as_obj attrs in
      if attrs_flds = [] then warn env par.at "M0211" "redundant empty parenthetical note";
      let check_lab { T.lab; typ; _ } =
        let check want =
@@ -3947,7 +3947,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
            "If this removal is unintended, declare the field in the actor and either remove the field from the parameter of the migration function or add it to the result of the migration function."
    ) dom_tfs;
    (* Warn the user about unrecognised attributes. *)
-   let [@warning "-8"] T.Object, attrs_flds, _ = T.as_obj exp.note.note_typ in
+   let [@warning "-8"] T.Object, attrs_flds = T.as_obj exp.note.note_typ in
    let unrecognised = List.(filter (fun {T.lab; _} -> lab <> T.migration_lab) attrs_flds |> map (fun {T.lab; _} -> lab)) in
    if unrecognised <> [] then warn env exp.at "M0212" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
 
@@ -4330,7 +4330,7 @@ and gather_dec env scope dec : Scope.t =
     | None -> error env i.at "M0226" "unknown mixin %s" i.it
     | Some mix ->
       let open Scope in
-      let _, fs, tfs = T.as_obj mix.typ in
+      let _, fs, tfs = T.as_obj' mix.typ in
       let typ_env = List.fold_left (fun te T.{ lab; typ; _ } ->
         if T.Env.mem lab te then error_duplicate env "type " { it = lab; at = i.at; note = () };
         T.Env.add lab typ te
@@ -4397,7 +4397,7 @@ and infer_dec_typdecs env dec : Scope.t =
     | Some mix ->
       let open Scope in
       n := Some({ imports = mix.imports; pat = mix.arg; decs = mix.decs });
-      let (_, fs, tfs) = T.as_obj mix.typ in
+      let (_, fs, tfs) = T.as_obj' mix.typ in
       let scope = scope_of_object env fs tfs in
       (* Mark all included idents as used to avoid spurious warnings *)
       T.Env.iter (fun i _ -> use_identifier env i) scope.val_env;

@@ -9158,7 +9158,7 @@ module OldStabilization = struct
         begin
           (* Case: Size zero ==> Nothing in stable memory,
              so result becomes the nil-valued record. *)
-          let (_, fs, _) = Type.as_obj ty in
+          let (_, fs) = Type.as_obj ty in
           let fs' = List.map
            (fun f -> (f.Type.lab, fun () -> Opt.null_lit env))
            fs
@@ -9481,7 +9481,7 @@ module EnhancedOrthogonalPersistence = struct
       (get_old_actor ^^ Object.load_idx_raw env field.Type.lab)
 
   let empty_actor env actor_type =
-    let (_, field_declarations, _) = Type.as_obj actor_type in
+    let (_, field_declarations) = Type.as_obj actor_type in
     let field_initializers = List.map
       (fun field -> (field.Type.lab, fun () -> Opt.null_lit env))
       field_declarations
@@ -9498,7 +9498,7 @@ module EnhancedOrthogonalPersistence = struct
         (load_old_field env field get_old_actor)
         (Opt.null_lit env)
       ) in
-    let (_, field_declarations, _) = Type.as_obj actor_type in
+    let (_, field_declarations) = Type.as_obj actor_type in
     let field_initializers = List.map
       (fun field -> (field.Type.lab, fun () -> (get_field_value field)))
       field_declarations

@@ -877,7 +877,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ low_memory <: T.unit;
     typ stable_record <: stable_type.post;
     check (T.is_obj t0) "bad annotation (object type expected)";
-    let (s0, tfs0, _) = T.as_obj t0 in
+    let (s0, tfs0) = T.as_obj t0 in
     (type_obj env'' T.Actor fs) <: (T.Obj (s0, tfs0, []));
     t0 <: t;
   | NewObjE (s, fs, t0) ->
@@ -887,7 +887,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
 
     (* check annotation *)
     check (T.is_obj t0) "bad annotation (object type expected)";
-    let (s0, tfs0, _) = T.as_obj t0 in
+    let (s0, tfs0) = T.as_obj t0 in
     t1 <: T.Obj (s0, tfs0, []);
 
     t0 <: t
@@ -1228,7 +1228,7 @@ let check_comp_unit env = function
     typ low_memory <: T.unit;
     typ stable_record <: stable_type.post;
     check (T.is_obj t0) "bad annotation (object type expected)";
-    let (s0, tfs0, _) = T.as_obj t0 in
+    let (s0, tfs0) = T.as_obj t0 in
     type_obj env'' T.Actor fs <: T.Obj (s0, tfs0, []);
     () (* t0 <: t *)
 

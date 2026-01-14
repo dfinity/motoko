@@ -8881,7 +8881,7 @@ module Stabilization = struct
         begin
           (* Case: Size zero ==> Nothing in stable memory,
              so result becomes the nil-valued record. *)
-          let (_, fs, _) = Type.as_obj ty in
+          let (_, fs) = Type.as_obj ty in
           let fs' = List.map
            (fun f -> (f.Type.lab, fun () -> Opt.null_lit env))
            fs

@@ -431,7 +431,7 @@ and call_system_func_opt name es obj_typ =
             [ expD (callE (varE (var id.it note)) [T.Any] (unitE())) ]
            (unitE ())
         | "inspect" ->
-          let _, tfs, _ = T.as_obj obj_typ in
+          let _, tfs = T.as_obj obj_typ in
           let caller = fresh_var "caller" T.caller in
           let arg = fresh_var "arg" T.blob in
           let msg_typ = T.decode_msg_typ tfs in
@@ -637,8 +637,8 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
       in
       let e = dotE exp0 T.migration_lab typ in
       let dom, rng = T.as_mono_func_sub typ in
-      let (_dom_sort, dom_fields, _) = T.as_obj (T.normalize dom) in
-      let (_rng_sort, rng_fields, _) = T.as_obj (T.promote rng) in
+      let (_dom_sort, dom_fields) = T.as_obj (T.normalize dom) in
+      let (_rng_sort, rng_fields) = T.as_obj (T.promote rng) in
       let stab_fields_pre =
         List.sort (fun (r1, tf1) (r2, tf2) -> T.compare_field tf1 tf2)
           ((List.map (fun tf -> (true, tf)) dom_fields) (* required *) @
@@ -848,7 +848,7 @@ and obj obj_typ efs bases =
     let base_var = fresh_var "base" base_t in
     let base_dec = letD base_var base_exp in
     let pick l =
-      let (_, fs, _) = T.as_obj (T.promote base_t) in
+      let (_, fs) = T.as_obj (T.promote base_t) in
       if Option.is_some (T.lookup_val_field_opt l fs) then
         [base_var]
       else
@@ -870,7 +870,7 @@ and obj obj_typ efs bases =
       [d, f] in
 
   let dss, fs = map (exp_field obj_typ) efs |> split in
-  let ds', fs' = concat_map gap (let _, fs, _ = T.as_obj obj_typ in fs) |> split in
+  let ds', fs' = concat_map gap (let _, fs = T.as_obj obj_typ in fs) |> split in
   let obj_e = newObjE T.Object (append fs fs') obj_typ in
   let decs = append base_decs (append (flatten dss) ds') in
   (blockE decs obj_e).it

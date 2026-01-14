@@ -148,7 +148,8 @@ val is_con : typ -> bool
 val is_var : typ -> bool
 
 val as_prim : prim -> typ -> unit
-val as_obj : typ -> obj_sort * field list * typ_field list
+val as_obj : typ -> obj_sort * field list
+val as_obj' : typ -> obj_sort * field list * typ_field list
 val as_variant : typ -> field list
 val as_array : typ -> typ
 val as_opt : typ -> typ
