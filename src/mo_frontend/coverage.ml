@@ -211,15 +211,15 @@ let rec match_pat ctxt desc pat t sets =
       | _ -> assert false
     in match_tup ctxt [] descs pats ts sets
   | ObjP pat_fields ->
-    let _, fs = T.as_obj (T.promote t) in
+    let _, tfs = T.as_obj (T.promote t) in
     let ldescs =
       match desc with
       | Obj ldescs -> ldescs
       | Any ->
         LabMap.(List.fold_left
-          (fun m (tf : T.field) -> add tf.T.lab Any m) empty fs)
+          (fun m (tf : T.field) -> add tf.T.lab Any m) empty tfs)
       | _ -> assert false
-    in match_obj ctxt ldescs pat_fields fs sets
+    in match_obj ctxt ldescs pat_fields tfs sets
   | OptP pat1 ->
     if T.is_prim T.Null (T.promote t) then  (* may occur through subtyping *)
       skip_pat pat.at sets && fail ctxt (Val V.Null) sets
