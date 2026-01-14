@@ -1277,8 +1277,7 @@ let array_obj t =
   let mut t = immut t @
     [ {lab = "put"; typ = Func (Local, Returns, [], [Prim Nat; t], []); src = empty_src} ] in
   Object,
-  List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t),
-  []
+  List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t)
 
 let blob_obj () =
   let open T in
@@ -1288,16 +1287,14 @@ let blob_obj () =
     {lab = "values"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); src = empty_src};
     {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); src = empty_src};
     {lab = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)]); src = empty_src};
-  ],
-  []
+  ]
 
 let text_obj () =
   let open T in
   Object,
   [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)]); src = empty_src};
     {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); src = empty_src};
-  ],
-  []
+  ]
 
 
 (* Expressions *)
@@ -1352,7 +1349,7 @@ and combine_pat_srcs env t pat : unit =
     List.iter2 (combine_pat_srcs env) ts pats
   | ObjP pfs ->
     let pfs' = List.stable_sort compare_pat_field pfs in
-    let _s, tfs, _ =
+    let _s, tfs =
       T.as_obj_sub (List.filter_map (fun pf ->
         match pf.it with
         | TypPF(_) -> None
@@ -2094,7 +2091,7 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
       let t1 = infer_exp_promote env exp1 in
       (try
-        let _, tfs, _ = T.as_obj_sub ["next"] t1 in
+        let _, tfs = T.as_obj_sub ["next"] t1 in
         let t = T.lookup_val_field "next" tfs in
         let t1, t2 = T.as_mono_func_sub t in
         if not (sub env exp1.at T.unit t1) then raise (Invalid_argument "");
@@ -2254,7 +2251,7 @@ and try_infer_dot_exp env at exp id (desc, pred) =
   in
   match fields with
   | Error e -> Error e
-  | Ok((s, fs, _)) -> begin
+  | Ok((s, fs)) -> begin
     let suggest () =
       Suggest.suggest_id "field" id.it (List.map (fun f -> f.T.lab) fs)
     in
@@ -3346,7 +3343,7 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
     in check_pats env ts pats T.Env.empty pat.at
   | ObjP pfs ->
     let pfs' = List.stable_sort compare_pat_field pfs in
-    let s, fs, tfs =
+    let s, fs =
       (* TODO: Why not get the type fields out as well? *)
       try T.as_obj_sub (List.filter_map (fun pf ->
         match pf.it with
@@ -3854,7 +3851,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
    in
    let typ =
      try
-       let s, fs, _ = T.as_obj_sub [T.migration_lab] exp.note.note_typ in
+       let s, fs = T.as_obj_sub [T.migration_lab] exp.note.note_typ in
        if s = T.Actor then raise (Invalid_argument "");
        T.lookup_val_field T.migration_lab fs
      with Invalid_argument _ ->

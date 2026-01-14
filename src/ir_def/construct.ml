@@ -766,7 +766,7 @@ let forE pat exp1 exp2 =
      } *)
   let lab = fresh_id "done" () in
   let ty1 = exp1.note.Note.typ in
-  let _, tfs, _ = T.as_obj_sub [nextN] ty1 in
+  let _, tfs = T.as_obj_sub [nextN] ty1 in
   let tnxt = T.lookup_val_field nextN tfs in
   let nxt = fresh_var "nxt" tnxt in
   letE nxt (dotE exp1 nextN tnxt) (

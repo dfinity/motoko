@@ -666,8 +666,8 @@ let as_prim_sub p t = match promote t with
   | Non -> ()
   | _ -> invalid "as_prim_sub"
 let as_obj_sub ls t = match promote t with
-  | Obj (s, fs, tfs) -> s, fs, tfs
-  | Non -> Object, List.map (fun l -> {lab = l; typ = Non; src = empty_src}) ls, []
+  | Obj (s, fs, _) -> s, fs
+  | Non -> Object, List.map (fun l -> {lab = l; typ = Non; src = empty_src}) ls
   | _ -> invalid "as_obj_sub"
 let as_variant_sub l t = match promote t with
   | Variant tfs -> tfs
@@ -714,7 +714,7 @@ let as_weak_sub t = match promote t with
   | _ -> invalid "as_weak_sub"
 
 let is_immutable_obj obj_type =
-  let _, fields, _ = as_obj_sub [] obj_type in
+  let _, fields = as_obj_sub [] obj_type in
   List.for_all (fun f -> not (is_mut f.typ)) fields
 
 let find_val_field_opt l tfs =

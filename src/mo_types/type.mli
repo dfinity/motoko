@@ -163,7 +163,7 @@ val as_immut : typ -> typ
 val as_con : typ -> con * typ list
 
 val as_prim_sub : prim -> typ -> unit
-val as_obj_sub : string list -> typ -> obj_sort * field list * typ_field list
+val as_obj_sub : string list -> typ -> obj_sort * field list
 val as_variant_sub : string -> typ -> field list
 val as_array_sub : typ -> typ
 val as_opt_sub : typ -> typ

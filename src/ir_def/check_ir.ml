@@ -494,7 +494,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | DotPrim n, [exp1] ->
       begin
         let t1 = typ exp1 in
-        let sort, tfs, _ =
+        let sort, tfs =
           try T.as_obj_sub [n] t1 with Invalid_argument _ ->
             error env exp1.at "expected object type, but expression produces type\n  %s"
               (T.string_of_typ_expand t1)
@@ -961,7 +961,7 @@ and check_lexp env (lexp:Ir.lexp) : unit =
     begin
       check_exp env exp1;
       let t1 = typ exp1 in
-      let sort, tfs, _ =
+      let sort, tfs =
         try T.as_obj_sub [n] t1 with Invalid_argument _ ->
           error env exp1.at "expected object type, but expression produces type\n  %s"
             (T.string_of_typ_expand t1)
@@ -1093,7 +1093,7 @@ and check_pat_fields env t = List.iter (check_pat_field env t)
 and check_pat_field env t (pf : pat_field) =
   let lab = pf.it.name in
   let tf = T.{lab; typ = pf.it.pat.note; src = empty_src} in
-  let s, tfs, _ = T.as_obj_sub [lab] t in
+  let s, tfs = T.as_obj_sub [lab] t in
   let (<:) = check_sub env pf.it.pat.at in
   t <: T.Obj (s, [tf], []);
   if T.is_mut (T.lookup_val_field lab tfs) then

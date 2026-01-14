@@ -4196,18 +4196,18 @@ module Object = struct
     else idx_hash_raw env low_bound
 
   let field_type env obj_type s =
-    let _, fields, _ = Type.as_obj_sub [s] obj_type in
+    let _, fields = Type.as_obj_sub [s] obj_type in
     Type.lookup_val_field s fields
 
   (* Determines whether the field is mutable (and thus needs an indirection) *)
   let is_mut_field env obj_type s =
-    let _, fields, _ = Type.as_obj_sub [s] obj_type in
+    let _, fields = Type.as_obj_sub [s] obj_type in
     Type.is_mut (Type.lookup_val_field s fields)
 
   (* Computes a lower bound for the positional index of a field in an object *)
   let field_lower_bound env obj_type s =
     let open Type in
-    let _, fields, _ = as_obj_sub [s] obj_type in
+    let _, fields = as_obj_sub [s] obj_type in
     let sorted_by_hash =
       List.sort
         (fun (h1, _) (h2, _) -> compare_uint64 h1 h2)

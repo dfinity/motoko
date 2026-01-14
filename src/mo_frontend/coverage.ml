@@ -135,7 +135,7 @@ let rec string_of_desc t = function
     let fields = LabMap.bindings ldescs in
     (* TODO: Printing explodes, because it can't look up the type field otherwise *)
     let fields = List.filter (fun (_, desc) -> desc <> Any) fields in
-    let _, tfs, _ = T.as_obj_sub (List.map fst fields) t in
+    let _, tfs = T.as_obj_sub (List.map fst fields) t in
     "{" ^ String.concat "; " (List.map (string_of_ldesc tfs) fields) ^ "}"
   | Opt desc ->
     let t' = T.as_opt_sub t in

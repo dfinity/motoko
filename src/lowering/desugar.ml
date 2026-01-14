@@ -111,7 +111,7 @@ and exp' at note = function
     (text_dotE x.it (exp e)).it
   | S.DotE (e, x, _) ->
     begin match T.as_obj_sub [x.it] e.note.S.note_typ with
-    | T.Actor, _, _ -> I.PrimE (I.ActorDotPrim x.it, [exp e])
+    | T.Actor, _ -> I.PrimE (I.ActorDotPrim x.it, [exp e])
     | _ -> I.PrimE (I.DotPrim x.it, [exp e])
     end
   | S.AssignE (e1, e2) -> I.AssignE (lexp e1, exp e2)
@@ -632,7 +632,7 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
       I.{pre = mem_ty; post = mem_ty},
       primE (I.ICStableRead mem_ty) [] (* as before *)
     | Some exp0 ->
-      let typ = let _, tfs, _ = T.as_obj_sub [T.migration_lab] exp0.note.Note.typ in
+      let typ = let _, tfs = T.as_obj_sub [T.migration_lab] exp0.note.Note.typ in
                 T.lookup_val_field T.migration_lab tfs
       in
       let e = dotE exp0 T.migration_lab typ in
@@ -815,7 +815,7 @@ and build_obj at s self_id dfs obj_typ =
       (letE self e (varE self)).it
 
 and exp_field obj_typ ef =
-  let _, fts, _ = T.as_obj_sub [] obj_typ in
+  let _, fts = T.as_obj_sub [] obj_typ in
   let S.{mut; id; exp = e} = ef.it in
   match mut.it with
   | S.Var ->
