@@ -1450,7 +1450,7 @@ let resolve_hole env at hole_sort typ =
   let has_matching_field_typ = function
     | T.{ lab; typ = Mut t; _ } -> None
     | T.{ lab = lab1; typ = typ1; src } ->
-       if is_matching_typ typ1 && not (Syntax.is_privileged lab1)
+       if is_matching_typ typ1
        then Some (lab1, typ1, src.T.region)
        else None
   in
