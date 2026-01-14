@@ -1311,23 +1311,15 @@ let error_bin_op env at t1 t2 =
 
 (* NOTE: Keep in sync with mo_types/type.ml:compare_field *)
 let compare_pat_field pf1 pf2 = match pf1.it, pf2.it with
-  | TypPF(id1), TypPF(id2) -> compare id1.it id2.it
+  | TypPF(id1), TypPF(id2) -> String.compare id1.it id2.it
   | TypPF(_), _ -> -1
   | _, TypPF(_) -> 1
-  | ValPF(id1, _), ValPF(id2, _) -> compare id1.it id2.it
+  | ValPF(id1, _), ValPF(id2, _) -> String.compare id1.it id2.it
 
-let rec combine_pat_fields_srcs env t tfs (pfs : pat_field list) : unit =
-  match tfs, pfs with
-  | _, [] | [], _ -> ()
-  | _, {it = TypPF(_); _}::pfs' ->
-     combine_pat_fields_srcs env t tfs pfs'
-  | T.{lab; typ; src}::tfs', {it = ValPF(id, pat); _}::pfs' ->
-    match compare id.it lab with
-    | -1 -> combine_pat_fields_srcs env t [] pfs
-    | +1 -> combine_pat_fields_srcs env t tfs' pfs
-    | _ ->
-      combine_pat_srcs env typ pat;
-      combine_pat_fields_srcs env t tfs' pfs';
+let rec combine_pat_fields_srcs env t tfs pfs =
+  let cmp tf (id, _) = String.compare tf.T.lab id in
+  Lib.List.align cmp tfs pfs |>
+  Seq.iter (function | Lib.Both (tf, (_, pat)) -> combine_pat_srcs env tf.T.typ pat | _ -> ())
 
 and combine_id_srcs env t id : unit =
   match T.Env.find_opt id.it env.vals with
@@ -1348,14 +1340,12 @@ and combine_pat_srcs env t pat : unit =
     let ts = T.as_tup_sub (List.length pats) t in
     List.iter2 (combine_pat_srcs env) ts pats
   | ObjP pfs ->
-    let pfs' = List.stable_sort compare_pat_field pfs in
-    let _s, tfs =
-      T.as_obj_sub (List.filter_map (fun pf ->
-        match pf.it with
-        | TypPF(_) -> None
-        | ValPF(id, _) -> Some(id.it)) pfs') t
-    in
-    combine_pat_fields_srcs env t tfs pfs'
+    let value_pfs = List.filter_map (fun pf -> match pf.it with
+      | TypPF(_) -> None
+      | ValPF(id, pat) -> Some(id.it, pat)) pfs in
+    let value_pfs = List.stable_sort (fun (id1, _) (id2, _) -> String.compare id1 id2) value_pfs in
+    let _, tfs = T.as_obj_sub (List.map fst value_pfs) t in
+    combine_pat_fields_srcs env t tfs value_pfs
   | OptP pat1 ->
     let t1 = T.as_opt_sub t in
     combine_pat_srcs env t1 pat1
