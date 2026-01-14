@@ -870,7 +870,7 @@ and obj obj_typ efs bases =
       [d, f] in
 
   let dss, fs = map (exp_field obj_typ) efs |> split in
-  let ds', fs' = concat_map gap (let _, fs = T.as_obj obj_typ in fs) |> split in
+  let ds', fs' = concat_map gap (T.as_obj obj_typ |> snd) |> split in
   let obj_e = newObjE T.Object (append fs fs') obj_typ in
   let decs = append base_decs (append (flatten dss) ds') in
   (blockE decs obj_e).it

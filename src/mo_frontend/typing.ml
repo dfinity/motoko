@@ -1469,8 +1469,7 @@ let resolve_hole env at hole_sort typ =
   in
   let find_candidate_id = function
     (id, (t, region, _, _)) ->
-    (* TODO No clue what changed, and why this wasn't necessary before *)
-    if is_matching_typ t && not (Syntax.is_privileged id)
+    if is_matching_typ t
     then
       let path =
         { it = VarE {it = id; at = no_region; note = (Const, None)};
@@ -2449,7 +2448,6 @@ and check_exp' env0 t exp : T.typ =
     List.iter2 (check_exp env) ts exps;
     t
   | ObjE (exp_bases, exp_fields), T.Obj(T.Object, fs, tfs) ->
-    (* TODO should we error if tfs is not empty? Record literals cannot produce type fields *)
     let t' = infer_check_bases_fields env fs exp.at exp_bases exp_fields in
     let fs', tfs' = match T.promote t' with
       | T.Obj(T.Object, fs', tfs') -> fs', tfs'
@@ -4235,9 +4233,7 @@ and infer_val_path env exp : T.typ option =
      | None -> None
      | Some t ->
        match T.promote t with
-       | T.Obj ( _, fs, _) ->
-         (try Some (T.lookup_val_field id.it fs)
-         with Invalid_argument _ -> None)
+       | T.Obj ( _, fs, _) -> T.lookup_val_field_opt id.it fs
        | _ -> None
     )
   | AnnotE (_, typ) ->
