@@ -860,7 +860,8 @@ and check_typ' env typ : T.typ =
       (List.filter_map (fun (field : typ_field) ->
         match field.it with TypF (x, _, _) -> Some x | _ -> None
       ) fields);
-    let fs = List.map (check_typ_field env sort.it) fields in
+    let fs = List.filter_map (fun f -> try Some(check_typ_field env sort.it f) with Recover -> None) fields in
+    if List.length fs <> List.length fields then raise Recover;
     T.Obj (sort.it, List.sort T.compare_field fs)
   | AndT (typ1, typ2) ->
     let t1 = check_typ env typ1 in
