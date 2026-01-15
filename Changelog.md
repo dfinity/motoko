@@ -3,6 +3,8 @@
 
 * motoko (`moc`)
 
+  * Warn on unreachable let-else (#5789).
+
   * Omit `blob:*` imports from `moc --print-deps` (#5781).
 
   * Print type constructors using available type paths (#5698).

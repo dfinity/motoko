@@ -249,6 +249,7 @@ let warning_codes = [
   "M0240", None, "Unused identifier in shared pattern warning";
   "M0241", None, "Unused field in shared pattern warning";
   "M0242", None, "Implicit oneway declaration";
+  "M0243", None, "Unreachable else in let-else";
   ]
 
 let try_find_explanation code =
