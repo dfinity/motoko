@@ -16,6 +16,11 @@ on:
         default: test-draft-release
         type: string
 
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
 jobs:
   prepare:
     runs-on: ubuntu-latest
@@ -77,7 +82,7 @@ jobs:
     needs: prepare
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-15-intel, ubuntu-24.04-arm, macos-latest]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
     concurrency:
       group: release-build-${{ matrix.os }}-${{ github.ref_name }}
       cancel-in-progress: true
@@ -157,7 +162,7 @@ jobs:
       - name: Upload Release Assets
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          repo_token: ${{ github.token }}
           tag: ${{ github.event_name == 'workflow_dispatch' && steps.rewrite_draft_assets.outputs.tag || github.ref_name }}
           file: release-assets/*
           file_glob: true

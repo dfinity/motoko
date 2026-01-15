@@ -114,6 +114,7 @@ type token =
   | ROTLASSIGN
   | ROTRASSIGN
   | NULL
+  | NULLCOALESCE
   | DOT_NUM of string
   | NUM_DOT_ID of string * string
   | NAT of string
@@ -249,6 +250,7 @@ let to_parser_token :
   | ROTLASSIGN -> Ok Parser.ROTLASSIGN
   | ROTRASSIGN -> Ok Parser.ROTRASSIGN
   | NULL -> Ok Parser.NULL
+  | NULLCOALESCE -> Ok Parser.NULLCOALESCE
   | NUM_DOT_ID (ns, id) -> Ok (Parser.NUM_DOT_ID (ns, id))
   | DOT_NUM s -> Ok (Parser.DOT_NUM s)
   | NAT s -> Ok (Parser.NAT s)
@@ -400,6 +402,7 @@ let string_of_parser_token = function
   | Parser.COMPOSITE -> "COMPOSITE"
   | Parser.PIPE -> "PIPE"
   | Parser.WEAK -> "WEAK"
+  | Parser.NULLCOALESCE -> "NULLCOALESCE"
 
 let is_lineless_trivia : token -> void trivia option = function
   | SINGLESPACE -> Some (Space 1)
@@ -411,6 +414,13 @@ let is_lineless_trivia : token -> void trivia option = function
 let is_trivia : token -> line_feed trivia option = function
   | LINEFEED lf -> Some (Line lf)
   | t -> Option.map (map_trivia absurd) (is_lineless_trivia t)
+
+let is_whitespace_token : token -> bool = function
+  | LINEFEED _
+  | SINGLESPACE
+  | SPACE _
+  | TAB _ -> true
+  | _ -> false
 
 let is_whitespace : 'a trivia -> bool = function
   | Space _ | Tab _ | Line _ -> true

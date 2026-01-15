@@ -329,6 +329,29 @@ let warn_lossy_bind_type env at bind t1 t2 =
       display_typ_expand t1
       display_typ_expand t2
 
+let error_expected_option_type env at t =
+  error env at "M0065"
+    "expected option type, but expression produces type%a"
+    display_typ_expand t
+
+let expect_option_type env exp t =
+  try
+    T.as_opt_sub t
+  with Invalid_argument _ ->
+    error_expected_option_type env exp.at t
+
+let error_expected_type env at ~actual ~expected =
+  error env at "M0096"
+    "expression of type%a\ncannot produce expected type%a"
+    display_typ_expand actual
+    display_typ_expand expected
+
+let error_inconsistent_type env at t1 t2 =
+  error env at "M0240"
+    "cannot find best common type for%a\nand%a"
+    display_typ_expand t1
+    display_typ_expand t2
+
 (* Currently unused *)
 let _warn_in modes env at code fmt =
   ignore (diag_in type_warning modes env at code fmt)
@@ -1131,7 +1154,7 @@ let rec is_explicit_exp e =
   | BreakE _ | RetE _ | ThrowE _ ->
     false
   | VarE _
-  | RelE _ | NotE _ | AndE _ | OrE _ | ShowE _ | ToCandidE _ | FromCandidE _
+  | RelE _ | NotE _ | AndE _ | OrE _ | NullCoalesceE _ | ShowE _ | ToCandidE _ | FromCandidE _
   | AssignE _ | IgnoreE _ | AssertE _ | DebugE _
   | WhileE _ | ForE _
   | AnnotE _ | ImportE _ | ImplicitLibE _ ->
@@ -1865,12 +1888,7 @@ and infer_exp'' env exp : T.typ =
       let t1 = infer_exp_promote env exp1 in
       if Option.is_none (T.Env.find_opt "!" env.labs) then
         local_error env exp.at "M0064" "misplaced '!' (no enclosing 'do ? { ... }' expression)";
-      try
-        T.as_opt_sub t1
-      with Invalid_argument _ ->
-        error env exp1.at "M0065"
-          "expected option type before '!', but expression produces type%a"
-          display_typ_expand t1
+      expect_option_type env exp1 t1
     end
   | TagE (id, exp1) ->
     let t1 = infer_exp env exp1 in
@@ -2056,6 +2074,14 @@ and infer_exp'' env exp : T.typ =
       check_exp_strong env T.bool exp2
     end;
     T.bool
+  | NullCoalesceE (e1, e2) ->
+    let t1 = infer_exp env e1 in
+    let t_inner1 = expect_option_type env e1 t1 in
+    let t2 = infer_exp env e2 in
+    let t = T.lub ~src_fields:env.srcs t_inner1 t2 in
+    if not env.pre && inconsistent t [t_inner1; t2] then
+      error_inconsistent_type env exp.at t_inner1 t2;
+    t
   | IfE (exp1, exp2, exp3) ->
     if not env.pre then check_exp_strong env T.bool exp1;
     let t2 = infer_exp env exp2 in
@@ -2561,6 +2587,10 @@ and check_exp' env0 t exp : T.typ =
     t
   | BlockE decs, _ ->
     ignore (check_block env t decs exp.at);
+    t
+  | NullCoalesceE (e1, e2), _ ->
+    check_exp env (T.Opt t) e1;
+    check_exp env t e2;
     t
   | IfE (exp1, exp2, exp3), _ ->
     check_exp_strong env T.bool exp1;
@@ -3108,10 +3138,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
     ts, T.open_ ts t_arg, T.open_ ts t_ret
   with Bi_match.Bimatch { message; hint; reason } ->
     reason |> Option.iter (fun Bi_match.{ actual; expected; at } ->
-      error env at "M0096"
-        "expression of type%a\ncannot produce expected type%a"
-        display_typ_expand actual
-        display_typ_expand expected);
+      error_expected_type env at ~actual ~expected);
 
     let t1 = T.normalize t1 in
     let remove_holes_nary ts =
