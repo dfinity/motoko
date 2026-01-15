@@ -4563,7 +4563,7 @@ and infer_dec_valdecs env dec : Scope.t =
        | Some _ ->
           let ve = check_pat env t pat in
           if not env.pre && coverage_pat_is_exhaustive pat t then
-            warn env pat.at "M0XXX" "this pattern is exhaustive, so the else branch will never run";
+            warn env pat.at "M0243" "this pattern will always match, so the else clause is useless. Consider removing the else clause";
           ve
      in
      Scope.{empty with val_env = ve'}
