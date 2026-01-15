@@ -1,0 +1,2 @@
+let-else-block.mo:3.7-3.8: warning [M0XXX], this pattern is exhaustive, so the else branch will never run
+let-else-block.mo:9.7-9.13: warning [M0XXX], this pattern is exhaustive, so the else branch will never run

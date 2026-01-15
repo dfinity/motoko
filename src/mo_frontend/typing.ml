@@ -458,6 +458,10 @@ let coverage_cases category env cases t at =
 let coverage_pat warnOrError env pat t =
   coverage' warnOrError "pattern" env Coverage.check_pat pat t pat.at
 
+let coverage_pat_is_exhaustive pat t =
+  let uncovered, _ = Coverage.check_pat pat t in
+  uncovered = []
+
 (* Types *)
 
 let check_ids env kind member ids = Lib.List.iter_pairs
@@ -4556,7 +4560,11 @@ and infer_dec_valdecs env dec : Scope.t =
      let t = infer_exp {env with pre = true; check_unused = false} exp in
      let ve' = match fail with
        | None -> check_pat_exhaustive (if is_import dec then local_error else warn) env t pat
-       | Some _ -> check_pat env t pat
+       | Some _ ->
+          let ve = check_pat env t pat in
+          if not env.pre && coverage_pat_is_exhaustive pat t then
+            warn env pat.at "M0XXX" "this pattern is exhaustive, so the else branch will never run";
+          ve
      in
      Scope.{empty with val_env = ve'}
   | VarD (id, exp) ->
