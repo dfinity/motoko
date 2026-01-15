@@ -7,6 +7,8 @@
 
   * Print type constructors using available type paths (#5698).
 
+  * Warn on implicit oneway declarations (#5787).
+
   * Explain subtype failures (#5643).
 
   * Removes the Viper support (#5751).
