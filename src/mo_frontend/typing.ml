@@ -1972,7 +1972,7 @@ and infer_exp'' env exp : T.typ =
           "a shared function is only allowed as a public field of an actor";
     end;
     if not env.pre && T.is_shared_sort shared_pat.it && Option.is_none typ_opt then
-      warn env exp1.at "M0XXX" "this declares an implicit oneway function.\n  if this is intentional, annotate explicitly with `: ()`, otherwise annotate with `: async ()`";
+      warn env exp1.at "M0242" "this declares an implicit oneway function.\n  if this is intentional, annotate explicitly with `: ()`, otherwise annotate with `: async ()`";
     let typ = match typ_opt with
       | Some typ -> typ
       | None -> {it = TupT []; at = no_region; note = T.Pre}
