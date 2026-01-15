@@ -1,5 +1,3 @@
-queries.mo:5.31-5.34: warning [M0XXX], this declares an implicit oneway function.
-  if this is intentional, annotate explicitly with `: ()`, otherwise annotate with `: async ()`
 queries.mo:13.5-13.20: type error [M0038], misplaced await
 queries.mo:17.5-17.13: type error [M0188], send capability required, but not available
   (cannot call a `shared` function from a `query` function)

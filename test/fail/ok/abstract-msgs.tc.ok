@@ -14,5 +14,3 @@ abstract-msgs.mo:16.34-16.35: type error [M0031], shared function has non-shared
   A
 abstract-msgs.mo:17.27-17.47: type error [M0032], shared function has non-shared return type
   A
-abstract-msgs.mo:23.52-23.54: warning [M0XXX], this declares an implicit oneway function.
-  if this is intentional, annotate explicitly with `: ()`, otherwise annotate with `: async ()`

@@ -1,3 +1,1 @@
-ast81-clash.mo:4.20-11.4: warning [M0XXX], this declares an implicit oneway function.
-  if this is intentional, annotate explicitly with `: ()`, otherwise annotate with `: async ()`
 ast81-clash.mo:8.11-8.12: type error [M0051], duplicate definition for x in block

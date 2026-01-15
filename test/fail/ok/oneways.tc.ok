@@ -1,15 +1,7 @@
-oneways.mo:5.20-5.22: warning [M0XXX], this declares an implicit oneway function.
-  if this is intentional, annotate explicitly with `: ()`, otherwise annotate with `: async ()`
-oneways.mo:6.22-6.52: warning [M0XXX], this declares an implicit oneway function.
-  if this is intentional, annotate explicitly with `: ()`, otherwise annotate with `: async ()`
-oneways.mo:8.25-8.27: warning [M0XXX], this declares an implicit oneway function.
-  if this is intentional, annotate explicitly with `: ()`, otherwise annotate with `: async ()`
-oneways.mo:8.25-8.27: type error [M0078], shared function with () result type has unexpected body:
+oneways.mo:8.30-8.32: type error [M0078], shared function with () result type has unexpected body:
   the body must either be of sugared form '{ ... }' 
   or explicit form '= ignore ((async ...) : async ())'
-oneways.mo:9.25-9.40: warning [M0XXX], this declares an implicit oneway function.
-  if this is intentional, annotate explicitly with `: ()`, otherwise annotate with `: async ()`
-oneways.mo:9.25-9.40: type error [M0078], shared function with () result type has unexpected body:
+oneways.mo:9.30-9.45: type error [M0078], shared function with () result type has unexpected body:
   the body must either be of sugared form '{ ... }' 
   or explicit form '= ignore ((async ...) : async ())'
 oneways.mo:12.21-12.23: warning [M0XXX], this declares an implicit oneway function.

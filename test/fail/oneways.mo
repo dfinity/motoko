@@ -2,11 +2,11 @@
 
 actor a {
 
- public func ok1() {};
- public func ok2() = ignore ((async ()) : async ());
+ public func ok1() : () {};
+ public func ok2() : () = ignore ((async ()) : async ());
 
- public func wrong1() = ();
- public func wrong2() = ignore async ();
+ public func wrong1() : () = ();
+ public func wrong2() : () = ignore async ();
 };
 
 shared func warn1() {};
