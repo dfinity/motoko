@@ -10,10 +10,14 @@ shared-nonexhaustive.mo:5.2-5.75: type error [M0096], expression of type
   shared Bool -> async ()
 cannot produce expected type
   ()
+shared-nonexhaustive.mo:7.34-7.36: warning [M0XXX], this declares an implicit oneway function.
+  if this is intentional, annotate explicitly with `: ()`, otherwise annotate with `: async ()`
 shared-nonexhaustive.mo:7.19-7.32: type error [M0145], this pattern of type
   Bool
 does not cover value
   false
+shared-nonexhaustive.mo:9.36-9.38: warning [M0XXX], this declares an implicit oneway function.
+  if this is intentional, annotate explicitly with `: ()`, otherwise annotate with `: async ()`
 shared-nonexhaustive.mo:9.21-9.34: type error [M0145], this pattern of type
   Bool
 does not cover value

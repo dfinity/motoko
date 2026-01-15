@@ -1,3 +1,5 @@
+bad-async.mo:4.24-4.45: warning [M0XXX], this declares an implicit oneway function.
+  if this is intentional, annotate explicitly with `: ()`, otherwise annotate with `: async ()`
 bad-async.mo:4.32-4.42: type error [M0096], expression of type
   async<$> Nat
 cannot produce expected type
