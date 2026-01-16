@@ -10,7 +10,7 @@
 
   * Omit `blob:*` imports from `moc --print-deps` (#5781).
 
-  * Split unused identifier warnings into separate warnings for shared and non-shared contexts: `M0194` for general declarations, `M0240` for identifiers in shared pattern contexts (e.g. `c` in `shared({caller = c})`), `M0198` for unused fields in object patterns, and `M0241` for unused fields in shared patterns (e.g. `caller` in `shared({caller})`) (#5779).
+  * Split unused identifier warnings into separate warnings for shared and non-shared contexts: `M0194` for general declarations, `M0240` for identifiers in shared pattern contexts (e.g. `c` in `shared({caller = c})`), `M0198` for unused fields in object patterns, and `M0241` for unused fields in shared patterns (e.g. `caller` in `shared({caller})`) (#5779). 
 
   * Print type constructors using available type paths (#5698).
 
