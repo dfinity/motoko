@@ -14,6 +14,8 @@
 
   * Print type constructors using available type paths (#5698).
 
+  * Warn on implicit oneway declarations (#5787).
+
   * Make the type checker more lenient and continue accumulating typing errors, and try to produce the typed AST even with errors. Enabled only with a type recovery flag for the IDE (Serokell Grant 2 Milestone 3) (#5776).
 
   * Explain subtype failures (#5643).
