@@ -946,6 +946,11 @@ func_pat :
 dec_var :
   | VAR x=id t=annot_opt EQ e=exp(ob)
     { VarD(x, annot_exp e t) @? at $sloc }
+  | VAR x=id t=annot_opt
+    (* No initializer - use unit expression () as placeholder *)
+    (* Type checker will verify this is only allowed for stable variables with --enhanced-migration *)
+    { let unit_exp = TupE([]) @? at $sloc in
+      VarD(x, annot_exp unit_exp t) @? at $sloc }
 
 dec_nonvar :
   | LET p=pat EQ e=exp(ob)

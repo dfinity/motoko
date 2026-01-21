@@ -5,9 +5,9 @@ import Init "Init";
 
 (with multi_migration = (Init.run))
 actor {
-  var zero : Nat = 1;
-  var one : [var Nat] = [var 1];
-  var two : [var Text] = [var "1"];
+  var zero : Nat;
+  var one : [var Nat];
+  var two : [var Text];
 
   public func check() : async () {
     Prim.debugPrint(debug_show "Version 0");

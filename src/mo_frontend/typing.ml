@@ -2177,7 +2177,15 @@ and infer_exp'' env exp : T.typ =
     T.unit
   | AnnotE (exp1, typ) ->
     let t = check_typ env typ in
-    if not env.pre then check_exp_strong env t exp1;
+    if not env.pre then
+      (* If exp1 is TupE [] (placeholder for no initializer) and --enhanced-migration is enabled, *)
+      (* allow it without type checking (it's used for stable variables without initializers) *)
+      (match exp1.it with
+       | TupE [] when !Flags.enhanced_migration ->
+         (* Placeholder for no initializer - skip type check, use annotation type *)
+         exp1.note <- {exp1.note with note_typ = t}
+       | _ ->
+         check_exp_strong env t exp1);
     t
   | IgnoreE exp1 ->
     if not env.pre then begin
@@ -3744,16 +3752,62 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
           if not !Flags.enhanced_migration then
             error env exp.at "M0246"
               "`multi_migration` requires the --enhanced-migration flag";
-          (* Has multi_migration - only allow variable declarations, mixins, and class definitions *)
+          (* Validate that --enhanced-migration requires --enhanced-orthogonal-persistence and --default-persistent-actors *)
+          if not !Flags.enhanced_orthogonal_persistence then
+            error env exp.at "M0249"
+              "`--enhanced-migration` flag requires `--enhanced-orthogonal-persistence` flag";
+          if !Flags.actors <> Flags.DefaultPersistentActors then
+            error env exp.at "M0249"
+              "`--enhanced-migration` flag requires `--default-persistent-actors` flag";
+          (* Has multi_migration with --enhanced-migration: disallow stable variable initializers *)
+          (* With EOP, variables are stable by default unless marked transient (Flexible) *)
+          (* Allow transient (Flexible) variable initializers and side effects *)
           List.iter (fun df ->
-            match df.it.dec.it with
-            | VarD _ | LetD _ -> () (* Allow variable declarations *)
-            | MixinD _ | IncludeD _ -> () (* Allow mixins and includes *)
-            | ClassD _ -> () (* Allow class definitions *)
-            | ExpD e ->
-              error env e.at "M0244"
-                "actor uses `multi_migration` with constructor code that has side effects.\nExpression statements are not allowed when using `multi_migration`.\nIf you fast-forward (using multi-migration) versions during upgrade, intermediate constructor code will not run, which may cause data inconsistencies.\nConsider moving all initialization logic into migration functions."
-            | TypD _ -> () (* Allow type declarations *)
+            (* Determine if variable is stable: with EOP, None or Stable means stable, Flexible means transient *)
+            let is_stable = match df.it.stab with
+              | None -> true (* With EOP, default is stable *)
+              | Some {it = Stable; _} -> true
+              | Some {it = Flexible; _} -> false (* transient *)
+            in
+            if is_stable then
+              (* Stable variable: check if it has an initializer *)
+              match df.it.dec.it with
+              | VarD (id, e) ->
+                (* Empty tuple TupE [] wrapped in AnnotE is used as placeholder for "no initializer" *)
+                (match e.it with
+                 | AnnotE ({it = TupE []; _}, _) ->
+                   (* No initializer (placeholder) - allowed for stable variables *)
+                   ()
+                 | TupE [] ->
+                   (* No initializer (no annotation) - allowed for stable variables *)
+                   ()
+                 | _ ->
+                   (* Has initializer - disallow *)
+                   error env e.at "M0248"
+                     "stable variable `%s` cannot have an initializer when using `multi_migration` with --enhanced-migration flag.\nStable variables must be initialized by the migration function."
+                     id.it)
+              | LetD (pat, e, _) ->
+                (* Empty tuple TupE [] wrapped in AnnotE is used as placeholder for "no initializer" *)
+                (match e.it with
+                 | AnnotE ({it = TupE []; _}, _) ->
+                   (* No initializer (placeholder) - allowed for stable variables *)
+                   ()
+                 | TupE [] ->
+                   (* No initializer (no annotation) - allowed for stable variables *)
+                   ()
+                 | _ ->
+                   (* Has initializer - disallow *)
+                   let var_name = match pat.it with
+                     | VarP id -> id.it
+                     | _ -> "variable"
+                   in
+                   error env e.at "M0248"
+                     "stable variable `%s` cannot have an initializer when using `multi_migration` with --enhanced-migration flag.\nStable variables must be initialized by the migration function."
+                     var_name)
+              | _ -> () (* Other declarations (MixinD, IncludeD, ClassD, ExpD, TypD) are allowed *)
+            else
+              (* Transient (Flexible) variable - allow initializer *)
+              ()
           ) dec_fields
         | _ -> ())
      | None -> ());
@@ -3847,6 +3901,13 @@ and infer_migration env obj_sort exp_opt =
 and check_migration env (stab_tfs : T.field list) exp_opt at obj_sort =
   (* When enhanced_migration flag is enabled, multi_migration is mandatory for actors *)
   if !Flags.enhanced_migration && obj_sort.it = T.Actor then begin
+    (* Validate that --enhanced-migration requires --enhanced-orthogonal-persistence and --default-persistent-actors *)
+    if not !Flags.enhanced_orthogonal_persistence then
+      error env at "M0249"
+        "`--enhanced-migration` flag requires `--enhanced-orthogonal-persistence` flag";
+    if !Flags.actors <> Flags.DefaultPersistentActors then
+      error env at "M0249"
+        "`--enhanced-migration` flag requires `--default-persistent-actors` flag";
     match exp_opt with
     | None ->
       (* Use location of first stable field if available, otherwise use actor location *)
@@ -4357,11 +4418,21 @@ and infer_dec env dec : T.typ =
     t
   | VarD (id, exp) ->
     if not env.pre then begin
+      (* Always infer the expression type (needed for type checking) *)
       let t = infer_exp env exp in
-      if !Flags.typechecker_combine_srcs then
-        combine_id_srcs env t id;
-      if T.is_unit (T.normalize t) then
-        warn_unit_binding `Var env dec exp;
+      (* Check if this is a placeholder (AnnotE(TupE [], typ)) for stable variable without initializer *)
+      (* Only skip extra processing when --enhanced-migration is enabled and it's our placeholder pattern *)
+      (match exp.it with
+       | AnnotE ({it = TupE []; _}, _) when !Flags.enhanced_migration ->
+         (* Placeholder for no initializer with --enhanced-migration flag *)
+         (* Type is already inferred by AnnotE handling, skip extra processing *)
+         ()
+       | _ ->
+         (* Has real initializer (or no flag) - do normal processing *)
+         if !Flags.typechecker_combine_srcs then
+           combine_id_srcs env t id;
+         if T.is_unit (T.normalize t) then
+           warn_unit_binding `Var env dec exp);
     end;
     T.unit
   | ClassD (exp_opt, shared_pat, obj_sort, id, typ_binds, pat, typ_opt, self_id, dec_fields) ->

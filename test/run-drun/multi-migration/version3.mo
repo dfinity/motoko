@@ -10,17 +10,15 @@ import Migration "Migration6";
   )
 )
 actor {
-  var zero : Nat = 0;
+  var zero : Nat;
 
-  var three : [var (Nat, Text)] = [var];
+  var three : [var (Nat, Text)];
 
-  var four : Text = "";
+  var four : Text;
 
-  var five : Text = "";
+  var five : Text;
 
-  var six : Text = "";
-
-  //six #= "hello";
+  var six : Text;
 
   public func check() : async () {
     Prim.debugPrint(debug_show { zero; three; four; five; six });
