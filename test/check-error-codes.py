@@ -51,6 +51,8 @@ known_untested_codes = {
     "M0245", # Multi-migration field not explicitly produced/consumed
     "M0246", # Multi-migration requires --enhanced-migration flag
     "M0247", # Multi-migration is mandatory with --enhanced-migration flag
+    "M0248", # Stable variable cannot have an initializer with --enhanced-migration flag
+    "M0249", # --enhanced-migration requires --enhanced-orthogonal-persistence and --default-persistent-actors
     }
 
 def populate_error_codes():
