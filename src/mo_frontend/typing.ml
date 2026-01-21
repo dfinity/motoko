@@ -4681,16 +4681,13 @@ let check_stab_sig scope sig_ : T.stab_sig  Diag.result =
               (List.filter_map (fun (field : typ_field) ->
                    match field.it with ValF (id, _, _) -> Some id | _ -> None)
                  sfs);
-            check_ids env "object type" "type field"
-              (List.filter_map (fun (field : typ_field) ->
-                   match field.it with TypF (id, _, _) -> Some id | _ -> None)
-                 sfs);
             let _ = List.map (check_typ_field {env1 with pre = true} T.Object) sfs in
-            (* TODO: Is it correct to drop type fields here? *)
+            (* NOTE: It's correct to drop type fields here, because the parser for stable signatures
+               only produces value fields *)
             let fs, _ = List.partition_map (check_typ_field {env1 with pre = false} T.Object) sfs in
             List.iter (fun (field : Syntax.typ_field) ->
                 match field.it with
-                | TypF _ -> ()
+                | TypF _ -> assert false
                 | ValF (id, typ, _) ->
                   if not (T.stable typ.note) then
                      error env id.at "M0131" "variable %s is declared stable but has non-stable type%a"
