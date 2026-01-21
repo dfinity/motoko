@@ -378,8 +378,8 @@ let bi_match_typs ctx =
       | None -> None
       | Some inst -> match fs with
         | Lib.Both(tf1, tf2) -> bi_match_typ rel eq inst any tf1.typ tf2.typ
-        | Lib.This(_) -> if rel != eq then Some inst else None
-        | Lib.That(_) -> None) (Some inst)
+        | Lib.This _ -> if rel != eq then Some inst else None
+        | Lib.That _ -> None) (Some inst)
 
   and bi_match_typ_fields rel eq inst any tfs1 tfs2 =
     (* Assume that tfs1 and tfs2 are sorted. *)
@@ -390,8 +390,8 @@ let bi_match_typs ctx =
         | Lib.Both(tf1, tf2) ->
           (* NB: we assume c1, c2 closed *)
           if eq_con tf1.typ tf2.typ then Some inst else None
-        | Lib.This(_) -> if rel != eq then Some inst else None
-        | Lib.That(_) -> None) (Some inst)
+        | Lib.This _ -> if rel != eq then Some inst else None
+        | Lib.That _ -> None) (Some inst)
 
   and bi_match_tags rel eq inst any tfs1 tfs2 =
     (* Assume that tfs1 and tfs2 are sorted. *)
@@ -400,8 +400,8 @@ let bi_match_typs ctx =
       | None -> None
       | Some inst -> match fs with
         | Lib.Both(tf1, tf2) -> bi_match_typ rel eq inst any tf1.typ tf2.typ
-        | Lib.This(_) -> None
-        | Lib.That(_) -> if rel != eq then Some inst else None) (Some inst);
+        | Lib.This _ -> None
+        | Lib.That _ -> if rel != eq then Some inst else None) (Some inst);
 
   and bi_match_binds rel eq inst any tbs1 tbs2 =
     let ts = open_binds tbs2 in

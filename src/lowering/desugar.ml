@@ -506,7 +506,7 @@ and export_footprint self_id expr =
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
-  let ret_typ = T.obj T.Object [("size", T.nat64)] in
+  let ret_typ = T.(obj Object [("size", nat64)]) in
   let caller = fresh_var "caller" caller in
   ([ letD (var v typ) (
        funcE v (Shared Query) Promises [bind1] [] [ret_typ] (
