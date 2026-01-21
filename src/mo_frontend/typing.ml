@@ -3332,7 +3332,6 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
   | ObjP pfs ->
     let pfs' = List.stable_sort compare_pat_field pfs in
     let s, fs =
-      (* TODO: Why not get the type fields out as well? *)
       try T.as_obj_sub (List.filter_map (fun pf ->
         match pf.it with
         | TypPF(_) -> None
