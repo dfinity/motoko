@@ -4081,8 +4081,8 @@ and check_stab env sort scope dec_fields =
 and infer_viewer env scope mut id viewer =
   assert (!viewer = None);
   match Diag.with_message_store (recover_opt (fun msgs ->
-    (*    let env_without_errors = {(adjoin env scope) with msgs } in *)
-    let env_without_errors = adjoin env scope in
+    let env_without_errors = {(adjoin env scope) with msgs } in
+    (*    let env_without_errors = adjoin env scope in *) (* uncomment to see errors *)
     let note() = empty_typ_note in
     let at = id.at in
     let dot_exp =
@@ -4102,10 +4102,10 @@ and infer_viewer env scope mut id viewer =
     exp))
   with
   | Error _ ->
-     info env id.at "viewer not found for %s" id.it;
+     (* info env id.at "viewer not found for %s" id.it; *)
      ()
   | Ok (exp, _) ->
-     info env id.at "viewer found for %s" id.it;
+     (* info env id.at "viewer found for %s" id.it; *)
      viewer := Some exp;
      ()
 
