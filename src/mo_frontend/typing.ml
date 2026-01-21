@@ -4006,7 +4006,7 @@ and check_stable_defaults env sort dec_fields =
         warn env sort.note.at "M0217" "with flag --default-persistent-actors, the `persistent` keyword is redundant and can be removed";
       List.iter (fun dec_field ->
         match dec_field.it.stab, dec_field.it.dec.it with
-        | Some {it = Stable; at; _}, (LetD _ | VarD _) ->
+        | Some {it = Stable _; at; _}, (LetD _ | VarD _) ->
           if at <> Source.no_region then
             warn env at "M0218" "redundant `stable` keyword, this declaration is implicitly stable"
         | _ -> ())
@@ -4049,14 +4049,14 @@ and check_stab env sort scope dec_fields =
         "misplaced stability declaration on field of non-actor";
       []
     | (T.Actor | T.Mixin), _ , IncludeD _ -> []
-    | (T.Actor | T.Mixin), Some {it = Stable; _}, VarD (id, _) ->
+    | (T.Actor | T.Mixin), Some {it = Stable view; _}, VarD (id, _) ->
       check_stable id.it id.at;
-      infer_viewer env scope Var id;
+      infer_viewer env scope Var id view;
       [id]
-    | (T.Actor | T.Mixin), Some {it = Stable; _}, LetD (pat, _, _) when stable_pat pat ->
+    | (T.Actor | T.Mixin), Some {it = Stable view; _}, LetD (pat, _, _) when stable_pat pat ->
       let ids = T.Env.keys (gather_pat env Scope.empty pat).Scope.val_env in
       List.iter (fun id -> check_stable id pat.at) ids;
-      infer_viewer env scope Const (stable_id pat);
+      infer_viewer env scope Const (stable_id pat) view;
       List.map (fun id -> {it = id; at = pat.at; note = ()}) ids;
     | (T.Actor | T.Mixin), Some {it = Flexible; _} , (VarD _ | LetD _) -> []
     | (T.Actor | T.Mixin), Some stab, _ ->
@@ -4078,7 +4078,8 @@ and check_stab env sort scope dec_fields =
              src = {depr = None; track_region = id.at; region = id.at}})
       ids)
 
-and infer_viewer env scope mut id =
+and infer_viewer env scope mut id viewer =
+  assert (!viewer = None);
   match Diag.with_message_store (recover_opt (fun msgs ->
     (*    let env_without_errors = {(adjoin env scope) with msgs } in *)
     let env_without_errors = adjoin env scope in
@@ -4105,6 +4106,7 @@ and infer_viewer env scope mut id =
      ()
   | Ok (exp, _) ->
      info env id.at "viewer found for %s" id.it;
+     viewer := Some exp;
      ()
 
 
