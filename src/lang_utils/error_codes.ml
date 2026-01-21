@@ -212,6 +212,8 @@ let error_codes : (string * string option) list =
     "M0243", None; (* Duplicate migration *)
     "M0244", None; (* Multi-migration with constructor side-effects *)
     "M0245", None; (* Multi-migration field not explicitly produced/consumed. *)
+    "M0246", None; (* Multi-migration requires --enhanced-migration flag *)
+    "M0247", None; (* Multi-migration is mandatory with --enhanced-migration flag *)
   ]
 
 (** Message codes that can be both used as warnings and errors *)

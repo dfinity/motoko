@@ -3740,6 +3740,10 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
        (match exp.it with
         | ObjE(_, flds) when List.exists (fun ({it = {id; _}; _} : exp_field) -> 
             id.it = T.multi_migration_lab) flds ->
+          (* Check if enhanced_migration flag is enabled *)
+          if not !Flags.enhanced_migration then
+            error env exp.at "M0246"
+              "`multi_migration` requires the --enhanced-migration flag";
           (* Has multi_migration - only allow variable declarations, mixins, and class definitions *)
           List.iter (fun df ->
             match df.it.dec.it with
@@ -3753,7 +3757,7 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
           ) dec_fields
         | _ -> ())
      | None -> ());
-    check_migration env stab_tfs exp_opt
+    check_migration env stab_tfs exp_opt at obj_sort
   end;
   t
 
@@ -3840,7 +3844,31 @@ and infer_migration env obj_sort exp_opt =
       infer_exp_promote { env with async = C.NullCap; rets = NoRet; labs = T.Env.empty } exp)
     exp_opt
 
-and check_migration env (stab_tfs : T.field list) exp_opt =
+and check_migration env (stab_tfs : T.field list) exp_opt at obj_sort =
+  (* When enhanced_migration flag is enabled, multi_migration is mandatory for actors *)
+  if !Flags.enhanced_migration && obj_sort.it = T.Actor then begin
+    match exp_opt with
+    | None ->
+      (* Use location of first stable field if available, otherwise use actor location *)
+      let error_at = match stab_tfs with
+        | tf :: _ -> 
+          let T.{src = T.{region; _}; _} = tf in
+          region
+        | [] -> at
+      in
+      error env error_at "M0247"
+        "with --enhanced-migration flag, actor must specify `multi_migration` to initialize stable variables"
+    | Some exp ->
+      (* Check if multi_migration field is present *)
+      let has_multi_migration = match exp.it with
+        | ObjE(_, flds) ->
+          List.exists (fun ({it = {id; _}; _} : exp_field) -> id.it = T.multi_migration_lab) flds
+        | _ -> false
+      in
+      if not has_multi_migration then
+        error env exp.at "M0247"
+          "with --enhanced-migration flag, actor must specify `multi_migration` to initialize stable variables"
+  end;
   match exp_opt with
   | None -> ()
   | Some exp ->
@@ -3850,6 +3878,10 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
         List.exists (fun ({it = {id; _}; _} : exp_field) -> id.it = T.multi_migration_lab) flds
       | _ -> false
     in
+    (* Check if multi_migration is used without the flag *)
+    (if is_multi_migration && not !Flags.enhanced_migration then
+      error env exp.at "M0246"
+        "`multi_migration` requires the --enhanced-migration flag");
     let focus = match exp.it with
       | ObjE(_, flds) ->
         (match List.find_opt (fun ({it = {id; _}; _} : exp_field) -> 

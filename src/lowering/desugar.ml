@@ -799,26 +799,43 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
       let v_rng = fresh_var "v_rng" rng in
       T.PrePost (stab_fields_pre, stab_fields),
       I.{pre = mem_ty_pre; post = mem_ty},
-      ifE (primE (I.OtherPrim "rts_in_upgrade") [])
-        (* in upgrade, apply migration *)
-        (blockE [
+      (if !Mo_config.Flags.enhanced_migration then begin
+        (* With --enhanced-migration, always run migration *)
+        blockE [
             letD v (primE (I.ICStableRead mem_ty_pre) []);
             letD v_dom
-              (objectE T.Object
-                (List.map
-                  (fun T.{lab=i;typ=t;_} ->
-                    let vi = fresh_var ("v_"^i) (T.as_immut t) in
-                    (i,
-                     switch_optE (dotE (varE v) i (T.Opt (T.as_immut t)))
-                       (primE (Ir.OtherPrim "trap")
-                         [textE (Printf.sprintf
-                           "stable variable `%s` of type `%s` expected but not found"
-                           i (T.string_of_typ t))])
-                         (varP vi) (varE vi)
-                         (T.as_immut t)))
-                  dom_fields)
-                dom_fields);
-            letD v_rng (callE e [] (varE v_dom))
+              (if List.length dom_fields = 0 then
+                 (* Initial migration with empty input {} - works for both fresh and upgrade *)
+                 (* The migration function defines the initialization *)
+                 (objectE T.Object [] dom_fields)
+               else
+                 (* Migration with non-empty input - read from stable memory *)
+                 (* For fresh deployments, we can't provide the required input, so trap *)
+                 (* For upgrades, we read from stable memory *)
+                 (objectE T.Object
+                   (List.map
+                     (fun T.{lab=i;typ=t;_} ->
+                       let vi = fresh_var ("v_"^i) (T.as_immut t) in
+                       (i,
+                        switch_optE (dotE (varE v) i (T.Opt (T.as_immut t)))
+                          (* Field missing: trap (migration requires input from previous version) *)
+                          (* Create fresh rts_in_upgrade expression to avoid aliasing *)
+                          (ifE (primE (I.OtherPrim "rts_in_upgrade") [])
+                            (* In upgrade: field must exist *)
+                            (primE (Ir.OtherPrim "trap")
+                              [textE (Printf.sprintf
+                                "stable variable `%s` of type `%s` expected but not found"
+                                i (T.string_of_typ t))])
+                            (* Fresh deployment: this version cannot be deployed fresh *)
+                            (* It requires input from a previous version *)
+                            (primE (Ir.OtherPrim "trap")
+                              [textE (Printf.sprintf
+                                "Cannot deploy this version fresh: migration expects input from previous version. Please deploy the initial version first, then upgrade.")]))
+                          (varP vi) (varE vi)
+                          (T.as_immut t)))
+                     dom_fields)
+                   dom_fields));
+            letD v_rng (callE e [] (varE v_dom));
           ]
           (objectE T.Memory
             (List.map
@@ -834,9 +851,49 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
                    nullE() (* TBR: could also reuse if compatible *)
                  | None -> dotE (varE v) i t)
               mem_fields)
-            mem_fields))
-        (* not in upgrade, read record of nulls *)
-        (primE (I.ICStableRead mem_ty) [])
+            mem_fields)
+        end
+      else begin
+        (* Without --enhanced-migration, use original behavior *)
+        ifE (primE (I.OtherPrim "rts_in_upgrade") [])
+          (* in upgrade, apply migration *)
+          (blockE [
+              letD v (primE (I.ICStableRead mem_ty_pre) []);
+              letD v_dom
+                (objectE T.Object
+                  (List.map
+                    (fun T.{lab=i;typ=t;_} ->
+                      let vi = fresh_var ("v_"^i) (T.as_immut t) in
+                      (i,
+                       switch_optE (dotE (varE v) i (T.Opt (T.as_immut t)))
+                         (primE (Ir.OtherPrim "trap")
+                           [textE (Printf.sprintf
+                             "stable variable `%s` of type `%s` expected but not found"
+                             i (T.string_of_typ t))])
+                         (varP vi) (varE vi)
+                         (T.as_immut t)))
+                    dom_fields)
+                  dom_fields);
+              letD v_rng (callE e [] (varE v_dom))
+            ]
+            (objectE T.Memory
+              (List.map
+                (fun T.{lab=i;typ=t;_} ->
+                 i,
+                 match T.lookup_val_field_opt i rng_fields with
+                 | Some t -> (* produced by migration *)
+                   optE (dotE (varE v_rng) i (T.as_immut t)) (* wrap in ?_*)
+                 | None -> (* not produced by migration *)
+                   match T.lookup_val_field_opt i dom_fields with
+                   | Some t ->
+                     (* consumed by migration (not produced) *)
+                     nullE() (* TBR: could also reuse if compatible *)
+                   | None -> dotE (varE v) i t)
+                mem_fields)
+              mem_fields))
+          (* not in upgrade, read record of nulls *)
+          (primE (I.ICStableRead mem_ty) [])
+      end)
   in
   let ds =
     varD state (optE migration)
@@ -919,10 +976,21 @@ and stabilize stab_opt d =
      fun get_state ->
      let v = fresh_var i t in
      varD (var i (T.Mut t))
-       (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
-         e
-         (varP v) (varE v)
-         t))
+       (if !Mo_config.Flags.enhanced_migration then
+          (* With --enhanced-migration, always read from stable memory (never use initializer) *)
+          (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
+            (primE (Ir.OtherPrim "trap")
+              [textE (Printf.sprintf
+                "stable variable `%s` of type `%s` not found in stable memory (migration should have initialized it)"
+                i (T.string_of_typ t))])
+            (varP v) (varE v)
+            t)
+        else
+          (* Without --enhanced-migration, use original behavior (initializer as fallback) *)
+          (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
+            e
+            (varP v) (varE v)
+            t)))
   | (S.Stable, I.RefD _) -> assert false (* RefD cannot come from user code *)
   | (S.Stable, I.LetD({it = I.VarP i; _} as p, e)) ->
     let t = p.note in
@@ -930,10 +998,21 @@ and stabilize stab_opt d =
      fun get_state ->
      let v = fresh_var i t in
      letP p
-       (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
-         e
-         (varP v) (varE v)
-         t))
+       (if !Mo_config.Flags.enhanced_migration then
+          (* With --enhanced-migration, always read from stable memory (never use initializer) *)
+          (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
+            (primE (Ir.OtherPrim "trap")
+              [textE (Printf.sprintf
+                "stable variable `%s` of type `%s` not found in stable memory (migration should have initialized it)"
+                i (T.string_of_typ t))])
+            (varP v) (varE v)
+            t)
+        else
+          (* Without --enhanced-migration, use original behavior (initializer as fallback) *)
+          (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
+            e
+            (varP v) (varE v)
+            t)))
   | (S.Stable, I.LetD _) ->
     assert false
 
