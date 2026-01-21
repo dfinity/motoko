@@ -455,6 +455,10 @@ let coverage_cases category env cases t at =
 let coverage_pat warnOrError env pat t =
   coverage' warnOrError "pattern" env Coverage.check_pat pat t pat.at
 
+let coverage_pat_is_exhaustive pat t =
+  let uncovered, _ = Coverage.check_pat pat t in
+  uncovered = []
+
 (* Types *)
 
 let check_ids env kind member ids = Lib.List.iter_pairs
@@ -1949,6 +1953,8 @@ and infer_exp'' env exp : T.typ =
         error_in [Flags.ICMode; Flags.RefMode] env exp1.at "M0077"
           "a shared function is only allowed as a public field of an actor";
     end;
+    if not env.pre && T.is_shared_sort shared_pat.it && Option.is_none typ_opt then
+      warn env exp1.at "M0242" "this declares an implicit oneway function.\n  if this is intentional, annotate explicitly with `: ()`, otherwise annotate with `: async ()`";
     let typ = match typ_opt with
       | Some typ -> typ
       | None -> {it = TupT []; at = no_region; note = T.Pre}
@@ -4506,7 +4512,11 @@ and infer_dec_valdecs env dec : Scope.t =
      let t = infer_exp {env with pre = true; check_unused = false} exp in
      let ve' = match fail with
        | None -> check_pat_exhaustive (if is_import dec then local_error else warn) env t pat
-       | Some _ -> check_pat env t pat
+       | Some _ ->
+          let ve = check_pat env t pat in
+          if not env.pre && coverage_pat_is_exhaustive pat t then
+            warn env pat.at "M0243" "this pattern will always match, so the else clause is useless. Consider removing the else clause";
+          ve
      in
      Scope.{empty with val_env = ve'}
   | VarD (id, exp) ->
