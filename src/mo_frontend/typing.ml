@@ -3743,7 +3743,7 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
             id.it = T.multi_migration_lab) flds ->
           (* Check if enhanced_migration flag is enabled *)
           if not !Flags.enhanced_migration then
-            error env exp.at "M0246"
+            error env exp.at "M0256"
               "`multi_migration` requires the --enhanced-migration flag";
           (* Has multi_migration with --enhanced-migration: disallow stable variable initializers *)
           (* With EOP, variables are stable by default unless marked transient (Flexible) *)
@@ -3769,7 +3769,7 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
                    ()
                  | _ ->
                    (* Has initializer - disallow *)
-                   error env e.at "M0248"
+                   error env e.at "M0258"
                      "stable variable `%s` cannot have an initializer when using `multi_migration` with --enhanced-migration flag.\nStable variables must be initialized by the migration function."
                      id.it)
               | LetD (pat, e, _) ->
@@ -3787,7 +3787,7 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
                      | VarP id -> id.it
                      | _ -> "variable"
                    in
-                   error env e.at "M0248"
+                   error env e.at "M0258"
                      "stable variable `%s` cannot have an initializer when using `multi_migration` with --enhanced-migration flag.\nStable variables must be initialized by the migration function."
                      var_name)
               | _ -> () (* Other declarations (MixinD, IncludeD, ClassD, ExpD, TypD) are allowed *)
@@ -3896,7 +3896,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt at obj_sort =
           region
         | [] -> at
       in
-      error env error_at "M0247"
+      error env error_at "M0257"
         "with --enhanced-migration flag, actor must specify `multi_migration` to initialize stable variables"
     | Some exp ->
       (* Check if multi_migration field is present *)
@@ -3906,7 +3906,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt at obj_sort =
         | _ -> false
       in
       if not has_multi_migration then
-        error env exp.at "M0247"
+        error env exp.at "M0257"
           "with --enhanced-migration flag, actor must specify `multi_migration` to initialize stable variables"
   end;
   match exp_opt with
@@ -3920,7 +3920,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt at obj_sort =
     in
     (* Check if multi_migration is used without the flag *)
     (if is_multi_migration && not !Flags.enhanced_migration then
-      error env exp.at "M0246"
+      error env exp.at "M0256"
         "`multi_migration` requires the --enhanced-migration flag");
     let focus = match exp.it with
       | ObjE(_, flds) ->
@@ -4037,7 +4037,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt at obj_sort =
                 List.iteri (fun i id ->
                   if Hashtbl.mem seen_ids id then
                     let first_idx = Hashtbl.find seen_ids id in
-                    local_error env (List.nth elements i).at "M0243"
+                    local_error env (List.nth elements i).at "M0253"
                       "duplicate migration at index %d (same implementation as migration at index %d)"
                       i first_idx
                   else
@@ -4080,7 +4080,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt at obj_sort =
                     let sort, tbs, t_args, t_rng = 
                       try T.as_func_sub T.Local 0 elem_typ
                       with Invalid_argument _ ->
-                        local_error env elem.at "M0240"
+                        local_error env elem.at "M0250"
                           "migration tuple element at index %d is not a function"
                           idx;
                         raise (Invalid_argument "not a function")
@@ -4093,7 +4093,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt at obj_sort =
                      | Some prev_output ->
                        (* Previous output must be compatible with this input *)
                        if not (T.sub ~src_fields:env.srcs (T.promote prev_output) (T.normalize t_dom)) then
-                         local_error env elem.at "M0240"
+                         local_error env elem.at "M0250"
                            "migration chain broken at index %d:\noutput of previous migration has type%a\nbut this migration expects input type%a"
                            idx
                            display_typ_expand prev_output
@@ -4109,15 +4109,15 @@ and check_migration env (stab_tfs : T.field list) exp_opt at obj_sort =
                 (* This represents the composition of all migrations *)
                 T.Func(T.Local, T.Returns, [], first_t_args, [last_t_rng])
               | TupE [] ->
-                local_error env focus "M0241"
+                local_error env focus "M0251"
                   "multi_migration tuple cannot be empty";
                 T.Non
               | _ ->
-                local_error env focus "M0242"
+                local_error env focus "M0252"
                   "multi_migration must be a literal tuple (e.g., (m1, m2, m3))";
                 T.Non)
            | T.Tup [] ->
-             local_error env focus "M0241"
+             local_error env focus "M0251"
                "multi_migration tuple cannot be empty";
              T.Non
            | _ ->
@@ -4189,7 +4189,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt at obj_sort =
        match T.lookup_val_field_opt tf.T.lab dom_tfs with
        | Some _ -> () (* explicitly consumed*)
        | None ->
-         local_error env focus "M0245"
+         local_error env focus "M0255"
            "for `multi_migration`, all old stable fields must be explicitly consumed.\nMissing field `%s` of type%a in migration input.\nTo preserve this field, include it in both input and output of the migration function."
            tf.T.lab
            display_typ_expand tf.T.typ
@@ -4199,7 +4199,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt at obj_sort =
        match T.lookup_val_field_opt tf.T.lab rng_tfs with
        | Some _ -> () (* explicitly produced*)
        | None ->
-         local_error env focus "M0245"
+         local_error env focus "M0255"
            "for `multi_migration`, all new stable fields must be explicitly produced.\nMissing field `%s` of type%a in migration output.\nThe migration function must produce this field."
            tf.T.lab
            display_typ_expand tf.T.typ

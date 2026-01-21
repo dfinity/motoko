@@ -43,16 +43,15 @@ known_untested_codes = {
     "M0181", # defunct viper error
     "M0191", # compiler warning about wasm features (hard to trigger)
     "M0232", # cannot infer type of implicit argument
-    "M0240", # Migration chain broken - type mismatch 
-    "M0241", # Multi-migration tuple cannot be empty 
-    "M0242", # Multi-migration must be tuple 
-    "M0243", # Duplicate migration
-    "M0244", # Multi-migration with constructor side-effects
-    "M0245", # Multi-migration field not explicitly produced/consumed
-    "M0246", # Multi-migration requires --enhanced-migration flag
-    "M0247", # Multi-migration is mandatory with --enhanced-migration flag
-    "M0248", # Stable variable cannot have an initializer with --enhanced-migration flag
-    "M0249", # --enhanced-migration requires --enhanced-orthogonal-persistence
+    "M0250", # Migration chain broken - type mismatch
+    "M0251", # Multi-migration tuple cannot be empty
+    "M0252", # Multi-migration must be tuple
+    "M0253", # Duplicate migration
+    "M0254", # Multi-migration with constructor side-effects
+    "M0255", # Multi-migration field not explicitly produced/consumed
+    "M0256", # Multi-migration requires --enhanced-migration flag
+    "M0257", # Multi-migration is mandatory with --enhanced-migration flag
+    "M0258", # Stable variable cannot have an initializer with --enhanced-migration flag
     }
 
 def populate_error_codes():

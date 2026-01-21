@@ -1,0 +1,5 @@
+enhanced-migration-check-forgot-flag.mo:7.5-7.21: type error [M0096], expression of type
+  ()
+cannot produce expected type
+  Nat
+enhanced-migration-check-forgot-flag.mo:5.1-5.88: type error [M0256], `multi_migration` requires the --enhanced-migration flag

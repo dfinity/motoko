@@ -1,2 +1,2 @@
-enhanced-migration-check-no-initializers.mo:7.18-7.26: type error [M0248], stable variable `field1` cannot have an initializer when using `multi_migration` with --enhanced-migration flag.
+enhanced-migration-check-no-initializers.mo:7.18-7.26: type error [M0258], stable variable `field1` cannot have an initializer when using `multi_migration` with --enhanced-migration flag.
 Stable variables must be initialized by the migration function.
