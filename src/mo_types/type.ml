@@ -776,7 +776,7 @@ let rec span = function
 (* Collecting type constructors *)
 
 (* Parameter `inTyp` controls whether to count a constructor, `c`,  that only occurs as an argument of
-   `Typ` field, `Typ c`, but not in its own unfolding.
+   an object type field, but not in its own unfolding.
    Set to false to avoid emitting redundant bindings in stable signature.
 *)
 
@@ -2296,7 +2296,6 @@ and pp_kind ppf k =
   let vs = vs_of_cs cs in
   pp_kind' vs ppf k
 
-(* TODO: I don't know what this means *)
 and pp_stab_sig ppf sig_ =
   let all_fields = match sig_ with
     | Single tfs -> tfs
@@ -2304,7 +2303,7 @@ and pp_stab_sig ppf sig_ =
   in
   let cs = List.fold_right
     (cons_field false)
-    (* false here ^ means ignore unreferenced Typ c components
+    (* false here ^ means ignore unreferenced type field components
        that would produce unreferenced bindings when unfolded *)
     all_fields ConSet.empty in
   let vs = vs_of_cs cs in
