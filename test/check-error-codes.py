@@ -49,9 +49,6 @@ known_untested_codes = {
     "M0253", # Duplicate migration
     "M0254", # Multi-migration with constructor side-effects
     "M0255", # Multi-migration field not explicitly produced/consumed
-    "M0256", # Multi-migration requires --enhanced-migration flag
-    "M0257", # Multi-migration is mandatory with --enhanced-migration flag
-    "M0258", # Stable variable cannot have an initializer with --enhanced-migration flag
     }
 
 def populate_error_codes():
