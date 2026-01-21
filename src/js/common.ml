@@ -233,7 +233,7 @@ module Map_conversion (Map : Map.S) = struct
   let to_ocaml = from_js
 end
 
-let js_parse_motoko_typed_with_scope_cache_impl enable_recovery paths scope_cache =
+let load_progs enable_recovery paths scope_cache =
   let paths = paths |> Js.to_array |> Array.to_list |> List.map Js.to_string in
   let module String_map_conversion = Map_conversion (Mo_types.Type.Env) in
   let scope_cache =
@@ -252,13 +252,15 @@ let js_parse_motoko_typed_with_scope_cache_impl enable_recovery paths scope_cach
     then Pipeline.parse_file_with_recovery
     else Pipeline.parse_file
   in
-  let load_result =
-    Mo_types.Cons.session (fun () ->
+  Mo_types.Cons.session (fun () ->
       Pipeline.load_progs_cached ~enable_type_recovery:recovery_enabled
         parse_fn paths Pipeline.initial_stat_env scope_cache)
-  in
+
+let js_parse_motoko_typed_with_scope_cache_impl enable_recovery paths scope_cache =
+  let load_result = load_progs enable_recovery paths scope_cache in
   match load_result with
   | Ok ((_libs, progs, _senv, scope_cache), msgs) ->
+    let module String_map_conversion = Map_conversion (Mo_types.Type.Env) in
     let progs =
       progs |> List.map (fun (prog, immediate_imports, sscope) ->
         let open Mo_def in
@@ -273,7 +275,9 @@ let js_parse_motoko_typed_with_scope_cache_impl enable_recovery paths scope_cach
         in
         ( Arrange.prog_js prog
         (* , js_of_sexpr (Arrange_sources_types.typ typ) *)
-        , immediate_imports |> List.map Js.string |> Array.of_list |> Js.array )
+        , immediate_imports |> List.map Js.string |> Array.of_list |> Js.array
+        , prog
+        , sscope )
       ) |> Array.of_list
     in
     let scope_cache =
@@ -291,11 +295,13 @@ let js_parse_motoko_typed_with_scope_cache enable_recovery paths scope_cache =
   in
   js_result result (fun (progs, scope_cache) ->
     let progs =
-      progs |> Array.map (fun (ast, immediate_imports) ->
+      progs |> Array.map (fun (ast, immediate_imports, prog, sscope) ->
         object%js
           val ast = ast
           (* val typ = typ *)
           val immediateImports = immediate_imports
+          val prog = Js.Unsafe.inject prog
+          val sscope = Js.Unsafe.inject sscope
         end)
       |> Js.array
     in
@@ -305,7 +311,7 @@ let js_parse_motoko_typed paths =
   let result = js_parse_motoko_typed_with_scope_cache_impl Js.Opt.empty paths Js.Opt.empty in
   js_result result (fun (progs, _scope_cache) ->
     let progs =
-      progs |> Array.map (fun (ast, _immediate_imports) ->
+      progs |> Array.map (fun (ast, _immediate_imports, _, _) ->
         object%js
           val ast = ast
           (* val typ = typ *)
@@ -375,3 +381,71 @@ let gc_flags option =
   | "enhancedOP" -> Flags.enhanced_orthogonal_persistence := true
   | "classicOP" -> Flags.enhanced_orthogonal_persistence := false
   | _ -> raise (Invalid_argument "gc_flags: Unexpected flag")
+
+(* let contains region pos =
+  let open Source in
+  let left = region.left in
+  let right = region.right in
+  let after_start =
+    pos.line > left.line || (pos.line = left.line && pos.column >= left.column)
+  in
+  let before_end =
+    pos.line < right.line || (pos.line = right.line && pos.column <= right.column)
+  in
+  after_start && before_end
+
+let js_dot_candidates path source line col scope_cache =
+  let path_str = Js.to_string path in
+  js_save_file path source;
+
+  let pos = { Source.file = path_str; line = line + 1; column = col } in
+
+  let load_result = load_progs Js.Opt.empty (Js.array [|path|]) (Js.Opt.return scope_cache) in
+
+  match load_result with
+  | Ok ((_, progs, _, _), _) ->
+      let prog_opt = List.find_opt (fun (p, _, _) -> p.Source.at.Source.left.Source.file = path_str) progs in
+      (match prog_opt with
+       | Some (prog, _, sscope) ->
+           let found = ref None in
+           let search_exp exp =
+             if !found = None && contains exp.Source.at pos then found := Some exp;
+             exp
+           in
+           ignore (Mo_frontend.Traversals.over_prog search_exp prog);
+
+           (match !found with
+            | Some receiver ->
+                 let receiver_ty = receiver.Source.note.Mo_def.Syntax.note_typ in
+                 let env = sscope.Mo_frontend.Scope.val_env in
+                 let libs = sscope.Mo_frontend.Scope.lib_env in
+
+                 let candidates = Mo_frontend.Typing.resolve_dot_candidates libs env receiver_ty in
+
+                 let js_candidates = List.map (fun (name, c) ->
+                   object%js
+                     val name = Js.string name
+                     val type_ = Js.string (Mo_types.Type.string_of_typ c.Mo_frontend.Typing.func_ty)
+                   end
+                 ) candidates in
+                 Js.array (Array.of_list js_candidates)
+            | None -> Js.array [||])
+       | None -> Js.array [||])
+  | Error _ -> Js.array [||] *)
+
+let js_resolve_dot_candidates sscope raw_exp =
+  let sscope = (Obj.magic sscope : Mo_frontend.Scope.t) in
+  let exp = (Obj.magic raw_exp : Mo_def.Syntax.exp) in
+  let receiver_ty = exp.note.Mo_def.Syntax.note_typ in
+  let env = sscope.Mo_frontend.Scope.val_env in
+  let libs = sscope.Mo_frontend.Scope.lib_env in
+
+  let candidates = Mo_frontend.Typing.resolve_dot_candidates libs env receiver_ty in
+
+  let js_candidates = List.map (fun (name, c) ->
+    object%js
+      val name = Js.string name
+      val type_ = Js.string (Mo_types.Type.string_of_typ c.Mo_frontend.Typing.func_ty)
+    end
+  ) candidates in
+  Js.array (Array.of_list js_candidates)
