@@ -418,6 +418,12 @@ path :
   | p=path DOT x=id
     { DotH (p, x) @! at $sloc }
 
+typ_path :
+  | x=id
+    { IdH x @= at $sloc }
+  | p=path DOT x=id
+    { DotH (p, x) @= at $sloc }
+
 
 (* Types *)
 
@@ -437,7 +443,7 @@ typ_nullary :
        | [(Some id, t)] -> NamedT(id, t)
        | [(None, t)] -> ParT t
        | _ -> TupT(ts)) @! at $sloc }
-  | p=path tso=typ_args?
+  | p=typ_path tso=typ_args?
     { PathT(p, Lib.Option.get tso []) @! at $sloc }
   | LBRACKET m=var_opt t=typ RBRACKET
     { ArrayT(m, t) @! at $sloc }

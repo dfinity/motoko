@@ -207,9 +207,9 @@ module Make (Cfg : Config) = struct
   let rec path p =
     let open Source in
     let open Syntax in
-    match p.it with
+    match p with
     | IdH i -> to_js_object "IdH" [| id i |]
-    | DotH (p, i) -> to_js_object "DotH" [| path p; id i |]
+    | DotH (p, i) -> to_js_object "DotH" [| path p.it; id i |]
 
   let lit_js =
     let open Syntax in
@@ -453,7 +453,7 @@ module Make (Cfg : Config) = struct
     function
     | PathT (p, ts) ->
         to_js_object "PathT"
-          ([ path p ] @ List.map syntax_typ_js ts |> Array.of_list)
+          ([ path p.it ] @ List.map syntax_typ_js ts |> Array.of_list)
     | PrimT p -> to_js_object "PrimT" [| js_string p |]
     | ObjT (s, ts) ->
         to_js_object "ObjT"

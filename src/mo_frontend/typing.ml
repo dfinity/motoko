@@ -573,8 +573,7 @@ and check_obj_path' env path : T.typ =
 
 let rec check_typ_path env path : T.con =
   let c = check_typ_path' env path in
-  (* TODO? *)
-  (* path.note <- T.Typ c; *)
+  path.note <- Some c;
   c
 
 and check_typ_path' env path : T.con =
