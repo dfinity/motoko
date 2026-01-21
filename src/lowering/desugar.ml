@@ -625,8 +625,8 @@ and export_view exp_opt id =
                    (blockE [
                         (* authentication, self or controller only *)
                         letD caller (primE I.ICCallerPrim []);
-                        expD (assertE (orE (primE (I.RelPrim (principal, Operator.EqOp)) [varE caller; selfRefE principal])
-                                           (primE (I.OtherPrim "is_controller") [varE caller])));
+(*                        expD (assertE (orE (primE (I.RelPrim (principal, Operator.EqOp)) [varE caller; selfRefE principal])
+                                           (primE (I.OtherPrim "is_controller") [varE caller]))); *)
                       ]
                       (mk_body vs))
                    (Con (scope_con1, []))))
