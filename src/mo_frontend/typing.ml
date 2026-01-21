@@ -4081,8 +4081,8 @@ and check_stab env sort scope dec_fields =
 and infer_viewer env scope mut id viewer =
   assert (!viewer = None);
   match Diag.with_message_store (recover_opt (fun msgs ->
-    let env_without_errors = {(adjoin env scope) with msgs } in
-    (*    let env_without_errors = adjoin env scope in *) (* uncomment to see errors *)
+    let env = {env with msgs} in (* don't record errors in outer env *) 
+    let env = adjoin env scope in
     let note() = empty_typ_note in
     let at = id.at in
     let dot_exp =
@@ -4098,8 +4098,13 @@ and infer_viewer env scope mut id viewer =
     let arg_exp = (false, ref {it = TupE []; at; note = note()}) in
     let inst = {it = None; at; note = []} in
     let exp = {it = CallE(None, dot_exp, inst, arg_exp); at; note = note()} in
-    let _t = infer_exp env_without_errors exp in
-    exp))
+    let viewer_typ = infer_exp env exp in
+    (match T.normalize viewer_typ with
+     | T.Func(T.Local, T.Returns, [], ts1, ts2) ->
+        if List.for_all T.shared ts1 && List.for_all T.shared ts2
+        then exp
+        else error env id.at "M0XXX" "viewer '%s.view()' has non-shared type" id.it
+     | _ -> error env id.at "M0XXX" "viewer '%s.view()' is not a function" id.it)))
   with
   | Error _ ->
      (* info env id.at "viewer not found for %s" id.it; *)

@@ -613,9 +613,10 @@ and export_view exp_opt id =
                 (asyncE T.Fut bind2
                    (blockE [
                         letD caller (primE I.ICCallerPrim []);
-                        expD (assertE (orE (primE (I.RelPrim (principal, Operator.EqOp))
-                                              [varE caller; selfRefE principal])
-                                         (primE (I.OtherPrim "is_controller") [varE caller])));
+(* TODO: renable authentication
+                        expD (assertE (orE (primE (I.RelPrim (principal, Operator.EqOp)) [varE caller; selfRefE principal])
+                                           (primE (I.OtherPrim "is_controller") [varE caller])));
+*)
                       ]
                       (callE (exp view_exp) [] (tupE (List.map varE vs))))
                    (Con (scope_con1, []))))
@@ -783,7 +784,6 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ0 =
             mem_ty)) in
   let footprint_d, footprint_f = export_footprint self_id (with_stable_vars Fun.id) in
   let runtime_info_d, runtime_info_f = export_runtime_information self_id in
-  (*  let viewers_ds, viewers_vs = export_viewers  *)
   I.(ActorE (footprint_d @ runtime_info_d @ ds' @ view_ds, footprint_f @ runtime_info_f @ fs,
      { meta;
        preupgrade = (primE (I.ICStableWrite mem_ty) []);

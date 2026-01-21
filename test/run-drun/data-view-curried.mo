@@ -82,4 +82,10 @@ persistent actor {
      array.view()(ko, count);
   };
 
+
+  // here, [insible_array.view] produces a non-shared (mutable) type, omit viewer
+  // later maybe approximate by shared type.
+  let invisible_array : [[var Nat]] = [];
+
+
 }
