@@ -809,30 +809,39 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
                  (* The migration function defines the initialization *)
                  (objectE T.Object [] dom_fields)
                else
-                 (* Migration with non-empty input - read from stable memory *)
+                 (* Migration with non-empty input - read from persisted state *)
                  (* For fresh deployments, we can't provide the required input, so trap *)
-                 (* For upgrades, we read from stable memory *)
+                 (* For upgrades, we read from persisted state *)
+                 (* Construct a new record with mutability matching dom_fields (migration input type) *)
+                 (* This allows mutability changes: var fld : T <-> fld : T *)
+                 (* We extract values from persisted state and construct a new record with the mutability *)
+                 (* specified by dom_fields, not the mutability from persisted state *)
                  (objectE T.Object
                    (List.map
                      (fun T.{lab=i;typ=t;_} ->
+                       (* Extract the base value from persisted state (always read as immutable for extraction) *)
                        let vi = fresh_var ("v_"^i) (T.as_immut t) in
-                       (i,
-                        switch_optE (dotE (varE v) i (T.Opt (T.as_immut t)))
-                          (* Field missing: trap (migration requires input from previous version) *)
-                          (* Create fresh rts_in_upgrade expression to avoid aliasing *)
-                          (ifE (primE (I.OtherPrim "rts_in_upgrade") [])
-                            (* In upgrade: field must exist *)
-                            (primE (Ir.OtherPrim "trap")
-                              [textE (Printf.sprintf
-                                "stable variable `%s` of type `%s` expected but not found"
-                                i (T.string_of_typ t))])
-                            (* Fresh deployment: this version cannot be deployed fresh *)
-                            (* It requires input from a previous version *)
-                            (primE (Ir.OtherPrim "trap")
-                              [textE (Printf.sprintf
-                                "Cannot deploy this version fresh: migration expects input from previous version. Please deploy the initial version first, then upgrade.")]))
-                          (varP vi) (varE vi)
-                          (T.as_immut t)))
+                       (* Extract value from persisted state *)
+                       let field_value = 
+                         switch_optE (dotE (varE v) i (T.Opt (T.as_immut t)))
+                           (* Field missing: trap (migration requires input from previous version) *)
+                           (* Create fresh rts_in_upgrade expression to avoid aliasing *)
+                           (ifE (primE (I.OtherPrim "rts_in_upgrade") [])
+                             (* In upgrade: field must exist *)
+                             (primE (Ir.OtherPrim "trap")
+                               [textE (Printf.sprintf
+                                 "stable variable `%s` of type `%s` expected but not found"
+                                 i (T.string_of_typ t))])
+                             (* Fresh deployment: this version cannot be deployed fresh *)
+                             (* It requires input from a previous version *)
+                             (primE (Ir.OtherPrim "trap")
+                               [textE (Printf.sprintf
+                                 "Cannot deploy this version fresh: migration expects input from previous version. Please deploy the initial version first, then upgrade.")]))
+                           (varP vi) (varE vi)
+                           (T.as_immut t)
+                       in
+                       (* The value is extracted; objectE with dom_fields will apply the correct mutability *)
+                       (i, field_value))
                      dom_fields)
                    dom_fields));
             letD v_rng (callE e [] (varE v_dom));
@@ -977,11 +986,11 @@ and stabilize stab_opt d =
      let v = fresh_var i t in
      varD (var i (T.Mut t))
        (if !Mo_config.Flags.enhanced_migration then
-          (* With --enhanced-migration, always read from stable memory (never use initializer) *)
+          (* With --enhanced-migration, always read from persisted state (never use initializer) *)
           (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
             (primE (Ir.OtherPrim "trap")
               [textE (Printf.sprintf
-                "stable variable `%s` of type `%s` not found in stable memory (migration should have initialized it)"
+                "stable variable `%s` of type `%s` not found in persisted state (migration should have initialized it)"
                 i (T.string_of_typ t))])
             (varP v) (varE v)
             t)
@@ -999,11 +1008,11 @@ and stabilize stab_opt d =
      let v = fresh_var i t in
      letP p
        (if !Mo_config.Flags.enhanced_migration then
-          (* With --enhanced-migration, always read from stable memory (never use initializer) *)
+          (* With --enhanced-migration, always read from persisted state (never use initializer) *)
           (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
             (primE (Ir.OtherPrim "trap")
               [textE (Printf.sprintf
-                "stable variable `%s` of type `%s` not found in stable memory (migration should have initialized it)"
+                "stable variable `%s` of type `%s` not found in persisted state (migration should have initialized it)"
                 i (T.string_of_typ t))])
             (varP v) (varE v)
             t)
