@@ -257,7 +257,10 @@ let rec check_typ env typ : unit =
     check env no_region env.flavor.Ir.has_async_typ "async in non-async flavor";
     let t' = T.promote typ2 in
     check_shared env no_region t'
-  | T.Obj (sort, fields, _) ->
+  | T.Obj (sort, fields, typ_fields) ->
+    List.iter
+      (fun _ -> check env no_region env.flavor.Ir.has_typ_field "typ field in non-typ_field flavor")
+      typ_fields;
     List.iter (check_typ_field env (Some sort)) fields;
     check_field_hashes env "object" no_region fields;
     (* fields strictly sorted (and) distinct *)
