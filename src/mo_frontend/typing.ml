@@ -3853,6 +3853,14 @@ and stable_pat pat =
   | AnnotP (pat', _) -> stable_pat pat'
   | _ -> false
 
+and stable_id pat =
+  match pat.it with
+  | VarP id -> id
+  | ParP pat'
+  | AnnotP (pat', _) -> stable_id pat'
+  | _ -> assert false
+
+
 and infer_migration env obj_sort exp_opt =
   Option.map
     (fun exp ->
@@ -4043,10 +4051,12 @@ and check_stab env sort scope dec_fields =
     | (T.Actor | T.Mixin), _ , IncludeD _ -> []
     | (T.Actor | T.Mixin), Some {it = Stable; _}, VarD (id, _) ->
       check_stable id.it id.at;
+      infer_viewer env scope Var id;
       [id]
     | (T.Actor | T.Mixin), Some {it = Stable; _}, LetD (pat, _, _) when stable_pat pat ->
       let ids = T.Env.keys (gather_pat env Scope.empty pat).Scope.val_env in
       List.iter (fun id -> check_stable id pat.at) ids;
+      infer_viewer env scope Const (stable_id pat);
       List.map (fun id -> {it = id; at = pat.at; note = ()}) ids;
     | (T.Actor | T.Mixin), Some {it = Flexible; _} , (VarD _ | LetD _) -> []
     | (T.Actor | T.Mixin), Some stab, _ ->
@@ -4067,6 +4077,36 @@ and check_stab env sort scope dec_fields =
              typ;
              src = {depr = None; track_region = id.at; region = id.at}})
       ids)
+
+and infer_viewer env scope mut id =
+  match Diag.with_message_store (recover_opt (fun msgs ->
+    (*    let env_without_errors = {(adjoin env scope) with msgs } in *)
+    let env_without_errors = adjoin env scope in
+    let note() = empty_typ_note in
+    let at = id.at in
+    let dot_exp =
+      { it = DotE
+               ( {it = VarE {it = id.it; at ; note = (mut, None)};
+                  at;
+                  note = note()},
+                 {it = "view"; note = (); at},
+                 ref None);
+        at;
+        note = note()}
+    in
+    let arg_exp = (false, ref {it = TupE []; at; note = note()}) in
+    let inst = {it = None; at; note = []} in
+    let exp = {it = CallE(None, dot_exp, inst, arg_exp); at; note = note()} in
+    let _t = infer_exp env_without_errors exp in
+    exp))
+  with
+  | Error _ ->
+     info env id.at "viewer not found for %s" id.it;
+     ()
+  | Ok (exp, _) ->
+     info env id.at "viewer found for %s" id.it;
+     ()
+
 
 (* Blocks and Declarations *)
 
