@@ -38,6 +38,7 @@ type func_sort = Type.func_sort Source.phrase
 type mut = mut' Source.phrase
 and mut' = Const | Var
 
+and typ_path = (path', Type.con option) Source.annotated_phrase
 and path = (path', Type.typ) Source.annotated_phrase
 and path' =
   | IdH  of id
@@ -48,7 +49,7 @@ and await_sort = Type.await_sort
 
 type typ = (typ', Type.typ) Source.annotated_phrase
 and typ' =
-  | PathT of path * typ list                       (* type path *)
+  | PathT of typ_path * typ list                   (* type path *)
   | PrimT of string                                (* primitive *)
   | ObjT of typ_obj_sort * typ_field list          (* object *)
   | ArrayT of mut * typ                            (* array *)
@@ -374,7 +375,7 @@ let is_any t =
   | _ -> false
 
 let scopeT at =
-  PathT (IdH {it = Type.default_scope_var; at; note = ()} @! at, []) @! at
+  PathT (IdH {it = Type.default_scope_var; at; note = ()} @= at, []) @! at
 
 
 (* Expressions *)

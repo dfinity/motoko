@@ -34,6 +34,10 @@
     'shared' <query>? <pat_plain>?
     <query> <pat_plain>?
 
+<typ_path> ::= 
+    <id>
+    <id> ('.' <id>)* '.' <id>
+
 <typ_obj> ::= 
     '{' <list(<typ_field>, ';')> '}'
 
@@ -43,7 +47,7 @@
 
 <typ_nullary> ::= 
     '(' <list(<typ_item>, ',')> ')'
-    <id> ('.' <id>)* <typ_args>?
+    <typ_path> <typ_args>?
     '[' 'var'? <typ> ']'
     <typ_obj>
     <typ_variant>
