@@ -15,7 +15,7 @@ debug.print: "Migration5"
 ingress Completed: Reply: 0x4449444c0000
 debug.print: {five = "5"; four = "4"; six = "54"; three = [var (1, "1"), (2, "2"), (3, "3"), (4, "4")]; zero = 0}
 ingress Completed: Reply: 0x4449444c0000
-ingress Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: 'Migration already performed: multi-migration/Migration5.mo:5.3-14.4'.
+ingress Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: 'Migration already performed: multi-migration/Migration5.mo'.
 Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: https://internetcomputer.org/docs/current/references/execution-errors#trapped-explicitly
 debug.print: {five = "5"; four = "4"; six = "54"; three = [var (1, "1"), (2, "2"), (3, "3"), (4, "4")]; zero = 0}
 ingress Completed: Reply: 0x4449444c0000

@@ -3993,14 +3993,22 @@ and check_migration env (stab_tfs : T.field list) exp_opt at obj_sort =
              let migration_id = 
                match migration_expr.it with
                | DotE({it = VarE _; _} as obj_expr, field_name, _) ->
-                 (* Get field definition location *)
+                 (* Get field definition location - use file name instead of full region *)
                  (match T.normalize obj_expr.note.note_typ with
                   | T.Obj(_, fields) ->
                     (match List.find_opt (fun f -> f.T.lab = field_name.it) fields with
-                     | Some field -> Source.string_of_region field.T.src.T.region
-                     | None -> Source.string_of_region migration_expr.at)
-                  | _ -> Source.string_of_region migration_expr.at)
-               | _ -> Source.string_of_region migration_expr.at
+                     | Some field -> 
+                       let file = field.T.src.T.region.left.file in
+                       if file = "" then "(unknown)" else file
+                     | None -> 
+                       let file = migration_expr.at.left.file in
+                       if file = "" then "(unknown)" else file)
+                  | _ -> 
+                    let file = migration_expr.at.left.file in
+                    if file = "" then "(unknown)" else file)
+               | _ -> 
+                 let file = migration_expr.at.left.file in
+                 if file = "" then "(unknown)" else file
              in
              
              (* Store as single-element list in map *)
@@ -4027,14 +4035,22 @@ and check_migration env (stab_tfs : T.field list) exp_opt at obj_sort =
                 let migration_ids = List.map (fun elem ->
                   match elem.it with
                   | DotE({it = VarE _; _} as obj_expr, field_name, _) ->
-                    (* Get field definition location *)
+                    (* Get field definition location - use file name instead of full region *)
                     (match T.normalize obj_expr.note.note_typ with
                      | T.Obj(_, fields) ->
                        (match List.find_opt (fun f -> f.T.lab = field_name.it) fields with
-                        | Some field -> Source.string_of_region field.T.src.T.region
-                        | None -> Source.string_of_region elem.at) (* fallback *)
-                     | _ -> Source.string_of_region elem.at) (* fallback *)
-                  | _ -> Source.string_of_region elem.at
+                        | Some field -> 
+                          let file = field.T.src.T.region.left.file in
+                          if file = "" then "(unknown)" else file
+                        | None -> 
+                          let file = elem.at.left.file in
+                          if file = "" then "(unknown)" else file) (* fallback *)
+                     | _ -> 
+                       let file = elem.at.left.file in
+                       if file = "" then "(unknown)" else file) (* fallback *)
+                  | _ -> 
+                    let file = elem.at.left.file in
+                    if file = "" then "(unknown)" else file
                 ) elements in
                 
                 (* Check for duplicate migration IDs *)
