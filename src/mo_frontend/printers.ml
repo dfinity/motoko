@@ -223,6 +223,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (N N_pat_plain) -> "<pat_plain>", eg_pat
   | X (N N_pat_un) -> "<pat_un>", eg_pat
   | X (N N_path) -> "<path>", "A.B.C"
+  | X (N N_typ_path) -> "<path>", "A.B.C"
   | X (N N_annot_opt) -> "<annot_opt>", eg_annot
   | X (N N_seplist_case_semicolon_) -> seplist ("<case>", eg_case) semi
   | X (N N_seplist_dec_SEMICOLON_) -> seplist ("<dec>", eg_dec) semi2
