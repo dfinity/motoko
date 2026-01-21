@@ -402,7 +402,7 @@ and build_field {T.lab; T.typ;_} =
 and build_fields obj_typ =
     match obj_typ with
     | T.Obj (_, fields, _) ->
-      (* TBR: do we need to sort val_fields?*)
+      (* TBR: do we need to sort fields? *)
       List.map build_field fields
     | _ -> assert false
 
