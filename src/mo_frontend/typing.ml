@@ -64,7 +64,7 @@ type env =
     reported_stable_memory : bool ref;
     errors_only : bool;
     srcs : Field_sources.t;
-    closest_loop : Syntax.loop_flags option;
+    closest_loop : (Syntax.loop_flags * T.typ) option;
   }
 and ret_env =
   | NoRet
@@ -2082,28 +2082,24 @@ and infer_exp'' env exp : T.typ =
       Option.iter (check_exp_strong { env with async = C.NullCap; rets = NoRet; labs = T.Env.empty } T.unit) exp2_opt
     end;
     T.lub ~src_fields:env.srcs t1 t2
-  | WhileE (exp1, exp2, loop_ref) ->
+  | WhileE (exp1, exp2, flags) ->
     if not env.pre then begin
-      let env' = { env with closest_loop = Some loop_ref } in
-      check_exp_strong env' T.bool exp1;
-      check_exp_strong env' T.unit exp2
+      check_exp_strong env T.bool exp1;
+      check_loop_body env exp2 flags ~loop_typ:T.unit
     end;
     T.unit
-  | LoopE (exp1, None, loop_ref) ->
+  | LoopE (exp1, None, flags) ->
     if not env.pre then begin
-      let env' = { env with closest_loop = Some loop_ref } in
-      check_exp_strong env' T.unit exp1;
-      if loop_ref.has_break then T.unit else T.Non
-    end else
-      T.Non
-  | LoopE (exp1, Some exp2, loop_ref) ->
+      check_loop_body env exp1 flags ~loop_typ:T.Non
+    end;
+    T.Non
+  | LoopE (exp1, Some exp2, flags) ->
     if not env.pre then begin
-      let env' = { env with closest_loop = Some loop_ref } in
-      check_exp_strong env' T.unit exp1;
-      check_exp_strong env' T.bool exp2
+      check_loop_body env exp1 flags ~loop_typ:T.unit;
+      check_exp_strong env T.bool exp2
     end;
     T.unit
-  | ForE (pat, exp1, exp2, loop_ref) ->
+  | ForE (pat, exp1, exp2, flags) ->
     if not env.pre then begin
       let t1 = infer_exp_promote env exp1 in
       (try
@@ -2113,8 +2109,7 @@ and infer_exp'' env exp : T.typ =
         if not (sub env exp1.at T.unit t1) then raise (Invalid_argument "");
         let t2' = T.as_opt_sub t2 in
         let ve = check_pat_exhaustive warn env t2' pat in
-        let env' = { (adjoin_vals env ve) with closest_loop = Some loop_ref } in
-        check_exp_strong env' T.unit exp2
+        check_loop_body (adjoin_vals env ve) exp2 flags ~loop_typ:T.unit
       with Invalid_argument _ | Not_found ->
         local_error env exp1.at "M0082"
           "expected iterable type, but expression has type%a"
@@ -2134,11 +2129,12 @@ and infer_exp'' env exp : T.typ =
     | None ->
       let op = match kind with Break -> "break" | Continue -> "continue" in
       local_error env exp.at "M0238" "%s outside of loop" op
-    | Some flags ->
-      (match kind with
-      | Break -> flags.has_break <- true
-      | Continue -> flags.has_continue <- true);
-      if not env.pre then check_exp_strong env T.unit exp1);
+    | Some (flags, loop_typ) ->
+      let loop_typ = match kind with
+        | Break -> (flags.has_break <- true; loop_typ)
+        | Continue -> (flags.has_continue <- true; T.unit)
+      in
+      if not env.pre then check_exp_strong env loop_typ exp1);
     T.Non
   | BreakE (kind, Some id, exp1) ->
     (match T.Env.find_opt id.it env.labs with
@@ -2622,6 +2618,9 @@ and check_exp' env0 t exp : T.typ =
     t
   | (ImportE _ | ImplicitLibE _), t ->
     t
+  | LoopE (exp1, None, flags), _ ->
+    check_loop_body env exp1 flags ~loop_typ:t;
+    t
   | _, _ ->
     let t' = infer_exp env0 exp in
     check_inferred env0 env t t' exp
@@ -2705,6 +2704,10 @@ and check_func_step in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2
       async = C.NullCap; }
   in
   (adjoin_vals env' ve2), exp_typ, codom
+
+and check_loop_body env body (flags : loop_flags) ~loop_typ =
+  let env' = { env with closest_loop = Some (flags, loop_typ) } in
+  check_exp_strong env' T.unit body
 
 and detect_lost_fields env t = function
   | _ when env.pre || not (T.is_obj t) -> ()

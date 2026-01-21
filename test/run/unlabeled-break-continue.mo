@@ -42,7 +42,7 @@ func main4() {
       return;
     };
     sum += n;
-  }
+  };
 };
 func main5() {
   var n = 0;
