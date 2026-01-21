@@ -164,6 +164,7 @@ let print_deps (file : string) : unit =
   let (prog, _) =  Diag.run (parse_file Source.no_region file) in
   let imports = Diag.run (ResolveImport.collect_imports prog file) in
   List.iter (fun (url, path) ->
+      if String.starts_with ~prefix:"blob:" url then () else
       match path with
       | None -> Printf.printf "%s\n" url
       | Some path -> Printf.printf "%s %s\n" url path

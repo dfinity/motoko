@@ -1413,7 +1413,7 @@ module Stack = struct
   | None -> assert false (* Already resolved by `pipeline.ml` *)
   | Some pages -> pages
 
-  let end_ () = 
+  let end_ () =
     Int32.mul (Int32.of_int (rts_stack_pages ())) page_size
 
   let register_globals env =
@@ -3566,7 +3566,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     try_unbox I32Type (fun _ -> match n with
         | 32 | 64 -> G.i Drop ^^ Bool.lit true
         | 8 | 16 ->
-          (* use shifting to test that the payload including the tag fits the desired bit width. 
+          (* use shifting to test that the payload including the tag fits the desired bit width.
               E.g. this is now n + 2 for Type.Int. *)
           compile_bitand_const Int32.(shift_left minus_one (n + (32 - BitTagged.ubits_of Type.Int))) ^^
           G.i (Test (Wasm.Values.I32 I32Op.Eqz))
@@ -4011,15 +4011,15 @@ module Object = struct
 
     The field2_data for immutable fields is a vanilla word.
 
-    The field1_data for mutable fields are pointers to a MutBox. This indirection 
-    is a consequence of how we compile object literals with `await` instructions, 
+    The field1_data for mutable fields are pointers to a MutBox. This indirection
+    is a consequence of how we compile object literals with `await` instructions,
     as these mutable fields need to be able to alias local mutable variables, e.g.
     `{ public let f = 1; await async (); public let var v = 2}`.
-    Other use cases are object constructors with public and private mutable fields, 
+    Other use cases are object constructors with public and private mutable fields,
     where the physical record only wraps the public fields.
-    Moreover, closures can selectively capture the individual fields instead of 
+    Moreover, closures can selectively capture the individual fields instead of
     the containing object.
-    Finally, Candid stabilization/destabilization also relies on the indirection 
+    Finally, Candid stabilization/destabilization also relies on the indirection
     of mutable fields, to reserve and store alias information in those locations.
 
     We could alternatively switch to an allocate-first approach in the
@@ -6020,7 +6020,7 @@ module StableMem = struct
       ))
 
   let read_and_clear_word32 env =
-      read_and_clear env "word32" I32Type 4l (compile_unboxed_const 0l) 
+      read_and_clear env "word32" I32Type 4l (compile_unboxed_const 0l)
       load_unskewed_ptr store_unskewed_ptr
   let read_and_clear_word64 env =
     read_and_clear env "word64" I64Type 8l (compile_const_64 0L)
@@ -8860,12 +8860,12 @@ module Stabilization = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       let (set_instructions, get_instructions) = new_local64 env "instructions" in
-      let handle_missing_instructions = 
+      let handle_missing_instructions =
         get_instructions ^^
         compile_eq64_const 0L ^^
         (G.if0
         begin
-          (* Default to -1 if no upgrade instructions were recorded, i.e. 
+          (* Default to -1 if no upgrade instructions were recorded, i.e.
              because the record space was lacking or was zero padding. *)
           compile_const_64 (-1L) ^^
           set_instructions
@@ -9044,7 +9044,7 @@ module Stabilization = struct
           (* return val *)
           get_val
         end ^^
-        (* Record the total upgrade instructions if defined. 
+        (* Record the total upgrade instructions if defined.
            If stabilization costs were missing due to upgrades from old Motoko programs,
            the costs are defaulted to 0xFFFF_FFFF_FFFF_FFFF. *)
         get_instructions ^^
@@ -9602,9 +9602,9 @@ module FuncDec = struct
       | Type.(Shared Query) ->
         Lifecycle.(trans env PostQuery)
       | Type.(Shared Composite) ->
-        (* Stay in composite query state such that callbacks of 
-        composite queries can also use the memory reserve. 
-        The state is isolated since memory changes of queries 
+        (* Stay in composite query state such that callbacks of
+        composite queries can also use the memory reserve.
+        The state is isolated since memory changes of queries
         are rolled back by the IC runtime system. *)
         Lifecycle.(trans env InComposite)
       | _ -> assert false
@@ -9620,7 +9620,7 @@ module FuncDec = struct
     G.if0
       (G.nop)
       (message_cleanup env Type.(Shared Write))
-  
+
   let compile_const_message outer_env outer_ae sort control args mk_body ret_tys at : E.func_with_names =
     let ae0 = VarEnv.mk_fun_ae outer_ae in
     Func.of_body outer_env [] [] (fun env -> G.with_region at (
@@ -10343,7 +10343,7 @@ module Cost = struct
           Cycles.from_word128_ptr env
         )
       )
-  
+
   let sign_with_ecdsa env =
     Func.share_code2 Func.Always env "cost_sign_with_ecdsa"
       (("key_name", IC.i), ("curve", I32Type))
@@ -11911,22 +11911,22 @@ and compile_prim_invocation (env : E.t) ae p es at =
   (* Weak refs are disallowed in classical mode *)
   (* The compiler will exit with an error if it encounters a related call *)
   | OtherPrim "alloc_weak_ref", [target] ->
-    let msg = Diag.error_message Source.no_region "alloc_weak_ref" "classical" 
+    let msg = Diag.error_message Source.no_region "alloc_weak_ref" "classical"
       "Weak references are not supported in classical mode."
     in
     Diag.print_messages [msg];
     exit 0
 
   | OtherPrim "weak_get", [weak_ref] ->
-    let msg = Diag.error_message Source.no_region "weak_get" "classical" 
-      "Weak references are not supported in classical mode." 
+    let msg = Diag.error_message Source.no_region "weak_get" "classical"
+      "Weak references are not supported in classical mode."
     in
     Diag.print_messages [msg];
     exit 0
 
   | OtherPrim "weak_ref_is_live", [weak_ref] ->
-    let msg = Diag.error_message Source.no_region "weak_ref_is_live" "classical" 
-      "Weak references are not supported in classical mode." 
+    let msg = Diag.error_message Source.no_region "weak_ref_is_live" "classical"
+      "Weak references are not supported in classical mode."
     in
     Diag.print_messages [msg];
     exit 0
@@ -13522,7 +13522,7 @@ and conclude_module env set_serialization_globals start_fi_o =
     let open Wasm_exts.CustomModule in
     { module_;
       dylink0 = [];
-      name = { empty_name_section with 
+      name = { empty_name_section with
         function_names = List.mapi (fun i (f,n,_) -> Int32.(add ni (of_int i), n)) funcs;
         locals_names = List.mapi (fun i (f,_,ln) -> Int32.(add ni (of_int i), ln)) funcs;
       };

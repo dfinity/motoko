@@ -1,11 +1,26 @@
 # Motoko compiler changelog
 
-
 * motoko (`moc`)
 
   * Allow `break` and `continue` in loops without labels (#5702).
 
+## 1.1.0 (2026-01-16)
+
+* motoko (`moc`)
+
+  * Warn on unreachable let-else (#5789).
+
+  * bugfix: The source region for `do { ... }` blocks now includes the `do` keyword too (#5785).
+
+  * Omit `blob:*` imports from `moc --print-deps` (#5781).
+
+  * Split unused identifier warnings into separate warnings for shared and non-shared contexts: `M0194` for general declarations, `M0240` for identifiers in shared pattern contexts (e.g. `c` in `shared({caller = c})`), `M0198` for unused fields in object patterns, and `M0241` for unused fields in shared patterns (e.g. `caller` in `shared({caller})`) (#5779). 
+
   * Print type constructors using available type paths (#5698).
+
+  * Warn on implicit oneway declarations (#5787).
+
+  * Make the type checker more lenient and continue accumulating typing errors, and try to produce the typed AST even with errors. Enabled only with a type recovery flag for the IDE (Serokell Grant 2 Milestone 3) (#5776).
 
   * Explain subtype failures (#5643).
 
@@ -23,8 +38,6 @@
   ```
 
   * Add privileged primitive for setting Candid type table cutoff (#5642).
-
-  * Split unused identifier warnings into separate warnings for shared and non-shared contexts: `M0194` for general declarations, `M0240` for identifiers in shared pattern contexts (e.g. `c` in `shared({caller = c})`), `M0198` for unused fields in object patterns, and `M0241` for unused fields in shared patterns (e.g. `caller` in `shared({caller})`) (#5779).
 
 ## 1.0.0 (2025-12-11)
 

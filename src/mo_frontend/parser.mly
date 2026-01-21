@@ -816,7 +816,7 @@ exp_un(B) :
   | IGNORE e=exp_nest
     { IgnoreE(e) @? at $sloc }
   | DO e=block
-    { e }
+    { e.it @? at $sloc }
   | DO QUEST e=block
     { DoOptE(e) @? at $sloc }
 
