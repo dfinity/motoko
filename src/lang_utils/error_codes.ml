@@ -215,7 +215,7 @@ let error_codes : (string * string option) list =
     "M0246", None; (* Multi-migration requires --enhanced-migration flag *)
     "M0247", None; (* Multi-migration is mandatory with --enhanced-migration flag *)
     "M0248", None; (* Stable variable cannot have initializer with --enhanced-migration flag *)
-    "M0249", None; (* --enhanced-migration requires --enhanced-orthogonal-persistence and --default-persistent-actors *)
+    "M0249", None; (* --enhanced-migration requires --enhanced-orthogonal-persistence *)
   ]
 
 (** Message codes that can be both used as warnings and errors *)

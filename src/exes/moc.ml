@@ -388,6 +388,11 @@ let () =
     eprintf "moc: --hide-warnings and -Werror together do not make sense"; exit 1
   end;
 
+  if !Flags.enhanced_migration && not !Flags.enhanced_orthogonal_persistence
+  then begin
+    eprintf "moc: --enhanced-migration flag requires --enhanced-orthogonal-persistence flag\n"; exit 1
+  end;
+
   process_profiler_flags ();
   process_metadata_names "public" !Flags.public_metadata_names;
   process_metadata_names "omit" !Flags.omit_metadata_names;

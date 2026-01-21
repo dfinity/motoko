@@ -3752,13 +3752,6 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
           if not !Flags.enhanced_migration then
             error env exp.at "M0246"
               "`multi_migration` requires the --enhanced-migration flag";
-          (* Validate that --enhanced-migration requires --enhanced-orthogonal-persistence and --default-persistent-actors *)
-          if not !Flags.enhanced_orthogonal_persistence then
-            error env exp.at "M0249"
-              "`--enhanced-migration` flag requires `--enhanced-orthogonal-persistence` flag";
-          if !Flags.actors <> Flags.DefaultPersistentActors then
-            error env exp.at "M0249"
-              "`--enhanced-migration` flag requires `--default-persistent-actors` flag";
           (* Has multi_migration with --enhanced-migration: disallow stable variable initializers *)
           (* With EOP, variables are stable by default unless marked transient (Flexible) *)
           (* Allow transient (Flexible) variable initializers and side effects *)
@@ -3901,13 +3894,6 @@ and infer_migration env obj_sort exp_opt =
 and check_migration env (stab_tfs : T.field list) exp_opt at obj_sort =
   (* When enhanced_migration flag is enabled, multi_migration is mandatory for actors *)
   if !Flags.enhanced_migration && obj_sort.it = T.Actor then begin
-    (* Validate that --enhanced-migration requires --enhanced-orthogonal-persistence and --default-persistent-actors *)
-    if not !Flags.enhanced_orthogonal_persistence then
-      error env at "M0249"
-        "`--enhanced-migration` flag requires `--enhanced-orthogonal-persistence` flag";
-    if !Flags.actors <> Flags.DefaultPersistentActors then
-      error env at "M0249"
-        "`--enhanced-migration` flag requires `--default-persistent-actors` flag";
     match exp_opt with
     | None ->
       (* Use location of first stable field if available, otherwise use actor location *)
