@@ -87,5 +87,13 @@ persistent actor {
   // later maybe approximate by shared type.
   let invisible_array : [[var Nat]] = [];
 
+  // shared values we can just display, sans viewer
+  var some_variant = #node (#leaf, 0, #leaf);
+  let some_record = {a=1;b ="hello"; c = true} ;
+
+  // stable, non-shared values we can't just display in full, without viewer
+  let some_mutable_record = {var a = 1};
+
 
 }
+

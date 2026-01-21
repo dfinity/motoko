@@ -596,13 +596,24 @@ and export_view exp_opt id =
   | None -> ([], [], [])
   | Some view_exp ->
      let open T in
-     let sort, _, tbs, ts1, ts2 = as_func view_exp.note.note_typ in
-     assert (tbs = []);
+     let view_e = exp view_exp in
+     let ts1, ts2, mk_body =
+       match T.normalize view_exp.note.note_typ with
+       | T.Func(T.Local, _, tbs, ts1, ts2) ->
+          assert (tbs = []);
+          (* id.view() available *)
+          ts1, ts2, fun vs -> (callE view_e [] (tupE (List.map varE vs)))
+      | t ->
+         (* id, t shared *)
+          assert (T.shared t);
+          [], [t], fun _vs -> view_e
+     in
+
      let vs = fresh_vars "param" ts1 in
      let args = List.map arg_of_var vs in
-     let lab = "__view_"^id in
+     let lab = id in (* we can just re-use id as lab since no other member can *)
      let v = "$"^lab in
-      let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
+     let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
      let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
      let bind1 = typ_arg scope_con1 Scope scope_bound in
      let bind2 = typ_arg scope_con2 Scope scope_bound in
@@ -612,13 +623,12 @@ and export_view exp_opt id =
             funcE v (Shared Query) Promises [bind1] args ts2 (
                 (asyncE T.Fut bind2
                    (blockE [
+                        (* authentication, self or controller only *)
                         letD caller (primE I.ICCallerPrim []);
-(* TODO: renable authentication
                         expD (assertE (orE (primE (I.RelPrim (principal, Operator.EqOp)) [varE caller; selfRefE principal])
                                            (primE (I.OtherPrim "is_controller") [varE caller])));
-*)
                       ]
-                      (callE (exp view_exp) [] (tupE (List.map varE vs))))
+                      (mk_body vs))
                    (Con (scope_con1, []))))
       )],
       [T.{lab;typ; src = empty_src}],
