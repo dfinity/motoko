@@ -63,7 +63,7 @@ let rec value v t =
   | BlobV b, T.Array _ ->
     brackets_comma (List.of_seq (Seq.map (fun c -> Printf.sprintf "%d" (Char.code c)) (String.to_seq b)))
   | TextV s, _ -> text_lit s
-  | RecordV fs, T.(Obj (Object, tfs, [])) ->
+  | RecordV fs, T.(Obj (Object, tfs, _)) ->
     "{" ^ String.concat "; " (List.map (fun f ->
       Idl_to_mo.check_label (fst f.it) ^ " = " ^ value (snd f.it) (find_typ ~infer:infer_typ tfs f)
     ) fs) ^ "}"
