@@ -4108,49 +4108,55 @@ and check_migration env (stab_tfs : T.field list) exp_opt at obj_sort =
          display_typ_expand typ;
        [], []
    in
-   (* Check migration input compatibility with persisted state *)
-   List.iter
-     (fun tf_dom ->
-       (* Check if this field exists in current actor *)
-       match List.find_opt (fun tf -> tf.T.lab = tf_dom.T.lab) stab_tfs with
-       | Some tf_current ->
-         (* Field exists in current actor - check base type compatibility *)
-         (* Mutability compatibility is checked at runtime in desugar.ml when reading from persisted state *)
-         let context = [T.StableVariable tf_dom.T.lab] in
-         let imm_input = T.as_immut tf_dom.T.typ in
-         let imm_current = T.as_immut tf_current.T.typ in
-         (match T.stable_sub_explained ~src_fields:env.srcs context imm_current imm_input with
-         | T.Compatible -> ()
-         | T.Incompatible explanation ->
-           local_error env focus "M0204"
-             "migration expression expects field `%s` of type%a\n, but current actor declares it as %a%a\nThis suggests a type mismatch with persisted state from previous version."
-             tf_dom.T.lab
-             display_typ_expand tf_dom.T.typ
-             display_typ_expand tf_current.T.typ
-             (display_explanation imm_current imm_input) explanation)
-       | None ->
-         (* Field not in current actor - it's a new field or was removed *)
-         (* Migration input requires it, but it's not in persisted state *)
-         (* This will be caught by the fresh deployment check in desugaring *)
-         ())
-     dom_tfs;
+   (* Enhanced migration input validation - only for enhanced migration *)
+   if !Flags.enhanced_migration then begin
+     (* Check migration input compatibility with persisted state *)
+     List.iter
+       (fun tf_dom ->
+         (* Check if this field exists in current actor *)
+         match List.find_opt (fun tf -> tf.T.lab = tf_dom.T.lab) stab_tfs with
+         | Some tf_current ->
+           (* Field exists in current actor - check base type compatibility *)
+           (* Mutability compatibility is checked at runtime in desugar.ml when reading from persisted state *)
+           let context = [T.StableVariable tf_dom.T.lab] in
+           let imm_input = T.as_immut tf_dom.T.typ in
+           let imm_current = T.as_immut tf_current.T.typ in
+           (match T.stable_sub_explained ~src_fields:env.srcs context imm_current imm_input with
+           | T.Compatible -> ()
+           | T.Incompatible explanation ->
+             local_error env focus "M0204"
+               "migration expression expects field `%s` of type%a\n, but current actor declares it as %a%a\nThis suggests a type mismatch with persisted state from previous version."
+               tf_dom.T.lab
+               display_typ_expand tf_dom.T.typ
+               display_typ_expand tf_current.T.typ
+               (display_explanation imm_current imm_input) explanation)
+         | None ->
+           (* Field not in current actor - it's a new field or was removed *)
+           (* Migration input requires it, but it's not in persisted state *)
+           (* This will be caught by the fresh deployment check in desugaring *)
+           ())
+       dom_tfs
+   end;
    (* Check migration output compatibility with actor declaration *)
    List.iter
      (fun tf ->
       match T.lookup_val_field_opt tf.T.lab rng_tfs with
       | None -> ()
       | Some typ ->
-        (* Check mutability compatibility: migration output mutability must match actor declaration *)
-        let migration_is_mut = T.is_mut typ in
-        let actor_is_mut = T.is_mut tf.T.typ in
-        if migration_is_mut <> actor_is_mut then
-          local_error env focus "M0204"
-            "migration expression produces field `%s` with %s mutability, but actor declares it as %s\nmigration: %a\nactor: %a"
-            tf.T.lab
-            (if migration_is_mut then "mutable" else "immutable")
-            (if actor_is_mut then "mutable" else "immutable")
-            display_typ_expand typ
-            display_typ_expand tf.T.typ;
+        (* Enhanced migration: strict mutability checking *)
+        if !Flags.enhanced_migration then begin
+          let migration_is_mut = T.is_mut typ in
+          let actor_is_mut = T.is_mut tf.T.typ in
+          if migration_is_mut <> actor_is_mut then
+            local_error env focus "M0204"
+              "migration expression produces field `%s` with %s mutability, but actor declares it as %s\nmigration: %a\nactor: %a"
+              tf.T.lab
+              (if migration_is_mut then "mutable" else "immutable")
+              (if actor_is_mut then "mutable" else "immutable")
+              display_typ_expand typ
+              display_typ_expand tf.T.typ
+        end;
+        (* All migrations: base type compatibility check *)
         let context = [T.StableVariable tf.T.lab] in
         let imm_typ = T.as_immut typ in
         let imm_expected = T.as_immut tf.T.typ in

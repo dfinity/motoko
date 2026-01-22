@@ -135,7 +135,9 @@ let build_migration_chain migrations elem_typs n tuple_var input_var =
         if i < List.length migrations then
           List.nth migrations i
         else
-          { id = ""; hash = "" } (* Fallback - shouldn't happen *)
+          failwith (Printf.sprintf 
+            "Internal compiler error: migration metadata mismatch at index %d (have %d migrations, need %d)" 
+            i (List.length migrations) n)
       in
       
       let migration_i_typ = List.nth elem_typs i in
