@@ -1,0 +1,5 @@
+enhanced-migration-check-mutability.mo:5.7-5.79: type error [M0204], migration expression produces field `field2` with immutable mutability, but actor declares it as mutable
+migration: 
+  Nat
+actor: 
+  var Nat

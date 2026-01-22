@@ -1,0 +1,5 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+
+# bad composition, will error out.
+install $ID multi-migration-bad-chain/version4.mo
+

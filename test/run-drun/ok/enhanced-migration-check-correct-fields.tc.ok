@@ -1,0 +1,13 @@
+enhanced-migration-check-correct-fields.mo:5.7-5.87: type error [M0255], for `multi_migration`, all old stable fields must be explicitly consumed.
+Missing field `field1` of type
+  var Nat in migration input.
+To preserve this field, include it in both input and output of the migration function.
+enhanced-migration-check-correct-fields.mo:5.7-5.87: type error [M0255], for `multi_migration`, all new stable fields must be explicitly produced.
+Missing field `field1` of type
+  var Nat in migration output.
+The migration function must produce this field.
+enhanced-migration-check-correct-fields.mo:5.7-5.87: type error [M0205], migration expression produces unexpected field `field2` of type
+  var Nat
+
+Did you mean field field1?
+The actor should declare a corresponding `stable` field.

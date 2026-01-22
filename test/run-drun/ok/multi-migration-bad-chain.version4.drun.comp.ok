@@ -1,0 +1,35 @@
+multi-migration-bad-chain/version4.mo:15.5-15.19: type error [M0250], migration chain broken at index 1:
+output of previous migration has type
+  {var three : [var (Nat, Text)]; var zero : Nat}
+but this migration expects input type
+  (old : {
+           var five : Text;
+           var four : Text;
+           var six : Text;
+           var three : [var (Nat, Text)];
+           var zero : Nat
+         })
+multi-migration-bad-chain/version4.mo:16.5-16.19: type error [M0250], migration chain broken at index 2:
+output of previous migration has type
+  {
+    var five : Text;
+    var four : Text;
+    var six : Text;
+    var three : [var (Nat, Text)];
+    zero : Nat
+  }
+but this migration expects input type
+  (old : {
+           var five : Text;
+           var four : Text;
+           var three : [var (Nat, Text)];
+           var zero : Nat
+         })
+multi-migration-bad-chain/version4.mo:13.8-19.4: type error [M0255], for `multi_migration`, all old stable fields must be explicitly consumed.
+Missing field `six` of type
+  var Text in migration input.
+To preserve this field, include it in both input and output of the migration function.
+multi-migration-bad-chain/version4.mo:13.8-19.4: type error [M0255], for `multi_migration`, all new stable fields must be explicitly produced.
+Missing field `six` of type
+  var Text in migration output.
+The migration function must produce this field.

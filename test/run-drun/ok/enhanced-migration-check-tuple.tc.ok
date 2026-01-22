@@ -1,0 +1,13 @@
+enhanced-migration-check-tuple.mo:5.7-5.27: type error [M0251], multi_migration tuple cannot be empty
+enhanced-migration-check-tuple.mo:5.7-5.27: type error [M0202], expected object type, but migration expression produces non-object type
+  None
+enhanced-migration-check-tuple.mo:5.7-5.27: type error [M0202], expected object type, but migration expression consumes non-object type
+  Any
+enhanced-migration-check-tuple.mo:5.7-5.27: type error [M0255], for `multi_migration`, all old stable fields must be explicitly consumed.
+Missing field `field1` of type
+  var Nat in migration input.
+To preserve this field, include it in both input and output of the migration function.
+enhanced-migration-check-tuple.mo:5.7-5.27: type error [M0255], for `multi_migration`, all new stable fields must be explicitly produced.
+Missing field `field1` of type
+  var Nat in migration output.
+The migration function must produce this field.
