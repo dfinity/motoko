@@ -3852,9 +3852,6 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
      | Some exp ->
        (match exp.it with
         | _ when has_multi_migration_field exp ->
-          if not !Flags.enhanced_migration then
-            error env exp.at "M0256"
-              "`multi_migration` requires the --enhanced-migration flag";
           List.iter (fun df ->
             let is_stable = match df.it.stab with
               | None -> true
@@ -3959,7 +3956,7 @@ and validate_migration_chain env elements =
     | [] -> ()
     | elem :: rest ->
       let elem_typ = elem.note.note_typ in
-      let sort, tbs, t_args, t_rng = 
+      let _, _, t_args, t_rng = 
         try T.as_func_sub T.Local 0 elem_typ
         with Invalid_argument _ ->
           local_error env elem.at "M0250"
@@ -4001,7 +3998,7 @@ and process_multi_migration_tuple env exp focus migration_tuple_expr elem_typs =
       let last_elem = List.hd (List.rev elements) in
       
       let first_func_typ = first_elem.note.note_typ in
-      let first_sort, first_tbs, first_t_args, first_t_rng = 
+      let _, _, first_t_args, first_t_rng = 
         try T.as_func_sub T.Local 0 first_func_typ
         with Invalid_argument _ ->
           local_error env first_elem.at "M0216"
@@ -4010,7 +4007,7 @@ and process_multi_migration_tuple env exp focus migration_tuple_expr elem_typs =
       in
       
       let last_func_typ = last_elem.note.note_typ in
-      let last_sort, last_tbs, last_t_args, last_t_rng = 
+      let _, _, last_t_args, last_t_rng = 
         try T.as_func_sub T.Local 0 last_func_typ
         with Invalid_argument _ ->
           local_error env last_elem.at "M0216"
@@ -4023,9 +4020,6 @@ and process_multi_migration_tuple env exp focus migration_tuple_expr elem_typs =
       
       (* Composed type: first input -> last output *)
       T.Func(T.Local, T.Returns, [], first_t_args, [last_t_rng])
-  | TupE [] ->
-      local_error env focus "M0251" "multi_migration tuple cannot be empty";
-      T.Non
   | _ ->
       local_error env focus "M0252" "multi_migration must be a literal tuple (e.g., (m1, m2, m3))";
       T.Non
@@ -4069,7 +4063,12 @@ and check_migration env (stab_tfs : T.field list) exp_opt at obj_sort =
        if s = T.Actor then raise (Invalid_argument "");
        (match T.lookup_val_field_opt T.migration_lab tfs,
               T.lookup_val_field_opt T.multi_migration_lab tfs with
-        | Some t, None -> t
+        | Some t, None ->
+          if !Flags.enhanced_migration then
+            error env focus "M0259"
+              "with --enhanced-migration flag, use `multi_migration` instead of `migration`"
+          else
+            t
         | None, Some multi_typ ->
           (match T.normalize multi_typ with
            | T.Func _ ->

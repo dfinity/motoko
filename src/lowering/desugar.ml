@@ -141,7 +141,7 @@ let build_migration_chain migrations elem_typs n tuple_var input_var =
       in
       
       let migration_i_typ = List.nth elem_typs i in
-      let dom_i, rng_i = T.as_mono_func_sub migration_i_typ in
+      let dom_i, _ = T.as_mono_func_sub migration_i_typ in
       let (_dom_sort, dom_fields_i) = T.as_obj (T.normalize dom_i) in
       
       (* Reconstruct with mutability matching migration input *)
@@ -843,8 +843,8 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
       let v_rng = fresh_var "v_rng" rng in
       T.PrePost (stab_fields_pre, stab_fields),
       I.{pre = mem_ty_pre; post = mem_ty},
-      (if !Mo_config.Flags.enhanced_migration then begin
-        (* With --enhanced-migration, always run migration *)
+      (if !Mo_config.Flags.enhanced_migration && migration_field_name = T.multi_migration_lab then begin
+        (* With --enhanced-migration and multi_migration, always run migration *)
         blockE [
             letD v (primE (I.ICStableRead mem_ty_pre) []);
             letD v_dom
@@ -853,13 +853,9 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
                  (* The migration function defines the initialization *)
                  (objectE T.Object [] dom_fields)
                else
-                 (* Migration with non-empty input - read from persisted state *)
-                 (* For fresh deployments, we can't provide the required input, so trap *)
-                 (* For upgrades, we read from persisted state *)
-                 (* Construct a new record with mutability matching dom_fields (migration input type) *)
-                 (* We extract values from persisted state and construct a new record with the mutability *)
-                 (* specified by dom_fields. Note: Mutability compatibility is not validated at runtime *)
-                 (* because mutability is not stored in persisted state - only values are stored. *)
+                 (* Non-empty input: read from persisted state and reconstruct with target mutability.
+                    Fresh deployments trap (can't provide required input); upgrades read persisted state.
+                    Note: Mutability not validated at runtime - only values are persisted, not mutability. *)
                  (objectE T.Object
                    (List.map
                      (fun T.{lab=i;typ=t;_} ->
