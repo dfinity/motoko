@@ -46,6 +46,121 @@ let typed_phrase' f x =
 
 let is_empty_tup e = e.it = S.TupE []
 
+(* Type for migration metadata *)
+type migration_info = {
+  id: string;
+  hash: string;
+}
+
+(* Get migration metadata from typing phase *)
+let get_migration_infos (exp_at : Source.region) : migration_info list =
+  let ids = match Hashtbl.find_opt Migration_info.migration_ids_map exp_at with
+    | Some ids -> ids
+    | None -> []
+  in
+  List.map (fun id -> 
+    { id; hash = Digest.to_hex (Digest.string id) }
+  ) ids
+
+(* Reconstruct record with mutability matching target fields *)
+let reconstruct_record_with_mutability (dom_fields : T.field list) (source_expr : Ir.exp) (source_typ : T.typ) : Ir.exp =
+  if List.length dom_fields = 0 then
+    (* Empty input - use empty record *)
+    objectE T.Object [] dom_fields
+  else
+    (* Non-empty input - reconstruct with correct mutability *)
+    let dom_i = T.Obj(T.Object, dom_fields, []) in
+    let arg_var = fresh_var "arg_reconstructed" (T.normalize dom_i) in
+    let arg_expr_immut = fresh_var "arg_immut" source_typ in
+    blockE [
+      letD arg_expr_immut source_expr;
+      letD arg_var
+        (objectE T.Object
+          (List.map
+            (fun T.{lab=i;typ=t;_} ->
+              (* Extract the base value from source (always read as immutable) *)
+              let field_value = dotE (varE arg_expr_immut) i (T.as_immut t) in
+              (* The value is extracted; objectE with dom_fields will apply the correct mutability *)
+              (i, field_value))
+            dom_fields)
+          dom_fields)
+    ] (varE arg_var)
+
+(* RTS migration tracking primitives *)
+let rts_was_migration_performed migration_hash = 
+  primE (I.OtherPrim "was_migration_performed") [textE migration_hash]
+
+let rts_register_migration migration_hash = 
+  primE (I.OtherPrim "register_migration") [textE migration_hash]
+
+let migration_already_performed_msg migration_id = 
+  textE ("Migration already performed: " ^ migration_id)
+
+(* Wrap migration with RTS tracking *)
+let wrap_with_rts_tracking (migration_id : string) (migration_hash : string) (migration_expr : Ir.exp) (func_dom : T.typ) (func_rng : T.typ) : Ir.exp =
+  let input_var = fresh_var "migration_input" func_dom in
+  let input_arg = arg_of_var input_var in
+  let was_performed = rts_was_migration_performed migration_hash in
+  let error_msg = migration_already_performed_msg migration_id in
+  let check_and_trap = ifE was_performed 
+    (primE (I.OtherPrim "trap") [error_msg])
+    (unitE())
+  in
+  let result = callE migration_expr [] (varE input_var) in
+  let rts_register = rts_register_migration migration_hash in
+  let body = blockE [
+    expD check_and_trap;
+    expD rts_register
+  ] result in
+  funcE "migration_with_tracking" T.Local T.Returns [] [input_arg] [func_rng] body
+
+(* Create RTS tracking declarations for chain migrations *)
+let create_rts_tracking_decls (migration_id : string) (migration_hash : string) : Ir.dec list =
+  let was_performed = rts_was_migration_performed migration_hash in
+  let error_msg = migration_already_performed_msg migration_id in
+  let check_and_trap = ifE was_performed 
+    (primE (I.OtherPrim "trap") [error_msg])
+    (unitE())
+  in
+  let rts_register = rts_register_migration migration_hash in
+  [expD check_and_trap; expD rts_register]
+
+(* Build migration chain by composing tuple elements *)
+let build_migration_chain migrations elem_typs n tuple_var input_var =
+  let rec build_chain i arg_expr =
+    if i >= n then
+      arg_expr
+    else
+      let { id = migration_id; hash = migration_hash } = 
+        if i < List.length migrations then
+          List.nth migrations i
+        else
+          { id = ""; hash = "" } (* Fallback - shouldn't happen *)
+      in
+      
+      let migration_i_typ = List.nth elem_typs i in
+      let dom_i, rng_i = T.as_mono_func_sub migration_i_typ in
+      let (_dom_sort, dom_fields_i) = T.as_obj (T.normalize dom_i) in
+      
+      (* Reconstruct with mutability matching migration input *)
+      let arg_expr_reconstructed = 
+        if i = 0 then
+          reconstruct_record_with_mutability dom_fields_i arg_expr (T.normalize dom_i)
+        else
+          let prev_migration_typ = List.nth elem_typs (i - 1) in
+          let _, prev_rng = T.as_mono_func_sub prev_migration_typ in
+          let prev_rng_promoted = T.promote prev_rng in
+          reconstruct_record_with_mutability dom_fields_i arg_expr prev_rng_promoted
+      in
+      
+      let e_migration_i = projE (varE tuple_var) i in
+      let result = callE e_migration_i [] arg_expr_reconstructed in
+      let rts_decls = create_rts_tracking_decls migration_id migration_hash in
+      let rest = build_chain (i + 1) result in
+      blockE rts_decls rest
+  in
+  build_chain 0 (varE input_var)
+
 let rec exps es = List.map exp es
 
 and exp e =
@@ -630,143 +745,46 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
     | None ->
       T.Single stab_fields,
       I.{pre = mem_ty; post = mem_ty},
-      primE (I.ICStableRead mem_ty) [] (* as before *)
+      primE (I.ICStableRead mem_ty) []
     | Some exp0 ->
       let _, tfs = T.as_obj_sub [T.migration_lab; T.multi_migration_lab] exp0.note.Note.typ in
-      (* Determine which migration field is present (exactly one should exist, validated by typing.ml) *)
       let migration_field_name, typ, e_migration = 
         match T.lookup_val_field_opt T.migration_lab tfs,
               T.lookup_val_field_opt T.multi_migration_lab tfs with
         | Some func_typ, None ->
-          (* has migration - single function *)
           let e = dotE exp0 T.migration_lab func_typ in
           T.migration_lab, func_typ, e
         | None, Some multi_typ ->
-          (* has multi_migration - single function or tuple of functions *)
           (match T.normalize multi_typ with
            | T.Func _ ->
-             (* Single function - add RTS tracking *)
              let e = dotE exp0 T.multi_migration_lab multi_typ in
-             
-             (* Lookup migration ID *)
-             let migration_ids = match Hashtbl.find_opt Migration_info.migration_ids_map exp0.at with
-               | Some ids -> ids
-               | None -> []
-             in
-             
-             (* Compute hashes for migration IDs *)
-             let migration_hashes = List.map (fun id -> Digest.to_hex (Digest.string id)) migration_ids in
-             
-             (* Check in the RTS if the migration was already performed *)
-             let e_with_tracking = match migration_hashes with
-               | [migration_hash] ->
-                 (* Check and register the migration call *)
+             let migrations = get_migration_infos exp0.at in
+             let e_with_tracking = match migrations with
+               | [{ id = migration_id; hash = migration_hash }] ->
                  let func_dom, func_rng = T.as_mono_func_sub multi_typ in
-                 let input_var = fresh_var "migration_input" func_dom in
-                 let input_arg = arg_of_var input_var in
-                 
-                 let migration_id = List.hd migration_ids in 
-                 let was_performed = primE (I.OtherPrim "was_migration_performed") [textE migration_hash] in
-                 let error_msg = textE ("Migration already performed: " ^ migration_id) in
-                 let check_and_trap = ifE was_performed 
-                   (primE (I.OtherPrim "trap") [error_msg])
-                   (unitE())
-                 in
-                 
-                 let result = callE e [] (varE input_var) in
-                 let rts_register = primE (I.OtherPrim "register_migration") [textE migration_hash] in
-                 
-                 let body = blockE [
-                   expD check_and_trap;
-                   expD rts_register
-                 ] result in
-                 
-                 funcE "migration_with_tracking" T.Local T.Returns [] [input_arg] [func_rng] body
-               | _ -> e (* Fallback: no tracking *)
+                 wrap_with_rts_tracking migration_id migration_hash e func_dom func_rng
+               | _ -> e
              in
-             
              T.multi_migration_lab, multi_typ, e_with_tracking
            | T.Tup elem_typs ->
-             (* Tuple of functions - compose them *)
              let e_tuple = dotE exp0 T.multi_migration_lab multi_typ in
-          
-          (* Build chained composition: m3(m2(m1(input))) *)
-          let n = List.length elem_typs in
-          let first_typ = List.hd elem_typs in
-          let last_typ = List.hd (List.rev elem_typs) in
-          
-          (* Extract first and last function signatures *)
-          let first_dom, _ = T.as_mono_func_sub first_typ in
-          let _, last_rng = T.as_mono_func_sub last_typ in
-          let composed_typ = T.Func(T.Local, T.Returns, [], [first_dom], [last_rng]) in
-          
-          (* Build the composition as a function *)
-          let tuple_var = fresh_var "migrations" multi_typ in
-          let input_var = fresh_var "migration_input" first_dom in
-          let input_arg = arg_of_var input_var in
-          
-          (* Lookup migration IDs from typing phase *)
-          let migration_ids = match Hashtbl.find_opt Migration_info.migration_ids_map exp0.at with
-            | Some ids -> ids
-            | None -> [] (* Fallback if not found *)
-          in
-          
-          (* Compute hashes for all migration IDs *)
-          let migration_hashes = List.map (fun id -> 
-            Digest.to_hex (Digest.string id)
-          ) migration_ids in
-          
-          let rec build_chain i arg_expr =
-            if i >= n then
-              arg_expr
-            else
-              (* Get migration hash and ID for this index *)
-              let migration_hash = if i < List.length migration_hashes then
-                List.nth migration_hashes i
-              else
-                "" (* Fallback - shouldn't happen *)
-              in
-              let migration_id = if i < List.length migration_ids then
-                List.nth migration_ids i
-              else
-                "" (* Fallback *)
-              in
-              
-              (* Check if migration was already performed, trap if so *)
-              let was_performed = primE (I.OtherPrim "was_migration_performed") [textE migration_hash] in
-              let error_msg = textE ("Migration already performed: " ^ migration_id) in
-              let check_and_trap = ifE was_performed 
-                (primE (I.OtherPrim "trap") [error_msg])
-                (unitE())
-              in
-              
-              (* Extract migration i from tuple *)
-              let e_migration_i = projE (varE tuple_var) i in
-              
-              (* Execute the migration *)
-              let result = callE e_migration_i [] arg_expr in
-              
-              (* Register migration after successful execution *)
-              let rts_register = primE (I.OtherPrim "register_migration") [textE migration_hash] in
-              
-              (* Continue with next migration *)
-              let rest = build_chain (i + 1) result in
-              
-              (* Sequence: check -> register -> rest *)
-              blockE [
-                expD check_and_trap;
-                expD rts_register
-              ] rest
-          in
-          
-          (* Build function body *)
-          let body = blockE [letD tuple_var e_tuple] (build_chain 0 (varE input_var)) in
-          let e_composed = funcE "migration_chain" T.Local T.Returns [] [input_arg] [last_rng] body in
-          
-          T.multi_migration_lab, composed_typ, e_composed
-           | _ -> assert false)  (* typing.ml validates this is Func or Tup *)
-        | Some _, Some _ -> assert false  (* impossible: typing.ml rejects both *)
-        | None, None -> assert false      (* impossible: typing.ml requires one *)
+             let n = List.length elem_typs in
+             let first_typ = List.hd elem_typs in
+             let last_typ = List.hd (List.rev elem_typs) in
+             let first_dom, _ = T.as_mono_func_sub first_typ in
+             let _, last_rng = T.as_mono_func_sub last_typ in
+             let composed_typ = T.Func(T.Local, T.Returns, [], [first_dom], [last_rng]) in
+             let tuple_var = fresh_var "migrations" multi_typ in
+             let input_var = fresh_var "migration_input" first_dom in
+             let input_arg = arg_of_var input_var in
+             let migrations = get_migration_infos exp0.at in
+             let body = blockE [letD tuple_var e_tuple] 
+               (build_migration_chain migrations elem_typs n tuple_var input_var) in
+             let e_composed = funcE "migration_chain" T.Local T.Returns [] [input_arg] [last_rng] body in
+             T.multi_migration_lab, composed_typ, e_composed
+           | _ -> assert false)
+        | Some _, Some _ -> assert false
+        | None, None -> assert false
       in
       let e = e_migration in
       let dom, rng = T.as_mono_func_sub typ in
@@ -812,9 +830,9 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
                  (* For fresh deployments, we can't provide the required input, so trap *)
                  (* For upgrades, we read from persisted state *)
                  (* Construct a new record with mutability matching dom_fields (migration input type) *)
-                 (* This allows mutability changes: var fld : T <-> fld : T *)
                  (* We extract values from persisted state and construct a new record with the mutability *)
-                 (* specified by dom_fields, not the mutability from persisted state *)
+                 (* specified by dom_fields. Note: Mutability compatibility is not validated at runtime *)
+                 (* because mutability is not stored in persisted state - only values are stored. *)
                  (objectE T.Object
                    (List.map
                      (fun T.{lab=i;typ=t;_} ->
@@ -829,7 +847,7 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
                              (* In upgrade: field must exist *)
                              (primE (Ir.OtherPrim "trap")
                                [textE (Printf.sprintf
-                                 "stable variable `%s` of type `%s` expected but not found"
+                                 "stable variable `%s` of type `%s` expected but not found in persisted state"
                                  i (T.string_of_typ t))])
                              (* Fresh deployment: this version cannot be deployed fresh *)
                              (* It requires input from a previous version *)

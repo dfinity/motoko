@@ -13,7 +13,7 @@ import Migration2 "Migration5";
 )
 actor {
 
-  var zero : Nat;
+  let zero : Nat = ();
 
   var three : [var (Nat, Text)];
 

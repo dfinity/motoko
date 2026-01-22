@@ -6,7 +6,6 @@ import Migration2 "Migration2";
 import Migration3 "Migration3";
 import Migration4 "Migration4";
 import Migration5 "Migration5";
-import Migration6 "Migration4";
 
 (
   with multi_migration = (
