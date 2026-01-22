@@ -18,7 +18,7 @@ import Migration5 "Migration5";
 )
 actor {
   // Changing mutability also works.
-  let zero : Nat = ();
+  let zero : Nat;
 
   var three : [var (Nat, Text)];
 

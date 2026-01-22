@@ -4064,11 +4064,8 @@ and check_migration env (stab_tfs : T.field list) exp_opt at obj_sort =
        (match T.lookup_val_field_opt T.migration_lab tfs,
               T.lookup_val_field_opt T.multi_migration_lab tfs with
         | Some t, None ->
-          if !Flags.enhanced_migration then
-            error env focus "M0259"
-              "with --enhanced-migration flag, use `multi_migration` instead of `migration`"
-          else
-            t
+          (* This case is already caught by check_enhanced_migration_requirements with M0257 *)
+          t
         | None, Some multi_typ ->
           (match T.normalize multi_typ with
            | T.Func _ ->
@@ -4407,6 +4404,16 @@ and infer_dec env dec : T.typ =
         check_exp env T.Non fail
     );
     let t = infer_exp env exp in
+    (* Check if this is a placeholder for no initializer *)
+    if not env.pre then begin
+      match exp.it with
+      | AnnotE ({it = TupE []; _}, _) when !Flags.enhanced_migration ->
+        (* Uninitialized let is only allowed in actors *)
+        if not env.in_actor then
+          error env exp.at "M0259"
+            "variables without initializers are only allowed in actors with --enhanced-migration flag"
+      | _ -> ()
+    end;
     if !Flags.typechecker_combine_srcs then
       combine_pat_srcs env t pat;
     if not env.pre && T.is_unit (T.normalize t) then
@@ -4417,12 +4424,12 @@ and infer_dec env dec : T.typ =
       (* Always infer the expression type (needed for type checking) *)
       let t = infer_exp env exp in
       (* Check if this is a placeholder (AnnotE(TupE [], typ)) for stable variable without initializer *)
-      (* Only skip extra processing when --enhanced-migration is enabled and it's our placeholder pattern *)
       (match exp.it with
        | AnnotE ({it = TupE []; _}, _) when !Flags.enhanced_migration ->
-         (* Placeholder for no initializer with --enhanced-migration flag *)
-         (* Type is already inferred by AnnotE handling, skip extra processing *)
-         ()
+         (* Uninitialized var is only allowed in actors *)
+         if not env.in_actor then
+           error env exp.at "M0259"
+             "variables without initializers are only allowed in actors with --enhanced-migration flag"
        | _ ->
          (* Has real initializer (or no flag) - do normal processing *)
          if !Flags.typechecker_combine_srcs then

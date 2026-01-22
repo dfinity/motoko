@@ -966,6 +966,9 @@ dec_nonvar :
   | LET p=pat EQ e=exp(ob)
     { let p', e' = normalize_let p e in
       LetD (p', e', None) @? at $sloc }
+  | LET p=pat
+    { let p', e' = normalize_let p (TupE([]) @? at $sloc) in
+      LetD (p', e', None) @? at $sloc }
   | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
   | sp=shared_pat_opt FUNC

@@ -216,6 +216,7 @@ let error_codes : (string * string option) list =
     "M0256", None; (* Multi-migration requires --enhanced-migration flag *)
     "M0257", None; (* Multi-migration is mandatory with --enhanced-migration flag *)
     "M0258", None; (* Stable variable cannot have initializer with --enhanced-migration flag *)
+    "M0259", None; (* Variables without initializers only allowed in actors with --enhanced-migration flag *)
   ]
 
 (** Message codes that can be both used as warnings and errors *)
