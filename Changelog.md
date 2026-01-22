@@ -1,5 +1,9 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Allow `break` and `continue` in loops without labels (#5702).
+
 ## 1.1.0 (2026-01-16)
 
 * motoko (`moc`)

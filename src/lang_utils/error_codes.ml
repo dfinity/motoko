@@ -206,6 +206,7 @@ let error_codes : (string * string option) list =
     "M0232", None; (* Cannot infer type of implicit argument *)
     "M0233", None; (* Wrong number of arguments *)
     "M0234", None; (* Field exists but is not a function *)
+    "M0238", None; (* Misplaced break or continue *)
     "M0250", None; (* Migration chain broken - type mismatch *)
     "M0251", None; (* Multi-migration tuple cannot be empty *)
     "M0252", None; (* Multi-migration must be tuple *)
