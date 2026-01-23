@@ -258,7 +258,7 @@ let js_parse_motoko_typed_with_scope_cache_impl enable_recovery paths scope_cach
         parse_fn paths Pipeline.initial_stat_env scope_cache)
   in
   match load_result with
-  | Ok ((_libs, progs, _senv, scope_cache), msgs) ->
+  | Ok ((_libs, progs, senv, scope_cache), msgs) ->
     let progs =
       progs |> List.map (fun (prog, immediate_imports, sscope) ->
         let open Mo_def in
@@ -274,7 +274,7 @@ let js_parse_motoko_typed_with_scope_cache_impl enable_recovery paths scope_cach
         ( Arrange.prog_js prog
         (* , js_of_sexpr (Arrange_sources_types.typ typ) *)
         , immediate_imports |> List.map Js.string |> Array.of_list |> Js.array
-        , sscope )
+        , senv )
       ) |> Array.of_list
     in
     let scope_cache =
@@ -292,12 +292,12 @@ let js_parse_motoko_typed_with_scope_cache enable_recovery paths scope_cache =
   in
   js_result result (fun (progs, scope_cache) ->
     let progs =
-      progs |> Array.map (fun (ast, immediate_imports, sscope) ->
+      progs |> Array.map (fun (ast, immediate_imports, senv) ->
         object%js
           val ast = ast
           (* val typ = typ *)
           val immediateImports = immediate_imports
-          val sscope = Js.Unsafe.inject sscope
+          val scope = Js.Unsafe.inject senv
         end)
       |> Js.array
     in
@@ -378,12 +378,12 @@ let gc_flags option =
   | "classicOP" -> Flags.enhanced_orthogonal_persistence := false
   | _ -> raise (Invalid_argument "gc_flags: Unexpected flag")
 
-let js_resolve_dot_candidates sscope raw_exp =
-  let sscope = (Obj.magic sscope : Mo_frontend.Scope.t) in
+let js_resolve_dot_candidates scope raw_exp =
+  let scope = (Obj.magic scope : Mo_frontend.Scope.t) in
   let exp = (Obj.magic raw_exp : Mo_def.Syntax.exp) in
   let receiver_ty = exp.note.Mo_def.Syntax.note_typ in
-  let vals = sscope.Mo_frontend.Scope.val_env in
-  let libs = sscope.Mo_frontend.Scope.lib_env in
+  let vals = scope.Mo_frontend.Scope.val_env in
+  let libs = scope.Mo_frontend.Scope.lib_env in
   (* assert (Mo_types.Type.Env.cardinal libs > 0);
   assert (Mo_types.Type.Env.cardinal vals > 0); *)
   let candidates = Mo_frontend.Typing.resolve_dot_candidates libs vals receiver_ty in
