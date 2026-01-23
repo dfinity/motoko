@@ -274,7 +274,6 @@ let js_parse_motoko_typed_with_scope_cache_impl enable_recovery paths scope_cach
         ( Arrange.prog_js prog
         (* , js_of_sexpr (Arrange_sources_types.typ typ) *)
         , immediate_imports |> List.map Js.string |> Array.of_list |> Js.array
-        , prog
         , sscope )
       ) |> Array.of_list
     in
@@ -293,12 +292,11 @@ let js_parse_motoko_typed_with_scope_cache enable_recovery paths scope_cache =
   in
   js_result result (fun (progs, scope_cache) ->
     let progs =
-      progs |> Array.map (fun (ast, immediate_imports, prog, sscope) ->
+      progs |> Array.map (fun (ast, immediate_imports, sscope) ->
         object%js
           val ast = ast
           (* val typ = typ *)
           val immediateImports = immediate_imports
-          val prog = Js.Unsafe.inject prog
           val sscope = Js.Unsafe.inject sscope
         end)
       |> Js.array
@@ -309,7 +307,7 @@ let js_parse_motoko_typed paths =
   let result = js_parse_motoko_typed_with_scope_cache_impl Js.Opt.empty paths Js.Opt.empty in
   js_result result (fun (progs, _scope_cache) ->
     let progs =
-      progs |> Array.map (fun (ast, _immediate_imports, _, _) ->
+      progs |> Array.map (fun (ast, _immediate_imports, _) ->
         object%js
           val ast = ast
           (* val typ = typ *)
@@ -384,10 +382,11 @@ let js_resolve_dot_candidates sscope raw_exp =
   let sscope = (Obj.magic sscope : Mo_frontend.Scope.t) in
   let exp = (Obj.magic raw_exp : Mo_def.Syntax.exp) in
   let receiver_ty = exp.note.Mo_def.Syntax.note_typ in
-  let env = sscope.Mo_frontend.Scope.val_env in
+  let vals = sscope.Mo_frontend.Scope.val_env in
   let libs = sscope.Mo_frontend.Scope.lib_env in
-
-  let candidates = Mo_frontend.Typing.resolve_dot_candidates libs env receiver_ty in
+  (* assert (Mo_types.Type.Env.cardinal libs > 0);
+  assert (Mo_types.Type.Env.cardinal vals > 0); *)
+  let candidates = Mo_frontend.Typing.resolve_dot_candidates libs vals receiver_ty in
 
   let js_candidates = List.map (fun (name, c) ->
     object%js

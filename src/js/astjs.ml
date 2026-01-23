@@ -299,7 +299,7 @@ module Make (Cfg : Config) = struct
   let rec exp_js e =
     let open Syntax in
     let open Source in
-    exp'_js e |> add_type_annotation e.note.note_typ |> add_source e.at |> add_raw_exp e
+    exp'_js e |> add_raw_exp e |> add_type_annotation e.note.note_typ |> add_source e.at
 
   and exp'_js e =
     let open Syntax in
