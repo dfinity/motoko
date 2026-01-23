@@ -392,6 +392,7 @@ let js_resolve_dot_candidates scope raw_exp =
     object%js
       val name = Js.string name
       val type_ = Js.string (Mo_types.Type.string_of_typ c.Mo_frontend.Typing.func_ty)
+      val moduleName = Js.Optdef.option (Option.map Js.string c.Mo_frontend.Typing.module_name)
     end
   ) candidates in
   Js.array (Array.of_list js_candidates)
