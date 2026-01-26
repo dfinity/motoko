@@ -18,3 +18,13 @@ val check_lib : scope -> string option -> Syntax.lib -> scope Diag.result
 val check_actors : ?check_actors:bool -> scope -> Syntax.prog list -> unit Diag.result
 
 val check_stab_sig : scope -> Syntax.stab_sig -> Type.stab_sig Diag.result
+
+type ctx_dot_candidate =
+  { module_name : lab option;
+    path : Syntax.exp;
+    arg_ty : typ;
+    func_ty : typ;
+    inst : typ list;
+  }
+
+val resolve_dot_candidates : lib_env -> val_env -> typ -> (string * ctx_dot_candidate) list

@@ -186,6 +186,10 @@ module Make (Cfg : Config) = struct
       to_js_object "@" [| syntax_pos_js at.left; syntax_pos_js at.right; it |]
     else it
 
+  let add_raw_exp (exp : Syntax.exp) (it : Js.Unsafe.any) : Js.Unsafe.any =
+    Js.Unsafe.set it (js_string "rawExp") (Js.Unsafe.inject exp);
+    it
+
   let add_trivia (at : Source.region) (it : Js.Unsafe.any) : Js.Unsafe.any =
     match Cfg.include_docs with
     | Some table -> (
@@ -295,7 +299,7 @@ module Make (Cfg : Config) = struct
   let rec exp_js e =
     let open Syntax in
     let open Source in
-    exp'_js e |> add_type_annotation e.note.note_typ |> add_source e.at
+    exp'_js e |> add_raw_exp e |> add_type_annotation e.note.note_typ |> add_source e.at
 
   and exp'_js e =
     let open Syntax in

@@ -253,12 +253,12 @@ let js_parse_motoko_typed_with_scope_cache_impl enable_recovery paths scope_cach
     else Pipeline.parse_file
   in
   let load_result =
-    Mo_types.Cons.session (fun () ->
+  Mo_types.Cons.session (fun () ->
       Pipeline.load_progs_cached ~enable_type_recovery:recovery_enabled
         parse_fn paths Pipeline.initial_stat_env scope_cache)
   in
   match load_result with
-  | Ok ((_libs, progs, _senv, scope_cache), msgs) ->
+  | Ok ((_libs, progs, senv, scope_cache), msgs) ->
     let progs =
       progs |> List.map (fun (prog, immediate_imports, sscope) ->
         let open Mo_def in
@@ -273,7 +273,8 @@ let js_parse_motoko_typed_with_scope_cache_impl enable_recovery paths scope_cach
         in
         ( Arrange.prog_js prog
         (* , js_of_sexpr (Arrange_sources_types.typ typ) *)
-        , immediate_imports |> List.map Js.string |> Array.of_list |> Js.array )
+        , immediate_imports |> List.map Js.string |> Array.of_list |> Js.array
+        , senv )
       ) |> Array.of_list
     in
     let scope_cache =
@@ -291,11 +292,12 @@ let js_parse_motoko_typed_with_scope_cache enable_recovery paths scope_cache =
   in
   js_result result (fun (progs, scope_cache) ->
     let progs =
-      progs |> Array.map (fun (ast, immediate_imports) ->
+      progs |> Array.map (fun (ast, immediate_imports, senv) ->
         object%js
           val ast = ast
           (* val typ = typ *)
           val immediateImports = immediate_imports
+          val scope = Js.Unsafe.inject senv
         end)
       |> Js.array
     in
@@ -305,7 +307,7 @@ let js_parse_motoko_typed paths =
   let result = js_parse_motoko_typed_with_scope_cache_impl Js.Opt.empty paths Js.Opt.empty in
   js_result result (fun (progs, _scope_cache) ->
     let progs =
-      progs |> Array.map (fun (ast, _immediate_imports) ->
+      progs |> Array.map (fun (ast, _immediate_imports, _) ->
         object%js
           val ast = ast
           (* val typ = typ *)
@@ -375,3 +377,22 @@ let gc_flags option =
   | "enhancedOP" -> Flags.enhanced_orthogonal_persistence := true
   | "classicOP" -> Flags.enhanced_orthogonal_persistence := false
   | _ -> raise (Invalid_argument "gc_flags: Unexpected flag")
+
+let js_resolve_dot_candidates scope raw_exp =
+  let scope = (Obj.magic scope : Mo_frontend.Scope.t) in
+  let exp = (Obj.magic raw_exp : Mo_def.Syntax.exp) in
+  let receiver_ty = exp.note.Mo_def.Syntax.note_typ in
+  let vals = scope.Mo_frontend.Scope.val_env in
+  let libs = scope.Mo_frontend.Scope.lib_env in
+  (* assert (Mo_types.Type.Env.cardinal libs > 0);
+  assert (Mo_types.Type.Env.cardinal vals > 0); *)
+  let candidates = Mo_frontend.Typing.resolve_dot_candidates libs vals receiver_ty in
+
+  let js_candidates = List.map (fun (name, c) ->
+    object%js
+      val name = Js.string name
+      val type_ = Js.string (Mo_types.Type.string_of_typ c.Mo_frontend.Typing.func_ty)
+      val moduleName = Js.Optdef.option (Option.map Js.string c.Mo_frontend.Typing.module_name)
+    end
+  ) candidates in
+  Js.array (Array.of_list js_candidates)

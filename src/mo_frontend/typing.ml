@@ -1413,7 +1413,7 @@ let is_lib_module (n, t) =
 let is_val_module (n, ((t, _, _, _) : val_info)) =
   is_lib_module (n, t)
 
-let module_exp in_libs env module_name =
+let module_exp in_libs module_name =
   if not in_libs then
     VarE {it = module_name; at = no_region; note = (Const, None)}
   else
@@ -1451,7 +1451,7 @@ let resolve_hole env at hole_sort typ =
       List.map (fun (lab, typ, region)->
           let path =
             { it = DotE(
-                { it = module_exp in_libs env module_name;
+                { it = module_exp in_libs module_name;
                   at = Source.no_region;
                   note = empty_typ_note
                 },
@@ -1594,7 +1594,7 @@ let contextual_dot env name receiver_ty : (ctx_dot_candidate, 'a context_dot_err
       Option.map (fun (arg_ty, func_ty, inst) ->
         let path = {
           it = DotE({
-              it = module_exp in_libs env module_name;
+              it = module_exp in_libs module_name;
               at = name.at;
               note = empty_typ_note
             }, name, ref None);
@@ -1641,6 +1641,61 @@ let contextual_dot env name receiver_ty : (ctx_dot_candidate, 'a context_dot_err
       | None -> Error (DotAmbiguous (fun env ->
          let modules =  (List.filter_map (fun c -> c.module_name) cs) in
          error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " modules))))
+
+let resolve_dot_candidates libs vals receiver_ty =
+  let is_matching_func t =
+    match T.normalize t with
+    | T.Func (_, _, tbs, T.Named("self", first_arg)::_, _) as typ ->
+      (match permissive_sub receiver_ty (tbs, first_arg) with
+        | Some inst -> Some (T.open_ inst first_arg, typ, inst)
+        | _ -> None)
+    | _ -> None
+  in
+  let find_candidate in_libs (module_name, (module_ty, fs)) =
+    List.filter_map (fun fld ->
+      match is_matching_func fld.T.typ with
+      | Some (arg_ty, func_ty, inst) ->
+         let name = fld.T.lab in
+         let name_exp = { it = name; at = no_region; note = () } in
+         let path = {
+           it = DotE({
+               it = module_exp in_libs module_name;
+               at = no_region;
+               note = empty_typ_note
+             }, name_exp, ref None);
+           at = no_region;
+           note = empty_typ_note }
+         in
+         Some (name, { module_name = Some module_name; path; func_ty; arg_ty; inst })
+      | None -> None
+    ) fs
+  in
+
+  let candidates in_libs xs f =
+    T.Env.to_seq xs |>
+      Seq.filter_map f |>
+      Seq.map (find_candidate in_libs) |>
+      List.of_seq |>
+      List.flatten
+  in
+
+  let local_candidates =
+    T.Env.fold (fun name (t, _, _) acc ->
+       match is_matching_func t with
+       | Some (arg_ty, func_ty, inst) ->
+          let path = {
+            it = VarE { it = name; at = no_region; note = (Const, None) };
+            at = no_region;
+            note = empty_typ_note } in
+          (name, { module_name = None; path; func_ty; arg_ty; inst }) :: acc
+       | None -> acc
+    ) vals []
+  in
+
+  let lib_candidates = candidates true libs is_lib_module in
+  let val_candidates = candidates false vals (fun (n, (t, _, _)) -> is_lib_module (n, t)) in
+
+  local_candidates @ val_candidates @ lib_candidates
 
 let check_can_dot env ctx_dot (exp : Syntax.exp) tys es at =
   if not env.pre then
