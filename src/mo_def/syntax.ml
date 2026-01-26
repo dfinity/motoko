@@ -145,8 +145,6 @@ and vis' =
 let is_public vis = match vis.Source.it with Public _ -> true | _ -> false
 let is_private vis = match vis.Source.it with Private -> true | _ -> false
 
-type stab = stab' Source.phrase
-and stab' = Stable | Flexible
 
 type op_typ = Type.typ ref (* For overloaded resolution; initially Type.Pre. *)
 
@@ -180,6 +178,8 @@ let break_label kind (id_opt : id option) =
 
 
 type id_ref = (string, mut' * exp option) Source.annotated_phrase
+and stab = stab' Source.phrase
+and stab' = Stable of exp option ref | Flexible
 and hole_sort = Named of string | Anon of int
 and exp = (exp', typ_note) Source.annotated_phrase
 and exp' =

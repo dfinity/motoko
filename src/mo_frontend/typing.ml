@@ -3826,6 +3826,14 @@ and stable_pat pat =
   | AnnotP (pat', _) -> stable_pat pat'
   | _ -> false
 
+and stable_id pat =
+  match pat.it with
+  | VarP id -> id
+  | ParP pat'
+  | AnnotP (pat', _) -> stable_id pat'
+  | _ -> assert false
+
+
 and infer_migration env obj_sort exp_opt =
   Option.map
     (fun exp ->
@@ -3971,7 +3979,7 @@ and check_stable_defaults env sort dec_fields =
         warn env sort.note.at "M0217" "with flag --default-persistent-actors, the `persistent` keyword is redundant and can be removed";
       List.iter (fun dec_field ->
         match dec_field.it.stab, dec_field.it.dec.it with
-        | Some {it = Stable; at; _}, (LetD _ | VarD _) ->
+        | Some {it = Stable _; at; _}, (LetD _ | VarD _) ->
           if at <> Source.no_region then
             warn env at "M0218" "redundant `stable` keyword, this declaration is implicitly stable"
         | _ -> ())
@@ -4014,12 +4022,14 @@ and check_stab env sort scope dec_fields =
         "misplaced stability declaration on field of non-actor";
       []
     | (T.Actor | T.Mixin), _ , IncludeD _ -> []
-    | (T.Actor | T.Mixin), Some {it = Stable; _}, VarD (id, _) ->
+    | (T.Actor | T.Mixin), Some {it = Stable view; _}, VarD (id, _) ->
       check_stable id.it id.at;
+      infer_viewer env scope Var id view;
       [id]
-    | (T.Actor | T.Mixin), Some {it = Stable; _}, LetD (pat, _, _) when stable_pat pat ->
+    | (T.Actor | T.Mixin), Some {it = Stable view; _}, LetD (pat, _, _) when stable_pat pat ->
       let ids = T.Env.keys (gather_pat env Scope.empty pat).Scope.val_env in
       List.iter (fun id -> check_stable id pat.at) ids;
+      infer_viewer env scope Const (stable_id pat) view;
       List.map (fun id -> {it = id; at = pat.at; note = ()}) ids;
     | (T.Actor | T.Mixin), Some {it = Flexible; _} , (VarD _ | LetD _) -> []
     | (T.Actor | T.Mixin), Some stab, _ ->
@@ -4040,6 +4050,50 @@ and check_stab env sort scope dec_fields =
              typ;
              src = {depr = None; track_region = id.at; region = id.at}})
       ids)
+
+and infer_viewer env scope mut id viewer =
+  assert (!viewer = None);
+  match Diag.with_message_store (recover_opt (fun msgs ->
+    let env = {env with msgs} in (* don't record errors in outer env *) 
+    let env = adjoin env scope in
+    let note() = empty_typ_note in
+    let at = id.at in
+    let dot_exp =
+      { it = DotE
+               ( {it = VarE {it = id.it; at ; note = (mut, None)};
+                  at;
+                  note = note()},
+                 {it = "view"; note = (); at},
+                 ref None);
+        at;
+        note = note()}
+    in
+    let arg_exp = (false, ref {it = TupE []; at; note = note()}) in
+    let inst = {it = None; at; note = []} in
+    let exp = {it = CallE(None, dot_exp, inst, arg_exp); at; note = note()} in
+    let viewer_typ = infer_exp env exp in
+    (match T.normalize viewer_typ with
+     | T.Func(T.Local, T.Returns, [], ts1, ts2) ->
+        if List.for_all T.shared ts1 && List.for_all T.shared ts2
+        then exp
+        else error env id.at "M0XXX" "viewer '%s.view()' has non-shared type" id.it
+     | _ -> error env id.at "M0XXX" "viewer '%s.view()' is not a function" id.it)))
+  with
+  | Error _ ->
+     (* info env id.at "viewer not found for %s" id.it; *)
+     (match T.Env.find_opt id.it scope.Scope.val_env with
+     | Some (typ, _, _)  ->
+        let typ = T.as_immut typ in
+        if T.shared typ then
+          viewer := Some {it = VarE {it = id.it; at = id.at ; note = (mut, None)};
+                          at = id.at;
+                          note = { empty_typ_note with note_typ = typ }}
+     | None -> assert false)
+  | Ok (exp, _) ->
+     (* info env id.at "viewer found for %s" id.it; *)
+     viewer := Some exp;
+     ()
+
 
 (* Blocks and Declarations *)
 
