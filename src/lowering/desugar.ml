@@ -46,6 +46,123 @@ let typed_phrase' f x =
 
 let is_empty_tup e = e.it = S.TupE []
 
+(* Type for migration metadata *)
+type migration_info = {
+  id: string;
+  hash: string;
+}
+
+(* Get migration metadata from typing phase *)
+let get_migration_infos (exp_at : Source.region) : migration_info list =
+  let ids = match Hashtbl.find_opt Migration_info.migration_ids_map exp_at with
+    | Some ids -> ids
+    | None -> []
+  in
+  List.map (fun id -> 
+    { id; hash = Digest.to_hex (Digest.string id) }
+  ) ids
+
+(* Reconstruct record with mutability matching target fields *)
+let reconstruct_record_with_mutability (dom_fields : T.field list) (source_expr : Ir.exp) (source_typ : T.typ) : Ir.exp =
+  if List.length dom_fields = 0 then
+    (* Empty input - use empty record *)
+    objectE T.Object [] dom_fields
+  else
+    (* Non-empty input - reconstruct with correct mutability *)
+    let dom_i = T.Obj(T.Object, dom_fields, []) in
+    let arg_var = fresh_var "arg_reconstructed" (T.normalize dom_i) in
+    let arg_expr_immut = fresh_var "arg_immut" source_typ in
+    blockE [
+      letD arg_expr_immut source_expr;
+      letD arg_var
+        (objectE T.Object
+          (List.map
+            (fun T.{lab=i;typ=t;_} ->
+              (* Extract the base value from source (always read as immutable) *)
+              let field_value = dotE (varE arg_expr_immut) i (T.as_immut t) in
+              (* The value is extracted; objectE with dom_fields will apply the correct mutability *)
+              (i, field_value))
+            dom_fields)
+          dom_fields)
+    ] (varE arg_var)
+
+(* RTS migration tracking primitives *)
+let rts_was_migration_performed migration_hash = 
+  primE (I.OtherPrim "was_migration_performed") [textE migration_hash]
+
+let rts_register_migration migration_hash = 
+  primE (I.OtherPrim "register_migration") [textE migration_hash]
+
+let migration_already_performed_msg migration_id = 
+  textE ("Migration already performed: " ^ migration_id)
+
+(* Wrap migration with RTS tracking *)
+let wrap_with_rts_tracking (migration_id : string) (migration_hash : string) (migration_expr : Ir.exp) (func_dom : T.typ) (func_rng : T.typ) : Ir.exp =
+  let input_var = fresh_var "migration_input" func_dom in
+  let input_arg = arg_of_var input_var in
+  let was_performed = rts_was_migration_performed migration_hash in
+  let error_msg = migration_already_performed_msg migration_id in
+  let check_and_trap = ifE was_performed 
+    (primE (I.OtherPrim "trap") [error_msg])
+    (unitE())
+  in
+  let result = callE migration_expr [] (varE input_var) in
+  let rts_register = rts_register_migration migration_hash in
+  let body = blockE [
+    expD check_and_trap;
+    expD rts_register
+  ] result in
+  funcE "migration_with_tracking" T.Local T.Returns [] [input_arg] [func_rng] body
+
+(* Create RTS tracking declarations for chain migrations *)
+let create_rts_tracking_decls (migration_id : string) (migration_hash : string) : Ir.dec list =
+  let was_performed = rts_was_migration_performed migration_hash in
+  let error_msg = migration_already_performed_msg migration_id in
+  let check_and_trap = ifE was_performed 
+    (primE (I.OtherPrim "trap") [error_msg])
+    (unitE())
+  in
+  let rts_register = rts_register_migration migration_hash in
+  [expD check_and_trap; expD rts_register]
+
+(* Build migration chain by composing tuple elements *)
+let build_migration_chain migrations elem_typs n tuple_var input_var =
+  let rec build_chain i arg_expr =
+    if i >= n then
+      arg_expr
+    else
+      let { id = migration_id; hash = migration_hash } = 
+        if i < List.length migrations then
+          List.nth migrations i
+        else
+          failwith (Printf.sprintf 
+            "Internal compiler error: migration metadata mismatch at index %d (have %d migrations, need %d)" 
+            i (List.length migrations) n)
+      in
+      
+      let migration_i_typ = List.nth elem_typs i in
+      let dom_i, _ = T.as_mono_func_sub migration_i_typ in
+      let (_dom_sort, dom_fields_i) = T.as_obj (T.normalize dom_i) in
+      
+      (* Reconstruct with mutability matching migration input *)
+      let arg_expr_reconstructed = 
+        if i = 0 then
+          reconstruct_record_with_mutability dom_fields_i arg_expr (T.normalize dom_i)
+        else
+          let prev_migration_typ = List.nth elem_typs (i - 1) in
+          let _, prev_rng = T.as_mono_func_sub prev_migration_typ in
+          let prev_rng_promoted = T.promote prev_rng in
+          reconstruct_record_with_mutability dom_fields_i arg_expr prev_rng_promoted
+      in
+      
+      let e_migration_i = projE (varE tuple_var) i in
+      let result = callE e_migration_i [] arg_expr_reconstructed in
+      let rts_decls = create_rts_tracking_decls migration_id migration_hash in
+      let rest = build_chain (i + 1) result in
+      blockE rts_decls rest
+  in
+  build_chain 0 (varE input_var)
+
 let unit_typ at = { it = S.TupT []; at; note = T.unit }
 
 let desugar_loop_flags at note body flags with_body =
@@ -655,12 +772,48 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
     | None ->
       T.Single stab_fields,
       I.{pre = mem_ty; post = mem_ty},
-      primE (I.ICStableRead mem_ty) [] (* as before *)
+      primE (I.ICStableRead mem_ty) []
     | Some exp0 ->
-      let typ = let _, tfs = T.as_obj_sub [T.migration_lab] exp0.note.Note.typ in
-                T.lookup_val_field T.migration_lab tfs
+      let _, tfs = T.as_obj_sub [T.migration_lab; T.multi_migration_lab] exp0.note.Note.typ in
+      let migration_field_name, typ, e_migration = 
+        match T.lookup_val_field_opt T.migration_lab tfs,
+              T.lookup_val_field_opt T.multi_migration_lab tfs with
+        | Some func_typ, None ->
+          let e = dotE exp0 T.migration_lab func_typ in
+          T.migration_lab, func_typ, e
+        | None, Some multi_typ ->
+          (match T.normalize multi_typ with
+           | T.Func _ ->
+             let e = dotE exp0 T.multi_migration_lab multi_typ in
+             let migrations = get_migration_infos exp0.at in
+             let e_with_tracking = match migrations with
+               | [{ id = migration_id; hash = migration_hash }] ->
+                 let func_dom, func_rng = T.as_mono_func_sub multi_typ in
+                 wrap_with_rts_tracking migration_id migration_hash e func_dom func_rng
+               | _ -> e
+             in
+             T.multi_migration_lab, multi_typ, e_with_tracking
+           | T.Tup elem_typs ->
+             let e_tuple = dotE exp0 T.multi_migration_lab multi_typ in
+             let n = List.length elem_typs in
+             let first_typ = List.hd elem_typs in
+             let last_typ = List.hd (List.rev elem_typs) in
+             let first_dom, _ = T.as_mono_func_sub first_typ in
+             let _, last_rng = T.as_mono_func_sub last_typ in
+             let composed_typ = T.Func(T.Local, T.Returns, [], [first_dom], [last_rng]) in
+             let tuple_var = fresh_var "migrations" multi_typ in
+             let input_var = fresh_var "migration_input" first_dom in
+             let input_arg = arg_of_var input_var in
+             let migrations = get_migration_infos exp0.at in
+             let body = blockE [letD tuple_var e_tuple] 
+               (build_migration_chain migrations elem_typs n tuple_var input_var) in
+             let e_composed = funcE "migration_chain" T.Local T.Returns [] [input_arg] [last_rng] body in
+             T.multi_migration_lab, composed_typ, e_composed
+           | _ -> assert false)
+        | Some _, Some _ -> assert false
+        | None, None -> assert false
       in
-      let e = dotE exp0 T.migration_lab typ in
+      let e = e_migration in
       let dom, rng = T.as_mono_func_sub typ in
       let (_dom_sort, dom_fields) = T.as_obj (T.normalize dom) in
       let (_rng_sort, rng_fields) = T.as_obj (T.promote rng) in
@@ -690,26 +843,48 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
       let v_rng = fresh_var "v_rng" rng in
       T.PrePost (stab_fields_pre, stab_fields),
       I.{pre = mem_ty_pre; post = mem_ty},
-      ifE (primE (I.OtherPrim "rts_in_upgrade") [])
-        (* in upgrade, apply migration *)
-        (blockE [
+      (if !Mo_config.Flags.enhanced_migration && migration_field_name = T.multi_migration_lab then begin
+        (* With --enhanced-migration and multi_migration, always run migration *)
+        blockE [
             letD v (primE (I.ICStableRead mem_ty_pre) []);
             letD v_dom
-              (objectE T.Object
-                (List.map
-                  (fun T.{lab=i;typ=t;_} ->
-                    let vi = fresh_var ("v_"^i) (T.as_immut t) in
-                    (i,
-                     switch_optE (dotE (varE v) i (T.Opt (T.as_immut t)))
-                       (primE (Ir.OtherPrim "trap")
-                         [textE (Printf.sprintf
-                           "stable variable `%s` of type `%s` expected but not found"
-                           i (T.string_of_typ t))])
-                         (varP vi) (varE vi)
-                         (T.as_immut t)))
-                  dom_fields)
-                dom_fields);
-            letD v_rng (callE e [] (varE v_dom))
+              (if List.length dom_fields = 0 then
+                 (* Initial migration with empty input {} - works for both fresh and upgrade *)
+                 (* The migration function defines the initialization *)
+                 (objectE T.Object [] dom_fields)
+               else
+                 (* Non-empty input: read from persisted state and reconstruct with target mutability.
+                    Fresh deployments trap (can't provide required input); upgrades read persisted state.
+                    Note: Mutability not validated at runtime - only values are persisted, not mutability. *)
+                 (objectE T.Object
+                   (List.map
+                     (fun T.{lab=i;typ=t;_} ->
+                       (* Extract the base value from persisted state (always read as immutable for extraction) *)
+                       let vi = fresh_var ("v_"^i) (T.as_immut t) in
+                       (* Extract value from persisted state *)
+                       let field_value = 
+                         switch_optE (dotE (varE v) i (T.Opt (T.as_immut t)))
+                           (* Field missing: trap (migration requires input from previous version) *)
+                           (* Create fresh rts_in_upgrade expression to avoid aliasing *)
+                           (ifE (primE (I.OtherPrim "rts_in_upgrade") [])
+                             (* In upgrade: field must exist *)
+                             (primE (Ir.OtherPrim "trap")
+                               [textE (Printf.sprintf
+                                 "stable variable `%s` of type `%s` expected but not found in persisted state"
+                                 i (T.string_of_typ t))])
+                             (* Fresh deployment: this version cannot be deployed fresh *)
+                             (* It requires input from a previous version *)
+                             (primE (Ir.OtherPrim "trap")
+                               [textE (Printf.sprintf
+                                 "Cannot deploy this version fresh: migration expects input from previous version. Please deploy the initial version first, then upgrade.")]))
+                           (varP vi) (varE vi)
+                           (T.as_immut t)
+                       in
+                       (* The value is extracted; objectE with dom_fields will apply the correct mutability *)
+                       (i, field_value))
+                     dom_fields)
+                   dom_fields));
+            letD v_rng (callE e [] (varE v_dom));
           ]
           (objectE T.Memory
             (List.map
@@ -725,9 +900,49 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
                    nullE() (* TBR: could also reuse if compatible *)
                  | None -> dotE (varE v) i t)
               mem_fields)
-            mem_fields))
-        (* not in upgrade, read record of nulls *)
-        (primE (I.ICStableRead mem_ty) [])
+            mem_fields)
+        end
+      else begin
+        (* Without --enhanced-migration, use original behavior *)
+        ifE (primE (I.OtherPrim "rts_in_upgrade") [])
+          (* in upgrade, apply migration *)
+          (blockE [
+              letD v (primE (I.ICStableRead mem_ty_pre) []);
+              letD v_dom
+                (objectE T.Object
+                  (List.map
+                    (fun T.{lab=i;typ=t;_} ->
+                      let vi = fresh_var ("v_"^i) (T.as_immut t) in
+                      (i,
+                       switch_optE (dotE (varE v) i (T.Opt (T.as_immut t)))
+                         (primE (Ir.OtherPrim "trap")
+                           [textE (Printf.sprintf
+                             "stable variable `%s` of type `%s` expected but not found"
+                             i (T.string_of_typ t))])
+                         (varP vi) (varE vi)
+                         (T.as_immut t)))
+                    dom_fields)
+                  dom_fields);
+              letD v_rng (callE e [] (varE v_dom))
+            ]
+            (objectE T.Memory
+              (List.map
+                (fun T.{lab=i;typ=t;_} ->
+                 i,
+                 match T.lookup_val_field_opt i rng_fields with
+                 | Some t -> (* produced by migration *)
+                   optE (dotE (varE v_rng) i (T.as_immut t)) (* wrap in ?_*)
+                 | None -> (* not produced by migration *)
+                   match T.lookup_val_field_opt i dom_fields with
+                   | Some t ->
+                     (* consumed by migration (not produced) *)
+                     nullE() (* TBR: could also reuse if compatible *)
+                   | None -> dotE (varE v) i t)
+                mem_fields)
+              mem_fields))
+          (* not in upgrade, read record of nulls *)
+          (primE (I.ICStableRead mem_ty) [])
+      end)
   in
   let ds =
     varD state (optE migration)
@@ -810,10 +1025,21 @@ and stabilize stab_opt d =
      fun get_state ->
      let v = fresh_var i t in
      varD (var i (T.Mut t))
-       (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
-         e
-         (varP v) (varE v)
-         t))
+       (if !Mo_config.Flags.enhanced_migration then
+          (* With --enhanced-migration, always read from persisted state (never use initializer) *)
+          (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
+            (primE (Ir.OtherPrim "trap")
+              [textE (Printf.sprintf
+                "stable variable `%s` of type `%s` not found in persisted state (migration should have initialized it)"
+                i (T.string_of_typ t))])
+            (varP v) (varE v)
+            t)
+        else
+          (* Without --enhanced-migration, use original behavior (initializer as fallback) *)
+          (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
+            e
+            (varP v) (varE v)
+            t)))
   | (S.Stable, I.RefD _) -> assert false (* RefD cannot come from user code *)
   | (S.Stable, I.LetD({it = I.VarP i; _} as p, e)) ->
     let t = p.note in
@@ -821,10 +1047,21 @@ and stabilize stab_opt d =
      fun get_state ->
      let v = fresh_var i t in
      letP p
-       (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
-         e
-         (varP v) (varE v)
-         t))
+       (if !Mo_config.Flags.enhanced_migration then
+          (* With --enhanced-migration, always read from persisted state (never use initializer) *)
+          (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
+            (primE (Ir.OtherPrim "trap")
+              [textE (Printf.sprintf
+                "stable variable `%s` of type `%s` not found in persisted state (migration should have initialized it)"
+                i (T.string_of_typ t))])
+            (varP v) (varE v)
+            t)
+        else
+          (* Without --enhanced-migration, use original behavior (initializer as fallback) *)
+          (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
+            e
+            (varP v) (varE v)
+            t)))
   | (S.Stable, I.LetD _) ->
     assert false
 

@@ -1,0 +1,1 @@
+enhanced-migration-check-flag-and-field.mo:5.1-5.82: type error [M0257], with --enhanced-migration flag, actor must specify `multi_migration` to initialize stable variables

@@ -207,6 +207,16 @@ let error_codes : (string * string option) list =
     "M0233", None; (* Wrong number of arguments *)
     "M0234", None; (* Field exists but is not a function *)
     "M0238", None; (* Misplaced break or continue *)
+    "M0250", None; (* Migration chain broken - type mismatch *)
+    "M0251", None; (* Multi-migration tuple cannot be empty *)
+    "M0252", None; (* Multi-migration must be tuple *)
+    "M0253", None; (* Duplicate migration *)
+    "M0254", None; (* Multi-migration with constructor side-effects *)
+    "M0255", None; (* Multi-migration field not explicitly produced/consumed. *)
+    "M0256", None; (* Multi-migration requires --enhanced-migration flag *)
+    "M0257", None; (* Multi-migration is mandatory with --enhanced-migration flag *)
+    "M0258", None; (* Stable variable cannot have initializer with --enhanced-migration flag *)
+    "M0259", None; (* Variables without initializers only allowed in actors with --enhanced-migration flag *)
   ]
 
 (** Message codes that can be both used as warnings and errors *)

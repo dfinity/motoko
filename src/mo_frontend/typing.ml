@@ -1679,6 +1679,49 @@ let check_can_dot env ctx_dot (exp : Syntax.exp) tys es at =
       end
     | _, _, _ -> ()
 
+(* Extract multi_migration field from expression *)
+let extract_multi_migration_field (exp : exp) : exp_field option =
+  match exp.it with
+  | ObjE(_, flds) ->
+    List.find_opt (fun ({it = {id; _}; _} : exp_field) -> id.it = T.multi_migration_lab) flds
+  | _ -> None
+
+(* Check if expression has multi_migration field *)
+let has_multi_migration_field (exp : exp) : bool =
+  Option.is_some (extract_multi_migration_field exp)
+
+(* Extract migration expression from ObjE *)
+let extract_migration_expr (exp : exp) (lab : string) : exp =
+  match exp.it with
+  | ObjE(_, flds) ->
+    (match List.find_opt (fun ({it = {id; exp; _}; _} : exp_field) -> id.it = lab) flds with
+     | Some fld -> fld.it.exp
+     | None -> assert false)
+  | _ -> assert false
+
+(* Get file name from region, with fallback for unknown *)
+let file_or_unknown region =
+  let file = region.left.file in
+  if file = "" then "(unknown)" else file
+
+(* Extract migration ID from file where migration is defined *)
+let migration_id_from_expr (migration_expr : exp) : string =
+  match migration_expr.it with
+  | DotE({it = VarE _; _} as obj_expr, field_name, _) ->
+    (match T.normalize obj_expr.note.note_typ with
+     | T.Obj(_, fields, _) ->
+       (match List.find_opt (fun f -> f.T.lab = field_name.it) fields with
+        | Some field -> file_or_unknown field.T.src.T.region
+        | None -> file_or_unknown migration_expr.at)
+     | _ -> file_or_unknown migration_expr.at)
+  | _ -> file_or_unknown migration_expr.at
+
+(* Check if expression has an initializer (TupE [] is used as placeholder) *)
+let has_initializer (e : exp) : bool =
+  match e.it with
+  | AnnotE ({it = TupE []; _}, _) -> false
+  | TupE [] -> false
+  | _ -> true
 
 let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
@@ -2208,7 +2251,15 @@ and infer_exp'' env exp : T.typ =
     T.unit
   | AnnotE (exp1, typ) ->
     let t = check_typ env typ in
-    if not env.pre then check_exp_strong env t exp1;
+    if not env.pre then
+      (* If exp1 is TupE [] (placeholder for no initializer) and --enhanced-migration is enabled, *)
+      (* allow it without type checking (it's used for stable variables without initializers) *)
+      (match exp1.it with
+       | TupE [] when !Flags.enhanced_migration ->
+         (* Placeholder for no initializer - skip type check, use annotation type *)
+         exp1.note <- {exp1.note with note_typ = t}
+       | _ ->
+         check_exp_strong env t exp1);
     t
   | IgnoreE exp1 ->
     if not env.pre then begin
@@ -2296,6 +2347,49 @@ and infer_exp_field env rf =
   let t1 = if mut.it = Syntax.Var then T.Mut t else t in
   Field_sources.add_src env.srcs id.at;
   T.{lab = id.it; typ = t1; src = {empty_src with track_region = id.at}}
+
+and infer_migration env obj_sort exp_opt =
+  Option.map
+    (fun exp ->
+      if obj_sort.it <> T.Actor then
+        local_error env exp.at "M0209"
+          "misplaced actor migration expression on module or object";
+      infer_exp_promote { env with async = C.NullCap; rets = NoRet; labs = T.Env.empty } exp)
+    exp_opt
+
+and check_parenthetical env typ_opt = function
+  | None -> ()
+  | Some par ->
+     let env = { env with async = C.NullCap } in
+     begin match typ_opt with
+     | Some fun_ty when T.is_func fun_ty ->
+       let s, _, _, _, ts2 = T.as_func fun_ty in
+       begin match ts2 with
+       | _ when T.is_shared_sort s -> ()
+       | [cod] when T.is_fut cod -> ()
+       | [cod] when T.is_cmp cod -> warn env par.at "M0210" "misplaced parenthetical (`async*` calls cannot be modified)"
+       | _ -> warn env par.at "M0210" "misplaced parenthetical (this call does not send a message)"
+       end
+     | _ -> ()
+     end;
+     let checked = T.[ cycles_fld; timeout_fld ] in
+     let [@warning "-8"] par_infer env { it = ObjE (bases, fields); _ } =
+       infer_check_bases_fields env checked par.at bases fields in
+     let attrs = infer_exp_wrapper par_infer T.as_immut env par in
+     let [@warning "-8"] T.Object, attrs_flds = T.as_obj attrs in
+     if attrs_flds = [] then warn env par.at "M0211" "redundant empty parenthetical note";
+     let check_lab { T.lab; typ; _ } =
+       let check want =
+         if not (sub env par.at typ want)
+         then local_error env par.at "M0214" "field %s in parenthetical is declared with type%a\ninstead of expected type%a" lab
+                display_typ typ
+                display_typ want in
+       match List.find_opt (fun { T.lab = l; _} -> l = lab) checked with
+       | Some { T.typ; _} -> check typ
+       | None -> () in
+     List.iter check_lab attrs_flds;
+     let unrecognised = List.(filter T.(fun {lab; _} -> lab <> cycles_lab && lab <> timeout_lab) attrs_flds |> map (fun {T.lab; _} -> lab)) in
+     if unrecognised <> [] then warn env par.at "M0212" "unrecognised attribute %s in parenthetical" (List.hd unrecognised);
 
 and infer_check_bases_fields env (check_fields : T.field list) exp_at exp_bases exp_fields =
   let open List in
@@ -3748,43 +3842,41 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
     if s = T.Module then Static.dec_fields env.msgs dec_fields;
     check_system_fields env s scope fs dec_fields;
     let stab_tfs = check_stab env obj_sort scope dec_fields in
-    check_migration env stab_tfs exp_opt
+    let error_stable_with_initializer at var_name =
+      error env at "M0258"
+        "stable variable `%s` cannot have an initializer when using `multi_migration` with --enhanced-migration flag.\nStable variables must be initialized by the migration function."
+        var_name
+    in
+    (* With multi_migration, stable variables must have no initializers *)
+    (match exp_opt with
+     | Some exp ->
+       (match exp.it with
+        | _ when has_multi_migration_field exp ->
+          List.iter (fun df ->
+            let is_stable = match df.it.stab with
+              | None -> true
+              | Some {it = Stable; _} -> true
+              | Some {it = Flexible; _} -> false
+            in
+            if is_stable then
+              match df.it.dec.it with
+              | VarD (id, e) ->
+                if has_initializer e then
+                  error_stable_with_initializer e.at id.it
+              | LetD (pat, e, _) ->
+                if has_initializer e then
+                  let var_name = match pat.it with
+                    | VarP id -> id.it
+                    | _ -> "variable"
+                  in
+                  error_stable_with_initializer e.at var_name
+              | _ -> ()
+          ) dec_fields
+        | _ -> ())
+     | None -> ());
+    check_migration env stab_tfs exp_opt at obj_sort
   end;
   t
-
-and check_parenthetical env typ_opt = function
-  | None -> ()
-  | Some par ->
-     let env = { env with async = C.NullCap } in
-     begin match typ_opt with
-     | Some fun_ty when T.is_func fun_ty ->
-       let s, _, _, _, ts2 = T.as_func fun_ty in
-       begin match ts2 with
-       | _ when T.is_shared_sort s -> ()
-       | [cod] when T.is_fut cod -> ()
-       | [cod] when T.is_cmp cod -> warn env par.at "M0210" "misplaced parenthetical (`async*` calls cannot be modified)"
-       | _ -> warn env par.at "M0210" "misplaced parenthetical (this call does not send a message)"
-       end
-     | _ -> ()
-     end;
-     let checked = T.[ cycles_fld; timeout_fld ] in
-     let [@warning "-8"] par_infer env { it = ObjE (bases, fields); _ } =
-       infer_check_bases_fields env checked par.at bases fields in
-     let attrs = infer_exp_wrapper par_infer T.as_immut env par in
-     let [@warning "-8"] T.Object, attrs_flds = T.as_obj attrs in
-     if attrs_flds = [] then warn env par.at "M0211" "redundant empty parenthetical note";
-     let check_lab { T.lab; typ; _ } =
-       let check want =
-         if not (sub env par.at typ want)
-         then local_error env par.at "M0214" "field %s in parenthetical is declared with type%a\ninstead of expected type%a" lab
-                display_typ typ
-                display_typ want in
-       match List.find_opt (fun { T.lab = l; _} -> l = lab) checked with
-       | Some { T.typ; _} -> check typ
-       | None -> () in
-     List.iter check_lab attrs_flds;
-     let unrecognised = List.(filter T.(fun {lab; _} -> lab <> cycles_lab && lab <> timeout_lab) attrs_flds |> map (fun {T.lab; _} -> lab)) in
-     if unrecognised <> [] then warn env par.at "M0212" "unrecognised attribute %s in parenthetical" (List.hd unrecognised);
 
 and check_system_fields env sort scope tfs dec_fields =
   List.iter (fun df ->
@@ -3826,26 +3918,129 @@ and stable_pat pat =
   | AnnotP (pat', _) -> stable_pat pat'
   | _ -> false
 
-and infer_migration env obj_sort exp_opt =
-  Option.map
-    (fun exp ->
-      if obj_sort.it <> T.Actor then
-        local_error env exp.at "M0209"
-          "misplaced actor migration expression on module or object";
-      infer_exp_promote { env with async = C.NullCap; rets = NoRet; labs = T.Env.empty } exp)
-    exp_opt
+(* Check enhanced migration requirements *)
+and check_enhanced_migration_requirements env stab_tfs exp_opt at obj_sort =
+  if !Flags.enhanced_migration && obj_sort.it = T.Actor then begin
+    match exp_opt with
+    | None ->
+      let error_at = match stab_tfs with
+        | tf :: _ -> 
+          let T.{src = T.{region; _}; _} = tf in
+          region
+        | [] -> at
+      in
+      error env error_at "M0257"
+        "with --enhanced-migration flag, actor must specify `multi_migration` to initialize stable variables"
+    | Some exp ->
+      if not (has_multi_migration_field exp) then
+        error env exp.at "M0257"
+          "with --enhanced-migration flag, actor must specify `multi_migration` to initialize stable variables"
+  end
 
-and check_migration env (stab_tfs : T.field list) exp_opt =
+(* Check for duplicate migrations in tuple *)
+and check_duplicate_migrations env elements migration_ids =
+  let seen_ids = Hashtbl.create (List.length migration_ids) in
+  List.iteri (fun i id ->
+    if Hashtbl.mem seen_ids id then
+      let first_idx = Hashtbl.find seen_ids id in
+      local_error env (List.nth elements i).at "M0253"
+        "duplicate migration at index %d (same implementation as migration at index %d)"
+        i first_idx
+    else
+      Hashtbl.add seen_ids id i
+  ) migration_ids
+
+(* Validate migration chain composition *)
+and validate_migration_chain env elements =
+  let rec check_chain prev_output_opt idx = function
+    | [] -> ()
+    | elem :: rest ->
+      let elem_typ = elem.note.note_typ in
+      let _, _, t_args, t_rng = 
+        try T.as_func_sub T.Local 0 elem_typ
+        with Invalid_argument _ ->
+          local_error env elem.at "M0250"
+            "migration tuple element at index %d is not a function"
+            idx;
+          raise (Invalid_argument "not a function")
+      in
+      let t_dom = T.seq t_args in
+      (match prev_output_opt with
+       | None -> ()
+       | Some prev_output ->
+         if not (T.sub ~src_fields:env.srcs (T.promote prev_output) (T.normalize t_dom)) then
+           local_error env elem.at "M0250"
+             "migration chain broken at index %d:\noutput of previous migration has type%a\nbut this migration expects input type%a"
+             idx
+             display_typ_expand prev_output
+             display_typ_expand t_dom
+      );
+      check_chain (Some t_rng) (idx + 1) rest
+  in
+  check_chain None 0 elements
+
+(* Process single multi_migration function *)
+and process_single_multi_migration exp multi_typ =
+  let migration_expr = extract_migration_expr exp T.multi_migration_lab in
+  let migration_id = migration_id_from_expr migration_expr in
+  Hashtbl.add Migration_info.migration_ids_map exp.at [migration_id];
+  multi_typ
+
+(* Process multi_migration tuple *)
+and process_multi_migration_tuple env exp focus migration_tuple_expr elem_typs =
+  match migration_tuple_expr.it with
+  | TupE elements when List.length elements > 0 ->
+      let migration_ids = List.map migration_id_from_expr elements in
+      check_duplicate_migrations env elements migration_ids;
+      Hashtbl.add Migration_info.migration_ids_map exp.at migration_ids;
+      
+      let first_elem = List.hd elements in
+      let last_elem = List.hd (List.rev elements) in
+      
+      let first_func_typ = first_elem.note.note_typ in
+      let _, _, first_t_args, first_t_rng = 
+        try T.as_func_sub T.Local 0 first_func_typ
+        with Invalid_argument _ ->
+          local_error env first_elem.at "M0216"
+            "migration tuple element at index 0 is not a function";
+          raise (Invalid_argument "not a function")
+      in
+      
+      let last_func_typ = last_elem.note.note_typ in
+      let _, _, last_t_args, last_t_rng = 
+        try T.as_func_sub T.Local 0 last_func_typ
+        with Invalid_argument _ ->
+          local_error env last_elem.at "M0216"
+            "migration tuple element at index %d is not a function"
+            (List.length elements - 1);
+          raise (Invalid_argument "not a function")
+      in
+      
+      validate_migration_chain env elements;
+      
+      (* Composed type: first input -> last output *)
+      T.Func(T.Local, T.Returns, [], first_t_args, [last_t_rng])
+  | _ ->
+      local_error env focus "M0252" "multi_migration must be a literal tuple (e.g., (m1, m2, m3))";
+      T.Non
+
+and check_migration env (stab_tfs : T.field list) exp_opt at obj_sort =
+  check_enhanced_migration_requirements env stab_tfs exp_opt at obj_sort;
   match exp_opt with
   | None -> ()
   | Some exp ->
+    let is_multi_migration = has_multi_migration_field exp in
+    (if is_multi_migration && not !Flags.enhanced_migration then
+      error env exp.at "M0256"
+        "`multi_migration` requires the --enhanced-migration flag");
     let focus = match exp.it with
       | ObjE(_, flds) ->
-        (match List.find_opt (fun ({it = {id; _}; _} : exp_field) -> id.it = T.migration_lab) flds with
+        (match List.find_opt (fun ({it = {id; _}; _} : exp_field) -> 
+                id.it = T.migration_lab || id.it = T.multi_migration_lab) flds with
          | Some fld -> fld.at
          | None -> exp.at)
       | _ -> exp.at in
-    Static.exp env.msgs exp; (* preclude side effects *)
+    Static.exp env.msgs exp;
     let check_fields desc typ =
       match typ with
       | T.Obj(T.Object, fs, _) ->
@@ -3864,12 +4059,36 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
    in
    let typ =
      try
-       let s, fs = T.as_obj_sub [T.migration_lab] exp.note.note_typ in
+       let s, tfs = T.as_obj_sub [T.migration_lab; T.multi_migration_lab] exp.note.note_typ in
        if s = T.Actor then raise (Invalid_argument "");
-       T.lookup_val_field T.migration_lab fs
+       (match T.lookup_val_field_opt T.migration_lab tfs,
+              T.lookup_val_field_opt T.multi_migration_lab tfs with
+        | Some t, None ->
+          (* This case is already caught by check_enhanced_migration_requirements with M0257 *)
+          t
+        | None, Some multi_typ ->
+          (match T.normalize multi_typ with
+           | T.Func _ ->
+             process_single_multi_migration exp multi_typ
+           | T.Tup elem_typs when List.length elem_typs > 0 ->
+             let migration_tuple_expr = extract_migration_expr exp T.multi_migration_lab in
+             process_multi_migration_tuple env exp focus migration_tuple_expr elem_typs
+           | T.Tup [] ->
+             local_error env focus "M0251" "multi_migration tuple cannot be empty";
+             T.Non
+           | _ ->
+             local_error env focus "M0213"
+               "expected `multi_migration` to be a function or tuple type, but got type%a"
+               display_typ_expand multi_typ;
+             T.Non)
+        | Some _, Some _ ->
+          error env focus "M0208"
+            "cannot have both `migration` and `multi_migration` fields; please use only one"
+        | None, None ->
+          raise (Invalid_argument "no migration field"))
      with Invalid_argument _ ->
        error env focus "M0208"
-         "expected expression with field `migration`, but expression has type%a"
+         "expected expression with field `migration` or `multi_migration`, but expression has type%a"
          display_typ_expand exp.note.note_typ
    in
    let dom_tfs, rng_tfs =
@@ -3881,15 +4100,59 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
       check_fields "produces" (T.promote t_rng)
      with Invalid_argument _ ->
        local_error env focus "M0203"
-         "expected non-generic, local function type, but migration expression produces type%a"
+         "expected non-generic, local function type, but migration expression produces type%a\n(for multi_migration, each tuple element must be a function)"
          display_typ_expand typ;
        [], []
    in
+   (* Enhanced migration input validation - only for enhanced migration *)
+   if !Flags.enhanced_migration then begin
+     (* Check migration input compatibility with persisted state *)
+     List.iter
+       (fun tf_dom ->
+         (* Check if this field exists in current actor *)
+         match List.find_opt (fun tf -> tf.T.lab = tf_dom.T.lab) stab_tfs with
+         | Some tf_current ->
+           (* Field exists in current actor - check base type compatibility *)
+           (* Mutability compatibility is checked at runtime in desugar.ml when reading from persisted state *)
+           let context = [T.StableVariable tf_dom.T.lab] in
+           let imm_input = T.as_immut tf_dom.T.typ in
+           let imm_current = T.as_immut tf_current.T.typ in
+           (match T.stable_sub_explained ~src_fields:env.srcs context imm_current imm_input with
+           | T.Compatible -> ()
+           | T.Incompatible explanation ->
+             local_error env focus "M0204"
+               "migration expression expects field `%s` of type%a\n, but current actor declares it as %a%a\nThis suggests a type mismatch with persisted state from previous version."
+               tf_dom.T.lab
+               display_typ_expand tf_dom.T.typ
+               display_typ_expand tf_current.T.typ
+               (display_explanation imm_current imm_input) explanation)
+         | None ->
+           (* Field not in current actor - it's a new field or was removed *)
+           (* Migration input requires it, but it's not in persisted state *)
+           (* This will be caught by the fresh deployment check in desugaring *)
+           ())
+       dom_tfs
+   end;
+   (* Check migration output compatibility with actor declaration *)
    List.iter
      (fun tf ->
       match T.lookup_val_field_opt tf.T.lab rng_tfs with
       | None -> ()
       | Some typ ->
+        (* Enhanced migration: strict mutability checking *)
+        if !Flags.enhanced_migration then begin
+          let migration_is_mut = T.is_mut typ in
+          let actor_is_mut = T.is_mut tf.T.typ in
+          if migration_is_mut <> actor_is_mut then
+            local_error env focus "M0204"
+              "migration expression produces field `%s` with %s mutability, but actor declares it as %s\nmigration: %a\nactor: %a"
+              tf.T.lab
+              (if migration_is_mut then "mutable" else "immutable")
+              (if actor_is_mut then "mutable" else "immutable")
+              display_typ_expand typ
+              display_typ_expand tf.T.typ
+        end;
+        (* All migrations: base type compatibility check *)
         let context = [T.StableVariable tf.T.lab] in
         let imm_typ = T.as_immut typ in
         let imm_expected = T.as_immut tf.T.typ in
@@ -3917,6 +4180,29 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
                Some tf)
            stab_tfs)
    in
+   (* For multi_migration, enforce explicit field handling - no implicit preservation *)
+   if is_multi_migration then begin
+     (* Check that ALL old stable fields are explicitly consumed *)
+     List.iter (fun tf ->
+       match T.lookup_val_field_opt tf.T.lab dom_tfs with
+       | Some _ -> () (* explicitly consumed*)
+       | None ->
+         local_error env focus "M0255"
+           "for `multi_migration`, all old stable fields must be explicitly consumed.\nMissing field `%s` of type%a in migration input.\nTo preserve this field, include it in both input and output of the migration function."
+           tf.T.lab
+           display_typ_expand tf.T.typ
+     ) pre_tfs;
+     (* Check that ALL new stable fields are explicitly produced *)
+     List.iter (fun tf ->
+       match T.lookup_val_field_opt tf.T.lab rng_tfs with
+       | Some _ -> () (* explicitly produced*)
+       | None ->
+         local_error env focus "M0255"
+           "for `multi_migration`, all new stable fields must be explicitly produced.\nMissing field `%s` of type%a in migration output.\nThe migration function must produce this field."
+           tf.T.lab
+           display_typ_expand tf.T.typ
+     ) stab_tfs
+   end;
    (* Check for duplicates and hash collisions in pre-signature *)
    let pre_ids = List.map (fun tf -> T.{it = tf.lab; at = tf.src.region; note = ()}) pre_tfs in
    check_ids env "pre actor type" "stable variable" pre_ids;
@@ -3958,7 +4244,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
    ) dom_tfs;
    (* Warn the user about unrecognised attributes. *)
    let [@warning "-8"] T.Object, attrs_flds = T.as_obj exp.note.note_typ in
-   let unrecognised = List.(filter (fun {T.lab; _} -> lab <> T.migration_lab) attrs_flds |> map (fun {T.lab; _} -> lab)) in
+   let unrecognised = List.(filter (fun {T.lab; _} -> lab <> T.migration_lab && lab <> T.multi_migration_lab) attrs_flds |> map (fun {T.lab; _} -> lab)) in
    if unrecognised <> [] then warn env exp.at "M0212" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
 
 
@@ -4118,6 +4404,16 @@ and infer_dec env dec : T.typ =
         check_exp env T.Non fail
     );
     let t = infer_exp env exp in
+    (* Check if this is a placeholder for no initializer *)
+    if not env.pre then begin
+      match exp.it with
+      | AnnotE ({it = TupE []; _}, _) when !Flags.enhanced_migration ->
+        (* Uninitialized let is only allowed in actors *)
+        if not env.in_actor then
+          error env exp.at "M0259"
+            "variables without initializers are only allowed in actors with --enhanced-migration flag"
+      | _ -> ()
+    end;
     if !Flags.typechecker_combine_srcs then
       combine_pat_srcs env t pat;
     if not env.pre && T.is_unit (T.normalize t) then
@@ -4125,11 +4421,21 @@ and infer_dec env dec : T.typ =
     t
   | VarD (id, exp) ->
     if not env.pre then begin
+      (* Always infer the expression type (needed for type checking) *)
       let t = infer_exp env exp in
-      if !Flags.typechecker_combine_srcs then
-        combine_id_srcs env t id;
-      if T.is_unit (T.normalize t) then
-        warn_unit_binding `Var env dec exp;
+      (* Check if this is a placeholder (AnnotE(TupE [], typ)) for stable variable without initializer *)
+      (match exp.it with
+       | AnnotE ({it = TupE []; _}, _) when !Flags.enhanced_migration ->
+         (* Uninitialized var is only allowed in actors *)
+         if not env.in_actor then
+           error env exp.at "M0259"
+             "variables without initializers are only allowed in actors with --enhanced-migration flag"
+       | _ ->
+         (* Has real initializer (or no flag) - do normal processing *)
+         if !Flags.typechecker_combine_srcs then
+           combine_id_srcs env t id;
+         if T.is_unit (T.normalize t) then
+           warn_unit_binding `Var env dec exp);
     end;
     T.unit
   | ClassD (exp_opt, shared_pat, obj_sort, id, typ_binds, pat, typ_opt, self_id, dec_fields) ->

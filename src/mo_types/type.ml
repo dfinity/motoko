@@ -1876,6 +1876,7 @@ let install_typ ts actor_typ =
 
 let cycles_lab = "cycles"
 let migration_lab = "migration"
+let multi_migration_lab = "multi_migration"
 let timeout_lab = "timeout"
 
 let cycles_fld = { lab = cycles_lab; typ = nat; src = empty_src }

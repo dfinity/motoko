@@ -216,6 +216,11 @@ let argspec =
   Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := false),
   " use legacy (classical) persistence. This also enables the usage of --copying-gc, --compacting-gc, and --generational-gc. Deprecated in favor of the new enhanced orthogonal persistence, which is default. Legacy persistence will be removed in the future.";
 
+  (* migration *)
+  "--enhanced-migration",
+  Arg.Unit (fun () -> Flags.enhanced_migration := true),
+  " enable enhanced migration system: requires initializers for all stable variables, disallows side-effects in actor bodies; only available with enhanced orthogonal persistence.";
+
   "-unguarded-enhanced-orthogonal-persistence",
   Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true; Flags.explicit_enhanced_orthogonal_persistence := false),
   Args._UNDOCUMENTED_ "  (internal testing only)";
@@ -381,6 +386,11 @@ let () =
   if !Flags.warnings_are_errors && (not !Flags.print_warnings)
   then begin
     eprintf "moc: --hide-warnings and -Werror together do not make sense"; exit 1
+  end;
+
+  if !Flags.enhanced_migration && not !Flags.enhanced_orthogonal_persistence
+  then begin
+    eprintf "moc: --enhanced-migration flag requires --enhanced-orthogonal-persistence flag\n"; exit 1
   end;
 
   process_profiler_flags ();
