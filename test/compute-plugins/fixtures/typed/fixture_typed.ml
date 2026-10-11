@@ -23,7 +23,7 @@ let shape types =
 
 module Generator = struct
   module Make (B : P.Backend) = struct
-    let compile env specialization =
+    let compile env specialization _arguments =
       match shape specialization.Mo_values.Compute_plugin.argument_types with
       | Error message -> B.E.trap_with env message
       | Ok bytes ->
@@ -31,7 +31,6 @@ module Generator = struct
         let byte i = B.compile_unboxed_const
           (Int64.of_int (Char.code bytes.[i])) in
         G.concat [
-          G.i Wasm_exts.Ast.Drop;
           B.alloc_blob env
             (B.compile_unboxed_const (Int64.of_int (String.length bytes)));
           set_output;
@@ -50,9 +49,9 @@ let binding = Mo_values.Compute_plugin.{
   id = "fixture_shape";
   name = "fixtureShape";
   arguments = Shared;
-  type_parameters = 0;
+  type_parameters = [];
   result_type = (fun _ _ -> Ok T.blob);
-  evaluate = (fun _ types _values ->
+  evaluate = Mo_values.Compute_plugin.pure (fun _ types _values ->
     Result.map (fun bytes -> Mo_values.Value.Blob bytes) (shape types));
 }
 
@@ -80,7 +79,7 @@ let count text = V.Nat64 (N.Nat64.of_int (String.length text))
 
 module Decode = struct
   module Make (B : P.Backend) = struct
-    let compile env specialization =
+    let compile env specialization arguments =
       let set_input, get_input = B.new_local env "fixture_text" in
       let value = match specialization.Mo_values.Compute_plugin.type_arguments with
         | [typ] when T.eq typ T.text -> get_input
@@ -95,20 +94,20 @@ module Decode = struct
               B.BoxedWord64.box env T.Nat64]);
           ]
       in
-      G.concat [set_input; B.Variant.inject env "ok" value]
+      G.concat [G.concat arguments; set_input; B.Variant.inject env "ok" value]
   end
 end
 
 let decode_binding = Mo_values.Compute_plugin.{
   id = "fixture_decode";
   name = "fixtureDecode";
-  arguments = Fixed [T.text];
-  type_parameters = 1;
+  arguments = Fixed (fun _ -> Ok [T.text]);
+  type_parameters = [Mo_values.Compute_plugin.Concrete];
   result_type = (fun type_arguments _ -> match type_arguments with
     | [typ] when List.exists (T.eq typ) [T.text; T.blob; T.nat; summary] ->
       Ok (result typ)
     | _ -> Error "fixtureDecode supports Text, Blob, Nat, or {value : Text; count : Nat64}");
-  evaluate = (fun type_arguments _ values -> match type_arguments, values with
+  evaluate = Mo_values.Compute_plugin.pure (fun type_arguments _ values -> match type_arguments, values with
     | [typ], [V.Text text] ->
       let value =
         if T.eq typ T.text then V.Text text
@@ -121,7 +120,7 @@ let decode_binding = Mo_values.Compute_plugin.{
 
 module Record = struct
   module Make (B : P.Backend) = struct
-    let compile env _specialization =
+    let compile env _specialization arguments =
       let set_input, get_input = B.new_local env "fixture_text" in
       let fields = [
         "value", (fun () -> get_input);
@@ -139,7 +138,7 @@ module Record = struct
         "nested", (fun () ->
           B.Opt.inject env (T.Opt T.text) (B.Opt.null_lit env));
       ] in
-      G.concat [set_input;
+      G.concat [G.concat arguments; set_input;
         B.Variant.inject env "ok" (B.Object.lit_raw env fields)]
   end
 end
@@ -147,10 +146,10 @@ end
 let record_binding = Mo_values.Compute_plugin.{
   id = "fixture_record";
   name = "fixtureRecord";
-  arguments = Fixed [T.text];
-  type_parameters = 0;
+  arguments = Fixed (fun _ -> Ok [T.text]);
+  type_parameters = [];
   result_type = (fun _ _ -> Ok (result record));
-  evaluate = (fun _ _ -> function
+  evaluate = Mo_values.Compute_plugin.pure (fun _ _ -> function
     | [V.Text text] -> Ok (V.Variant ("ok", object_value [
         "value", V.Text text;
         "count", count text;
@@ -164,7 +163,8 @@ let record_binding = Mo_values.Compute_plugin.{
 
 module EarlyError = struct
   module Make (B : P.Backend) = struct
-    let compile env _specialization =
+    let compile env _specialization arguments =
+      G.concat [G.concat arguments;
       B.Func.share_code1 B.Func.Always env "fixture_partial_array"
         ("text", Wasm_exts.Types.I64Type) [Wasm_exts.Types.I64Type]
         (fun env get_text ->
@@ -177,23 +177,23 @@ module EarlyError = struct
                   G.i Wasm_exts.Ast.Return;
                 ]) G.nop;
                 get_text;
-              ])))
+              ]))) ]
   end
 end
 
 let early_error_binding = Mo_values.Compute_plugin.{
   id = "fixture_early_error";
   name = "fixtureEarlyError";
-  arguments = Fixed [T.text];
-  type_parameters = 0;
+  arguments = Fixed (fun _ -> Ok [T.text]);
+  type_parameters = [];
   result_type = (fun _ _ -> Ok (result (T.Array T.text)));
-  evaluate = (fun _ _ _ -> Ok (V.Variant ("err", V.Text "early error")));
+  evaluate = Mo_values.Compute_plugin.pure (fun _ _ _ -> Ok (V.Variant ("err", V.Text "early error")));
 }
 
 let () = P.register P.{
   abi = 1;
   name = "fixture_typed";
-  runtime = "runtime.wasm";
+  runtime = Some "runtime.wasm";
   (* Deliberately shares the echo runtime's symbol with a different type. *)
   imports = ["transform", Wasm_exts.Types.[I64Type; I64Type], []];
   bindings = [

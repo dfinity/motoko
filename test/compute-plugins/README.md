@@ -8,6 +8,13 @@ records/variants/arrays/options. Both use the same specialization API. Their
 runtimes intentionally export the same function name with different signatures,
 so composition also checks symbol isolation.
 
+The `callbacks` fixture is a codegen-only package. It tests dependent argument
+schemas, opaque generic values, compiler-owned scalar ordering, and ordinary
+local Motoko callback dispatch. Callback coverage includes sequence arities,
+effect order, ignored results, traps, reentry, mutable/closure payload sharing,
+and opaque async values without suspension inside the plugin. A scalar callback
+loop verifies that plugin argument passing allocates no managed tuples.
+
 From the Motoko repository root, in its Nix development shell:
 
 ```sh
@@ -24,10 +31,12 @@ interfaces. Pass `--skip-motoko-build` when that compiler is already built.
 Fixtures are emitted to `_build/compute-plugin-tests`; no Rust build or external
 plugin repository is required. Source/IR interpreters and Wasm execution must
 agree, diagnostics use normal expectations, and the IC test retains plugin
-results across forced GC, including recoverable errors during construction.
+results across forced GC, including recoverable errors during construction and
+values retained across nested callbacks.
 Alias and callback tests cover intrinsic identity and ordinary Motoko wrappers.
 `packaging.py` checks loader compatibility and normal diagnostics for invalid
-packages. Linker-specific validation lives in `src/linking/test_linkModule.ml`.
+packages, unresolved result types, and runtime-less packages with runtime
+imports. Linker-specific validation lives in `src/linking/test_linkModule.ml`.
 
 Production CandidX/SHA-256/JSON implementations, conformance tests, and benchmarks
 live in [motoko_plugins](https://github.com/Neutrinomic/motoko_plugins).

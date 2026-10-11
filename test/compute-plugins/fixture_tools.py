@@ -41,14 +41,15 @@ def build_runtime(source, destination):
 
 
 def main():
-    for name in ["echo", "typed"]:
+    for name in ["echo", "typed", "callbacks"]:
         directory = PACKAGES / name
         directory.mkdir(parents=True, exist_ok=True)
         source = f"fixture_{name}.ml"
         shutil.copyfile(FIXTURES / name / source, directory / source)
         compile_plugin(directory, source)
-        build_runtime(FIXTURES / name / "runtime.wat",
-                      directory / "runtime.wasm")
+        runtime = FIXTURES / name / "runtime.wat"
+        if runtime.exists():
+            build_runtime(runtime, directory / "runtime.wasm")
     print("compute plugin test fixtures built")
 
 

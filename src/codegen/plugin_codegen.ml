@@ -1,7 +1,10 @@
 (* Versioned, native compiler extension interface. Generators run at compile
    time; their output is linked into the canister as ordinary Wasm code.
    The heap operations below share the compiler's forwarding and allocation
-   barriers. A generated operation must not introduce a GC safepoint. *)
+   barriers. A generated operation must not introduce a GC safepoint.
+   Synchronous Motoko callbacks use the ordinary closure calling convention;
+   collection runs only after synchronous message frames have returned. Keep
+   only vanilla managed references across callbacks, never borrowed addresses. *)
 open Mo_types
 open Wasm_exts.Types
 module G = InstrList
@@ -50,12 +53,26 @@ module type Backend = sig
       (string * value_type) * (string * value_type) * (string * value_type) ->
       value_type list -> (env -> G.t -> G.t -> G.t -> G.t) -> G.t
   end
+  module Call : sig
+    (* Complete instantiated Local/Returns function type, including sequence
+       arities. Evaluate closure then arguments once, and return a vanilla
+       value of Type.seq results. No suspension or collection is introduced. *)
+    val local : env -> Type.typ -> G.t -> G.t list -> G.t
+  end
+  module Compare : sig
+    (* Consume two vanilla values and return unboxed -1, 0, or 1. Supported:
+       Nat/Int and fixed integers, Bool, Char, Text, Blob, Principal. *)
+    val scalar : env -> Type.prim -> G.t
+  end
   module Blob : sig
     val len : env -> G.t
     val payload_ptr_unskewed : env -> G.t
     val of_ptr_size : env -> G.t
   end
   module Arr : sig
+    (* Consume a managed array and unboxed i64 index; bounds-checked element
+       load using the compiler's normal forwarding barrier. *)
+    val get : env -> G.t
     val len : env -> G.t
     val unsafe_idx : env -> G.t
     val for_each : env -> G.t -> G.t -> (G.t -> G.t) -> G.t
@@ -114,6 +131,7 @@ module type Backend = sig
     val if_tagged_scalar : env -> value_type list -> G.t -> G.t -> G.t
   end
   module BigNum : sig
+    val to_word64 : env -> G.t
     val from_word64 : env -> G.t
     val from_signed_word64 : env -> G.t
     val compile_add : env -> G.t
@@ -149,7 +167,10 @@ end
 
 module type Generator = sig
   module Make (B : Backend) : sig
-    val compile : B.env -> Mo_values.Compute_plugin.specialization -> G.t
+    (* Each getter reads one already evaluated vanilla argument. The compiler
+       evaluates arguments left-to-right exactly once, using ordinary function
+       sequence arities, without allocating an argument tuple. *)
+    val compile : B.env -> Mo_values.Compute_plugin.specialization -> G.t list -> G.t
   end
 end
 
@@ -157,12 +178,12 @@ type runtime_function = string * value_type list * value_type list
 type plugin = {
   abi : int;
   name : string;
-  runtime : string;
+  runtime : string option;
   imports : runtime_function list;
   bindings : (Mo_values.Compute_plugin.binding * (module Generator)) list;
 }
 
-type installed = { plugin : plugin; runtime_path : string }
+type installed = { plugin : plugin; runtime_path : string option }
 let directory = ref None
 let plugins : installed list ref = ref []
 
@@ -178,10 +199,12 @@ let register plugin =
     | Some dir -> dir
     | None -> invalid_arg "compute plugins must be loaded with --plugin"
   in
+  if plugin.runtime = None && plugin.imports <> [] then
+    invalid_arg ("compute plugin " ^ plugin.name ^ " has imports but no runtime");
   List.iter (fun (binding, _) -> Mo_values.Compute_plugin.register binding)
     plugin.bindings;
   plugins := !plugins @ [{plugin;
-    runtime_path = Filename.concat dir plugin.runtime}]
+    runtime_path = Option.map (Filename.concat dir) plugin.runtime}]
 
 let load loader path =
   let file = if Sys.is_directory path then

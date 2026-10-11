@@ -9647,9 +9647,72 @@ module ComputePlugins = struct
     let sort_by_hash = Serialization.sort_by_hash
     module E = E
     module Func = Func
+    module Call = struct
+      let local env typ closure arguments =
+        match Type.promote typ with
+        | Type.Func (Type.Local, Type.Returns, [], ins, outs)
+          when List.length ins = List.length arguments ->
+          let set_closure, get_closure = new_local env "plugin_callback" in
+          let arguments = List.mapi (fun i argument ->
+            let set, get = new_local env ("plugin_argument" ^ string_of_int i) in
+            argument ^^ set, get) arguments in
+          closure ^^ set_closure ^^
+          G.concat_map fst arguments ^^
+          get_closure ^^ Closure.prepare_closure_call env ^^
+          G.concat_map snd arguments ^^
+          get_closure ^^
+          Closure.call_closure env (List.length ins) (List.length outs) ^^
+          (match outs with [_] -> G.nop | _ -> Tuple.from_stack env (List.length outs))
+        | _ -> invalid_arg
+            "compute plugin callback requires an instantiated synchronous local function"
+    end
+    module Compare = struct
+      let scalar env prim =
+        match prim with
+        | Type.Text ->
+          let set_b, get_b = new_local env "plugin_compare_b" in
+          let set_a, get_a = new_local env "plugin_compare_a" in
+          set_b ^^ set_a ^^
+          get_a ^^ Tagged.load_forwarding_pointer env ^^
+          get_b ^^ Tagged.load_forwarding_pointer env ^^
+          E.call_rts env "text_compare"
+        | Type.Blob | Type.Principal -> Blob.compare env None
+        | Type.Nat | Type.Int ->
+          let set_b, get_b = new_local env "plugin_compare_b" in
+          let set_a, get_a = new_local env "plugin_compare_a" in
+          set_b ^^ set_a ^^
+          get_a ^^ get_b ^^ BigNum.compile_relop env Lt ^^
+          E.if1 I64Type (compile_unboxed_const (-1L))
+            (get_a ^^ get_b ^^ BigNum.compile_eq env ^^
+             E.if1 I64Type compile_unboxed_zero compile_unboxed_one)
+        | Type.Nat8 | Type.Nat16 | Type.Nat32 | Type.Nat64
+        | Type.Int8 | Type.Int16 | Type.Int32 | Type.Int64
+        | Type.Bool | Type.Char ->
+          let unbox, signed = match prim with
+            | Type.Nat64 -> BoxedWord64.unbox env prim, false
+            | Type.Int64 -> BoxedWord64.unbox env prim, true
+            | Type.Int8 | Type.Int16 | Type.Int32 ->
+              TaggedSmallWord.lsb_adjust prim, true
+            | Type.Nat8 | Type.Nat16 | Type.Nat32 ->
+              TaggedSmallWord.lsb_adjust prim, false
+            | Type.Char -> TaggedSmallWord.lsb_adjust_codepoint env, false
+            | Type.Bool -> Bool.from_int64, false
+            | _ -> G.nop, false
+          in
+          let set_b, get_b = new_local env "plugin_compare_b" in
+          let set_a, get_a = new_local env "plugin_compare_a" in
+          unbox ^^ set_b ^^ unbox ^^ set_a ^^
+          get_a ^^ get_b ^^ compile_comparison (if signed then I64Op.LtS else I64Op.LtU) ^^
+          E.if1 I64Type (compile_unboxed_const (-1L))
+            (get_a ^^ get_b ^^ compile_comparison I64Op.Eq ^^
+             E.if1 I64Type compile_unboxed_zero compile_unboxed_one)
+        | _ -> invalid_arg "unsupported compute plugin scalar ordering"
+    end
     module Blob = Blob
     module Arr = struct
       include Arr
+
+      let get env = Arr.idx env ^^ load_ptr
 
       let tabulate env length element =
         let set_len, get_len = new_local env "plugin_array_length" in
@@ -9748,13 +9811,13 @@ module ComputePlugins = struct
     module Strm = Serialization.Strm
   end
 
-  let compile env id ts =
+  let compile env id ts arguments =
     match Plugin_codegen.generator id with
     | None -> fatal "compute plugin generator is unavailable: %s" id
     | Some generator ->
       let module Generator = (val generator : Plugin_codegen.Generator) in
       let module Specialized = Generator.Make (Backend) in
-      Specialized.compile env ts
+      Specialized.compile env ts arguments
 
   let link (emodule : Wasm_exts.CustomModule.extended_module) rts =
     let used = List.filter (fun {Plugin_codegen.plugin; _} ->
@@ -9765,6 +9828,10 @@ module ComputePlugins = struct
     ) (Plugin_codegen.installed ()) in
     let linked = Linking.LinkModule.link ~finalize:false emodule "rts" rts in
     let result = List.fold_left (fun base {Plugin_codegen.plugin; runtime_path} ->
+      let runtime_path = match runtime_path with
+        | Some path -> path
+        | None -> fatal "compute plugin %s has imports but no runtime" plugin.name
+      in
       let bytes = try In_channel.with_open_bin runtime_path In_channel.input_all
         with Sys_error message -> fatal "compute plugin %s: %s" plugin.name message
       in
@@ -12114,8 +12181,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, Tuple.compile_unit env
 
   | ComputePrim (id, ts), [e] ->
+    let arguments = List.mapi (fun i _ ->
+      new_local env ("compute_argument" ^ string_of_int i))
+      ts.Mo_values.Compute_plugin.argument_types in
     SR.Vanilla,
-    compile_exp_vanilla env ae e ^^ ComputePlugins.compile env id ts
+    compile_exp_as env ae (StackRep.of_arity (List.length arguments)) e ^^
+    G.concat_map fst (List.rev arguments) ^^
+    ComputePlugins.compile env id ts (List.map snd arguments)
 
   | SerializePrim ts, [e] ->
     SR.Vanilla,

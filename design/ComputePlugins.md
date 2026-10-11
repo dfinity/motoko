@@ -2,7 +2,7 @@
 
 This experimental native `moc` extension adds functions to `mo:⛔` from separate
 plugin packages. Each package contains a compiler component (`plugin.cmxs`)
-and a position-independent Wasm64 runtime (`runtime.wasm`). The compiler
+and, when needed, a position-independent Wasm64 runtime (`runtime.wasm`). The compiler
 component supplies the function's type policy, specialization generator, and
 reference implementation for the interpreters. The runtime supplies compute
 kernels and temporary helpers.
@@ -72,7 +72,7 @@ bin/moc --plugin /path/to/candidx \
         app.mo -o app.wasm
 ```
 
-Each directory contains `plugin.cmxs` and `runtime.wasm`. The CLI dynamically
+Each directory contains `plugin.cmxs` and its optional `runtime.wasm`. The CLI dynamically
 loads `plugin.cmxs` using OCaml `Dynlink.loadfile_private` before typechecking.
 The extension registers its Prim functions, type policy, interpreter reference,
 and code generator. During canister compilation, generated code uses the
@@ -161,6 +161,25 @@ algorithm-specific allocation limit. Sharing memory means an incorrect offset
 or length can overwrite another object without crossing Wasm memory bounds.
 Compatibility checks do not prove memory safety or correct output.
 
+Managed algorithms may call ordinary synchronous Motoko closures through
+`Backend.Call.local`, using the full instantiated `Local`/`Returns` function
+type and the compiler's existing closure calling convention. The compiler
+preserves argument evaluation order and distinguishes one tuple-valued argument
+or result from multiple sequence arguments or results. Current collection
+points run after synchronous message frames return; a local callback cannot
+run collection inside its caller. Keep only vanilla managed references across
+callbacks, never borrowed addresses. Callbacks may allocate, reenter a plugin,
+or schedule asynchronous work, but this interface cannot suspend the caller.
+The interpreter protocol is continuation-based and invokes callbacks with the
+ordinary actor context. `Compute_plugin.pure` lifts a callback-free reference
+computation into this protocol.
+
+Plugins that emit only managed Wasm code register `runtime = None` and no
+runtime imports. They need no dummy runtime module. A plugin with imports and
+no declared runtime is rejected. The pure-map implementation demonstrates
+managed structural sharing, callbacks, scalar comparison helpers, and a
+codegen-only package.
+
 The no-safepoint invariant is part of this compiler ABI. A future collector
 that moves objects during allocation would require changing the adapter or
 introducing rooted handles. Plugin-specific allocation measurements, limits,
@@ -172,25 +191,29 @@ and validation reports are kept with the implementations in
 The versioned compiler interface is
 [`Plugin_codegen`](../src/codegen/plugin_codegen.mli). A package registers:
 
-1. A unique package name, ABI version, runtime filename, and runtime import
+1. A unique package name, ABI version, optional runtime filename, and runtime import
    signatures.
 2. Public Prim bindings, each with a unique internal identity, an argument
-   policy, explicit type parameter count, result-type function, and an
+   policy, explicit type parameter modes, result-type function, and an
    interpreter reference implementation.
-3. A generator functor over `Plugin_codegen.Backend`. It consumes one packed
-   Motoko argument value on the Wasm stack and leaves a vanilla Motoko result
-   there. Its specialization contains explicit type arguments, input types,
-   and the checked result type.
+3. A generator functor over `Plugin_codegen.Backend`. It receives one getter
+   for each already evaluated vanilla argument and leaves a vanilla result on
+   the Wasm stack. Ordinary sequence calling conventions avoid allocating an
+   argument tuple. Specialization contains explicit type arguments, input
+   types, and the checked result type.
 
 The package's required ABI must be fixed at build time, such as `abi = 1` for
 the current SDK. Do not copy `Plugin_codegen.abi_version` from the running
 host: a plugin built with opaque or interface-only dependencies can otherwise
 adopt a newer host's ABI without having been rebuilt for its semantics.
 
-The SDK has two argument policies: `Fixed` declares an input type list, and
-`Shared` accepts variadic shared inputs. Both use the same specialization API.
-Intrinsics can require explicit concrete type arguments and return concrete
-records, variants, arrays, options, text, and scalars.
+The SDK has two argument policies: `Fixed` computes an input type list from
+explicit type arguments, and `Shared` accepts variadic shared inputs. Parameter
+modes are `Concrete` (known layout required) or `Opaque` (an arbitrary type may
+be retained and passed to typed callbacks). Abstract parameters remain tied to
+all their occurrences in inputs and results; no erasure to `Any` is involved.
+Both policies use the same specialization API. Intrinsics can return records,
+variants, arrays, options, text, scalars, and generic managed values.
 `from_json<User>(text)` specializes both validation and construction for `User`;
 its result is `{ #ok : User; #err : JsonError }`. The plugin supplies that
 structural error type. Expected input failures are values, not interpreter

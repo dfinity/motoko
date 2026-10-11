@@ -650,9 +650,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           argument_types;
           result_type = exp.note.note_typ;
         } in
-        match Compute_plugin.evaluate id specialization vs with
+        Compute_plugin.evaluate (context env) id specialization vs (function
         | Ok value -> k value
-        | Error message -> trap exp.at "%s" message)))
+        | Error message -> trap exp.at "%s" message))))
   | CallE (par, exp1, typs, (_, exp2)) ->
     let exp2 = !exp2 in
     interpret_par env par

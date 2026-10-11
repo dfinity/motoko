@@ -69,7 +69,7 @@ def check_compatibility(work, source):
         "module P = Codegen.Plugin_codegen\n"
         "let () = P.register P.{\n"
         "  abi = P.abi_version + 1; name = \"unsupported_abi\";\n"
-        "  runtime = \"runtime.wasm\"; imports = []; bindings = [];\n"
+        "  runtime = Some \"runtime.wasm\"; imports = []; bindings = [];\n"
         "}\n"
     )
     compile_plugin(abi, "abi_mismatch.ml")
@@ -119,6 +119,62 @@ def check_registration(work, source):
         assert "invalid compute plugin binding identifier" in diagnostic, diagnostic
 
 
+def check_codegen_only(work, source):
+    invalid = work / "imports-without-runtime"
+    invalid.mkdir()
+    (invalid / "no_runtime.ml").write_text(
+        'module P = Codegen.Plugin_codegen\n'
+        'let () = P.register P.{\n'
+        '  abi = 1; name = "missing_runtime"; runtime = None;\n'
+        '  imports = ["missing", [], []]; bindings = [];\n'
+        '}\n'
+    )
+    compile_plugin(invalid, "no_runtime.ml")
+    diagnostic = plugin_load_error(source, [invalid])
+    assert "has imports but no runtime" in diagnostic, diagnostic
+
+    package = work / "codegen-only"
+    package.mkdir()
+    shutil.copyfile(PACKAGES / "callbacks/plugin.cmxs", package / "plugin.cmxs")
+    used = work / "callback.mo"
+    used.write_text(
+        'import Prim "mo:⛔"; '
+        'assert Prim.fixtureApply<Nat, Nat>('
+        'func (n : Nat) : Nat { n + 1 }, 40) == 41;\n'
+    )
+    compile_program(used, work / "codegen-only.wasm", [package])
+    for mode in [["--check"], ["-r"], ["-r", "-iR"]]:
+        result = subprocess.run([str(MOC), "--plugin", str(package), *mode,
+                                 str(used)], cwd=ROOT, capture_output=True,
+                                text=True)
+        assert result.returncode == 0, result.stderr
+    assert not (package / "runtime.wasm").exists()
+
+
+def check_unresolved_result(work):
+    package = work / "unresolved-result"
+    package.mkdir()
+    original = (FIXTURES / "callbacks/fixture_callbacks.ml").read_text()
+    declaration = (
+        "result_type = (fun types _ -> Result.map snd (schema operation types));"
+    )
+    assert declaration in original
+    invalid = original.replace(declaration,
+                               "result_type = (fun _ _ -> Ok (T.Opt T.Pre));")
+    (package / "unresolved_result.ml").write_text(invalid)
+    compile_plugin(package, "unresolved_result.ml")
+    source = work / "unresolved-result.mo"
+    source.write_text('import Prim "mo:⛔"; '
+                      'ignore Prim.fixtureIdentity<Nat>(17);\n')
+    result = subprocess.run([str(MOC), "--plugin", str(package), "--check",
+                             str(source)], cwd=ROOT, capture_output=True,
+                            text=True)
+    assert result.returncode == 1, (result.returncode, result.stderr)
+    assert "[M0279]" in result.stderr, result.stderr
+    assert "requires a concrete result type" in result.stderr, result.stderr
+    assert "OOPS" not in result.stderr, result.stderr
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix="motoko-compute-packages-") as work:
         work = Path(work)
@@ -126,12 +182,14 @@ def main():
         empty.write_text("assert true;\n")
         check_compatibility(work, empty)
         check_registration(work, empty)
+        check_codegen_only(work, empty)
+        check_unresolved_result(work)
         used = work / "used.mo"
         used.write_text('import Prim "mo:⛔"; '
                         'assert Prim.fixtureEcho("abc") == "abc";\n')
         plain = compile_program(empty, work / "plain.wasm")
         loaded = compile_program(empty, work / "loaded.wasm", [
-            PACKAGES / "echo", PACKAGES / "typed",
+            PACKAGES / "echo", PACKAGES / "typed", PACKAGES / "callbacks",
         ])
         assert plain == loaded, "unused plugins changed the output module"
 

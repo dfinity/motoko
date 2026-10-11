@@ -438,7 +438,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           | [_] -> [v]
           | _ -> V.as_tup v
         in
-        (match Compute_plugin.evaluate id s vs with
+        Compute_plugin.evaluate (context env) id s vs (function
          | Ok value -> k value
          | Error message -> trap exp.at "%s" message)
       | CastPrim _, [v1] ->

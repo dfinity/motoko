@@ -1,6 +1,18 @@
 open Mo_types
 
-type arguments = Shared | Fixed of Type.typ list
+type type_parameter = Concrete | Opaque
+
+type arguments =
+  | Shared
+  | Fixed of (Type.typ list -> (Type.typ list, string) result)
+
+(* Calls are ordinary synchronous local Motoko calls. The continuation retains
+   the interpreter's scheduling and actor context; plugins never extract a
+   closure and assume that invoking it completes synchronously. *)
+type evaluator = {
+  call : Type.typ -> Value.value -> Value.value list ->
+    ((Value.value, string) result -> unit) -> unit;
+}
 
 type specialization = {
   type_arguments : Type.typ list;
@@ -12,11 +24,14 @@ type binding = {
   id : string;
   name : string;
   arguments : arguments;
-  type_parameters : int;
+  type_parameters : type_parameter list;
   result_type : Type.typ list -> Type.typ list -> (Type.typ, string) result;
-  evaluate : Type.typ list -> Type.typ list -> Value.value list ->
-    (Value.value, string) result;
+  evaluate : evaluator -> Type.typ list -> Type.typ list ->
+    Value.value list -> ((Value.value, string) result -> unit) -> unit;
 }
+
+let pure f _context type_arguments argument_types values k =
+  k (f type_arguments argument_types values)
 
 let bindings : binding list ref = ref []
 
@@ -30,8 +45,6 @@ let identifier s =
 let register binding =
   if not (identifier binding.name) || not (identifier binding.id) then
     invalid_arg "invalid compute plugin binding identifier";
-  if binding.type_parameters < 0 then
-    invalid_arg "negative compute plugin type parameter count";
   if List.exists (fun b -> b.id = binding.id || b.name = binding.name)
       !bindings then
     invalid_arg ("duplicate compute plugin binding: " ^ binding.name);
@@ -51,22 +64,49 @@ let declarations () =
   String.concat "\n" (List.map (fun b ->
     Printf.sprintf "let %s = prim %S;" b.name ("compute:" ^ b.id)) !bindings)
 
-let check_arguments binding types = match binding.arguments, types with
-  | Shared, ts when List.for_all Type.shared ts -> Ok ()
-  | Shared, _ -> Error (binding.name ^ " requires shared argument types")
-  | Fixed expected, ts when List.length ts = List.length expected &&
-      List.for_all2 (fun t expected -> Type.sub t expected) ts expected -> Ok ()
-  | Fixed expected, _ -> Error (Printf.sprintf "%s expects arguments of type %s"
-      binding.name (Type.string_of_typ (Type.seq expected)))
+let check_arguments binding type_arguments types =
+  match binding.arguments with
+  | Shared when List.for_all Type.shared types -> Ok ()
+  | Shared -> Error (binding.name ^ " requires shared argument types")
+  | Fixed schema ->
+    (match schema type_arguments with
+     | Error message -> Error message
+     | Ok expected when List.length types = List.length expected &&
+         List.for_all2 (fun t expected -> Type.sub t expected) types expected -> Ok ()
+     | Ok expected -> Error (Printf.sprintf "%s expects arguments of type %s"
+         binding.name (Type.string_of_typ (Type.seq expected))))
 
 (* Unlike Type.concrete this also handles incomplete plugin-provided types
    without assertions. Plugins must specialize to a known runtime layout. *)
 module Types = Set.Make (Type.Ord)
 
-let concrete typ =
+let resolved typ =
+  let seen = ref Types.empty in
+  let rec go typ = Types.mem typ !seen || begin
+    seen := Types.add typ !seen;
+    match typ with
+    | Type.Pre -> false
+    | Type.Var _ | Type.Prim _ | Type.Any | Type.Non -> true
+    | Type.Con (con, ts) ->
+      List.for_all go ts &&
+      (match Cons.kind con with
+       | Type.Abs (bs, _) -> List.length bs = List.length ts
+       | Type.Def (bs, body) ->
+         List.length bs = List.length ts && go (Type.open_ ts body))
+    | Type.Array t | Type.Opt t | Type.Mut t | Type.Weak t
+    | Type.Named (_, t) | Type.Async (_, _, t) -> go t
+    | Type.Tup ts -> List.for_all go ts
+    | Type.Obj (_, fs, _) | Type.Variant fs ->
+      List.for_all (fun f -> go f.Type.typ) fs
+    | Type.Func (_, _, bs, ins, outs) ->
+      List.for_all (fun b -> go b.Type.bound) bs &&
+      List.for_all go (ins @ outs)
+  end in go typ
+
+let concrete opaque typ =
   let seen = ref Types.empty in
   let rec go typ =
-    Types.mem typ !seen || begin
+    List.exists (Type.eq typ) opaque || Types.mem typ !seen || begin
       seen := Types.add typ !seen;
       match typ with
       | Type.Var _ | Type.Pre -> false
@@ -86,25 +126,31 @@ let concrete typ =
         let ts = Type.open_binds bs in
         List.for_all (fun t -> go (Type.open_ ts t)) (ins @ outs)
     end
-  in go typ
+  in resolved typ && go typ
 
 let specialize binding type_arguments argument_types =
-  if List.length type_arguments <> binding.type_parameters then
+  let arity = List.length binding.type_parameters in
+  if List.length type_arguments <> arity then
     Error (Printf.sprintf "%s expects %d explicit type argument%s"
-      binding.name binding.type_parameters
-      (if binding.type_parameters = 1 then "" else "s"))
-  else if not (List.for_all concrete type_arguments) then
-    Error (binding.name ^ " requires concrete type arguments")
-  else if not (List.for_all concrete argument_types) then
-    Error (binding.name ^ " requires concrete argument types")
-  else match check_arguments binding argument_types with
-  | Error message -> Error message
-  | Ok () ->
-    match binding.result_type type_arguments argument_types with
+      binding.name arity (if arity = 1 then "" else "s"))
+  else
+    let opaque = List.filter_map (fun (mode, typ) ->
+      match mode with Opaque -> Some typ | Concrete -> None)
+      (List.combine binding.type_parameters type_arguments) in
+    if not (List.for_all2 (fun mode typ ->
+        if mode = Opaque then resolved typ else concrete [] typ)
+        binding.type_parameters type_arguments) then
+      Error (binding.name ^ " requires concrete type arguments")
+    else if not (List.for_all (concrete opaque) argument_types) then
+      Error (binding.name ^ " requires concrete argument types")
+    else match check_arguments binding type_arguments argument_types with
     | Error message -> Error message
-    | Ok result_type when concrete result_type ->
-      Ok {type_arguments; argument_types; result_type}
-    | Ok _ -> Error (binding.name ^ " requires a concrete result type")
+    | Ok () ->
+      match binding.result_type type_arguments argument_types with
+      | Error message -> Error message
+      | Ok result_type when concrete opaque result_type ->
+        Ok {type_arguments; argument_types; result_type}
+      | Ok _ -> Error (binding.name ^ " requires a concrete result type")
 
 let map_specialization f s = {
   type_arguments = List.map f s.type_arguments;
@@ -112,14 +158,30 @@ let map_specialization f s = {
   result_type = f s.result_type;
 }
 
-let evaluate id s values = match find id with
-  | None -> Error ("compute plugin is not loaded: " ^ id)
+let evaluator context = {
+  call = (fun typ value arguments k ->
+    match Type.promote typ, value with
+    | Type.Func (Type.Local, Type.Returns, [], ins, outs),
+      Value.Func (cc, f)
+      when List.length ins = List.length arguments &&
+        cc = Call_conv.local_cc (List.length ins) (List.length outs) ->
+      let argument = match arguments with
+        | [value] -> value
+        | values -> Value.Tup values
+      in
+      f context argument (fun value -> k (Ok value))
+    | _ -> k (Error "compute plugin callback requires a matching synchronous local function"));
+}
+
+let evaluate context id s values k = match find id with
+  | None -> k (Error ("compute plugin is not loaded: " ^ id))
   | Some binding ->
     match specialize binding s.type_arguments s.argument_types with
-    | Error e -> Error e
+    | Error e -> k (Error e)
     | Ok checked ->
       if not (Type.eq checked.result_type s.result_type) ||
         List.length s.argument_types <> List.length values then
-        Error (binding.name ^ " received inconsistent argument metadata")
+        k (Error (binding.name ^ " received inconsistent argument metadata"))
       else
-        binding.evaluate s.type_arguments s.argument_types values
+        binding.evaluate (evaluator context)
+          s.type_arguments s.argument_types values k

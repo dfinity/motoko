@@ -3,10 +3,10 @@ module G = Codegen.InstrList
 
 module Generator = struct
   module Make (B : P.Backend) = struct
-    let compile env _specialization =
+    let compile env _specialization arguments =
       let set_input, get_input = B.new_local env "fixture_input" in
       let set_output, get_output = B.new_local env "fixture_output" in
-      G.concat [
+      G.concat [G.concat arguments;
         set_input;
         B.alloc_blob env (G.concat [get_input; B.Blob.len env]);
         set_output;
@@ -22,10 +22,10 @@ end
 let binding = Mo_values.Compute_plugin.{
   id = "fixture_echo";
   name = "fixtureEcho";
-  arguments = Fixed [Mo_types.Type.blob];
-  type_parameters = 0;
+  arguments = Fixed (fun _ -> Ok [Mo_types.Type.blob]);
+  type_parameters = [];
   result_type = (fun _ _ -> Ok Mo_types.Type.blob);
-  evaluate = (fun _type_arguments _types -> function
+  evaluate = Mo_values.Compute_plugin.pure (fun _type_arguments _types -> function
     | [Mo_values.Value.Blob bytes] -> Ok (Mo_values.Value.Blob bytes)
     | _ -> Error "fixtureEcho expects one Blob argument");
 }
@@ -33,7 +33,7 @@ let binding = Mo_values.Compute_plugin.{
 let () = P.register P.{
   abi = 1;
   name = "fixture_echo";
-  runtime = "runtime.wasm";
+  runtime = Some "runtime.wasm";
   imports = ["transform", Wasm_exts.Types.[I64Type; I64Type; I64Type], []];
   bindings = [binding, (module Generator)];
 }

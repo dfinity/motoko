@@ -5,7 +5,19 @@ open Mo_types
 
 (* All bindings are compiler-specialized intrinsics, including through aliases.
    [Shared] accepts variadic shared values; [Fixed] declares input types. *)
-type arguments = Shared | Fixed of Type.typ list
+type type_parameter = Concrete | Opaque
+
+type arguments =
+  | Shared
+  | Fixed of (Type.typ list -> (Type.typ list, string) result)
+
+(* Calls are ordinary synchronous local Motoko calls. The continuation retains
+   the interpreter's scheduling and actor context; plugins never extract a
+   closure and assume that invoking it completes synchronously. *)
+type evaluator = {
+  call : Type.typ -> Value.value -> Value.value list ->
+    ((Value.value, string) result -> unit) -> unit;
+}
 
 type specialization = {
   type_arguments : Type.typ list;
@@ -17,11 +29,16 @@ type binding = {
   id : string;
   name : string;
   arguments : arguments;
-  type_parameters : int;
+  type_parameters : type_parameter list;
   result_type : Type.typ list -> Type.typ list -> (Type.typ, string) result;
-  evaluate : Type.typ list -> Type.typ list -> Value.value list ->
-    (Value.value, string) result;
+  evaluate : evaluator -> Type.typ list -> Type.typ list ->
+    Value.value list -> ((Value.value, string) result -> unit) -> unit;
 }
+
+(* Lift a callback-free reference computation into the evaluator protocol. *)
+val pure : (Type.typ list -> Type.typ list -> Value.value list ->
+  (Value.value, string) result) -> evaluator -> Type.typ list ->
+  Type.typ list -> Value.value list -> ((Value.value, string) result -> unit) -> unit
 
 val register : binding -> unit
 val find : string -> binding option
@@ -32,5 +49,5 @@ val specialize : binding -> Type.typ list -> Type.typ list ->
   (specialization, string) result
 val map_specialization : (Type.typ -> Type.typ) -> specialization ->
   specialization
-val evaluate : string -> specialization -> Value.value list ->
-  (Value.value, string) result
+val evaluate : Value.context -> string -> specialization ->
+  Value.value list -> ((Value.value, string) result -> unit) -> unit

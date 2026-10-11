@@ -3600,14 +3600,18 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       | Some (true, _) -> error env inst.at "M0279"
           "compute intrinsics do not accept a system capability"
     in
-    if List.length explicit <> binding.Compute_plugin.type_parameters then
+    if List.length explicit <> List.length binding.Compute_plugin.type_parameters then
       error env (if inst.it = None then at else inst.at) "M0279"
         "%s expects %d explicit type argument%s"
-        binding.Compute_plugin.name binding.Compute_plugin.type_parameters
-        (if binding.Compute_plugin.type_parameters = 1 then "" else "s");
+        binding.Compute_plugin.name (List.length binding.Compute_plugin.type_parameters)
+        (if List.length binding.Compute_plugin.type_parameters = 1 then "" else "s");
     let type_arguments = List.map (check_typ env) explicit in
     let t_arg = match binding.Compute_plugin.arguments with
-      | Compute_plugin.Fixed expected ->
+      | Compute_plugin.Fixed schema ->
+        let expected = match schema type_arguments with
+          | Ok expected -> expected
+          | Error message -> error env at "M0279" "%s" message
+        in
         let t_arg = T.seq expected in
         if env.pre then t_arg else begin
           check_exp env t_arg exp2;
