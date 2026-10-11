@@ -1,0 +1,27 @@
+Read-only research, 2026-10-11. No component benchmark performed.
+Live GitHub refs verified via git ls-remote; all match local remote refs.
+origin/bartosz/components-mvp 168f526574e835621f9dd7899ab692282e0495b8
+origin/bartosz/mo-wit-wac efb543a1872121b06e552b6d2e0902ddd3055c2a
+origin/ryan/component-call 80ebfef4a8a9ab8992fa24a170e302ba5d5cdf03
+
+Current checkout has no wasm_components/component import implementation. The older experimental branch uses classical persistence + WASI/Wasmtime. Components Cleanups PR5527 merged into the experiment, not master.
+
+Pinned experimental evidence:
+https://github.com/dfinity/motoko/blob/168f526574e835621f9dd7899ab692282e0495b8/test/wasm-components-test-project/README.md#L5
+https://github.com/dfinity/motoko/blob/168f526574e835621f9dd7899ab692282e0495b8/test/wasm-components-test-project/README.md#L42
+https://github.com/dfinity/motoko/blob/168f526574e835621f9dd7899ab692282e0495b8/src/codegen/compile_classical.ml#L10745
+https://github.com/dfinity/motoko/blob/168f526574e835621f9dd7899ab692282e0495b8/src/codegen/compile_classical.ml#L10688
+https://github.com/dfinity/motoko/blob/168f526574e835621f9dd7899ab692282e0495b8/rts/motoko-rts/src/component.rs#L12
+
+Official sources:
+https://github.com/WebAssembly/component-model/blob/main/design/mvp/Linking.md
+https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md#flattening
+https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md#storing
+https://component-model.bytecodealliance.org/design/wit.html
+
+Interpretation: separate components have isolated linear memories; core modules within one component can share memory/calls using a compatible ABI. Small fixed records/scalars flatten into core Wasm values, so no mandatory Candid serialization. Lists generally allocate/copy into destination memory; adapter fusion avoids intermediate representations, not automatically cross-memory copies. WIT handles borrow resources, not arbitrary Motoko heap pointers. Prototype currently copies Blob -> Motoko Nat8 array -> CABI buffer before the boundary; returns are copied from CABI storage into a new Blob. These are implementation TODOs, not unavoidable Component Model rules.
+
+Recommendation: keep trusted direct-heap typed plugins for these pure kernels, especially generic CandidX where compile-time specialization is the distinctive feature. Future component packaging can coexist with this core-module fast path. SHA is a good future component candidate if Blob lowering/return allocation become efficient; benchmark identical kernels before choosing. Pure calls do not imply per-call instance creation. GC safety still requires explicit lifetime/ownership rules if bytes are borrowed rather than copied.
+
+Cost model for identical kernels: component = kernel + fixed adapter cost + input/output materialization + allocation/cleanup. Plugin = kernel + compiler adapter/result allocation. Small inputs depend heavily on fixed cost; large SHA amortizes fixed call overhead; per-byte transfer cost remains; fast encoding can be sensitive to another traversal/copy. No measured component slowdown percentage or derived native-library/component speedup.
+

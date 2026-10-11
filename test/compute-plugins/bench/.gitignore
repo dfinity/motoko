@@ -1,0 +1,5 @@
+# Keep benchmark reports despite the repository's result* rule for Nix outputs.
+!results/
+!results/**
+__pycache__/
+*.log

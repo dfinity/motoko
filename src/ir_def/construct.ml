@@ -101,7 +101,8 @@ let primE prim es =
     | BinPrim (t, _) -> t
     | CastPrim (t1, t2) -> t2
     | RelPrim _ -> T.bool
-    | SerializePrim _ -> T.blob
+    | SerializePrim _ | ComputePrim _ -> T.blob
+    | ComputeValuePrim id -> Mo_values.Compute_plugin.intrinsic_type id
     | SystemCyclesAvailablePrim
     | SystemCyclesAcceptPrim
     | SystemCyclesBurnPrim -> T.nat

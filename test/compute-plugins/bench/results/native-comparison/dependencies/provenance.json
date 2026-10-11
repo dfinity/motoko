@@ -1,0 +1,64 @@
+{
+  "recorded_utc": "2026-10-11T09:19:47.420894+00:00",
+  "mops_cli_version": "1.12.0",
+  "mops_api_version": "1.3",
+  "installation_command": "mops install --no-toolchain --lock update",
+  "package_selection": "Registry search sha2 and sha256 both returned sha2 0.2.5, updated 2026-06-22; getPackageDetails metadata saved in registry.json.",
+  "package_lock": "mops.lock",
+  "package_lock_sha256": "a795d94e429519e0ee3b34505864f73b176b9c261f4f4ce06369906866f5ed45",
+  "packages": [
+    {
+      "id": "sha2@0.2.5",
+      "path": "_build/plugin-comparison/sha256/.mops/sha2@0.2.5",
+      "source_path": "_build/plugin-comparison/sha256/.mops/sha2@0.2.5/src",
+      "files": 43,
+      "source_files": 37,
+      "tree_sha256": "6ae1ccf85631ce8f99e56436227c64ee4609ce5256fca1191ce5d169937be82f",
+      "source_tree_sha256": "33fc6bd875a2f36a2afc2fd8bfdec6383d865a55be6165ebb57390bad92cd97c",
+      "tree_hash_format": "SHA256 of UTF-8 lines: lowercase file SHA256 + two spaces + relative POSIX path + LF, sorted by path",
+      "registry_hashes_verified": true,
+      "manifest": "sha2@0.2.5.files.json",
+      "registry_url": "https://mops.one/sha2",
+      "repository_url": "https://github.com/research-ag/sha2"
+    },
+    {
+      "id": "core@2.5.0",
+      "path": "_build/plugin-comparison/sha256/.mops/core@2.5.0",
+      "source_path": "_build/plugin-comparison/sha256/.mops/core@2.5.0/src",
+      "files": 57,
+      "source_files": 53,
+      "tree_sha256": "3b7b05a2b3146a04a0dae0c6ab8911c444f6226c191928637cb2fe876c618d53",
+      "source_tree_sha256": "6fc92392a8524c9264be6d1c0a6193d6e14396c6971cf577c50cc7163b3461ea",
+      "tree_hash_format": "SHA256 of UTF-8 lines: lowercase file SHA256 + two spaces + relative POSIX path + LF, sorted by path",
+      "registry_hashes_verified": true,
+      "manifest": "core@2.5.0.files.json",
+      "registry_url": "https://mops.one/core",
+      "repository_url": "https://github.com/caffeinelabs/motoko-core"
+    }
+  ],
+  "compiler_version": "Motoko compiler (source 2.0.0-2-g52113d40c-dirty)",
+  "compiler_sha256": "8dd9f414953717dd694656fb9a9d933acb204f7fc9a7693d71c936afc25ef5fe",
+  "package_flags": [
+    "--package",
+    "sha2",
+    "_build/plugin-comparison/sha256/.mops/sha2@0.2.5/src",
+    "--package",
+    "core",
+    "_build/plugin-comparison/sha256/.mops/core@2.5.0/src"
+  ],
+  "import": "import SHA256 \"mo:sha2/Sha256\";",
+  "one_shot_api": "SHA256.fromBlob(#sha256, bytes) : Blob",
+  "api_path": ".mops/sha2@0.2.5/src/Sha256.mo:362",
+  "validation": {
+    "fixture": "smoke.mo",
+    "fixture_sha256": "cb331189cf74f24d9bc16dcf7a0de6af3940306fb60116829ca24a0a0dcdef83",
+    "outcome": "PASS: 17 independent hashlib/OpenSSL vectors, including padding boundaries and pseudorandom 1 MiB. Both sha2 0.2.5 and Prim.sha256 matched expected outputs under compiled memory64 Wasm."
+  },
+  "fairness_notes": [
+    "Primary comparison is one-shot Blob to newly returned Blob. Include fresh digest/buffer creation and finalization in the Mops measured operation, as fromBlob does.",
+    "Use identical prepared pseudorandom Blob inputs, the same compiler, flags, core, RTS, PocketIC version and measurement boundaries for both implementations.",
+    "Perform input creation, forced-GC preparation, digest verification and reply encoding outside the measured region; retain output to prevent elimination.",
+    "Do not replace fromBlob with stateful fold/combineNodes/combineLeaves APIs for the primary comparison; these have different input/state contracts.",
+    "Mops README recommends random inputs because repeated-byte inputs can distort instruction counts."
+  ]
+}

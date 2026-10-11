@@ -1,0 +1,32 @@
+{
+  "label": "optimized-stress",
+  "recorded_utc": "2026-10-11T04:24:08.613Z",
+  "wasm_sha256": "b69f8f30cd335271a79f2177d5e3dbcceb26cab2e242f548f619836f84a479a8",
+  "wasm_bytes": 2200734,
+  "trials": 1,
+  "source_sha256": "b9f33bc1ff4baf401ff2de862b83224e7f3a50e3a58c984285843e02a444753f",
+  "cases_sha256": "dd300e1713c45d53c833260507fa7e67d2fcd139a5d5f62cecac7ea2a1cd498c",
+  "runner_sha256": "7a47403c1dc048ef1916a760540ab252d91589bd69c7900ec304e06d0320b1ff",
+  "node_version": "v24.18.0",
+  "variant_width": 6000,
+  "variant_payload": "null",
+  "methodology": "Fresh canister per workload/trial; configure inputs outside measurement; four forced GC increments before each operation. Each update measures one call using performanceCounter(0) and rts_total_allocation, retains its output, and replies after measurement. Raw counts include counter/assignment overhead; control is reported separately. Ordinary to_candid has different semantics and is context, not an equivalent implementation.",
+  "correctness": "SHA-256 checked against Python hashlib expected digests generated with inputs. CandidX checked against host canonicalization of ordinary Candid. Output digests allow baseline/candidate equivalence checks.",
+  "cases": [
+    {
+      "name": "candid-variants-6000",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 55871792,
+          "allocated_bytes": 4770888,
+          "output_bytes": 47886,
+          "output_sha256": "a8d149cd9adc3ac81794d3999e1741ce60693a84c5b3fa93ba66fa1d1c5f5af9"
+        }
+      ]
+    }
+  ],
+  "pocket_ic_version": "pocket-ic-server 14.0.0"
+}

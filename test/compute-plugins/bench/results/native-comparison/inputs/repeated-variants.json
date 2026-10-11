@@ -1,0 +1,682 @@
+{
+  "variant_width": 1024,
+  "variant_payload": "nat",
+  "cases": [
+    {
+      "name": "control",
+      "index": 0,
+      "family": "control",
+      "method": "bench_0",
+      "phases": [
+        {
+          "label": "plugin",
+          "method": "bench_0",
+          "require_no_gc": true,
+          "kind": "control"
+        }
+      ]
+    },
+    {
+      "name": "sha256-0",
+      "index": 1,
+      "family": "sha256",
+      "method": "bench_1",
+      "expected_sha256_hex": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "phases": [
+        {
+          "label": "native",
+          "method": "native_1",
+          "kind": "sha256"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_1",
+          "require_no_gc": true,
+          "kind": "sha256"
+        }
+      ]
+    },
+    {
+      "name": "sha256-32",
+      "index": 2,
+      "family": "sha256",
+      "method": "bench_2",
+      "expected_sha256_hex": "b5e6b17e10731f3024bb9afdf5fbf8a4bff4ba6003c11afb3b499ed343668dd1",
+      "phases": [
+        {
+          "label": "native",
+          "method": "native_2",
+          "kind": "sha256"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_2",
+          "require_no_gc": true,
+          "kind": "sha256"
+        }
+      ]
+    },
+    {
+      "name": "sha256-55",
+      "index": 3,
+      "family": "sha256",
+      "method": "bench_3",
+      "expected_sha256_hex": "919386e15039a76a1bb3f153f6b00f29a83f97f97db953c5e73c03571124244f",
+      "phases": [
+        {
+          "label": "native",
+          "method": "native_3",
+          "kind": "sha256"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_3",
+          "require_no_gc": true,
+          "kind": "sha256"
+        }
+      ]
+    },
+    {
+      "name": "sha256-56",
+      "index": 4,
+      "family": "sha256",
+      "method": "bench_4",
+      "expected_sha256_hex": "24b47df627c27eb1fc2bd4bea761344048b8f1b9281d48ce36c0553c6793fc4b",
+      "phases": [
+        {
+          "label": "native",
+          "method": "native_4",
+          "kind": "sha256"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_4",
+          "require_no_gc": true,
+          "kind": "sha256"
+        }
+      ]
+    },
+    {
+      "name": "sha256-64",
+      "index": 5,
+      "family": "sha256",
+      "method": "bench_5",
+      "expected_sha256_hex": "663b84376340c47c5e9c12729c95fff5191f6eaf0002bfb1428c4e3e8080ab18",
+      "phases": [
+        {
+          "label": "native",
+          "method": "native_5",
+          "kind": "sha256"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_5",
+          "require_no_gc": true,
+          "kind": "sha256"
+        }
+      ]
+    },
+    {
+      "name": "sha256-1024",
+      "index": 6,
+      "family": "sha256",
+      "method": "bench_6",
+      "expected_sha256_hex": "8ab783947bae918d01b74448625dfd0fef119e16e97d6fc9fdf15e310c87cb01",
+      "phases": [
+        {
+          "label": "native",
+          "method": "native_6",
+          "kind": "sha256"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_6",
+          "require_no_gc": true,
+          "kind": "sha256"
+        }
+      ]
+    },
+    {
+      "name": "sha256-65536",
+      "index": 7,
+      "family": "sha256",
+      "method": "bench_7",
+      "expected_sha256_hex": "653f5cec98c039706a34d4a6d36ac73eedd26cf31dd0daac69656ab776b3ed33",
+      "phases": [
+        {
+          "label": "native",
+          "method": "native_7",
+          "kind": "sha256"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_7",
+          "require_no_gc": true,
+          "kind": "sha256"
+        }
+      ]
+    },
+    {
+      "name": "sha256-1048576",
+      "index": 8,
+      "family": "sha256",
+      "method": "bench_8",
+      "expected_sha256_hex": "b13261ceffb27a120f88c3466a3917bfb2875493d5f802422b433a3599407be6",
+      "phases": [
+        {
+          "label": "native",
+          "method": "native_8",
+          "kind": "sha256"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_8",
+          "require_no_gc": true,
+          "kind": "sha256"
+        }
+      ]
+    },
+    {
+      "name": "candid-empty",
+      "index": 9,
+      "family": "candidx",
+      "method": "bench_9",
+      "ordinary_method": "ordinary_9",
+      "phases": [
+        {
+          "label": "ordinary",
+          "method": "ordinary_9",
+          "kind": "ordinary_candid"
+        },
+        {
+          "label": "native",
+          "method": "native_9",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "normalize",
+          "method": "normalize_9",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_9",
+          "require_no_gc": true,
+          "kind": "canonical_candid"
+        }
+      ]
+    },
+    {
+      "name": "candid-nat",
+      "index": 10,
+      "family": "candidx",
+      "method": "bench_10",
+      "ordinary_method": "ordinary_10",
+      "phases": [
+        {
+          "label": "ordinary",
+          "method": "ordinary_10",
+          "kind": "ordinary_candid"
+        },
+        {
+          "label": "native",
+          "method": "native_10",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "normalize",
+          "method": "normalize_10",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_10",
+          "require_no_gc": true,
+          "kind": "canonical_candid"
+        }
+      ]
+    },
+    {
+      "name": "candid-static-record",
+      "index": 11,
+      "family": "candidx",
+      "method": "bench_11",
+      "ordinary_method": "ordinary_11",
+      "phases": [
+        {
+          "label": "ordinary",
+          "method": "ordinary_11",
+          "kind": "ordinary_candid"
+        },
+        {
+          "label": "native",
+          "method": "native_11",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "normalize",
+          "method": "normalize_11",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_11",
+          "require_no_gc": true,
+          "kind": "canonical_candid"
+        }
+      ]
+    },
+    {
+      "name": "candid-blob-64k",
+      "index": 12,
+      "family": "candidx",
+      "method": "bench_12",
+      "ordinary_method": "ordinary_12",
+      "phases": [
+        {
+          "label": "ordinary",
+          "method": "ordinary_12",
+          "kind": "ordinary_candid"
+        },
+        {
+          "label": "native",
+          "method": "native_12",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "normalize",
+          "method": "normalize_12",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_12",
+          "require_no_gc": true,
+          "kind": "canonical_candid"
+        }
+      ]
+    },
+    {
+      "name": "candid-nat64-4096",
+      "index": 13,
+      "family": "candidx",
+      "method": "bench_13",
+      "ordinary_method": "ordinary_13",
+      "phases": [
+        {
+          "label": "ordinary",
+          "method": "ordinary_13",
+          "kind": "ordinary_candid"
+        },
+        {
+          "label": "native",
+          "method": "native_13",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "normalize",
+          "method": "normalize_13",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_13",
+          "require_no_gc": true,
+          "kind": "canonical_candid"
+        }
+      ]
+    },
+    {
+      "name": "candid-sparse-128",
+      "index": 14,
+      "family": "candidx",
+      "method": "bench_14",
+      "ordinary_method": "ordinary_14",
+      "phases": [
+        {
+          "label": "ordinary",
+          "method": "ordinary_14",
+          "kind": "ordinary_candid"
+        },
+        {
+          "label": "native",
+          "method": "native_14",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "normalize",
+          "method": "normalize_14",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_14",
+          "require_no_gc": true,
+          "kind": "canonical_candid"
+        }
+      ]
+    },
+    {
+      "name": "candid-sparse-1024",
+      "index": 15,
+      "family": "candidx",
+      "method": "bench_15",
+      "ordinary_method": "ordinary_15",
+      "phases": [
+        {
+          "label": "ordinary",
+          "method": "ordinary_15",
+          "kind": "ordinary_candid"
+        },
+        {
+          "label": "native",
+          "method": "native_15",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "normalize",
+          "method": "normalize_15",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_15",
+          "require_no_gc": true,
+          "kind": "canonical_candid"
+        }
+      ]
+    },
+    {
+      "name": "candid-nested-option-arrays",
+      "index": 16,
+      "family": "candidx",
+      "method": "bench_16",
+      "ordinary_method": "ordinary_16",
+      "phases": [
+        {
+          "label": "ordinary",
+          "method": "ordinary_16",
+          "kind": "ordinary_candid"
+        },
+        {
+          "label": "native",
+          "method": "native_16",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "normalize",
+          "method": "normalize_16",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_16",
+          "require_no_gc": true,
+          "kind": "canonical_candid"
+        }
+      ]
+    },
+    {
+      "name": "candid-repeated-variants-0-tags-1",
+      "index": 17,
+      "family": "candidx",
+      "method": "bench_17",
+      "ordinary_method": "ordinary_17",
+      "phases": [
+        {
+          "label": "ordinary",
+          "method": "ordinary_17",
+          "kind": "ordinary_candid"
+        },
+        {
+          "label": "native",
+          "method": "native_17",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "normalize",
+          "method": "normalize_17",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_17",
+          "require_no_gc": true,
+          "kind": "canonical_candid"
+        }
+      ]
+    },
+    {
+      "name": "candid-repeated-variants-1-tags-1",
+      "index": 18,
+      "family": "candidx",
+      "method": "bench_18",
+      "ordinary_method": "ordinary_18",
+      "phases": [
+        {
+          "label": "ordinary",
+          "method": "ordinary_18",
+          "kind": "ordinary_candid"
+        },
+        {
+          "label": "native",
+          "method": "native_18",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "normalize",
+          "method": "normalize_18",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_18",
+          "require_no_gc": true,
+          "kind": "canonical_candid"
+        }
+      ]
+    },
+    {
+      "name": "candid-repeated-variants-1024-tags-1",
+      "index": 19,
+      "family": "candidx",
+      "method": "bench_19",
+      "ordinary_method": "ordinary_19",
+      "phases": [
+        {
+          "label": "ordinary",
+          "method": "ordinary_19",
+          "kind": "ordinary_candid"
+        },
+        {
+          "label": "native",
+          "method": "native_19",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "normalize",
+          "method": "normalize_19",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_19",
+          "require_no_gc": true,
+          "kind": "canonical_candid"
+        }
+      ]
+    },
+    {
+      "name": "candid-repeated-variants-4096-tags-4",
+      "index": 20,
+      "family": "candidx",
+      "method": "bench_20",
+      "ordinary_method": "ordinary_20",
+      "phases": [
+        {
+          "label": "ordinary",
+          "method": "ordinary_20",
+          "kind": "ordinary_candid"
+        },
+        {
+          "label": "native",
+          "method": "native_20",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "normalize",
+          "method": "normalize_20",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_20",
+          "require_no_gc": true,
+          "kind": "canonical_candid"
+        }
+      ]
+    },
+    {
+      "name": "candid-repeated-variants-6000-tags-64",
+      "index": 21,
+      "family": "candidx",
+      "method": "bench_21",
+      "ordinary_method": "ordinary_21",
+      "phases": [
+        {
+          "label": "ordinary",
+          "method": "ordinary_21",
+          "kind": "ordinary_candid"
+        },
+        {
+          "label": "native",
+          "method": "native_21",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "normalize",
+          "method": "normalize_21",
+          "kind": "canonical_candid"
+        },
+        {
+          "label": "plugin",
+          "method": "bench_21",
+          "require_no_gc": true,
+          "kind": "canonical_candid"
+        }
+      ]
+    }
+  ],
+  "sha256_inputs": {
+    "generator": "xorshift32, low byte after each step",
+    "seed": "0x9e3779b9",
+    "shifts": [
+      13,
+      -17,
+      5
+    ]
+  },
+  "suite": "native-comparison-repeated-variants",
+  "implementations": {
+    "compiler": {
+      "version": "Motoko compiler (source 2.0.0-2-g52113d40c-dirty)",
+      "path": "src/_build/default/exes/moc.exe",
+      "sha256": "8dd9f414953717dd694656fb9a9d933acb204f7fc9a7693d71c936afc25ef5fe"
+    },
+    "plugins": {
+      "rts_release": {
+        "path": "rts/mo-rts.wasm",
+        "sha256": "8456e47e527bbd584ee2d5d867b0c93f5596d2bcdaa87bba53c04281562c820f"
+      },
+      "rts_debug": {
+        "path": "rts/mo-rts-debug.wasm",
+        "sha256": "f87c1f4a8b15e6e5949f618195cd303bd0d07fc85f1f73e9f0a244eacecb24c9"
+      },
+      "candidx/plugin.cmxs": {
+        "path": "_build/compute-plugins/candidx/plugin.cmxs",
+        "sha256": "27749707a0d53fd8d29632116c6577bd56bc3881542f5b5fb6ecd3ebab4d711e"
+      },
+      "candidx/runtime.wasm": {
+        "path": "_build/compute-plugins/candidx/runtime.wasm",
+        "sha256": "b1a944b99329e28f735c38ebabf788d0f325d0be169bdc6b714040a9b5030db9"
+      },
+      "sha256/plugin.cmxs": {
+        "path": "_build/compute-plugins/sha256/plugin.cmxs",
+        "sha256": "8b045866d782a3c1273166d4188de6f669bf1ee8c8d6ae40b51a2b1c27856b1a"
+      },
+      "sha256/runtime.wasm": {
+        "path": "_build/compute-plugins/sha256/runtime.wasm",
+        "sha256": "319ca57c28af5f7f01d3c220443e63ecd7ce14a7fb11f44fca0e590798d69e18"
+      }
+    },
+    "native_candidx": {
+      "name": "CandidX native Motoko",
+      "profile": "cx",
+      "metadata_version": "1.0.0",
+      "repository": "/srv/shared/code/candidx",
+      "revision": "94c2868988d98e8f660a9aa569a0ebc36fcda8ea",
+      "working_tree_status": "",
+      "source_files_sha256": {
+        "motoko/src/lib.mo": "848090dcec21745fc97035b05395e51bf277ac9d7e58d3c93e2c9ac9cadd48e9",
+        "motoko/mops.toml": "29007129398b34f699c39959b9bbcf845b20998a55399fed6057c166683f0afe",
+        "motoko/README.md": "160b48b8557dbbef6bc87e8d63e55dc1a45cbcb9244a7061d096ff4674149082",
+        "motoko/LICENSE": "e1fafcceec58dd564d18425253ec132d46ad752ecd8110ca414820efeafa2d45"
+      },
+      "frozen_sources": "/srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx/source",
+      "api": "canonicalize : Blob -> { #ok : Blob; #err : Text }",
+      "primary_expression": "nativeCanonical(to_candid(value))",
+      "secondary_expression": "nativeCanonical(preencodedOrdinaryBytes)",
+      "declared_core_version": "1.0.0"
+    },
+    "native_sha256": {
+      "packages": [
+        {
+          "id": "sha2@0.2.5",
+          "path": "_build/plugin-comparison/sha256/.mops/sha2@0.2.5",
+          "source_path": "_build/plugin-comparison/sha256/.mops/sha2@0.2.5/src",
+          "files": 43,
+          "source_files": 37,
+          "tree_sha256": "6ae1ccf85631ce8f99e56436227c64ee4609ce5256fca1191ce5d169937be82f",
+          "source_tree_sha256": "33fc6bd875a2f36a2afc2fd8bfdec6383d865a55be6165ebb57390bad92cd97c",
+          "tree_hash_format": "SHA256 of UTF-8 lines: lowercase file SHA256 + two spaces + relative POSIX path + LF, sorted by path",
+          "registry_hashes_verified": true,
+          "manifest": "sha2@0.2.5.files.json",
+          "registry_url": "https://mops.one/sha2",
+          "repository_url": "https://github.com/research-ag/sha2"
+        },
+        {
+          "id": "core@2.5.0",
+          "path": "_build/plugin-comparison/sha256/.mops/core@2.5.0",
+          "source_path": "_build/plugin-comparison/sha256/.mops/core@2.5.0/src",
+          "files": 57,
+          "source_files": 53,
+          "tree_sha256": "3b7b05a2b3146a04a0dae0c6ab8911c444f6226c191928637cb2fe876c618d53",
+          "source_tree_sha256": "6fc92392a8524c9264be6d1c0a6193d6e14396c6971cf577c50cc7163b3461ea",
+          "tree_hash_format": "SHA256 of UTF-8 lines: lowercase file SHA256 + two spaces + relative POSIX path + LF, sorted by path",
+          "registry_hashes_verified": true,
+          "manifest": "core@2.5.0.files.json",
+          "registry_url": "https://mops.one/core",
+          "repository_url": "https://github.com/caffeinelabs/motoko-core"
+        }
+      ],
+      "one_shot_api": "SHA256.fromBlob(#sha256, bytes) : Blob",
+      "package_lock_sha256": "a795d94e429519e0ee3b34505864f73b176b9c261f4f4ce06369906866f5ed45",
+      "mops_cli_version": "1.12.0"
+    },
+    "core_override": "Both native libraries use pinned Mops core@2.5.0. CandidX declares core 1.0.0; compatibility and parity were verified with 2.5.0.",
+    "native_phase": "CandidX: nativeCanonical(to_candid(value)); SHA256: SHA256.fromBlob(#sha256, input)",
+    "plugin_phase": "Prim.to_candid_canonical(value) / Prim.sha256(input)",
+    "normalize_phase": "Native CandidX canonicalize on preencoded ordinary Candid; secondary context only",
+    "sha256_inputs": {
+      "generator": "xorshift32, low byte after each step",
+      "seed": "0x9e3779b9",
+      "shifts": [
+        13,
+        -17,
+        5
+      ]
+    }
+  },
+  "methodology": "Same compiler and actor for all implementations; fresh canister per workload/trial. Inputs are configured outside measurement. Output is cleared and four GC increments run before each phase. Raw performanceCounter(0) deltas include counter/assignment overhead; control is reported separately. Native CandidX includes to_candid plus canonicalize and successful Result unwrapping. Normalize is canonicalize alone on ordinary bytes saved outside measurement. Native SHA is Mops sha2 Sha256.fromBlob(#sha256, input). Synchronous GC, if any, is included and reported; plugin phases require zero reclamation. Reply encoding, input setup, and message-end GC are outside the interval.",
+  "correctness": "Every canonical Candid output is checked against host canonicalization of the ordinary Candid output for the same input. Both SHA implementations are checked against Python hashlib digests. Equivalent phases must return identical bytes."
+}

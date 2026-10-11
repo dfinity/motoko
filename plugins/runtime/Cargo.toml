@@ -1,0 +1,13 @@
+[workspace]
+members = ["candidx", "sha256"]
+resolver = "3"
+
+[profile.release]
+opt-level = 3
+panic = "abort"
+codegen-units = 1
+lto = true
+strip = "debuginfo"
+
+[profile.dev]
+panic = "abort"

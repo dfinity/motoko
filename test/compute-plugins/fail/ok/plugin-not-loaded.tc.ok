@@ -1,0 +1,1 @@
+plugin-not-loaded.mo:3.13-3.32: type error [M0072], field to_candid_canonical does not exist in module.

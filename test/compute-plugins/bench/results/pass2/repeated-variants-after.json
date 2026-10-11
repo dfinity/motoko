@@ -1,0 +1,288 @@
+{
+  "label": "pass2-final",
+  "recorded_utc": "2026-10-11T04:59:00.026Z",
+  "wasm_sha256": "c7a4135a926c3ffa8b8762ab5a3d50c6031a521e09dfc9c95e877c6ca32890c1",
+  "wasm_bytes": 939017,
+  "trials": 3,
+  "source_sha256": "0b842a558315f9c1bc0467fe8c58398bcae58ca676926f77ddc307352fa9137e",
+  "cases_sha256": "5aa31b622fd56e13fea3fbd2dec37b68cf3499839b0b7cfc67d9c91e620897b1",
+  "runner_sha256": "7a47403c1dc048ef1916a760540ab252d91589bd69c7900ec304e06d0320b1ff",
+  "node_version": "v24.18.0",
+  "variant_width": 1024,
+  "variant_payload": "nat",
+  "methodology": "Fresh canister per workload/trial; configure inputs outside measurement; four forced GC increments before each operation. Each update measures one call using performanceCounter(0) and rts_total_allocation, retains its output, and replies after measurement. Raw counts include counter/assignment overhead; control is reported separately. Ordinary to_candid has different semantics and is context, not an equivalent implementation.",
+  "correctness": "SHA-256 checked against Python hashlib expected digests generated with inputs. CandidX checked against host canonicalization of ordinary Candid. Output digests allow baseline/candidate equivalence checks.",
+  "cases": [
+    {
+      "name": "candid-repeated-variants-0-tags-1",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "ordinary",
+          "instructions": 13392,
+          "allocated_bytes": 12392,
+          "output_bytes": 6157,
+          "output_sha256": "401c3aa640e4f1527565e028ca2073e3fb68e1e8f10aa7a81b33b1963ed2f1ba"
+        },
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 5364,
+          "allocated_bytes": 584,
+          "output_bytes": 10,
+          "output_sha256": "d0bfe858e2776acdddd3f21da88065b04649124bde124b2210e7e5de05e43c8d"
+        },
+        {
+          "trial": 1,
+          "phase": "ordinary",
+          "instructions": 13392,
+          "allocated_bytes": 12392,
+          "output_bytes": 6157,
+          "output_sha256": "401c3aa640e4f1527565e028ca2073e3fb68e1e8f10aa7a81b33b1963ed2f1ba"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 5364,
+          "allocated_bytes": 584,
+          "output_bytes": 10,
+          "output_sha256": "d0bfe858e2776acdddd3f21da88065b04649124bde124b2210e7e5de05e43c8d"
+        },
+        {
+          "trial": 2,
+          "phase": "ordinary",
+          "instructions": 13392,
+          "allocated_bytes": 12392,
+          "output_bytes": 6157,
+          "output_sha256": "401c3aa640e4f1527565e028ca2073e3fb68e1e8f10aa7a81b33b1963ed2f1ba"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 5364,
+          "allocated_bytes": 584,
+          "output_bytes": 10,
+          "output_sha256": "d0bfe858e2776acdddd3f21da88065b04649124bde124b2210e7e5de05e43c8d"
+        }
+      ]
+    },
+    {
+      "name": "candid-repeated-variants-1-tags-1",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "ordinary",
+          "instructions": 13681,
+          "allocated_bytes": 12392,
+          "output_bytes": 6159,
+          "output_sha256": "b2feee2126c10ad9bf4b9315f12c911dc39ebb1697dc5a03b82d97754e462a82"
+        },
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 9199,
+          "allocated_bytes": 816,
+          "output_bytes": 20,
+          "output_sha256": "40f03b42e109c0ab852d61dd308b11b7fd2a000059a759218f3a45acc3ac8910"
+        },
+        {
+          "trial": 1,
+          "phase": "ordinary",
+          "instructions": 13681,
+          "allocated_bytes": 12392,
+          "output_bytes": 6159,
+          "output_sha256": "b2feee2126c10ad9bf4b9315f12c911dc39ebb1697dc5a03b82d97754e462a82"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 9199,
+          "allocated_bytes": 816,
+          "output_bytes": 20,
+          "output_sha256": "40f03b42e109c0ab852d61dd308b11b7fd2a000059a759218f3a45acc3ac8910"
+        },
+        {
+          "trial": 2,
+          "phase": "ordinary",
+          "instructions": 13681,
+          "allocated_bytes": 12392,
+          "output_bytes": 6159,
+          "output_sha256": "b2feee2126c10ad9bf4b9315f12c911dc39ebb1697dc5a03b82d97754e462a82"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 9199,
+          "allocated_bytes": 816,
+          "output_bytes": 20,
+          "output_sha256": "40f03b42e109c0ab852d61dd308b11b7fd2a000059a759218f3a45acc3ac8910"
+        }
+      ]
+    },
+    {
+      "name": "candid-repeated-variants-1024-tags-1",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "ordinary",
+          "instructions": 280740,
+          "allocated_bytes": 16488,
+          "output_bytes": 8206,
+          "output_sha256": "d8788fa04782815598abfdcaa830109673289f076b416a422994732eb8352044"
+        },
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 775630,
+          "allocated_bytes": 2984,
+          "output_bytes": 2067,
+          "output_sha256": "22c114bd266ede01f2265ca59ae821109e362b151eed543424927b424f9af7a4"
+        },
+        {
+          "trial": 1,
+          "phase": "ordinary",
+          "instructions": 280740,
+          "allocated_bytes": 16488,
+          "output_bytes": 8206,
+          "output_sha256": "d8788fa04782815598abfdcaa830109673289f076b416a422994732eb8352044"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 775630,
+          "allocated_bytes": 2984,
+          "output_bytes": 2067,
+          "output_sha256": "22c114bd266ede01f2265ca59ae821109e362b151eed543424927b424f9af7a4"
+        },
+        {
+          "trial": 2,
+          "phase": "ordinary",
+          "instructions": 280740,
+          "allocated_bytes": 16488,
+          "output_bytes": 8206,
+          "output_sha256": "d8788fa04782815598abfdcaa830109673289f076b416a422994732eb8352044"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 775630,
+          "allocated_bytes": 2984,
+          "output_bytes": 2067,
+          "output_sha256": "22c114bd266ede01f2265ca59ae821109e362b151eed543424927b424f9af7a4"
+        }
+      ]
+    },
+    {
+      "name": "candid-repeated-variants-4096-tags-4",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "ordinary",
+          "instructions": 1365188,
+          "allocated_bytes": 28776,
+          "output_bytes": 14350,
+          "output_sha256": "cca316c5f288cac562be77ae41ef6decdcb930f33c188854b6dae0ede8251d23"
+        },
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 5187276,
+          "allocated_bytes": 140520,
+          "output_bytes": 8229,
+          "output_sha256": "497167b4b0fcecd20ece8c1c93ae81ec049f66a2b7f4bc53aae0a9361488e76b"
+        },
+        {
+          "trial": 1,
+          "phase": "ordinary",
+          "instructions": 1365188,
+          "allocated_bytes": 28776,
+          "output_bytes": 14350,
+          "output_sha256": "cca316c5f288cac562be77ae41ef6decdcb930f33c188854b6dae0ede8251d23"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 5187276,
+          "allocated_bytes": 140520,
+          "output_bytes": 8229,
+          "output_sha256": "497167b4b0fcecd20ece8c1c93ae81ec049f66a2b7f4bc53aae0a9361488e76b"
+        },
+        {
+          "trial": 2,
+          "phase": "ordinary",
+          "instructions": 1365188,
+          "allocated_bytes": 28776,
+          "output_bytes": 14350,
+          "output_sha256": "cca316c5f288cac562be77ae41ef6decdcb930f33c188854b6dae0ede8251d23"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 5187276,
+          "allocated_bytes": 140520,
+          "output_bytes": 8229,
+          "output_sha256": "497167b4b0fcecd20ece8c1c93ae81ec049f66a2b7f4bc53aae0a9361488e76b"
+        }
+      ]
+    },
+    {
+      "name": "candid-repeated-variants-6000-tags-64",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "ordinary",
+          "instructions": 5305316,
+          "allocated_bytes": 36392,
+          "output_bytes": 18158,
+          "output_sha256": "12fb48128ce26c91d28ac45567cfdfa5907c55536a9c3ad8d59409732fb611ca"
+        },
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 10204490,
+          "allocated_bytes": 276744,
+          "output_bytes": 12397,
+          "output_sha256": "94c654bb998f6dd221fea8825711120afee712f1dec49409f6badecddb7e25ad"
+        },
+        {
+          "trial": 1,
+          "phase": "ordinary",
+          "instructions": 5305316,
+          "allocated_bytes": 36392,
+          "output_bytes": 18158,
+          "output_sha256": "12fb48128ce26c91d28ac45567cfdfa5907c55536a9c3ad8d59409732fb611ca"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 10204490,
+          "allocated_bytes": 276744,
+          "output_bytes": 12397,
+          "output_sha256": "94c654bb998f6dd221fea8825711120afee712f1dec49409f6badecddb7e25ad"
+        },
+        {
+          "trial": 2,
+          "phase": "ordinary",
+          "instructions": 5305316,
+          "allocated_bytes": 36392,
+          "output_bytes": 18158,
+          "output_sha256": "12fb48128ce26c91d28ac45567cfdfa5907c55536a9c3ad8d59409732fb611ca"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 10204490,
+          "allocated_bytes": 276744,
+          "output_bytes": 12397,
+          "output_sha256": "94c654bb998f6dd221fea8825711120afee712f1dec49409f6badecddb7e25ad"
+        }
+      ]
+    }
+  ],
+  "pocket_ic_version": "pocket-ic-server 14.0.0"
+}

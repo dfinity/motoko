@@ -1,0 +1,66 @@
+Native Motoko libraries versus compute plugins, recorded 2026-10-11
+
+All 40 workload entries passed on PocketIC 14.0.0, with three trials each.
+There were 120 fresh canisters and 414 measured phases. Every phase had identical
+instruction counts across its three trials, and no synchronous reclamation.
+Every result matched its independent oracle and equivalent implementation.
+
+See instruction-table.txt for all instruction medians and summary.csv for
+instruction ranges, allocation, reclamation, output sizes, and ratios. Raw
+reports are main.json, static-arrays.json, and repeated-variants.json. Two of
+the 40 entries are the same control operation in different actors.
+
+Baselines:
+  CandidX native Motoko, cx profile, revision
+  94c2868988d98e8f660a9aa569a0ebc36fcda8ea, motoko/src/lib.mo.
+  Primary phase: canonicalize(to_candid(value)), including successful result
+  unwrapping. Secondary normalize phase: canonicalize(preencodedBytes).
+
+  Mops sha2@0.2.5, Sha256.fromBlob(#sha256, input).
+  Both native libraries use pinned core@2.5.0. CandidX's declared core version
+  is 1.0.0; compatibility and output parity were checked using 2.5.0.
+
+Plugins:
+  Prim.to_candid_canonical(value) and Prim.sha256(input), using the optimized
+  compiler and staged plugins already present at the start of this comparison.
+  No compiler/kernel optimizations were made during this measurement pass.
+
+Each comparison uses one actor containing both implementations, compiled once
+with the same flags. The compiler is source 2.0.0-2-g52113d40c-dirty; artifact
+hashes identify the exact compiler, runtimes, plugins, generated actors and
+measurement tools. The native Mops implementation is the registry release,
+rather than a potentially different GitHub default branch.
+
+Input construction, four forced GC increments before each phase, result reply
+encoding and message-end GC are outside measurement. The synchronous interval
+uses performanceCounter(0), includes result allocation/retention, and would
+include synchronous GC if it occurred. Allocation counters are cumulative heap
+allocation, not retained memory or RSS. Native CandidX can reuse an already
+canonical input Blob in its normalization-only phase. That phase is not an
+equivalent end-to-end encoding operation.
+
+Counts include fixed instrumentation and assignment overhead; the control
+cost is 256 instructions and has not been subtracted. Ratios compare metered IC
+instructions, not elapsed time or native CPU cycles. SHA inputs are identical
+seeded xorshift32 bytes; expected digests come from Python hashlib. Candid
+expected bytes come from independent host canonicalization of ordinary Candid
+for the same typed value. CandidX outputs use the same cx canonical profile.
+
+The companion correctness run used the sibling CandidX repository's existing
+drivers and unchanged oracles. Two seeds each generated 500 random records,
+expanded to 1,130 typed plugin record case instances per seed. Counts include
+repeated directed cases, so 2,260 is an execution count, not unique schemas.
+The existing 93-case directed corpus, full conformance and external typed-value
+recovery all passed. No canonical format, oracle, or sibling implementation
+changes were needed. Standalone cx.wasm was not executed.
+
+Correctness reports and exact replay commands are in candidx-correctness/.
+Their original _build paths are retained as provenance; copies of each main
+report are saved here. Additional binary-input conformance controls exercise
+the independent normalizers/oracles, not the typed encoder's input surface.
+
+Reproduction instructions are in ../../README.md. Pinned dependencies are in
+dependencies/, generated case manifests in inputs/, and recorded compiler and
+library provenance in provenance.json. artifact-manifest.json validates these
+saved artifacts and the original generated actor files. Component research is
+in component-research.txt; these measurements do not measure components.

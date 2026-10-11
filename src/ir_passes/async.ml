@@ -445,7 +445,7 @@ let transform prog =
               let cl = varE (var "@cleanup" clean_contT) in
               let exp' = callE (t_exp cps) [t0] (tupE [k; r; cl]) in
               FuncE (x, Shared s', Returns, typbinds', args', ret_tys, exp')
-            | (Returns | Replies), _ -> assert false
+            | (Returns | Replies | Intrinsic _), _ -> assert false
           end
       end
     | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; low_memory; stable_record; stable_type}, typ) ->

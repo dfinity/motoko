@@ -263,6 +263,7 @@ let make_message env x cc f : V.value =
       make_lowered_unit_message env x cc f
   | T.Promises -> make_async_message env x cc f
   | T.Replies -> make_replying_message env x cc f
+  | T.Intrinsic _ -> assert false (* Intrinsics are local and never messages. *)
 
 
 (* Literals *)
@@ -431,6 +432,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | OtherPrim s, vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
         Prim.prim { Prim.trap = trap exp.at "%s" } s (context env) arg k
+      | ComputeValuePrim _, [] -> k V.unit
+      | ComputePrim (id, ts), [v] ->
+        let vs = match ts with [_] -> [v] | _ -> V.as_tup v in
+        (match Compute_plugin.evaluate id ts vs with
+         | Ok bytes -> k (V.Blob bytes)
+         | Error message -> trap exp.at "%s" message)
       | CastPrim _, [v1] ->
         k v1
       | ActorOfIdBlob t, [v1] ->

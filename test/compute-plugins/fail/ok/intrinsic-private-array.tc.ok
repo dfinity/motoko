@@ -1,0 +1,1 @@
+intrinsic-private-array.mo:4.8-4.47: type error [M0279], to_candid_canonical requires shared argument types

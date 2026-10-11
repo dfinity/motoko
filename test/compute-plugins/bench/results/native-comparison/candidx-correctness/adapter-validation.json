@@ -1,0 +1,151 @@
+{
+  "status": "pass",
+  "typed_cases_per_implementation": 93,
+  "frozen_golden_cases": 61,
+  "implementations": [
+    "rust",
+    "ts",
+    "ocaml",
+    "compiler"
+  ],
+  "expected_bytes": "independent source-value oracle and unchanged frozen goldens",
+  "external_hash": "Python hashlib.sha256 over complete bytes",
+  "client_canonical_byte_checks": 2500,
+  "ordinary_decoders": {
+    "rust": "exact",
+    "ts": "decodeCompatible exact; upstream caveats recorded",
+    "ocaml": "not available",
+    "compiler": "exact"
+  },
+  "original_value_roundtrips": {
+    "status": "pass",
+    "cases": 93,
+    "successful_original_value_recoveries": 744,
+    "per_encoder": {
+      "rust": {
+        "rust-candid": 93,
+        "typescript-decodeCompatible": 93
+      },
+      "ts": {
+        "rust-candid": 93,
+        "typescript-decodeCompatible": 93
+      },
+      "ocaml": {
+        "rust-candid": 93,
+        "typescript-decodeCompatible": 93
+      },
+      "compiler": {
+        "rust-candid": 93,
+        "typescript-decodeCompatible": 93
+      }
+    },
+    "equality": "independently constructed original typed values; finite float bits including signed zero; NaN class; Reserved ignored",
+    "ocaml_ordinary_decoder": "not available; its actual output bytes are checked by Rust and TypeScript decoders",
+    "standalone_wasm_ordinary_decoder": "not supplied; its actual output bytes are checked by host Rust and TypeScript decoders",
+    "client_canonical_byte_checks": {
+      "rust": 250,
+      "ts": 250,
+      "compiler": 250,
+      "ocaml": 250
+    },
+    "inputs_sha256": "75cf4c280f03d20fe33a9acac72a16e84af3a2fb752d797322a742afdb63e986",
+    "records_sha256": "8b7733d574a891a737bb6ec3a59ff02899fc5532f3da7dd64817f654cdf7d3ac"
+  },
+  "constructor_coverage": {
+    "basis": "source witness DSL kinds; list and chain are recursive shorthands",
+    "cases": 93,
+    "argument_roots": 125,
+    "declared_kinds": {
+      "blob": 6,
+      "bool": 5,
+      "chain": 5,
+      "float32": 21,
+      "float64": 23,
+      "int": 4,
+      "int16": 1,
+      "int32": 1,
+      "int64": 1,
+      "int8": 1,
+      "nat": 36,
+      "nat16": 1,
+      "nat32": 3,
+      "nat64": 2,
+      "nat8": 4,
+      "null": 11,
+      "opt": 34,
+      "principal": 3,
+      "record": 25,
+      "text": 37,
+      "tuple": 1,
+      "variant": 10,
+      "vec": 24
+    },
+    "visited_kinds": {
+      "blob": 6,
+      "bool": 5,
+      "chain": 7,
+      "float32": 34,
+      "float64": 36,
+      "int": 4,
+      "int16": 1,
+      "int32": 1,
+      "int64": 1,
+      "int8": 1,
+      "nat": 36,
+      "nat16": 1,
+      "nat32": 3,
+      "nat64": 2,
+      "nat8": 5,
+      "null": 5,
+      "opt": 41,
+      "principal": 5,
+      "record": 30,
+      "text": 30,
+      "tuple": 1,
+      "variant": 12,
+      "vec": 23
+    },
+    "observations": {
+      "arguments.multiple": 12,
+      "arguments.single": 80,
+      "arguments.zero": 1,
+      "binary.empty": 2,
+      "binary.nonempty": 7,
+      "blob.empty": 1,
+      "blob.nonempty": 5,
+      "float32.finite": 9,
+      "float32.infinity": 4,
+      "float32.nan": 11,
+      "float32.negative-zero": 3,
+      "float32.positive-zero": 3,
+      "float32.subnormal": 4,
+      "float64.finite": 9,
+      "float64.infinity": 6,
+      "float64.nan": 11,
+      "float64.negative-zero": 3,
+      "float64.positive-zero": 3,
+      "float64.subnormal": 4,
+      "option.none": 21,
+      "option.some": 20,
+      "option.some-none": 4,
+      "principal.empty": 2,
+      "principal.nonempty": 3,
+      "record.absent-optional-field": 13,
+      "record.empty": 1,
+      "record.nonempty": 29,
+      "recursive-chain.leaf": 5,
+      "recursive-chain.nonleaf": 2,
+      "text.empty": 1,
+      "text.non-ascii": 5,
+      "text.nul": 3,
+      "variant.selected-a": 4,
+      "variant.selected-b": 7,
+      "variant.selected-c": 1,
+      "vec.empty": 4,
+      "vec.nonempty": 19
+    }
+  },
+  "corpus_sha256": "a960af8a2e89a2c942cfdfdba09e08e7462ae20976f3dd2036f36fdc12d6d644",
+  "records_sha256": "eb221850d2dd89a1574ef879e9365bb8c7b4327386d93b64e9059d22a8ac7427",
+  "identical_previously_tested_source_translations": 42
+}

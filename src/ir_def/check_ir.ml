@@ -251,8 +251,11 @@ let rec check_typ env typ : unit =
           error env no_region"replying function cannot be local:\n  %s" (T.string_of_typ typ);
         if not (List.for_all T.shared ts2) then
           error env no_region "message result is not sharable:\n  %s" (T.string_of_typ typ)
+      | T.Intrinsic _ ->
+        error env no_region "compute intrinsic cannot be shared"
       end else
-     if not (control = T.Returns) then
+     if not (control = T.Returns ||
+       Option.is_some (Mo_values.Compute_plugin.intrinsic typ)) then
        error env no_region "promising function cannot be local:\n  %s" (T.string_of_typ_expand typ);
   | T.Weak typ
   | T.Opt typ ->
@@ -448,6 +451,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
     begin match p, es with
     | CallPrim insts, [exp1; exp2] ->
       begin match T.promote (typ exp1) with
+        | T.Func (_, T.Intrinsic _, _, _, _) ->
+          error env exp1.at "compute intrinsic call was not specialized"
         | T.Func (sort, control, tbs, arg_tys, ret_tys) ->
           check_inst_bounds env tbs insts exp.at;
           let t_arg = T.open_ insts (T.seq arg_tys) in
@@ -744,6 +749,21 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.Opt T.blob <: t
     | ICPerformGC, [] ->
       T.unit <: t
+    | ComputeValuePrim id, [] ->
+      Mo_values.Compute_plugin.intrinsic_type id <: t;
+      (match Mo_values.Compute_plugin.find id with
+       | Some {Mo_values.Compute_plugin.arguments =
+           Mo_values.Compute_plugin.Shared; _} -> ()
+       | _ -> error env exp.at "unknown typed compute intrinsic %s" id)
+    | ComputePrim (id, ts), [e] ->
+      typ e <: T.seq ts;
+      T.blob <: t;
+      (match Mo_values.Compute_plugin.find id with
+       | None -> error env exp.at "unknown compute plugin %s" id
+       | Some binding ->
+         match Mo_values.Compute_plugin.check binding ts with
+         | Ok () -> ()
+         | Error message -> error env exp.at "%s" message)
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"
@@ -833,6 +853,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
     end;
     T.unit <: t
   | FuncE (x, sort, control, typ_binds, args, ret_tys, exp) ->
+    check (match control with T.Intrinsic _ -> false | _ -> true)
+      "compute intrinsic cannot have a runtime function body";
     let cs, tbs, ce = check_open_typ_binds env typ_binds in
     let ts = List.map (fun c -> T.Con(c, [])) cs in
     let env' = adjoin_cons env ce in
@@ -945,7 +967,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
           check e1.note.Note.const "non-constant RHS in constant BlockE"
       ) ds;
       check e.note.Note.const "non-constant body in constant BlockE"
-    | LitE _ -> ()
+    | LitE _
+    | PrimE (ComputeValuePrim _, []) -> ()
     | _ -> check false "unexpected constant expression"
   end;
 

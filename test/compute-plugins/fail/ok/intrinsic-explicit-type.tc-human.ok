@@ -1,0 +1,4 @@
+error[M0279]: compute intrinsics infer their types from their arguments
+    ┌─ intrinsic-explicit-type.mo:4:32
+  4 │  ignore Prim.to_candid_canonical<Nat>(1);
+    │                                 ^^^^^ 

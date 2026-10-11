@@ -1,0 +1,4 @@
+error[M0279]: to_candid_canonical requires shared argument types
+    ┌─ intrinsic-local-function.mo:4:8
+  4 │  ignore Prim.to_candid_canonical(func () : () {});
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 

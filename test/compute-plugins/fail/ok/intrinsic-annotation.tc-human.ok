@@ -1,0 +1,9 @@
+error[M0096]: expression of type
+  intrinsic candidx_encode
+cannot produce expected type
+  () -> Blob
+because of incompatible function controls: compute intrinsic candidx_encode
+ does not match regular function or one-shot shared function
+    ┌─ intrinsic-annotation.mo:4:22
+  4 │  let _ : () -> Blob = Prim.to_candid_canonical;
+    │                       ^^^^^^^^^^^^^^^^^^^^^^^^ 

@@ -1,0 +1,4 @@
+sha256-argument.mo:4.20-4.23: type error [M0050], literal of type
+  Nat
+does not have expected type
+  Blob

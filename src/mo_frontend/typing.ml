@@ -2462,6 +2462,12 @@ and infer_exp'' env exp : T.typ =
     (* TODO: this should probably be an assert, not an error *)
       error env exp.at "M0232" "cannot infer type of implicit argument"
   | PrimE "_" -> T.Non
+  | PrimE s when Lib.String.chop_prefix "compute:" s <> None ->
+    let id = Option.get (Lib.String.chop_prefix "compute:" s) in
+    (match Compute_plugin.find id with
+     | Some {Compute_plugin.arguments = Compute_plugin.Shared; _} ->
+       Compute_plugin.intrinsic_type id
+     | _ -> error env exp.at "M0279" "unknown typed compute intrinsic %s" id)
   | PrimE _ ->
     error env exp.at "M0054" "cannot infer type of primitive"
   | VarE id ->
@@ -3096,7 +3102,22 @@ and check_exp' env0 t exp : T.typ =
   | HoleE (hole_name, exp_ref), hole_typ ->
     check_hole env exp.at hole_name hole_typ exp_ref;
     t
-  | PrimE s, T.Func _ ->
+  | PrimE s, T.Func _
+    when Lib.String.chop_prefix "compute:" s <> None ->
+    let id = Option.get (Lib.String.chop_prefix "compute:" s) in
+    let expected = match Compute_plugin.find id with
+      | Some {Compute_plugin.arguments = Compute_plugin.Shared; _} ->
+        Compute_plugin.intrinsic_type id
+      | Some {Compute_plugin.arguments = Compute_plugin.Blob; _} ->
+        T.Func (T.Local, T.Returns, [], [T.blob], [T.blob])
+      | None -> error env exp.at "M0279"
+          "compute plugin is not loaded: %s" id
+    in
+    if not (T.eq t expected) then
+      error env exp.at "M0279"
+        "compute primitive %s requires type%a" id display_typ expected;
+    expected
+  | PrimE _, T.Func _ ->
     t
   | LitE lit, _ ->
     check_lit env t lit exp.at true;
@@ -3571,6 +3592,27 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   let exp2 = !ref_exp2 in
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
   let (t1, ctx_dot) = infer_callee env exp1 in
+  match Compute_plugin.intrinsic t1 with
+  | Some id ->
+    if inst.it <> None then
+      error env inst.at "M0279"
+        "compute intrinsics infer their types from their arguments";
+    let t_arg = infer_exp env exp2 in
+    let ts = match exp2.it with
+      | TupE _ when not parenthesized -> T.seq_of_tup t_arg
+      | _ -> [t_arg]
+    in
+    if not env.pre then begin
+      (match Compute_plugin.find id with
+       | None -> error env at "M0279" "compute plugin is not loaded: %s" id
+       | Some binding ->
+         match Compute_plugin.check binding ts with
+         | Ok () -> ()
+         | Error message -> error env at "M0279" "%s" message);
+      inst.note <- ts
+    end;
+    T.blob
+  | None ->
   let sort, tbs, t_args, t_ret =
     try T.as_func_sub T.Local n t1
     with Invalid_argument _ ->

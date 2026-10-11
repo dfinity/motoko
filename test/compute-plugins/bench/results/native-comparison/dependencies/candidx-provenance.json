@@ -1,0 +1,92 @@
+{
+  "recorded_utc": "2026-10-11T09:22:29.497613+00:00",
+  "library": {
+    "name": "CandidX native Motoko",
+    "profile": "cx",
+    "metadata_version": "1.0.0",
+    "repository": "/srv/shared/code/candidx",
+    "revision": "94c2868988d98e8f660a9aa569a0ebc36fcda8ea",
+    "working_tree_status": "",
+    "source_files_sha256": {
+      "motoko/src/lib.mo": "848090dcec21745fc97035b05395e51bf277ac9d7e58d3c93e2c9ac9cadd48e9",
+      "motoko/mops.toml": "29007129398b34f699c39959b9bbcf845b20998a55399fed6057c166683f0afe",
+      "motoko/README.md": "160b48b8557dbbef6bc87e8d63e55dc1a45cbcb9244a7061d096ff4674149082",
+      "motoko/LICENSE": "e1fafcceec58dd564d18425253ec132d46ad752ecd8110ca414820efeafa2d45"
+    },
+    "frozen_sources": "/srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx/source",
+    "api": "canonicalize : Blob -> { #ok : Blob; #err : Text }",
+    "primary_expression": "nativeCanonical(to_candid(value))",
+    "secondary_expression": "nativeCanonical(preencodedOrdinaryBytes)",
+    "declared_core_version": "1.0.0"
+  },
+  "compiled_core": {
+    "version": "2.5.0",
+    "source_path": "/srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/sha256/.mops/core@2.5.0/src",
+    "reason": "Use the same pinned core package as sha2@0.2.5 for all baseline phases.",
+    "lock": "/srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/sha256/mops.lock",
+    "lock_sha256": "a795d94e429519e0ee3b34505864f73b176b9c261f4f4ce06369906866f5ed45",
+    "registry_file_hashes_verified": true,
+    "file_count": 57,
+    "tree_sha256": "d9a290fc34d24e1d51c5ea5842edb12a1148f3f52d39621286a5fdb0d3e6be74",
+    "tree_hash_encoding": "UTF-8 concatenation of sorted relative-path + NUL + lowercase-file-sha256 + newline"
+  },
+  "probe": {
+    "source": "/srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx/parity.mo",
+    "source_sha256": "b054d814d5136d8188363dd047db2d3aa29a3abc398d396b4349e139907ff2b2",
+    "wasm": "/srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx/core-2.5.0-parity.wasm",
+    "wasm_sha256": "368e00ea1a1b8523750580d2311d934d0d64f922744bed84583cc0498858dd8e",
+    "command": [
+      "nix",
+      "develop",
+      "--command",
+      "bin/moc",
+      "--plugin",
+      "_build/compute-plugins/candidx",
+      "--package",
+      "candidx",
+      "/srv/shared/code/candidx/motoko/src",
+      "--package",
+      "core",
+      "_build/plugin-comparison/sha256/.mops/core@2.5.0/src",
+      "-wasi-system-api",
+      "_build/plugin-comparison/candidx/parity.mo",
+      "-o",
+      "_build/plugin-comparison/candidx/core-2.5.0-parity.wasm"
+    ],
+    "run_command": [
+      "nix",
+      "develop",
+      "--command",
+      "wasmtime",
+      "-W",
+      "memory64",
+      "_build/plugin-comparison/candidx/core-2.5.0-parity.wasm"
+    ],
+    "result": "pass",
+    "assertion_count": 8,
+    "output": "native/plugin canonical parity: pass",
+    "cases": [
+      "profile cx",
+      "empty arguments",
+      "Nat42",
+      "Blob65536",
+      "Nat64[4096]",
+      "sparse nested records[128]",
+      "nested optional arrays",
+      "mixed primitive variants"
+    ]
+  },
+  "measurement_review": {
+    "result": "No measurement defect found.",
+    "generator_sha256": "d22c07757cff6d48db89cd4670662e491a36dc69f3409620fcdb45151eab0ade",
+    "generated_actor_sha256": "5cd380cb9b9a482ecb53a5625b461a7d3ebbc3f6616e98b38543fae01e17ece4",
+    "checked": [
+      "Same compiler and actor for baseline and plugin.",
+      "Native includes ordinary serialization, canonicalization, and Result unwrapping.",
+      "Normalization uses prepared ordinary bytes saved after all counters.",
+      "All measured output assignments occur between performance counters.",
+      "Output retained and compared independently after measurement.",
+      "Synchronous reclamation reported for native phases; plugin phases assert zero."
+    ]
+  }
+}

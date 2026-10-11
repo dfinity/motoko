@@ -4470,6 +4470,20 @@ module Arr = struct
       G.i (Binary (Wasm_exts.Values.I64 I64Op.Add))
     )
 
+  (* Pure plugin traversals contain no GC safepoint. Resolve forwarding once
+     and retain the element cursor across iterations, including allocations
+     that can grow Wasm memory but cannot move Motoko objects. *)
+  let for_each env get_array get_length body =
+    let set_cursor, get_cursor = new_local env "array_cursor" in
+    let set_end, get_end = new_local env "array_end" in
+    get_array ^^ compile_unboxed_zero ^^ unsafe_idx env ^^ set_cursor ^^
+    get_cursor ^^ get_length ^^ compile_mul_const element_size ^^
+    G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^ set_end ^^
+    compile_while env
+      (get_cursor ^^ get_end ^^ compile_comparison I64Op.LtU)
+      (body (get_cursor ^^ load_ptr) ^^
+       get_cursor ^^ compile_add_const element_size ^^ set_cursor)
+
   (* Dynamic array access. Returns the address (not the value) of the field.
      Does bounds checking *)
   let idx env =
@@ -9547,6 +9561,145 @@ module GCRoots = struct
 end (* GCRoots *)
 
 (* This comes late because it also deals with messages *)
+(* Pure compute plugins borrow Motoko values only until the generated call
+   returns. These helpers deliberately introduce no GC safepoint. Temporary
+   Rust allocations follow the RTS EphemeralAllocator: unrooted Blob payloads
+   reclaimed by a later GC, after the plugin has discarded every raw pointer. *)
+module ComputePlugins = struct
+  open Plugin_codegen
+  let register_imports env =
+    List.iter (fun {Plugin_codegen.plugin; _} ->
+      List.iter (fun (name, args, results) ->
+        E.add_func_import env (Plugin_codegen.module_name plugin)
+          name args results) plugin.imports
+    ) (Plugin_codegen.installed ())
+
+  let ensure_support env =
+    let exported name = List.exists (fun (e : export) ->
+      e.Wasm.Source.it.name = Lib.Utf8.decode name) (E.get_exports env) in
+    let export name params results body =
+      if not (exported name) then begin
+        let fi = E.add_fun env name (Func.of_body env params results body) in
+        E.add_export env (nr {
+          name = Lib.Utf8.decode name;
+          edesc = nr (FuncExport (nr fi))
+        })
+      end
+    in
+    export "compute_plugin_alloc"
+      ["size", I64Type; "align", I64Type] [I64Type] (fun env ->
+        let size = G.i (LocalGet (nr 0l)) in
+        let align = G.i (LocalGet (nr 1l)) in
+        size ^^ compile_unboxed_const (Int64.sub Int64.max_int 65_536L) ^^
+        compile_comparison I64Op.GtU ^^
+        E.then_trap_with env "compute plugin allocation size overflow" ^^
+        align ^^ compile_eq_const 0L ^^
+        E.then_trap_with env "compute plugin allocation alignment is zero" ^^
+        align ^^ compile_unboxed_const 65_536L ^^
+        compile_comparison I64Op.GtU ^^
+        E.then_trap_with env "compute plugin allocation alignment is too large" ^^
+        align ^^ align ^^ compile_add_const (-1L) ^^
+        G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) ^^
+        compile_eq_const 0L ^^
+        E.else_trap_with env "compute plugin allocation alignment is invalid" ^^
+        align ^^ compile_unboxed_const 8L ^^
+        compile_comparison I64Op.LtU ^^
+        E.if0 (compile_unboxed_const 8L ^^ G.i (LocalSet (nr 1l))) G.nop ^^
+        compile_unboxed_const Tagged.(int_of_tag (Blob B)) ^^
+        size ^^ align ^^ compile_add_const (-8L) ^^
+        G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
+        E.call_rts env "alloc_blob" ^^
+        Blob.payload_ptr_unskewed env ^^
+        align ^^ compile_add_const (-1L) ^^
+        G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
+        compile_unboxed_zero ^^ align ^^
+        G.i (Binary (Wasm_exts.Values.I64 I64Op.Sub)) ^^
+        G.i (Binary (Wasm_exts.Values.I64 I64Op.And)));
+    export "compute_plugin_trap" ["ptr", I64Type; "len", I64Type] []
+      (fun env -> G.i (LocalGet (nr 0l)) ^^ G.i (LocalGet (nr 1l)) ^^
+        IC.trap_ptr_len env)
+
+  module Backend : Plugin_codegen.Backend with type env = E.t = struct
+    type env = E.t
+    let compile_unboxed_const = compile_unboxed_const
+    let compile_const_32 = compile_const_32
+    let compile_unboxed_zero = compile_unboxed_zero
+    let compile_unboxed_one = compile_unboxed_one
+    let compile_add_const = compile_add_const
+    let compile_mul_const = compile_mul_const
+    let compile_eq_const = compile_eq_const
+    let compile_comparison = compile_comparison
+    let compile_comparison_f32 = compile_comparison_f32
+    let compile_comparison_f64 = compile_comparison_f64
+    let new_local = new_local
+    let new_local_ = new_local_
+    let from_0_to_n = from_0_to_n
+    let call env plugin name =
+      ensure_support env;
+      E.call_import env ("compute." ^ plugin) name
+    let alloc_blob env = Blob.alloc env Tagged.B
+    let unbox_float32 env =
+      StackRep.adjust env SR.Vanilla SR.UnboxedFloat32
+    let buffer_size = Serialization.buffer_size
+    let candid_primitive = Serialization.to_idl_prim Serialization.Candid
+    let sort_by_hash = Serialization.sort_by_hash
+    module E = E
+    module Func = Func
+    module Blob = Blob
+    module Arr = Arr
+    module Tuple = Tuple
+    module Object = Object
+    module Variant = Variant
+    module Opt = Opt
+    module Text = Text
+    module Float = Float
+    module BoxedWord64 = BoxedWord64
+    module TaggedSmallWord = TaggedSmallWord
+    module BitTagged = BitTagged
+    module BigNumLibtommath = BigNumLibtommath
+    module Bool = Bool
+    module I32Leb = I32Leb
+    module Strm = Serialization.Strm
+  end
+
+  let compile env id ts =
+    match Plugin_codegen.generator id with
+    | None -> fatal "compute plugin generator is unavailable: %s" id
+    | Some generator ->
+      let module Generator = (val generator : Plugin_codegen.Generator) in
+      let module Specialized = Generator.Make (Backend) in
+      Specialized.compile env ts
+
+  let link (emodule : Wasm_exts.CustomModule.extended_module) rts =
+    let used = List.filter (fun {Plugin_codegen.plugin; _} ->
+      List.exists (fun (i : import) ->
+        i.Wasm.Source.it.module_name =
+          Lib.Utf8.decode (Plugin_codegen.module_name plugin))
+        emodule.Wasm_exts.CustomModule.module_.imports
+    ) (Plugin_codegen.installed ()) in
+    let linked = Linking.LinkModule.link ~finalize:false emodule "rts" rts in
+    let result = List.fold_left (fun base {Plugin_codegen.plugin; runtime_path} ->
+      let bytes = try In_channel.with_open_bin runtime_path In_channel.input_all
+        with Sys_error message -> fatal "compute plugin %s: %s" plugin.name message
+      in
+      let runtime = try Wasm_exts.CustomModuleDecode.decode runtime_path bytes
+        with Wasm_exts.CustomModuleDecode.Code (_, message) ->
+          fatal "compute plugin %s: invalid runtime Wasm: %s"
+            plugin.name message
+      in
+      Linking.LinkModule.validate_compute_plugin runtime;
+      Linking.LinkModule.link ~finalize:false ~keep_exports:false base
+        (Plugin_codegen.module_name plugin) runtime
+    ) linked used |> Linking.LinkModule.finalize in
+    List.iter (fun (i : import) ->
+      let module_name = Lib.Utf8.encode i.Wasm.Source.it.module_name in
+      if module_name = "env" || String.starts_with ~prefix:"compute." module_name
+      then fatal "unresolved compute plugin import: %s.%s"
+        module_name (Lib.Utf8.encode i.Wasm.Source.it.item_name)
+    ) result.Wasm_exts.CustomModule.module_.imports;
+    result
+end
+
 module FuncDec = struct
   let bind_args env ae0 first_arg args =
     let rec go i ae = function
@@ -11487,7 +11640,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let return_arity = match control with
       | Type.Returns -> List.length ret_tys
       | Type.Replies -> 0
-      | Type.Promises -> assert false in
+      | Type.Promises | Type.Intrinsic _ -> assert false in
 
     let fun_sr, code1 = compile_exp env ae e1 in
 
@@ -11870,6 +12023,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
       compile_shl_const (Int64.of_int num_bits)
     | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
     end
+
+  | ComputeValuePrim _, [] ->
+    SR.Vanilla, Tuple.compile_unit env
+
+  | ComputePrim (id, ts), [e] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae e ^^ ComputePlugins.compile env id ts
 
   | SerializePrim ts, [e] ->
     SR.Vanilla,
@@ -13022,7 +13182,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     let return_tys = match control with
       | Type.Returns -> res_tys
       | Type.Replies -> []
-      | Type.Promises -> assert false in
+      | Type.Promises | Type.Intrinsic _ -> assert false in
     let return_arity = List.length return_tys in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
     FuncDec.lit env ae x sort control captured args mk_body return_tys exp.at
@@ -13445,7 +13605,7 @@ and compile_const_exp env pre_ae exp : Const.v * (E.t -> VarEnv.t -> unit) =
     let return_tys = match control with
       | Type.Returns -> res_tys
       | Type.Replies -> []
-      | Type.Promises -> assert false in
+      | Type.Promises | Type.Intrinsic _ -> assert false in
     let mk_body env ae =
       List.iter (fun v ->
         if not (VarEnv.NameEnv.mem v ae.VarEnv.vars)
@@ -13491,6 +13651,7 @@ and compile_const_exp env pre_ae exp : Const.v * (E.t -> VarEnv.t -> unit) =
       | _ -> fatal "compile_const_exp/ProjE: not a static tuple" in
     (List.nth cs i, fill)
   | LitE l -> Const.(Lit (const_lit_of_lit l)), (fun _ _ -> ())
+  | PrimE (ComputeValuePrim _, [])
   | PrimE (TupPrim, []) -> Const.Unit, (fun _ _ -> ())
   | PrimE (ArrayPrim (Const, _), es) ->
     let (cs, fills) = List.split (List.map (compile_const_exp env pre_ae) es) in
@@ -13865,7 +14026,7 @@ and conclude_module env set_serialization_globals =
   (* For debugging *)
   if !Flags.verbose then E.object_pool_report env;
 
-  Linking.LinkModule.link emodule "rts" (E.get_rts env)
+  ComputePlugins.link emodule (E.get_rts env)
 
 let compile mode ~(enhanced_migration:string option) rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   (* Enhanced orthogonal persistence requires a fixed layout. *)
@@ -13886,6 +14047,7 @@ let compile mode ~(enhanced_migration:string option) rts (prog : Ir.prog) : Wasm
 
   IC.system_imports env;
   RTS.system_imports env;
+  ComputePlugins.register_imports env;
 
   compile_init_func env prog;
 

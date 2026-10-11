@@ -1,0 +1,804 @@
+{
+  "label": "pass2-static-baseline",
+  "recorded_utc": "2026-10-11T04:36:24.770Z",
+  "wasm_sha256": "ab1f50c08489dcd0e2b74910d4925083f34369687cea23c3d673603e11673e83",
+  "wasm_bytes": 329035,
+  "trials": 3,
+  "source_sha256": "507e5af0005bad94ab5b010c5c1d3fbbe9071d1f1bb59de51b3def2c043cdbff",
+  "cases_sha256": "d0274c2704987145055c1970c3d88bc2e6ff85d17e26980c150ce4d25be1754a",
+  "runner_sha256": "7a47403c1dc048ef1916a760540ab252d91589bd69c7900ec304e06d0320b1ff",
+  "node_version": "v24.18.0",
+  "variant_width": 0,
+  "variant_payload": "none",
+  "methodology": "Fresh canister per workload/trial; configure inputs outside measurement; four forced GC increments before each operation. Each update measures one call using performanceCounter(0) and rts_total_allocation, retains its output, and replies after measurement. Raw counts include counter/assignment overhead; control is reported separately. Ordinary to_candid has different semantics and is context, not an equivalent implementation.",
+  "correctness": "SHA-256 checked against Python hashlib expected digests generated with inputs. CandidX checked against host canonicalization of ordinary Candid. Output digests allow baseline/candidate equivalence checks.",
+  "cases": [
+    {
+      "name": "control",
+      "family": "control",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 256,
+          "allocated_bytes": 0,
+          "output_bytes": 0,
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 256,
+          "allocated_bytes": 0,
+          "output_bytes": 0,
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 256,
+          "allocated_bytes": 0,
+          "output_bytes": 0,
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "name": "candid-fixed-records-0",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "ordinary",
+          "instructions": 1146,
+          "allocated_bytes": 152,
+          "output_bytes": 34,
+          "output_sha256": "7a3a2c6c1b0de74f774be67f2cd753c6aab71625d0b865e82e88ca2acddda103"
+        },
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 5305,
+          "allocated_bytes": 584,
+          "output_bytes": 10,
+          "output_sha256": "d0bfe858e2776acdddd3f21da88065b04649124bde124b2210e7e5de05e43c8d"
+        },
+        {
+          "trial": 1,
+          "phase": "ordinary",
+          "instructions": 1146,
+          "allocated_bytes": 152,
+          "output_bytes": 34,
+          "output_sha256": "7a3a2c6c1b0de74f774be67f2cd753c6aab71625d0b865e82e88ca2acddda103"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 5305,
+          "allocated_bytes": 584,
+          "output_bytes": 10,
+          "output_sha256": "d0bfe858e2776acdddd3f21da88065b04649124bde124b2210e7e5de05e43c8d"
+        },
+        {
+          "trial": 2,
+          "phase": "ordinary",
+          "instructions": 1146,
+          "allocated_bytes": 152,
+          "output_bytes": 34,
+          "output_sha256": "7a3a2c6c1b0de74f774be67f2cd753c6aab71625d0b865e82e88ca2acddda103"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 5305,
+          "allocated_bytes": 584,
+          "output_bytes": 10,
+          "output_sha256": "d0bfe858e2776acdddd3f21da88065b04649124bde124b2210e7e5de05e43c8d"
+        }
+      ]
+    },
+    {
+      "name": "candid-text-records-0",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "ordinary",
+          "instructions": 1122,
+          "allocated_bytes": 120,
+          "output_bytes": 22,
+          "output_sha256": "902d7f0d2365c3f9e70e67df6d8975ba5a6f37305192e2fbe50795210802bc21"
+        },
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 5305,
+          "allocated_bytes": 584,
+          "output_bytes": 10,
+          "output_sha256": "d0bfe858e2776acdddd3f21da88065b04649124bde124b2210e7e5de05e43c8d"
+        },
+        {
+          "trial": 1,
+          "phase": "ordinary",
+          "instructions": 1122,
+          "allocated_bytes": 120,
+          "output_bytes": 22,
+          "output_sha256": "902d7f0d2365c3f9e70e67df6d8975ba5a6f37305192e2fbe50795210802bc21"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 5305,
+          "allocated_bytes": 584,
+          "output_bytes": 10,
+          "output_sha256": "d0bfe858e2776acdddd3f21da88065b04649124bde124b2210e7e5de05e43c8d"
+        },
+        {
+          "trial": 2,
+          "phase": "ordinary",
+          "instructions": 1122,
+          "allocated_bytes": 120,
+          "output_bytes": 22,
+          "output_sha256": "902d7f0d2365c3f9e70e67df6d8975ba5a6f37305192e2fbe50795210802bc21"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 5305,
+          "allocated_bytes": 584,
+          "output_bytes": 10,
+          "output_sha256": "d0bfe858e2776acdddd3f21da88065b04649124bde124b2210e7e5de05e43c8d"
+        }
+      ]
+    },
+    {
+      "name": "candid-fixed-records-1",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "ordinary",
+          "instructions": 1985,
+          "allocated_bytes": 184,
+          "output_bytes": 55,
+          "output_sha256": "2778d26f821efac972a41d90de29b78863c21c339311170606369c9ba516b04f"
+        },
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 13630,
+          "allocated_bytes": 1136,
+          "output_bytes": 55,
+          "output_sha256": "2778d26f821efac972a41d90de29b78863c21c339311170606369c9ba516b04f"
+        },
+        {
+          "trial": 1,
+          "phase": "ordinary",
+          "instructions": 1985,
+          "allocated_bytes": 184,
+          "output_bytes": 55,
+          "output_sha256": "2778d26f821efac972a41d90de29b78863c21c339311170606369c9ba516b04f"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 13630,
+          "allocated_bytes": 1136,
+          "output_bytes": 55,
+          "output_sha256": "2778d26f821efac972a41d90de29b78863c21c339311170606369c9ba516b04f"
+        },
+        {
+          "trial": 2,
+          "phase": "ordinary",
+          "instructions": 1985,
+          "allocated_bytes": 184,
+          "output_bytes": 55,
+          "output_sha256": "2778d26f821efac972a41d90de29b78863c21c339311170606369c9ba516b04f"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 13630,
+          "allocated_bytes": 1136,
+          "output_bytes": 55,
+          "output_sha256": "2778d26f821efac972a41d90de29b78863c21c339311170606369c9ba516b04f"
+        }
+      ]
+    },
+    {
+      "name": "candid-text-records-1",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "ordinary",
+          "instructions": 1638,
+          "allocated_bytes": 136,
+          "output_bytes": 31,
+          "output_sha256": "1d5caccc5013c7a9394ade57a65c99c43f30832255790fa467ba5ddde485d677"
+        },
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 11443,
+          "allocated_bytes": 992,
+          "output_bytes": 31,
+          "output_sha256": "1d5caccc5013c7a9394ade57a65c99c43f30832255790fa467ba5ddde485d677"
+        },
+        {
+          "trial": 1,
+          "phase": "ordinary",
+          "instructions": 1638,
+          "allocated_bytes": 136,
+          "output_bytes": 31,
+          "output_sha256": "1d5caccc5013c7a9394ade57a65c99c43f30832255790fa467ba5ddde485d677"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 11443,
+          "allocated_bytes": 992,
+          "output_bytes": 31,
+          "output_sha256": "1d5caccc5013c7a9394ade57a65c99c43f30832255790fa467ba5ddde485d677"
+        },
+        {
+          "trial": 2,
+          "phase": "ordinary",
+          "instructions": 1638,
+          "allocated_bytes": 136,
+          "output_bytes": 31,
+          "output_sha256": "1d5caccc5013c7a9394ade57a65c99c43f30832255790fa467ba5ddde485d677"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 11443,
+          "allocated_bytes": 992,
+          "output_bytes": 31,
+          "output_sha256": "1d5caccc5013c7a9394ade57a65c99c43f30832255790fa467ba5ddde485d677"
+        }
+      ]
+    },
+    {
+      "name": "candid-fixed-records-1024",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "ordinary",
+          "instructions": 831678,
+          "allocated_bytes": 43160,
+          "output_bytes": 21539,
+          "output_sha256": "3ee0926ae63a4cd6e4e3159ca393633ed5688290dc6deb863d07b0e622db40b4"
+        },
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 2330796,
+          "allocated_bytes": 22624,
+          "output_bytes": 21539,
+          "output_sha256": "3ee0926ae63a4cd6e4e3159ca393633ed5688290dc6deb863d07b0e622db40b4"
+        },
+        {
+          "trial": 1,
+          "phase": "ordinary",
+          "instructions": 831678,
+          "allocated_bytes": 43160,
+          "output_bytes": 21539,
+          "output_sha256": "3ee0926ae63a4cd6e4e3159ca393633ed5688290dc6deb863d07b0e622db40b4"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 2330796,
+          "allocated_bytes": 22624,
+          "output_bytes": 21539,
+          "output_sha256": "3ee0926ae63a4cd6e4e3159ca393633ed5688290dc6deb863d07b0e622db40b4"
+        },
+        {
+          "trial": 2,
+          "phase": "ordinary",
+          "instructions": 831678,
+          "allocated_bytes": 43160,
+          "output_bytes": 21539,
+          "output_sha256": "3ee0926ae63a4cd6e4e3159ca393633ed5688290dc6deb863d07b0e622db40b4"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 2330796,
+          "allocated_bytes": 22624,
+          "output_bytes": 21539,
+          "output_sha256": "3ee0926ae63a4cd6e4e3159ca393633ed5688290dc6deb863d07b0e622db40b4"
+        }
+      ]
+    },
+    {
+      "name": "candid-text-records-1024",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "ordinary",
+          "instructions": 616144,
+          "allocated_bytes": 43112,
+          "output_bytes": 21515,
+          "output_sha256": "7f2cd91c6ced6b3eb6392bf9c8ec589e016ac57474879a99b8586761f313aca3"
+        },
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 1766625,
+          "allocated_bytes": 22480,
+          "output_bytes": 21515,
+          "output_sha256": "7f2cd91c6ced6b3eb6392bf9c8ec589e016ac57474879a99b8586761f313aca3"
+        },
+        {
+          "trial": 1,
+          "phase": "ordinary",
+          "instructions": 616144,
+          "allocated_bytes": 43112,
+          "output_bytes": 21515,
+          "output_sha256": "7f2cd91c6ced6b3eb6392bf9c8ec589e016ac57474879a99b8586761f313aca3"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 1766625,
+          "allocated_bytes": 22480,
+          "output_bytes": 21515,
+          "output_sha256": "7f2cd91c6ced6b3eb6392bf9c8ec589e016ac57474879a99b8586761f313aca3"
+        },
+        {
+          "trial": 2,
+          "phase": "ordinary",
+          "instructions": 616144,
+          "allocated_bytes": 43112,
+          "output_bytes": 21515,
+          "output_sha256": "7f2cd91c6ced6b3eb6392bf9c8ec589e016ac57474879a99b8586761f313aca3"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 1766625,
+          "allocated_bytes": 22480,
+          "output_bytes": 21515,
+          "output_sha256": "7f2cd91c6ced6b3eb6392bf9c8ec589e016ac57474879a99b8586761f313aca3"
+        }
+      ]
+    },
+    {
+      "name": "candid-blob-records-0",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "ordinary",
+          "instructions": 1126,
+          "allocated_bytes": 120,
+          "output_bytes": 24,
+          "output_sha256": "0be418db55136d7244c5ca19837f588cb022adeb5f3a404264a39953e27ecc7a"
+        },
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 5305,
+          "allocated_bytes": 584,
+          "output_bytes": 10,
+          "output_sha256": "d0bfe858e2776acdddd3f21da88065b04649124bde124b2210e7e5de05e43c8d"
+        },
+        {
+          "trial": 1,
+          "phase": "ordinary",
+          "instructions": 1126,
+          "allocated_bytes": 120,
+          "output_bytes": 24,
+          "output_sha256": "0be418db55136d7244c5ca19837f588cb022adeb5f3a404264a39953e27ecc7a"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 5305,
+          "allocated_bytes": 584,
+          "output_bytes": 10,
+          "output_sha256": "d0bfe858e2776acdddd3f21da88065b04649124bde124b2210e7e5de05e43c8d"
+        },
+        {
+          "trial": 2,
+          "phase": "ordinary",
+          "instructions": 1126,
+          "allocated_bytes": 120,
+          "output_bytes": 24,
+          "output_sha256": "0be418db55136d7244c5ca19837f588cb022adeb5f3a404264a39953e27ecc7a"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 5305,
+          "allocated_bytes": 584,
+          "output_bytes": 10,
+          "output_sha256": "d0bfe858e2776acdddd3f21da88065b04649124bde124b2210e7e5de05e43c8d"
+        }
+      ]
+    },
+    {
+      "name": "candid-nat8-records-0",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "ordinary",
+          "instructions": 1126,
+          "allocated_bytes": 120,
+          "output_bytes": 24,
+          "output_sha256": "0be418db55136d7244c5ca19837f588cb022adeb5f3a404264a39953e27ecc7a"
+        },
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 5305,
+          "allocated_bytes": 584,
+          "output_bytes": 10,
+          "output_sha256": "d0bfe858e2776acdddd3f21da88065b04649124bde124b2210e7e5de05e43c8d"
+        },
+        {
+          "trial": 1,
+          "phase": "ordinary",
+          "instructions": 1126,
+          "allocated_bytes": 120,
+          "output_bytes": 24,
+          "output_sha256": "0be418db55136d7244c5ca19837f588cb022adeb5f3a404264a39953e27ecc7a"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 5305,
+          "allocated_bytes": 584,
+          "output_bytes": 10,
+          "output_sha256": "d0bfe858e2776acdddd3f21da88065b04649124bde124b2210e7e5de05e43c8d"
+        },
+        {
+          "trial": 2,
+          "phase": "ordinary",
+          "instructions": 1126,
+          "allocated_bytes": 120,
+          "output_bytes": 24,
+          "output_sha256": "0be418db55136d7244c5ca19837f588cb022adeb5f3a404264a39953e27ecc7a"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 5305,
+          "allocated_bytes": 584,
+          "output_bytes": 10,
+          "output_sha256": "d0bfe858e2776acdddd3f21da88065b04649124bde124b2210e7e5de05e43c8d"
+        }
+      ]
+    },
+    {
+      "name": "candid-blob-records-1-empty",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "ordinary",
+          "instructions": 1688,
+          "allocated_bytes": 152,
+          "output_bytes": 33,
+          "output_sha256": "d1dbbbe733f84902cc3e2be239c3e7ff3736c6ce5969e198eebe03e061cd295c"
+        },
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 13877,
+          "allocated_bytes": 1312,
+          "output_bytes": 33,
+          "output_sha256": "d1dbbbe733f84902cc3e2be239c3e7ff3736c6ce5969e198eebe03e061cd295c"
+        },
+        {
+          "trial": 1,
+          "phase": "ordinary",
+          "instructions": 1688,
+          "allocated_bytes": 152,
+          "output_bytes": 33,
+          "output_sha256": "d1dbbbe733f84902cc3e2be239c3e7ff3736c6ce5969e198eebe03e061cd295c"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 13877,
+          "allocated_bytes": 1312,
+          "output_bytes": 33,
+          "output_sha256": "d1dbbbe733f84902cc3e2be239c3e7ff3736c6ce5969e198eebe03e061cd295c"
+        },
+        {
+          "trial": 2,
+          "phase": "ordinary",
+          "instructions": 1688,
+          "allocated_bytes": 152,
+          "output_bytes": 33,
+          "output_sha256": "d1dbbbe733f84902cc3e2be239c3e7ff3736c6ce5969e198eebe03e061cd295c"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 13877,
+          "allocated_bytes": 1312,
+          "output_bytes": 33,
+          "output_sha256": "d1dbbbe733f84902cc3e2be239c3e7ff3736c6ce5969e198eebe03e061cd295c"
+        }
+      ]
+    },
+    {
+      "name": "candid-nat8-records-1-empty",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "ordinary",
+          "instructions": 1601,
+          "allocated_bytes": 152,
+          "output_bytes": 33,
+          "output_sha256": "d1dbbbe733f84902cc3e2be239c3e7ff3736c6ce5969e198eebe03e061cd295c"
+        },
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 13831,
+          "allocated_bytes": 1312,
+          "output_bytes": 33,
+          "output_sha256": "d1dbbbe733f84902cc3e2be239c3e7ff3736c6ce5969e198eebe03e061cd295c"
+        },
+        {
+          "trial": 1,
+          "phase": "ordinary",
+          "instructions": 1601,
+          "allocated_bytes": 152,
+          "output_bytes": 33,
+          "output_sha256": "d1dbbbe733f84902cc3e2be239c3e7ff3736c6ce5969e198eebe03e061cd295c"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 13831,
+          "allocated_bytes": 1312,
+          "output_bytes": 33,
+          "output_sha256": "d1dbbbe733f84902cc3e2be239c3e7ff3736c6ce5969e198eebe03e061cd295c"
+        },
+        {
+          "trial": 2,
+          "phase": "ordinary",
+          "instructions": 1601,
+          "allocated_bytes": 152,
+          "output_bytes": 33,
+          "output_sha256": "d1dbbbe733f84902cc3e2be239c3e7ff3736c6ce5969e198eebe03e061cd295c"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 13831,
+          "allocated_bytes": 1312,
+          "output_bytes": 33,
+          "output_sha256": "d1dbbbe733f84902cc3e2be239c3e7ff3736c6ce5969e198eebe03e061cd295c"
+        }
+      ]
+    },
+    {
+      "name": "candid-blob-records-1-full",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "ordinary",
+          "instructions": 1780,
+          "allocated_bytes": 216,
+          "output_bytes": 65,
+          "output_sha256": "2b40a08cd4815d0e0353a3f6f4a616b08ab9e1325843d2f4c17e1f4b4a7a8367"
+        },
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 13979,
+          "allocated_bytes": 1344,
+          "output_bytes": 65,
+          "output_sha256": "2b40a08cd4815d0e0353a3f6f4a616b08ab9e1325843d2f4c17e1f4b4a7a8367"
+        },
+        {
+          "trial": 1,
+          "phase": "ordinary",
+          "instructions": 1780,
+          "allocated_bytes": 216,
+          "output_bytes": 65,
+          "output_sha256": "2b40a08cd4815d0e0353a3f6f4a616b08ab9e1325843d2f4c17e1f4b4a7a8367"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 13979,
+          "allocated_bytes": 1344,
+          "output_bytes": 65,
+          "output_sha256": "2b40a08cd4815d0e0353a3f6f4a616b08ab9e1325843d2f4c17e1f4b4a7a8367"
+        },
+        {
+          "trial": 2,
+          "phase": "ordinary",
+          "instructions": 1780,
+          "allocated_bytes": 216,
+          "output_bytes": 65,
+          "output_sha256": "2b40a08cd4815d0e0353a3f6f4a616b08ab9e1325843d2f4c17e1f4b4a7a8367"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 13979,
+          "allocated_bytes": 1344,
+          "output_bytes": 65,
+          "output_sha256": "2b40a08cd4815d0e0353a3f6f4a616b08ab9e1325843d2f4c17e1f4b4a7a8367"
+        }
+      ]
+    },
+    {
+      "name": "candid-nat8-records-1-full",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "ordinary",
+          "instructions": 4957,
+          "allocated_bytes": 216,
+          "output_bytes": 65,
+          "output_sha256": "2b40a08cd4815d0e0353a3f6f4a616b08ab9e1325843d2f4c17e1f4b4a7a8367"
+        },
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 15341,
+          "allocated_bytes": 1344,
+          "output_bytes": 65,
+          "output_sha256": "2b40a08cd4815d0e0353a3f6f4a616b08ab9e1325843d2f4c17e1f4b4a7a8367"
+        },
+        {
+          "trial": 1,
+          "phase": "ordinary",
+          "instructions": 4957,
+          "allocated_bytes": 216,
+          "output_bytes": 65,
+          "output_sha256": "2b40a08cd4815d0e0353a3f6f4a616b08ab9e1325843d2f4c17e1f4b4a7a8367"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 15341,
+          "allocated_bytes": 1344,
+          "output_bytes": 65,
+          "output_sha256": "2b40a08cd4815d0e0353a3f6f4a616b08ab9e1325843d2f4c17e1f4b4a7a8367"
+        },
+        {
+          "trial": 2,
+          "phase": "ordinary",
+          "instructions": 4957,
+          "allocated_bytes": 216,
+          "output_bytes": 65,
+          "output_sha256": "2b40a08cd4815d0e0353a3f6f4a616b08ab9e1325843d2f4c17e1f4b4a7a8367"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 15341,
+          "allocated_bytes": 1344,
+          "output_bytes": 65,
+          "output_sha256": "2b40a08cd4815d0e0353a3f6f4a616b08ab9e1325843d2f4c17e1f4b4a7a8367"
+        }
+      ]
+    },
+    {
+      "name": "candid-blob-records-1024-mixed",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "ordinary",
+          "instructions": 610834,
+          "allocated_bytes": 62216,
+          "output_bytes": 31065,
+          "output_sha256": "db0b2c9d7b8e700a1611e470dd1e9b7e2ac395e879fc948b27e5a341839acec1"
+        },
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 2369965,
+          "allocated_bytes": 32344,
+          "output_bytes": 31065,
+          "output_sha256": "db0b2c9d7b8e700a1611e470dd1e9b7e2ac395e879fc948b27e5a341839acec1"
+        },
+        {
+          "trial": 1,
+          "phase": "ordinary",
+          "instructions": 610834,
+          "allocated_bytes": 62216,
+          "output_bytes": 31065,
+          "output_sha256": "db0b2c9d7b8e700a1611e470dd1e9b7e2ac395e879fc948b27e5a341839acec1"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 2369965,
+          "allocated_bytes": 32344,
+          "output_bytes": 31065,
+          "output_sha256": "db0b2c9d7b8e700a1611e470dd1e9b7e2ac395e879fc948b27e5a341839acec1"
+        },
+        {
+          "trial": 2,
+          "phase": "ordinary",
+          "instructions": 610834,
+          "allocated_bytes": 62216,
+          "output_bytes": 31065,
+          "output_sha256": "db0b2c9d7b8e700a1611e470dd1e9b7e2ac395e879fc948b27e5a341839acec1"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 2369965,
+          "allocated_bytes": 32344,
+          "output_bytes": 31065,
+          "output_sha256": "db0b2c9d7b8e700a1611e470dd1e9b7e2ac395e879fc948b27e5a341839acec1"
+        }
+      ]
+    },
+    {
+      "name": "candid-nat8-records-1024-mixed",
+      "family": "candidx",
+      "measurements": [
+        {
+          "trial": 0,
+          "phase": "ordinary",
+          "instructions": 2747746,
+          "allocated_bytes": 62216,
+          "output_bytes": 31065,
+          "output_sha256": "db0b2c9d7b8e700a1611e470dd1e9b7e2ac395e879fc948b27e5a341839acec1"
+        },
+        {
+          "trial": 0,
+          "phase": "plugin",
+          "instructions": 3283069,
+          "allocated_bytes": 32344,
+          "output_bytes": 31065,
+          "output_sha256": "db0b2c9d7b8e700a1611e470dd1e9b7e2ac395e879fc948b27e5a341839acec1"
+        },
+        {
+          "trial": 1,
+          "phase": "ordinary",
+          "instructions": 2747746,
+          "allocated_bytes": 62216,
+          "output_bytes": 31065,
+          "output_sha256": "db0b2c9d7b8e700a1611e470dd1e9b7e2ac395e879fc948b27e5a341839acec1"
+        },
+        {
+          "trial": 1,
+          "phase": "plugin",
+          "instructions": 3283069,
+          "allocated_bytes": 32344,
+          "output_bytes": 31065,
+          "output_sha256": "db0b2c9d7b8e700a1611e470dd1e9b7e2ac395e879fc948b27e5a341839acec1"
+        },
+        {
+          "trial": 2,
+          "phase": "ordinary",
+          "instructions": 2747746,
+          "allocated_bytes": 62216,
+          "output_bytes": 31065,
+          "output_sha256": "db0b2c9d7b8e700a1611e470dd1e9b7e2ac395e879fc948b27e5a341839acec1"
+        },
+        {
+          "trial": 2,
+          "phase": "plugin",
+          "instructions": 3283069,
+          "allocated_bytes": 32344,
+          "output_bytes": 31065,
+          "output_sha256": "db0b2c9d7b8e700a1611e470dd1e9b7e2ac395e879fc948b27e5a341839acec1"
+        }
+      ]
+    }
+  ],
+  "pocket_ic_version": "pocket-ic-server 14.0.0"
+}

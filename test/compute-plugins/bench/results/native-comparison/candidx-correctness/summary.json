@@ -1,0 +1,180 @@
+{
+  "status": "pass",
+  "recorded_utc": "2026-10-11T09:35:58.365814+00:00",
+  "scope": "CandidX existing typed-value fuzz and conformance drivers against the Motoko compute plugin; no standalone cx.wasm execution.",
+  "canonical_profile": "cx",
+  "working_directory_for_commands": "/srv/shared/code/motoko_experiments/motoko_sha",
+  "native_library_provenance": {
+    "path": "_build/plugin-comparison/candidx/provenance.json",
+    "sha256": "90f49e268e63939a8400ae7df9dcbe04bf717eff7078b0649e1a8c43e4f78fa4"
+  },
+  "pinned_core": {
+    "version": "2.5.0",
+    "source_path": "/srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/sha256/.mops/core@2.5.0/src",
+    "reason": "Use the same pinned core package as sha2@0.2.5 for all baseline phases.",
+    "lock": "/srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/sha256/mops.lock",
+    "lock_sha256": "a795d94e429519e0ee3b34505864f73b176b9c261f4f4ce06369906866f5ed45",
+    "registry_file_hashes_verified": true,
+    "file_count": 57,
+    "tree_sha256": "d9a290fc34d24e1d51c5ea5842edb12a1148f3f52d39621286a5fdb0d3e6be74",
+    "tree_hash_encoding": "UTF-8 concatenation of sorted relative-path + NUL + lowercase-file-sha256 + newline"
+  },
+  "frozen_artifact_sha256": {
+    "moc": "8dd9f414953717dd694656fb9a9d933acb204f7fc9a7693d71c936afc25ef5fe",
+    "mo-rts.wasm": "8456e47e527bbd584ee2d5d867b0c93f5596d2bcdaa87bba53c04281562c820f",
+    "mo-rts-debug.wasm": "f87c1f4a8b15e6e5949f618195cd303bd0d07fc85f1f73e9f0a244eacecb24c9",
+    "candidx/plugin.cmxs": "27749707a0d53fd8d29632116c6577bd56bc3881542f5b5fb6ecd3ebab4d711e",
+    "candidx/runtime.wasm": "b1a944b99329e28f735c38ebabf788d0f325d0be169bdc6b714040a9b5030db9",
+    "wrapper_sha256": "a40520cefce0b614f74c1487355d836aad38583db529755486c0a00c8c52182e",
+    "candidx_repository_revision": "94c2868988d98e8f660a9aa569a0ebc36fcda8ea",
+    "oracle_artifact/rust/target/debug/examples/fuzz": "06fb6f314aefdbab38afd48f38644bc15f2e319166becdfafa9b419d3118e1de",
+    "oracle_artifact/rust/target/debug/examples/probe": "ed22c2cd5e805ee8735aa01b0f113819412a7d89e64446200427610b0cb6ad36",
+    "oracle_artifact/rust/target/debug/examples/evolution": "3acca2325217806d7ac8004a9d8e6479a7566b6a545b2bc17bc5176208d25db5",
+    "oracle_artifact/ocaml/_build/default/direct_probe.exe": "cc4d9171ef3241c38c73d195a10fda6ee1490387e4ddb9f497ca756bd6918932",
+    "oracle_artifact/ocaml/_build/default/probe.exe": "0c9d825da85147875ebbdbf0b59b092accb07449bad93d9558d5755d36b5bce1",
+    "oracle_artifact/ts/dist/index.js": "198ba3c6e66ad153d8aef59e6d0d61885aeb1ca6cf85524a176eeb75c41ad193"
+  },
+  "frozen_artifact_directory": "_build/plugin-comparison/candidx-fuzz/artifacts",
+  "compiler_version": "Motoko compiler (source 2.0.0-2-g52113d40c-dirty)",
+  "wasm_execution_engine": "Python Wasmtime 49.0.0 with WASI",
+  "fuzz_runs": [
+    {
+      "report": {
+        "path": "_build/plugin-comparison/candidx-fuzz/seed-cad1d-500/report.json",
+        "sha256": "89c048009523306e4a6d84c9bdf1d2f61979886616cee48a0aa5cbf32b2fa60b"
+      },
+      "status": "pass",
+      "seed": "0xcad1d",
+      "random_records": 500,
+      "typed_plugin_record_case_instances": 1130,
+      "unused_schema_extension_pairs": 565,
+      "distinct_data_pairs": 7,
+      "fresh_wasm_instances_per_program": 2,
+      "plugin_external_original_value_recoveries": {
+        "rust-candid": 1130,
+        "typescript-decodeCompatible": 1130
+      },
+      "directed_plugin_cases_additionally_run": 93,
+      "frozen_golden_cases": 61,
+      "cross_normalization_messages_per_implementation": 5664,
+      "canonical_decoder_regressions": 0,
+      "classified_existing_raw_sdk_losses": 352,
+      "corpus_sha256": "08efee2203f03ccd58ea05d1156823516e183cb6676c9fc907252eefc3b0d32c",
+      "completed_utc": "2026-10-11T09:28:05.265286+00:00",
+      "command": "nix develop --command /srv/shared/code/motoko_candid/research/candid-canonical/.venv/bin/python /srv/shared/code/candidx/tests/fuzz.py --seed 0xcad1d --cases 500 --batch-size 64 --runtime-moc /srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx-fuzz/plugin-moc.py --moc /srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx-fuzz/plugin-moc.py --core /srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/sha256/.mops/core@2.5.0/src --motoko-repo /srv/shared/code/motoko_experiments/motoko_sha --skip-build --skip-wasm --out /srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx-fuzz/seed-cad1d-500",
+      "replay_with_reusable_adapter": "env CANDIDX_TEST_ROOT=/srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx-fuzz CANDIDX_TEST_ARTIFACTS=/srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx-fuzz/artifacts nix develop --command /srv/shared/code/motoko_candid/research/candid-canonical/.venv/bin/python /srv/shared/code/candidx/tests/fuzz.py --seed 0xcad1d --cases 500 --batch-size 64 --runtime-moc /srv/shared/code/motoko_experiments/motoko_sha/test/compute-plugins/candidx-moc.py --moc /srv/shared/code/motoko_experiments/motoko_sha/test/compute-plugins/candidx-moc.py --core /srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/sha256/.mops/core@2.5.0/src --motoko-repo /srv/shared/code/motoko_experiments/motoko_sha --skip-build --skip-wasm --out /srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx-fuzz/replay-seed-cad1d-500"
+    },
+    {
+      "report": {
+        "path": "_build/plugin-comparison/candidx-fuzz/seed-5eedc0de-500/report.json",
+        "sha256": "46f85513c75339e7ad8fdec70b83867be3277b367267bb22efd369758f78d4e9"
+      },
+      "status": "pass",
+      "seed": "0x5eedc0de",
+      "random_records": 500,
+      "typed_plugin_record_case_instances": 1130,
+      "unused_schema_extension_pairs": 565,
+      "distinct_data_pairs": 7,
+      "fresh_wasm_instances_per_program": 2,
+      "plugin_external_original_value_recoveries": {
+        "rust-candid": 1130,
+        "typescript-decodeCompatible": 1130
+      },
+      "directed_plugin_cases_additionally_run": 93,
+      "frozen_golden_cases": 61,
+      "cross_normalization_messages_per_implementation": 5664,
+      "canonical_decoder_regressions": 0,
+      "classified_existing_raw_sdk_losses": 338,
+      "corpus_sha256": "6385d29ba4fc8ffaf0093724a1ff7e68aa0192287ffe61f46c66075d0a73fa72",
+      "completed_utc": "2026-10-11T09:30:07.829175+00:00",
+      "command": "nix develop --command /srv/shared/code/motoko_candid/research/candid-canonical/.venv/bin/python /srv/shared/code/candidx/tests/fuzz.py --seed 0x5eedc0de --cases 500 --batch-size 64 --runtime-moc /srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx-fuzz/plugin-moc.py --moc /srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx-fuzz/plugin-moc.py --core /srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/sha256/.mops/core@2.5.0/src --motoko-repo /srv/shared/code/motoko_experiments/motoko_sha --skip-build --skip-wasm --out /srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx-fuzz/seed-5eedc0de-500",
+      "replay_with_reusable_adapter": "env CANDIDX_TEST_ROOT=/srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx-fuzz CANDIDX_TEST_ARTIFACTS=/srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx-fuzz/artifacts nix develop --command /srv/shared/code/motoko_candid/research/candid-canonical/.venv/bin/python /srv/shared/code/candidx/tests/fuzz.py --seed 0x5eedc0de --cases 500 --batch-size 64 --runtime-moc /srv/shared/code/motoko_experiments/motoko_sha/test/compute-plugins/candidx-moc.py --moc /srv/shared/code/motoko_experiments/motoko_sha/test/compute-plugins/candidx-moc.py --core /srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/sha256/.mops/core@2.5.0/src --motoko-repo /srv/shared/code/motoko_experiments/motoko_sha --skip-build --skip-wasm --out /srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx-fuzz/replay-seed-5eedc0de-500"
+    }
+  ],
+  "full_conformance": {
+    "status": "pass",
+    "report": {
+      "path": "_build/plugin-comparison/candidx-fuzz/conformance/results.json",
+      "sha256": "4439e6e4aa6e8e9a4496d246aeb5b0e34d4801b7dc6b66931e12dc6ae7227b1d"
+    },
+    "directed_plugin_cases": 93,
+    "frozen_golden_cases": 61,
+    "argument_roots": 125,
+    "fresh_wasm_instances_per_program": 3,
+    "plugin_external_original_value_recoveries": {
+      "rust-candid": 93,
+      "typescript-decodeCompatible": 93
+    },
+    "additional_controls": {
+      "python_oracle_unit_tests": 15,
+      "differential_wire_cases_per_normalizer": 476,
+      "type_table_perturbations": 183,
+      "malformed_unsupported_or_limited_wire_cases": 30,
+      "typed_native_evolution_cases": 27,
+      "identity_groups": 12,
+      "distinct_data_pairs": 10,
+      "native_library_optimization_positive_cases": 473,
+      "native_library_optimization_negative_cases": 397,
+      "rust_typescript_comparator_guard_cases": 62,
+      "native_motoko_comparator_guard_cases": 55,
+      "direct_path_guards": {
+        "rust_typed_cases": 93,
+        "ocaml_typed_cases": 93,
+        "typescript_typed_cases": 6
+      },
+      "scope_note": "Binary-input and native-library controls validate independent oracles/library behavior, not an inbound plugin normalizer; the plugin accepts typed values only."
+    },
+    "command": "nix develop --command /srv/shared/code/motoko_candid/research/candid-canonical/.venv/bin/python /srv/shared/code/candidx/tests/verify.py --runtime-moc /srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx-fuzz/plugin-moc.py --moc /srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx-fuzz/plugin-moc.py --core /srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/sha256/.mops/core@2.5.0/src --motoko-repo /srv/shared/code/motoko_experiments/motoko_sha --skip-build --skip-wasm --out /srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx-fuzz/conformance",
+    "replay_with_reusable_adapter": "env CANDIDX_TEST_ROOT=/srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx-fuzz CANDIDX_TEST_ARTIFACTS=/srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx-fuzz/artifacts nix develop --command /srv/shared/code/motoko_candid/research/candid-canonical/.venv/bin/python /srv/shared/code/candidx/tests/verify.py --runtime-moc /srv/shared/code/motoko_experiments/motoko_sha/test/compute-plugins/candidx-moc.py --moc /srv/shared/code/motoko_experiments/motoko_sha/test/compute-plugins/candidx-moc.py --core /srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/sha256/.mops/core@2.5.0/src --motoko-repo /srv/shared/code/motoko_experiments/motoko_sha --skip-build --skip-wasm --out /srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx-fuzz/replay-conformance"
+  },
+  "semantic_checks": [
+    "Actual plugin bytes equal the independent source-value encoder oracle and applicable 61 frozen goldens.",
+    "Reference canonicalization is idempotent on actual bytes and preserves the independently expected normalized data.",
+    "Rust Candid and TypeScript decodeCompatible decode plugin bytes back to separately constructed original typed values.",
+    "Motoko from_candid preserves original values; canonical re-encoding is identical.",
+    "Unused optional schema extensions leave canonical bytes unchanged; designated distinct values remain distinct.",
+    "Floating values compare finite bits including signed zero and NaN class; Reserved data is ignored as specified.",
+    "Fresh Wasm instances give identical outputs; external Python hashlib.sha256 checks complete canonical bytes."
+  ],
+  "coverage": [
+    "zero/one/multiple arguments",
+    "tuples",
+    "all fixed integer widths and arbitrary-size integers",
+    "Float32/Float64 including NaNs, signed zero, subnormals, infinities",
+    "Unicode including BOM and NUL",
+    "principals",
+    "empty/nonempty blobs and vectors",
+    "nested options including present-none",
+    "sparse records",
+    "variants",
+    "finite recursive lists/chains"
+  ],
+  "adapter": {
+    "source": {
+      "path": "test/compute-plugins/candidx-moc.py",
+      "sha256": "0e717623977bd464923d530b07bb9db478a06dbb0d1c37f0ccc55cac872e2fc2"
+    },
+    "initial_tested_adapter": {
+      "path": "_build/plugin-comparison/candidx-fuzz/plugin-moc.py",
+      "sha256": "a40520cefce0b614f74c1487355d836aad38583db529755486c0a00c8c52182e"
+    },
+    "transformation": "Unqualified to_candid_canonical(...) becomes Prim.to_candid_canonical(...) in copied generated probes only; all values, assertions, imports, and oracle sources stay unchanged.",
+    "revalidation": {
+      "path": "_build/plugin-comparison/candidx-fuzz/adapter-validation/report.json",
+      "sha256": "b5718972e87528b11a9b256a9b15e2321f153962f1df84e7a4ac38bd433395dc"
+    },
+    "revalidation_typed_plugin_cases": 93,
+    "identical_previously_tested_generated_source_translations": 42,
+    "validation_command": "nix develop --command /srv/shared/code/motoko_candid/research/candid-canonical/.venv/bin/python /srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx-fuzz/validate-adapter.py"
+  },
+  "mismatches": 0,
+  "oracle_changes": [],
+  "candidx_repository_sources_changed": false,
+  "standalone_wasm_backend_executed": false,
+  "notes": [
+    "The two seeds cover 1,000 generated random records, expanded to old/extended schemas plus directed records: 1,130 typed record case instances per seed. Directed cases repeat across seeds; these counts are not unique schemas.",
+    "Raw upstream TypeScript SDK losses are classified by the existing suite; compatible decoding and Rust/Motoko original-value checks all pass. They are not plugin canonical regressions.",
+    "The upstream generated replay strings omit --skip-build and --skip-wasm; the recorded commands here include both intentionally.",
+    "The upstream provenance scanner fingerprints cx.wasm but all commands explicitly skip its execution."
+  ]
+}

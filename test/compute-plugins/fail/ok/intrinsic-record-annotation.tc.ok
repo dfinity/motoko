@@ -1,0 +1,7 @@
+intrinsic-record-annotation.mo:5.35-5.43: type error [M0096], expression of type
+  {encode : intrinsic candidx_encode}
+cannot produce expected type
+  {encode : () -> Blob}
+because of incompatible function controls: compute intrinsic candidx_encode
+ does not match regular function or one-shot shared function
+ in `encode`

@@ -1,0 +1,5 @@
+(library
+  (name compute_plugin_sha256)
+  (modules register sha256_reference)
+  (libraries codegen mo_values wasm_exts)
+  (library_flags -linkall))

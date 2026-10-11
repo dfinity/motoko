@@ -1,0 +1,100 @@
+{
+  "compiler": {
+    "version": "Motoko compiler (source 2.0.0-2-g52113d40c-dirty)",
+    "path": "src/_build/default/exes/moc.exe",
+    "sha256": "8dd9f414953717dd694656fb9a9d933acb204f7fc9a7693d71c936afc25ef5fe"
+  },
+  "plugins": {
+    "rts_release": {
+      "path": "rts/mo-rts.wasm",
+      "sha256": "8456e47e527bbd584ee2d5d867b0c93f5596d2bcdaa87bba53c04281562c820f"
+    },
+    "rts_debug": {
+      "path": "rts/mo-rts-debug.wasm",
+      "sha256": "f87c1f4a8b15e6e5949f618195cd303bd0d07fc85f1f73e9f0a244eacecb24c9"
+    },
+    "candidx/plugin.cmxs": {
+      "path": "_build/compute-plugins/candidx/plugin.cmxs",
+      "sha256": "27749707a0d53fd8d29632116c6577bd56bc3881542f5b5fb6ecd3ebab4d711e"
+    },
+    "candidx/runtime.wasm": {
+      "path": "_build/compute-plugins/candidx/runtime.wasm",
+      "sha256": "b1a944b99329e28f735c38ebabf788d0f325d0be169bdc6b714040a9b5030db9"
+    },
+    "sha256/plugin.cmxs": {
+      "path": "_build/compute-plugins/sha256/plugin.cmxs",
+      "sha256": "8b045866d782a3c1273166d4188de6f669bf1ee8c8d6ae40b51a2b1c27856b1a"
+    },
+    "sha256/runtime.wasm": {
+      "path": "_build/compute-plugins/sha256/runtime.wasm",
+      "sha256": "319ca57c28af5f7f01d3c220443e63ecd7ce14a7fb11f44fca0e590798d69e18"
+    }
+  },
+  "native_candidx": {
+    "name": "CandidX native Motoko",
+    "profile": "cx",
+    "metadata_version": "1.0.0",
+    "repository": "/srv/shared/code/candidx",
+    "revision": "94c2868988d98e8f660a9aa569a0ebc36fcda8ea",
+    "working_tree_status": "",
+    "source_files_sha256": {
+      "motoko/src/lib.mo": "848090dcec21745fc97035b05395e51bf277ac9d7e58d3c93e2c9ac9cadd48e9",
+      "motoko/mops.toml": "29007129398b34f699c39959b9bbcf845b20998a55399fed6057c166683f0afe",
+      "motoko/README.md": "160b48b8557dbbef6bc87e8d63e55dc1a45cbcb9244a7061d096ff4674149082",
+      "motoko/LICENSE": "e1fafcceec58dd564d18425253ec132d46ad752ecd8110ca414820efeafa2d45"
+    },
+    "frozen_sources": "/srv/shared/code/motoko_experiments/motoko_sha/_build/plugin-comparison/candidx/source",
+    "api": "canonicalize : Blob -> { #ok : Blob; #err : Text }",
+    "primary_expression": "nativeCanonical(to_candid(value))",
+    "secondary_expression": "nativeCanonical(preencodedOrdinaryBytes)",
+    "declared_core_version": "1.0.0"
+  },
+  "native_sha256": {
+    "packages": [
+      {
+        "id": "sha2@0.2.5",
+        "path": "_build/plugin-comparison/sha256/.mops/sha2@0.2.5",
+        "source_path": "_build/plugin-comparison/sha256/.mops/sha2@0.2.5/src",
+        "files": 43,
+        "source_files": 37,
+        "tree_sha256": "6ae1ccf85631ce8f99e56436227c64ee4609ce5256fca1191ce5d169937be82f",
+        "source_tree_sha256": "33fc6bd875a2f36a2afc2fd8bfdec6383d865a55be6165ebb57390bad92cd97c",
+        "tree_hash_format": "SHA256 of UTF-8 lines: lowercase file SHA256 + two spaces + relative POSIX path + LF, sorted by path",
+        "registry_hashes_verified": true,
+        "manifest": "sha2@0.2.5.files.json",
+        "registry_url": "https://mops.one/sha2",
+        "repository_url": "https://github.com/research-ag/sha2"
+      },
+      {
+        "id": "core@2.5.0",
+        "path": "_build/plugin-comparison/sha256/.mops/core@2.5.0",
+        "source_path": "_build/plugin-comparison/sha256/.mops/core@2.5.0/src",
+        "files": 57,
+        "source_files": 53,
+        "tree_sha256": "3b7b05a2b3146a04a0dae0c6ab8911c444f6226c191928637cb2fe876c618d53",
+        "source_tree_sha256": "6fc92392a8524c9264be6d1c0a6193d6e14396c6971cf577c50cc7163b3461ea",
+        "tree_hash_format": "SHA256 of UTF-8 lines: lowercase file SHA256 + two spaces + relative POSIX path + LF, sorted by path",
+        "registry_hashes_verified": true,
+        "manifest": "core@2.5.0.files.json",
+        "registry_url": "https://mops.one/core",
+        "repository_url": "https://github.com/caffeinelabs/motoko-core"
+      }
+    ],
+    "one_shot_api": "SHA256.fromBlob(#sha256, bytes) : Blob",
+    "package_lock_sha256": "a795d94e429519e0ee3b34505864f73b176b9c261f4f4ce06369906866f5ed45",
+    "mops_cli_version": "1.12.0"
+  },
+  "core_override": "Both native libraries use pinned Mops core@2.5.0. CandidX declares core 1.0.0; compatibility and parity were verified with 2.5.0.",
+  "native_phase": "CandidX: nativeCanonical(to_candid(value)); SHA256: SHA256.fromBlob(#sha256, input)",
+  "plugin_phase": "Prim.to_candid_canonical(value) / Prim.sha256(input)",
+  "normalize_phase": "Native CandidX canonicalize on preencoded ordinary Candid; secondary context only",
+  "sha256_inputs": {
+    "generator": "xorshift32, low byte after each step",
+    "seed": "0x9e3779b9",
+    "shifts": [
+      13,
+      -17,
+      5
+    ]
+  }
+}
