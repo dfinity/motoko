@@ -430,6 +430,8 @@ module E = struct
     imports : Imports.t;
     exports : export Table.t ref;
     func_ptrs : int32 FunEnv.t ref;
+    scalar_comparators : Type.prim FunEnv.t ref;
+    comparator_dispatches : (unit -> unit) list ref;
     end_of_table : int32 ref;
     globals : (global Lib.Promise.t * string) Table.t ref;
     global_names : int32 NameEnv.t ref;
@@ -489,6 +491,8 @@ module E = struct
     imports = Imports.empty ();
     exports = ref Table.empty;
     func_ptrs = ref FunEnv.empty;
+    scalar_comparators = ref FunEnv.empty;
+    comparator_dispatches = ref [];
     end_of_table = ref 0l;
     globals = ref Table.empty;
     global_names = ref NameEnv.empty;
@@ -9567,6 +9571,34 @@ end (* GCRoots *)
    EphemeralAllocator: unrooted Blob payloads reclaimed by a later GC, after
    the plugin has discarded every raw pointer. *)
 module ComputePlugins = struct
+  let scalar_comparators env =
+    E.FunEnv.bindings !(env.E.scalar_comparators) |>
+    List.filter_map (fun (fi, prim) ->
+      Option.map (fun fp -> fp, prim)
+        (E.FunEnv.find_opt fi !(env.E.func_ptrs)))
+
+  (* Dispatch bodies can introduce other dispatches and ordinary shared
+     helpers. Finish these before freezing static objects or type descriptors. *)
+  let define_comparator_dispatches env =
+    let rec drain () = match !(env.E.comparator_dispatches) with
+      | [] -> ()
+      | pending ->
+        env.E.comparator_dispatches := [];
+        List.iter (fun define -> define ()) (List.rev pending);
+        drain ()
+    in
+    drain ();
+    Func.define_built_in env "plugin_comparator_kind"
+      ["comparator", I64Type] [I64Type] (fun env ->
+        let set_pointer, get_pointer = new_local env "comparator_pointer" in
+        G.i (LocalGet (nr 0l)) ^^
+        Tagged.load_forwarding_pointer env ^^
+        Tagged.load_field env Closure.funptr_field ^^ set_pointer ^^
+        List.fold_right (fun (pointer, prim) rest ->
+          get_pointer ^^ compile_eq_const (Int64.of_int32 pointer) ^^
+          E.if1 I64Type (compile_unboxed_const (Scalar_compare.tag prim)) rest
+        ) (scalar_comparators env) compile_unboxed_zero)
+
   open Plugin_codegen
   let register_imports env =
     List.iter (fun {Plugin_codegen.plugin; _} ->
@@ -9664,6 +9696,37 @@ module ComputePlugins = struct
             "compute plugin callback requires an instantiated synchronous local function"
     end
     module Compare = struct
+      let dispatch env ~comparator_index arguments results body =
+        let arity = List.length arguments in
+        if comparator_index < 0 || comparator_index >= arity then
+          invalid_arg "compute plugin comparator index is out of bounds";
+        let fi, fill = E.reserve_fun env "plugin_comparator_dispatch" in
+        let define () =
+          let primitives = scalar_comparators env |> List.map snd |>
+            List.sort_uniq (fun a b ->
+              Int64.compare (Scalar_compare.tag a) (Scalar_compare.tag b)) in
+          let parameters = List.init arity (fun i ->
+            "arg" ^ string_of_int i, I64Type) in
+          fill (Func.of_body env parameters results (fun env ->
+            let getters = List.init arity (fun i ->
+              G.i (LocalGet (nr (Int32.of_int i)))) in
+            let fallback = body env None getters in
+            match primitives with
+            | [] -> fallback
+            | _ ->
+              let set_kind, get_kind = new_local env "comparator_kind" in
+              List.nth getters comparator_index ^^
+              G.i (Call (nr (E.built_in env "plugin_comparator_kind"))) ^^
+              set_kind ^^
+              List.fold_right (fun prim rest ->
+                get_kind ^^ compile_eq_const (Scalar_compare.tag prim) ^^
+                MultiVal.if_ env results (body env (Some prim) getters) rest
+              ) primitives fallback))
+        in
+        env.E.comparator_dispatches :=
+          define :: !(env.E.comparator_dispatches);
+        G.concat arguments ^^ G.i (Call (nr fi)) ^^ MultiVal.load env results
+
       let scalar env prim =
         match prim with
         | Type.Text ->
@@ -10031,7 +10094,8 @@ module FuncDec = struct
     ))
 
   (* Compile a closed function declaration (captures no local variables) *)
-  let closed pre_env sort control name args mk_body fun_rhs ret_tys at =
+  let closed ?scalar_compare pre_env sort control name args mk_body fun_rhs
+      ret_tys at =
     if Type.is_shared_sort sort
     then begin
       let (fi, fill) = E.reserve_fun pre_env name in
@@ -10042,7 +10106,14 @@ module FuncDec = struct
       assert (control = Type.Returns);
       let lf = E.make_lazy_function pre_env name in
       let fun_id = E.get_constant_function_id pre_env in
-      ( Const.Fun (fun_id, (fun () -> Lib.AllocOnUse.use lf), fun_rhs), fun env ae ->
+      let function_index () =
+        let fi = Lib.AllocOnUse.use lf in
+        Option.iter (fun prim ->
+          pre_env.E.scalar_comparators :=
+            E.FunEnv.add fi prim !(pre_env.E.scalar_comparators)) scalar_compare;
+        fi
+      in
+      ( Const.Fun (fun_id, function_index, fun_rhs), fun env ae ->
         let restore_no_env _env ae _ = ae, unmodified in
         Lib.AllocOnUse.def lf (lazy (compile_local_function env ae restore_no_env args mk_body ret_tys at))
       )
@@ -13848,7 +13919,24 @@ and compile_const_exp env pre_ae exp : Const.v * (E.t -> VarEnv.t -> unit) =
         then fatal "internal error: const \"%s\": captures \"%s\", not found in static environment\n" name v
       ) (Freevars.M.keys (Freevars.exp e));
       compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
-    FuncDec.closed env sort control name args mk_body fun_rhs return_tys exp.at
+    let rec constant_value expression = match expression.it with
+      | VarE (Const, name) ->
+        (match VarEnv.NameEnv.find_opt name pre_ae.VarEnv.vars with
+        | Some (VarEnv.Const value, _) -> Some value
+        | _ -> None)
+      | PrimE (DotPrim label, [object_]) ->
+        (match constant_value object_ with
+        | Some (Const.Obj fields) -> List.assoc_opt label fields
+        | _ -> None)
+      | _ -> None
+    in
+    let resolve_prim expression = match constant_value expression with
+      | Some (Const.Fun (_, _, Const.PrimWrapper prim)) -> Some prim
+      | _ -> None
+    in
+    let scalar_compare = Scalar_compare.recognize ~resolve_prim exp in
+    FuncDec.closed ?scalar_compare env sort control name args mk_body fun_rhs
+      return_tys exp.at
   | BlockE (decs, e) ->
     let (extend, fill1) = compile_const_decs env pre_ae decs in
     let ae' = extend pre_ae in
@@ -14167,6 +14255,8 @@ and conclude_module env set_serialization_globals =
   FuncDec.export_async_method env;
   FuncDec.export_gc_trigger_method env;
   FuncDec.export_stabilization_limits env;
+
+  ComputePlugins.define_comparator_dispatches env;
 
   (* See Note [Candid subtype checks] *)
   Serialization.create_global_type_descriptor env set_serialization_globals;

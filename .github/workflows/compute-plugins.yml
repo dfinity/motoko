@@ -43,7 +43,9 @@ jobs:
           test-runner -b test/compute-plugins/run-drun
 
       - name: Test package compatibility
-        run: python3 test/compute-plugins/packaging.py
+        run: |
+          python3 test/compute-plugins/packaging.py
+          python3 test/compute-plugins/comparator_codegen.py
 
       - name: Test linker and execute composed Wasm fixtures
         run: |

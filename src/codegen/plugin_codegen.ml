@@ -65,6 +65,9 @@ module type Backend = sig
     (* Consume two vanilla values and return unboxed -1, 0, or 1. Supported:
        Nat/Int and fixed integers, Bool, Char, Text, Blob, Principal. *)
     val scalar : env -> Type.prim -> G.t
+    (* See the public interface for the delayed body/argument contract. *)
+    val dispatch : env -> comparator_index:int -> G.t list -> value_type list ->
+      (env -> Type.prim option -> G.t list -> G.t) -> G.t
   end
   module Blob : sig
     val len : env -> G.t

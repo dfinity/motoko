@@ -174,6 +174,25 @@ The interpreter protocol is continuation-based and invokes callbacks with the
 ordinary actor context. `Compute_plugin.pure` lifts a callback-free reference
 computation into this protocol.
 
+`Backend.Compare.dispatch` lets an operation use scalar ordering automatically
+when given an ordinary comparator, including through generic Motoko wrappers.
+The compiler recognizes complete, effect-free comparison bodies for integers,
+Bool, Char, Text, Blob and Principal. It checks emitted closure identity once
+per operation; unrecognized comparators, including effectful functions and
+custom orderings, use the original callback. Float ordering is not recognized.
+Names and package paths provide no
+proof, and callbacks are never executed to discover their behavior.
+
+The generator supplies already evaluated arguments, the comparator's argument
+index, Wasm result types, and a body generator. The body receives a fresh
+environment and argument getters, plus `Some primitive` for proven scalar
+ordering or `None` for callback fallback. The proof describes ordering, not
+the original storage type: generic keys and comparator contravariance must
+retain their existing representations and GC barriers. Bodies are generated
+after ordinary functions, using only scalar kinds whose comparator closures
+were materialized. Programs with only unknown callbacks get no classifier or
+scalar branches. The mechanism adds no closure fields or persistent state.
+
 Plugins that emit only managed Wasm code register `runtime = None` and no
 runtime imports. They need no dummy runtime module. A plugin with imports and
 no declared runtime is rejected. The pure-map implementation demonstrates

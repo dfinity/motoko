@@ -66,6 +66,17 @@ module type Backend = sig
     (* Consume two vanilla values and return unboxed -1, 0, or 1. Supported:
        Nat/Int and fixed integers, Bool, Char, Text, Blob, Principal. *)
     val scalar : env -> Type.prim -> G.t
+    (* Dispatch once per operation on a compiler-proven scalar comparator.
+       Arguments are evaluated once, left-to-right, as vanilla values. The
+       comparator_index names the closure argument. The body receives a fresh
+       function environment and argument getters: None preserves the original
+       callback; Some p proves the closure implements scalar ordering p.
+       This proof describes comparison only, not argument/storage types.
+       Bodies are generated after ordinary functions, for materialized scalar
+       kinds only. They may share helpers, but must not capture caller locals.
+       Each branch leaves the declared Wasm results, including zero/multiple. *)
+    val dispatch : env -> comparator_index:int -> G.t list -> value_type list ->
+      (env -> Type.prim option -> G.t list -> G.t) -> G.t
   end
   module Blob : sig
     val len : env -> G.t

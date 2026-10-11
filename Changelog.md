@@ -9,9 +9,11 @@
     implementations and compatibility diagnostics. Support explicit output
     type specialization and managed record/variant results through a single
     typed binding API, generic opaque parameters, synchronous Motoko callbacks,
-    scalar ordering helpers, and allocation-free argument and tuple-result passing. Codegen-only
-    plugins need no runtime module. Typed managed array and record mutation
-    uses the compiler's ordinary GC barriers. Plugin implementations
+    scalar ordering helpers, and allocation-free argument and tuple-result
+    passing. Compiler-proven scalar comparators can select native plugin
+    operations through ordinary callback APIs. Codegen-only plugins need no
+    runtime module. Typed managed array and record mutation uses the
+    compiler's ordinary GC barriers. Plugin implementations
     are maintained in the separate
     [motoko_plugins](https://github.com/Neutrinomic/motoko_plugins) repository
     (#6443).

@@ -26,6 +26,15 @@ Array construction initializes all slots before invoking callbacks and keeps
 the normal allocation and pointer write barriers, while reusing an element
 cursor under the SDK's no-GC-safepoint contract.
 
+The `comparators` fixture exercises automatic scalar dispatch through generic
+wrappers, all supported scalar representations, callback effects and traps,
+contravariance, tuple/unit results, and nested deferred generators.
+`comparator_codegen.py` also checks that scalar helpers actually appear in
+emitted Wasm: unknown-only programs emit no classifier, and a Nat64-only
+program emits only its Nat64 arm, including when an unused Text comparator is
+present in the source. These checks complement semantic tests that would also
+pass with the optimization disabled.
+
 The `mutation` fixture exercises typed mutable array and record construction,
 reads and writes, generic payload sharing, field-cell aliases, recursive nodes,
 width subtyping, operand order, reentry and early returns. An IC fixture retains
@@ -50,6 +59,7 @@ test-runner -b test/compute-plugins/fail
 test-runner -b test/compute-plugins/trap
 test-runner -b test/compute-plugins/run-drun
 python3 test/compute-plugins/packaging.py
+python3 test/compute-plugins/comparator_codegen.py
 ```
 
 The build uses a dynamically linked native `moc` and matching compiler
