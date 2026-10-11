@@ -9654,13 +9654,9 @@ module ComputePlugins = struct
         | Type.Func (Type.Local, Type.Returns, [], ins, outs)
           when List.length ins = List.length arguments ->
           let set_closure, get_closure = new_local env "plugin_callback" in
-          let arguments = List.mapi (fun i argument ->
-            let set, get = new_local env ("plugin_argument" ^ string_of_int i) in
-            argument ^^ set, get) arguments in
           closure ^^ set_closure ^^
-          G.concat_map fst arguments ^^
           get_closure ^^ Closure.prepare_closure_call env ^^
-          G.concat_map snd arguments ^^
+          G.concat arguments ^^
           get_closure ^^
           Closure.call_closure env (List.length ins) (List.length outs) ^^
           (match outs with [_] -> G.nop | _ -> Tuple.from_stack env (List.length outs))

@@ -14,6 +14,8 @@ local Motoko callback dispatch. Callback coverage includes sequence arities,
 effect order, ignored results, traps, reentry, mutable/closure payload sharing,
 and opaque async values without suspension inside the plugin. A scalar callback
 loop verifies that plugin argument passing allocates no managed tuples.
+Nested argument suppliers check closure/argument order and trap propagation
+while earlier managed arguments remain on the operand stack across callbacks.
 Known tuple results also travel on the stack: immediate pair/triple destructuring
 and unit callbacks allocate no temporary result tuples, while tuples retained in
 arrays or across forced GC receive normal managed storage. Generic opaque

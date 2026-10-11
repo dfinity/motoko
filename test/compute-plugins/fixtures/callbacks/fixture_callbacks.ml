@@ -7,13 +7,15 @@ module V = Mo_values.Value
 let local ins outs = T.Func (T.Local, T.Returns, [], ins, outs)
 
 type operation = Identity | Apply | Apply0 | Apply2 | Split | Visit | Twice
-  | Pair | Triple | Unit | Unpack | Tabulate
+  | Pair | Triple | Unit | Unpack | Tabulate | Supplied2
 
 let schema operation types = match operation, types with
   | (Identity | Unpack), [a] -> Ok ([a], a)
   | Apply, [a; b] -> Ok ([local [a] [b]; a], b)
   | Apply0, [a] -> Ok ([local [] [a]], a)
   | Apply2, [a; b; c] -> Ok ([local [a; b] [c]; a; b], c)
+  | Supplied2, [a; b; c] ->
+    Ok ([local [] [local [a; b] [c]]; local [] [a]; local [] [b]], c)
   | Split, [a; b; c] -> Ok ([local [a] [b; c]; a], T.Tup [b; c])
   | Visit, [a] -> Ok ([local [a] []; a], a)
   | Twice, [a] -> Ok ([local [a] [a]; a], a)
@@ -44,6 +46,13 @@ module Generator (Op : Operation) = struct
         P.{code = G.concat values; representation = Tuple 2}
       | Ok _, values when Op.operation = Triple ->
         P.{code = G.concat values; representation = Tuple 3}
+      | Ok ([(T.Func (_, _, _, _, [callback]) as factory_type);
+              first_type; second_type], _), [factory; first; second]
+        when Op.operation = Supplied2 ->
+        managed (B.Call.local env callback
+          (B.Call.local env factory_type factory [])
+          [B.Call.local env first_type first [];
+           B.Call.local env second_type second []])
       | Ok ([_; callback], _), [length; closure]
         when Op.operation = Tabulate ->
         managed (B.Arr.tabulate env
@@ -66,7 +75,7 @@ module Generator (Op : Operation) = struct
            G.concat [call; set_result;
              B.Call.local env callback closure [get_result]]
          | Identity | Apply | Apply0 | Apply2 | Split | Pair | Triple | Unit
-         | Unpack | Tabulate -> call)
+         | Unpack | Tabulate | Supplied2 -> call)
       | _ -> managed (B.E.trap_with env "invalid callback fixture schema")
   end
 end
@@ -75,6 +84,17 @@ let evaluator operation evaluator types _arguments values k =
   match schema operation types, operation, values with
   | Ok _, (Identity | Unpack), [value] -> k (Ok value)
   | Ok _, (Pair | Triple), values -> k (Ok (V.Tup values))
+  | Ok ([(T.Func (_, _, _, _, [callback_type]) as factory_type);
+          first_type; second_type], _), Supplied2, [factory; first; second] ->
+    evaluator.C.call factory_type factory [] (function
+      | Error message -> k (Error message)
+      | Ok callback ->
+        evaluator.C.call first_type first [] (function
+          | Error message -> k (Error message)
+          | Ok a ->
+            evaluator.C.call second_type second [] (function
+              | Error message -> k (Error message)
+              | Ok b -> evaluator.C.call callback_type callback [a; b] k)))
   | Ok ([_; callback_type], _), Tabulate, [V.Int length; callback] ->
     let length = Mo_values.Numerics.Int.to_int length in
     let values = Array.make length V.Null in
@@ -174,6 +194,8 @@ let () = P.register P.{
       (module Generator (struct let operation = Apply0 end));
     binding "fixture_apply2" "fixtureApply2" Apply2 3,
       (module Generator (struct let operation = Apply2 end));
+    binding "fixture_supplied2" "fixtureSupplied2" Supplied2 3,
+      (module Generator (struct let operation = Supplied2 end));
     binding "fixture_split" "fixtureSplit" Split 3,
       (module Generator (struct let operation = Split end));
     binding "fixture_visit" "fixtureVisit" Visit 1,
