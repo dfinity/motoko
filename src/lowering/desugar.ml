@@ -170,19 +170,34 @@ and exp' at note = function
     let tys = List.map (T.open_ vars) res_tys in
     I.FuncE (name, s, control, tbs', args, tys, wrap (exp e))
   (* Primitive functions in the prelude have particular shapes *)
-  | S.CallE (par, callee, inst, (_, args))
+  | S.CallE (par, callee, inst, (parenthesized, args))
     when Option.is_some (Compute_plugin.intrinsic callee.note.S.note_typ) ->
     let id = Option.get (Compute_plugin.intrinsic callee.note.S.note_typ) in
+    let argument_type = (!args).note.S.note_typ in
+    let argument_types = match (!args).it with
+      | S.TupE _ when not parenthesized -> T.seq_of_tup argument_type
+      | _ -> [argument_type]
+    in
+    let specialization = Compute_plugin.{
+      type_arguments = inst.note;
+      argument_types;
+      result_type = note.Note.typ;
+    } in
     (* Notes, callee, and arguments retain their normal evaluation order. *)
     let ds, _ = parenthetical false par in
     let encoded =
-      { (primE (I.ComputePrim (id, inst.note)) [exp !args]) with at } in
+      { (primE (I.ComputePrim (id, specialization)) [exp !args]) with at } in
     (blockE (ds @ [expD (ignoreE (exp callee))])
       encoded).it
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE p;_}, _);_}, _, (_, e))
     when Lib.String.chop_prefix "compute:" p <> None ->
     let id = Option.get (Lib.String.chop_prefix "compute:" p) in
-    I.PrimE (I.ComputePrim (id, [(!e).note.S.note_typ]), [exp !e])
+    let specialization = Compute_plugin.{
+      type_arguments = [];
+      argument_types = [(!e).note.S.note_typ];
+      result_type = note.Note.typ;
+    } in
+    I.PrimE (I.ComputePrim (id, specialization), [exp !e])
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, (_, e))
     when Lib.String.chop_prefix "num_conv" p <> None ->
     begin match String.split_on_char '_' p with

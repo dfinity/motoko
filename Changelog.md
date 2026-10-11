@@ -6,7 +6,8 @@
 
   * Add experimental native compute compiler plugins via `--plugin`, with
     typed specialization, statically linked Wasm, and interpreter reference
-    implementations and compatibility diagnostics. Plugin implementations
+    implementations and compatibility diagnostics. Support explicit output
+    type specialization and managed record/variant results. Plugin implementations
     are maintained in the separate
     [motoko_plugins](https://github.com/Neutrinomic/motoko_plugins) repository
     (#6443).

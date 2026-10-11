@@ -144,7 +144,8 @@ and prim =
   | ThrowPrim                         (* throw *)
   | ShowPrim of Type.typ              (* debug_show *)
   | SerializePrim of Type.typ list    (* Candid serialization prim *)
-  | ComputePrim of string * Type.typ list (* specialized compute plugin *)
+  | ComputePrim of string * Mo_values.Compute_plugin.specialization
+                                     (* specialized compute plugin *)
   | ComputeValuePrim of string        (* singleton intrinsic identity *)
   | DeserializePrim of Type.typ list  (* Candid deserialization prim *)
   | DeserializeOptPrim of Type.typ list
@@ -306,7 +307,8 @@ let map_prim t_typ t_lab p =
   | ThrowPrim -> p
   | ShowPrim t -> ShowPrim (t_typ t)
   | SerializePrim ts -> SerializePrim (List.map t_typ ts)
-  | ComputePrim (id, ts) -> ComputePrim (id, List.map t_typ ts)
+  | ComputePrim (id, s) ->
+    ComputePrim (id, Mo_values.Compute_plugin.map_specialization t_typ s)
   | ComputeValuePrim _ -> p
   | DeserializePrim ts -> DeserializePrim (List.map t_typ ts)
   | DeserializeOptPrim ts -> DeserializeOptPrim (List.map t_typ ts)

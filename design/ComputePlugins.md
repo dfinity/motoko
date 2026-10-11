@@ -9,7 +9,8 @@ kernels and temporary helpers.
 
 Plugin implementations are maintained in
 [Neutrinomic/motoko_plugins](https://github.com/Neutrinomic/motoko_plugins),
-including CandidX (`Prim.to_candid_canonical`) and SHA-256 (`Prim.sha256`).
+including CandidX (`Prim.to_candid_canonical`), SHA-256 (`Prim.sha256`),
+and JSON (`Prim.to_json` and `Prim.from_json<T>`).
 That repository owns their builds, tests, fuzz adapters, and PocketIC
 benchmarks. It is a separate checkout, not a Motoko submodule or build
 dependency. This repository contains the compiler API, loader, linker, and
@@ -22,14 +23,19 @@ compatible dynamically linked native compiler. With sibling checkouts:
 
 ```sh
 bin/moc --plugin ../plugins/dist/candidx \
-        --plugin ../plugins/dist/sha256 example.mo -o example.wasm
+        --plugin ../plugins/dist/sha256 \
+        --plugin ../plugins/dist/json example.mo -o example.wasm
 ```
 
 ```motoko
 import Prim "mo:⛔";
 
-let bytes = Prim.to_candid_canonical({ height = 42; memo = ?"hello" });
-let digest = Prim.sha256(bytes);
+switch (Prim.to_candid_canonical({ height = 42; memo = ?"hello" })) {
+  case (#ok bytes) { let digest = Prim.sha256(bytes) };
+  case (#err message) { Prim.debugPrint(message) };
+};
+type User = { name : Text; age : Nat8 };
+let user = Prim.from_json<User>("{\"name\":\"Ada\",\"age\":37}");
 ```
 
 Pass the same `--plugin` options for `--check`, `-r`, or `-r -iR`. They add public
@@ -45,7 +51,9 @@ ordinary function annotation. Use an explicitly typed wrapper when passing
 such an encoder as a callback:
 
 ```motoko
-func encodeHeight(x : Nat) : Blob { Prim.to_candid_canonical(x) };
+func encodeHeight(x : Nat) : { #ok : Blob; #err : Text } {
+  Prim.to_candid_canonical(x)
+};
 ```
 
 Argument lists and tuple values remain distinct:
@@ -164,18 +172,37 @@ The versioned compiler interface is
 1. A unique package name, ABI version, runtime filename, and runtime import
    signatures.
 2. Public Prim bindings, each with a unique internal identity, an argument
-   policy, and an interpreter reference implementation.
+   policy, explicit type parameter count, result-type function, and an
+   interpreter reference implementation.
 3. A generator functor over `Plugin_codegen.Backend`. It consumes one packed
-   Motoko argument value on the Wasm stack and leaves the result Blob there.
+   Motoko argument value on the Wasm stack and leaves a vanilla Motoko result
+   there. Its specialization contains explicit type arguments, input types,
+   and the checked result type.
 
-The package's required ABI must be fixed at build time, such as `abi = 1` for
+The package's required ABI must be fixed at build time, such as `abi = 2` for
 the current SDK. Do not copy `Plugin_codegen.abi_version` from the running
 host: a plugin built with opaque or interface-only dependencies can otherwise
 adopt a newer host's ABI without having been rebuilt for its semantics.
 
-The initial argument policies are a fixed Blob input and a variadic sequence
-of shared Motoko values. Results are Blobs. Additional type policies and result
-layouts can be added to the SDK when a concrete plugin needs them.
+ABI 2 supports the ordinary `Blob -> Blob` policy, fixed input type lists, and
+variadic shared inputs. Intrinsics can require explicit concrete type arguments
+and return concrete records, variants, arrays, options, text, and scalars.
+`from_json<User>(text)` specializes both validation and construction for `User`;
+its result is `{ #ok : User; #err : JsonError }`. The plugin supplies that
+structural error type. Expected input failures are values, not interpreter
+exceptions or Wasm traps.
+
+The backend provides managed constructors with forwarding, allocation, and
+write barriers. Record fields and variant payloads are evaluated before their
+containers are allocated. Dynamic arrays start with initialized slots, allowing
+early error returns without leaving invalid heap fields. These constructors
+still require the synchronous no-GC-safepoint contract.
+
+ABI 1 packages must be rebuilt and migrated: bindings now declare their result
+type and explicit type parameter count; interpreters return `Value.value`;
+generators receive a specialization record. CandidX callers must handle its
+`#ok`/`#err` result before using the encoded Blob. SHA-256's public API is
+unchanged. Historical benchmarks describe their original ABI 1 artifacts.
 
 [SHA-256](https://github.com/Neutrinomic/motoko_plugins/tree/main/plugins/sha256)
 is a small example; [CandidX](https://github.com/Neutrinomic/motoko_plugins/tree/main/plugins/candidx)

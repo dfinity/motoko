@@ -23,13 +23,15 @@ let binding = Mo_values.Compute_plugin.{
   id = "fixture_echo";
   name = "fixtureEcho";
   arguments = Blob;
-  evaluate = (fun _types -> function
-    | [Mo_values.Value.Blob bytes] -> Ok bytes
+  type_parameters = 0;
+  result_type = (fun _ _ -> Ok Mo_types.Type.blob);
+  evaluate = (fun _type_arguments _types -> function
+    | [Mo_values.Value.Blob bytes] -> Ok (Mo_values.Value.Blob bytes)
     | _ -> Error "fixtureEcho expects one Blob argument");
 }
 
 let () = P.register P.{
-  abi = 1;
+  abi = 2;
   name = "fixture_echo";
   runtime = "runtime.wasm";
   imports = ["transform", Wasm_exts.Types.[I64Type; I64Type; I64Type], []];

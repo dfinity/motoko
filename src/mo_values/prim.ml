@@ -125,8 +125,13 @@ let prim trap =
   | s when Lib.String.chop_prefix "compute:" s <> None ->
     let id = Option.get (Lib.String.chop_prefix "compute:" s) in
     fun _ v k ->
-      (match Compute_plugin.evaluate id [Type.blob] [v] with
-       | Ok bytes -> k (Blob bytes)
+      let specialization = Compute_plugin.{
+        type_arguments = [];
+        argument_types = [Type.blob];
+        result_type = Type.blob;
+      } in
+      (match Compute_plugin.evaluate id specialization [v] with
+       | Ok value -> k value
        | Error message -> trap.trap message)
   | "abs" -> fun _ v k -> k (Int (Nat.abs (as_int v)))
   | "fabs" -> fun _ v k -> k (Float (Float.abs (as_float v)))

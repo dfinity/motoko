@@ -753,16 +753,26 @@ let rec check_exp env (exp:Ir.exp) : unit =
       Mo_values.Compute_plugin.intrinsic_type id <: t;
       (match Mo_values.Compute_plugin.find id with
        | Some {Mo_values.Compute_plugin.arguments =
-           Mo_values.Compute_plugin.Shared; _} -> ()
+           (Mo_values.Compute_plugin.Shared |
+             Mo_values.Compute_plugin.Fixed _); _} -> ()
        | _ -> error env exp.at "unknown typed compute intrinsic %s" id)
-    | ComputePrim (id, ts), [e] ->
-      typ e <: T.seq ts;
-      T.blob <: t;
+    | ComputePrim (id, s), [e] ->
+      typ e <: T.seq s.Mo_values.Compute_plugin.argument_types;
+      s.Mo_values.Compute_plugin.result_type <: t;
+      List.iter (check_typ env) s.Mo_values.Compute_plugin.type_arguments;
+      List.iter (check_typ env) s.Mo_values.Compute_plugin.argument_types;
+      check_typ env s.Mo_values.Compute_plugin.result_type;
       (match Mo_values.Compute_plugin.find id with
        | None -> error env exp.at "unknown compute plugin %s" id
        | Some binding ->
-         match Mo_values.Compute_plugin.check binding ts with
-         | Ok () -> ()
+         match Mo_values.Compute_plugin.specialize binding
+             s.Mo_values.Compute_plugin.type_arguments
+             s.Mo_values.Compute_plugin.argument_types with
+         | Ok checked ->
+           check
+             (T.eq checked.Mo_values.Compute_plugin.result_type
+               s.Mo_values.Compute_plugin.result_type)
+             "compute plugin result type differs from its specialization"
          | Error message -> error env exp.at "%s" message)
     | OtherPrim _, _ -> ()
     | p, args ->

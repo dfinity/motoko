@@ -9640,22 +9640,108 @@ module ComputePlugins = struct
     let alloc_blob env = Blob.alloc env Tagged.B
     let unbox_float32 env =
       StackRep.adjust env SR.Vanilla SR.UnboxedFloat32
+    let box_float32 env =
+      StackRep.adjust env SR.UnboxedFloat32 SR.Vanilla
     let buffer_size = Serialization.buffer_size
     let candid_primitive = Serialization.to_idl_prim Serialization.Candid
     let sort_by_hash = Serialization.sort_by_hash
     module E = E
     module Func = Func
     module Blob = Blob
-    module Arr = Arr
+    module Arr = struct
+      include Arr
+
+      let tabulate env length element =
+        let set_len, get_len = new_local env "plugin_array_length" in
+        let set_array, get_array = new_local env "plugin_array" in
+        length ^^ set_len ^^
+        Arr.alloc env Tagged.I get_len ^^ set_array ^^
+        (* An element decoder may return early on malformed input. Make the
+           entire allocation valid before invoking it, including during an
+           incremental GC, then use the normal pointer write barrier. *)
+        get_array ^^ compile_unboxed_zero ^^ Arr.unsafe_idx env ^^
+        compile_add_const ptr_unskew ^^
+        compile_const_32 0l ^^
+        get_len ^^ compile_mul_const Arr.element_size ^^
+        G.i MemoryFill ^^
+        get_array ^^ Tagged.allocation_barrier env ^^ G.i Drop ^^
+        get_len ^^ from_0_to_n env (fun get_index ->
+          get_array ^^ get_index ^^ Arr.unsafe_idx env ^^
+          compile_add_const ptr_unskew ^^
+          element get_index ^^ Tagged.write_with_barrier env) ^^
+        get_array
+    end
     module Tuple = Tuple
-    module Object = Object
-    module Variant = Variant
+    module Object = struct
+      include Object
+
+      let lit_raw env fields =
+        (* Evaluate fields before allocating, so a recoverable error cannot
+           abandon a partially initialized object. *)
+        let fields = List.map (fun (label, value) ->
+          let set, get = new_local env ("plugin_field_" ^ label) in
+          value () ^^ set, (label, fun () -> get)) fields in
+        G.concat_map fst fields ^^
+        Object.lit_raw env (List.map snd fields)
+    end
+    module Variant = struct
+      include Variant
+
+      let inject env label payload =
+        let set_payload, get_payload = new_local env "plugin_variant" in
+        payload ^^ set_payload ^^ Variant.inject env label get_payload
+    end
     module Opt = Opt
-    module Text = Text
+    module Text = struct
+      include Text
+      let lit env = Blob.lit env Tagged.T
+    end
+    module Principal = struct
+      let of_ptr_size env =
+        Func.share_code2 Func.Always env "plugin_principal_of_ptr_size"
+          (("ptr", I64Type), ("size", I64Type)) [I64Type]
+          (fun env get_ptr get_size ->
+            let set_value, get_value = new_local env "principal" in
+            get_size ^^ compile_unboxed_const 29L ^^
+            compile_comparison I64Op.LeU ^^
+            E.else_trap_with env "compute plugin principal is too long" ^^
+            Blob.alloc env Tagged.P get_size ^^ set_value ^^
+            get_value ^^ Blob.payload_ptr_unskewed env ^^
+            get_ptr ^^ get_size ^^ Heap.memcpy env ^^
+            get_value)
+    end
     module Float = Float
     module BoxedWord64 = BoxedWord64
     module TaggedSmallWord = TaggedSmallWord
     module BitTagged = BitTagged
+    module BigNum = struct
+      include BigNum
+
+      let to_leb128 env signed =
+        let name = if signed then "plugin_sleb128" else "plugin_leb128" in
+        Func.share_code1 Func.Always env name ("value", I64Type) [I64Type]
+          (fun env get_value ->
+            let size = if signed then BigNum.compile_data_size_signed
+                       else BigNum.compile_data_size_unsigned in
+            let write = if signed then BigNum.compile_store_to_data_buf_signed
+                        else BigNum.compile_store_to_data_buf_unsigned in
+            let set_blob, get_blob = new_local env "integer_bytes" in
+            Blob.alloc env Tagged.B (get_value ^^ size env) ^^ set_blob ^^
+            get_blob ^^ Blob.payload_ptr_unskewed env ^^
+            get_value ^^ write env ^^ G.i Drop ^^
+            get_blob)
+
+      let of_leb128 env signed =
+        let name = if signed then "plugin_of_sleb128"
+                   else "plugin_of_leb128" in
+        Func.share_code2 Func.Always env name
+          (("ptr", I64Type), ("size", I64Type)) [I64Type]
+          (fun env get_ptr get_size ->
+            ReadBuf.alloc env (fun get_buf ->
+              ReadBuf.set_ptr get_buf get_ptr ^^
+              ReadBuf.set_size get_buf get_size ^^
+              BigNum.compile_load_from_data_buf env get_buf signed))
+    end
     module BigNumLibtommath = BigNumLibtommath
     module Bool = Bool
     module I32Leb = I32Leb

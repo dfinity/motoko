@@ -2465,7 +2465,8 @@ and infer_exp'' env exp : T.typ =
   | PrimE s when Lib.String.chop_prefix "compute:" s <> None ->
     let id = Option.get (Lib.String.chop_prefix "compute:" s) in
     (match Compute_plugin.find id with
-     | Some {Compute_plugin.arguments = Compute_plugin.Shared; _} ->
+     | Some {Compute_plugin.arguments =
+         (Compute_plugin.Shared | Compute_plugin.Fixed _); _} ->
        Compute_plugin.intrinsic_type id
      | _ -> error env exp.at "M0279" "unknown typed compute intrinsic %s" id)
   | PrimE _ ->
@@ -3106,7 +3107,8 @@ and check_exp' env0 t exp : T.typ =
     when Lib.String.chop_prefix "compute:" s <> None ->
     let id = Option.get (Lib.String.chop_prefix "compute:" s) in
     let expected = match Compute_plugin.find id with
-      | Some {Compute_plugin.arguments = Compute_plugin.Shared; _} ->
+      | Some {Compute_plugin.arguments =
+          (Compute_plugin.Shared | Compute_plugin.Fixed _); _} ->
         Compute_plugin.intrinsic_type id
       | Some {Compute_plugin.arguments = Compute_plugin.Blob; _} ->
         T.Func (T.Local, T.Returns, [], [T.blob], [T.blob])
@@ -3594,24 +3596,50 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   let (t1, ctx_dot) = infer_callee env exp1 in
   match Compute_plugin.intrinsic t1 with
   | Some id ->
-    if inst.it <> None then
-      error env inst.at "M0279"
-        "compute intrinsics infer their types from their arguments";
-    let t_arg = infer_exp env exp2 in
-    let ts = match exp2.it with
+    let binding = match Compute_plugin.find id with
+      | Some binding -> binding
+      | None -> error env at "M0279" "compute plugin is not loaded: %s" id
+    in
+    let explicit = match inst.it with
+      | None -> []
+      | Some (false, typs) -> typs
+      | Some (true, _) -> error env inst.at "M0279"
+          "compute intrinsics do not accept a system capability"
+    in
+    if List.length explicit <> binding.Compute_plugin.type_parameters then
+      error env (if inst.it = None then at else inst.at) "M0279"
+        "%s expects %d explicit type argument%s"
+        binding.Compute_plugin.name binding.Compute_plugin.type_parameters
+        (if binding.Compute_plugin.type_parameters = 1 then "" else "s");
+    let type_arguments = List.map (check_typ env) explicit in
+    let t_arg = match binding.Compute_plugin.arguments with
+      | Compute_plugin.Fixed expected ->
+        let t_arg = T.seq expected in
+        if env.pre then t_arg else begin
+          check_exp env t_arg exp2;
+          exp2.note.note_typ
+        end
+      | Compute_plugin.Blob | Compute_plugin.Shared -> infer_exp env exp2
+    in
+    let argument_types = match exp2.it with
       | TupE _ when not parenthesized -> T.seq_of_tup t_arg
       | _ -> [t_arg]
     in
-    if not env.pre then begin
-      (match Compute_plugin.find id with
-       | None -> error env at "M0279" "compute plugin is not loaded: %s" id
-       | Some binding ->
-         match Compute_plugin.check binding ts with
-         | Ok () -> ()
-         | Error message -> error env at "M0279" "%s" message);
-      inst.note <- ts
-    end;
-    T.blob
+    let result =
+      if env.pre then
+        binding.Compute_plugin.result_type type_arguments argument_types
+      else match Compute_plugin.specialize binding
+          type_arguments argument_types with
+        | Ok specialization -> Ok specialization.Compute_plugin.result_type
+        | Error message -> Error message
+    in
+    (match result with
+     | Error message -> error env at "M0279" "%s" message
+     | Ok T.Pre -> error env at "M0279"
+         "%s returned an unresolved result type" binding.Compute_plugin.name
+     | Ok typ ->
+       if not env.pre then inst.note <- type_arguments;
+       typ)
   | None ->
   let sort, tbs, t_args, t_ret =
     try T.as_func_sub T.Local n t1

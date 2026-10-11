@@ -639,12 +639,19 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_par env par (fun _ ->
     interpret_exp env callee (fun _ ->
       interpret_exp env !args (fun v ->
-        let vs = match (!args).it with
-          | TupE _ when not parenthesized -> V.as_tup v
-          | _ -> [v]
+        let argument_type = (!args).note.note_typ in
+        let argument_types, vs = match (!args).it with
+          | TupE _ when not parenthesized ->
+            T.seq_of_tup argument_type, V.as_tup v
+          | _ -> [argument_type], [v]
         in
-        match Compute_plugin.evaluate id inst.note vs with
-        | Ok bytes -> k (V.Blob bytes)
+        let specialization = Compute_plugin.{
+          type_arguments = inst.note;
+          argument_types;
+          result_type = exp.note.note_typ;
+        } in
+        match Compute_plugin.evaluate id specialization vs with
+        | Ok value -> k value
         | Error message -> trap exp.at "%s" message)))
   | CallE (par, exp1, typs, (_, exp2)) ->
     let exp2 = !exp2 in
