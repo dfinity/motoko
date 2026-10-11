@@ -1,4 +1,4 @@
-# Pure compute compiler plugins
+# Compute compiler plugins
 
 This experimental native `moc` extension adds functions to `mo:⛔` from separate
 plugin packages. Each package contains a compiler component (`plugin.cmxs`)
@@ -223,6 +223,22 @@ its result is `{ #ok : User; #err : JsonError }`. The plugin supplies that
 structural error type. Expected input failures are values, not interpreter
 exceptions or Wasm traps.
 
+Managed algorithms can also mutate ordinary Motoko arrays and record fields.
+`Arr.tabulate_mut` creates `[var T]`; `Arr.set` requires that mutable array type
+and the stored value's type. `Object.load` dereferences mutable fields,
+`Object.set` requires a mutable field, and `Object.lit` constructs a concrete
+record, creating a fresh mutable cell for each `var` field. Container shape,
+field labels, mutability and assignment types are checked while generating code.
+Generic payloads stay ordinary managed values. Setters evaluate all supplied
+operands once, left-to-right, before resolving the destination and checking
+array bounds, following function-call evaluation order. They leave no Wasm
+result. Reads follow forwarding pointers; writes use the same pointer write
+barrier and statically proven barrier elision as ordinary Motoko assignments.
+The interpreter implementation must update existing `Value.Mut` refs in arrays
+and records, preserving aliases. No hidden plugin heap or retained raw pointer
+is needed. Borrowed-pointer Wasm kernels remain read-only with respect to their
+inputs; managed mutation goes through these compiler-owned helpers.
+
 The backend provides managed constructors with forwarding, allocation, and
 write barriers. Record fields and variant payloads are evaluated before their
 containers are allocated. Dynamic arrays start with initialized slots, allowing
@@ -251,9 +267,12 @@ Imported or already relocated addresses are not supported as relative offsets.
 Plugins are trusted compiler extensions. Native components execute inside
 `moc`, and linked Wasm shares memory with the application. The import validator
 checks the runtime ABI; it is not a sandbox or a proof that an implementation
-is pure. Authors must not mutate inputs, retain heap pointers, keep mutable
-state between operations, or call a collector. Kernel algorithms remain in
-the packages rather than the compiler's ordinary runtime.
+is pure. Borrowed-pointer runtime kernels must not mutate inputs, retain heap
+pointers or private mutable state between operations, or call a collector.
+Managed algorithms may retain and update ordinary caller-owned Motoko state
+through the typed helpers above; it remains visible to the normal GC and
+persistence machinery. Kernel algorithms remain in the packages rather than
+the compiler's ordinary runtime.
 
 Runtime authors must validate the Wasm binary before packaging it, for example
 with `wasm-validate --enable-memory64 runtime.wasm`. The external plugin build script

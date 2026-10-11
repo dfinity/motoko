@@ -4470,7 +4470,7 @@ module Arr = struct
       G.i (Binary (Wasm_exts.Values.I64 I64Op.Add))
     )
 
-  (* Pure plugin traversals contain no GC safepoint. Resolve forwarding once
+  (* Synchronous plugin traversals contain no GC safepoint. Resolve forwarding once
      and retain the element cursor across iterations, including allocations
      that can grow Wasm memory but cannot move Motoko objects. *)
   let for_each env get_array get_length body =
@@ -9561,10 +9561,11 @@ module GCRoots = struct
 end (* GCRoots *)
 
 (* This comes late because it also deals with messages *)
-(* Pure compute plugins borrow Motoko values only until the generated call
-   returns. These helpers deliberately introduce no GC safepoint. Temporary
-   Rust allocations follow the RTS EphemeralAllocator: unrooted Blob payloads
-   reclaimed by a later GC, after the plugin has discarded every raw pointer. *)
+(* Synchronous compute plugins use ordinary managed values. Borrowed raw
+   pointers remain valid only until the generated call returns; these helpers
+   introduce no GC safepoint. Temporary Rust allocations follow the RTS
+   EphemeralAllocator: unrooted Blob payloads reclaimed by a later GC, after
+   the plugin has discarded every raw pointer. *)
 module ComputePlugins = struct
   open Plugin_codegen
   let register_imports env =
@@ -9713,12 +9714,26 @@ module ComputePlugins = struct
 
       let get env = Arr.idx env ^^ load_ptr
 
-      let tabulate env length element =
+      let set env array_type value_type array index value =
+        let element_type = match Type.normalize array_type with
+          | Type.Array (Type.Mut typ) -> typ
+          | _ -> fatal "compute plugin Arr.set requires a mutable array"
+        in
+        if not (Type.sub value_type element_type) then
+          fatal "compute plugin Arr.set value type does not match the element";
+        let set_value, get_value = new_local env "plugin_array_value" in
+        array ^^ index ^^ value ^^ set_value ^^ Arr.idx env ^^
+        (if potential_pointer element_type then
+          compile_add_const ptr_unskew ^^ get_value ^^
+          Tagged.write_with_barrier env
+        else get_value ^^ store_ptr)
+
+      let tabulate_with_sort env sort length element =
         let set_len, get_len = new_local env "plugin_array_length" in
         let set_array, get_array = new_local env "plugin_array" in
         let set_cursor, get_cursor = new_local env "plugin_array_cursor" in
         length ^^ set_len ^^
-        Arr.alloc env Tagged.I get_len ^^ set_array ^^
+        Arr.alloc env sort get_len ^^ set_array ^^
         get_array ^^ compile_unboxed_zero ^^ Arr.unsafe_idx env ^^
         compile_add_const ptr_unskew ^^ set_cursor ^^
         (* An element decoder may return early on malformed input. Make the
@@ -9735,6 +9750,9 @@ module ComputePlugins = struct
           get_cursor ^^ element get_index ^^ Tagged.write_with_barrier env ^^
           get_cursor ^^ compile_add_const Arr.element_size ^^ set_cursor) ^^
         get_array
+
+      let tabulate env = tabulate_with_sort env Tagged.I
+      let tabulate_mut env = tabulate_with_sort env Tagged.M
     end
     module Tuple = Tuple
     module Object = struct
@@ -9748,6 +9766,57 @@ module ComputePlugins = struct
           value () ^^ set, (label, fun () -> get)) fields in
         G.concat_map fst fields ^^
         Object.lit_raw env (List.map snd fields)
+
+      let fields typ = match Type.normalize typ with
+        | Type.Obj (Type.Object, fields, []) -> fields
+        | _ -> fatal "compute plugin Object requires a concrete record type"
+
+      let field_type typ label =
+        match List.find_opt (fun f -> f.Type.lab = label) (fields typ) with
+        | Some field -> field.Type.typ
+        | None -> fatal "compute plugin Object has no field %s" label
+
+      let load env typ label =
+        ignore (field_type typ label);
+        Object.load_idx env typ label
+
+      let set env typ label value_type object_ value =
+        let payload_type = match Type.normalize (field_type typ label) with
+          | Type.Mut typ -> typ
+          | _ -> fatal "compute plugin Object.set requires a mutable field"
+        in
+        if not (Type.sub value_type payload_type) then
+          fatal "compute plugin Object.set value type does not match the field";
+        let set_value, get_value = new_local env "plugin_field_value" in
+        object_ ^^ value ^^ set_value ^^ Object.idx env typ label ^^
+        (if potential_pointer payload_type then
+          compile_add_const ptr_unskew ^^ get_value ^^
+          Tagged.write_with_barrier env
+        else get_value ^^ store_ptr)
+
+      let lit env typ values =
+        let expected = fields typ in
+        let labels = List.map (fun (label, _, _) -> label) values in
+        if List.sort String.compare labels <>
+           List.sort String.compare (List.map (fun f -> f.Type.lab) expected)
+        then fatal "compute plugin Object.lit fields do not match the record";
+        let values = List.map (fun (label, value_type, value) ->
+          let field_type = field_type typ label in
+          let mutable_, payload_type = match Type.normalize field_type with
+            | Type.Mut typ -> true, typ
+            | typ -> false, typ
+          in
+          if not (Type.sub value_type payload_type) then
+            fatal "compute plugin Object.lit value type does not match field %s"
+              label;
+          let set, get = new_local env ("plugin_field_" ^ label) in
+          value () ^^ set, (label, fun () ->
+            if mutable_ then Tagged.obj env Tagged.MutBox [get] else get)) values
+        in
+        (* No callback or recoverable early return can abandon an uninitialized
+           record or mutable cell: evaluate every payload before allocating. *)
+        G.concat_map fst values ^^
+        Object.lit_raw env (List.map snd values)
     end
     module Variant = struct
       include Variant

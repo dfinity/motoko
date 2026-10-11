@@ -85,6 +85,12 @@ module type Backend = sig
        element generator, so an early error return cannot leave invalid heap
        fields. No element generator may introduce a GC safepoint. *)
     val tabulate : env -> G.t -> (G.t -> G.t) -> G.t
+    (* Mutable construction uses the same initialized slots and GC barriers. *)
+    val tabulate_mut : env -> G.t -> (G.t -> G.t) -> G.t
+    (* [set env array_type value_type array index value] checks types at
+       generation time, evaluates all operands once left-to-right, then checks
+       the unboxed i64 index and writes with the normal GC barrier. No result. *)
+    val set : env -> Type.typ -> Type.typ -> G.t -> G.t -> G.t -> G.t
   end
   module Tuple : sig
     val load_n : env -> int64 -> G.t
@@ -94,6 +100,16 @@ module type Backend = sig
   module Object : sig
     val load_idx_raw : env -> string -> G.t
     val lit_raw : env -> (string * (unit -> G.t)) list -> G.t
+    (* Typed access follows mutable-field indirections. [load] consumes the
+       object. [set] evaluates object then value once, and leaves no result.
+       Container shape, field mutability and value types are checked during
+       generation; opaque payload types do not need a concrete representation. *)
+    val load : env -> Type.typ -> string -> G.t
+    val set : env -> Type.typ -> string -> Type.typ -> G.t -> G.t -> G.t
+    (* All payloads are evaluated in list order before allocating the record
+       and fresh mutable-field cells. The labels must match the concrete type. *)
+    val lit : env -> Type.typ ->
+      (string * Type.typ * (unit -> G.t)) list -> G.t
   end
   module Variant : sig
     val inject : env -> string -> G.t -> G.t

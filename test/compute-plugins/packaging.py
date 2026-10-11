@@ -214,6 +214,72 @@ def check_result_representation(work):
                                f"{arity}"))
 
 
+def check_managed_mutation(work):
+    # Deliberately incorrect generators must fail during compilation, before
+    # invalid memory operations are emitted, with the normal codegen diagnostic.
+    source = work / "managed-invalid.mo"
+    source.write_text('import Prim "mo:⛔"; Prim.fixtureManagedInvalid();\n')
+    record = 'T.obj T.Object ["value", T.Mut T.nat]'
+    immutable = 'T.obj T.Object ["value", T.nat]'
+    cases = [
+        ("immutable-array", "B.Arr.set env (T.Array T.nat) T.nat z z z",
+         "Arr.set requires a mutable array"),
+        ("wrong-element", "B.Arr.set env (T.Array (T.Mut T.nat)) T.text z z z",
+         "Arr.set value type does not match the element"),
+        ("non-array", "B.Arr.set env T.text T.nat z z z",
+         "Arr.set requires a mutable array"),
+        ("immutable-field", f'B.Object.set env ({immutable}) "value" T.nat z z',
+         "Object.set requires a mutable field"),
+        ("wrong-field", f'B.Object.set env ({record}) "value" T.text z z',
+         "Object.set value type does not match the field"),
+        ("missing-field", f'B.Object.load env ({record}) "missing"',
+         "Object has no field missing"),
+        ("non-record", 'B.Object.load env T.text "value"',
+         "Object requires a concrete record type"),
+        ("missing-initializer", f"B.Object.lit env ({record}) []",
+         "Object.lit fields do not match the record"),
+        ("duplicate-initializer", f'B.Object.lit env ({record}) '
+         '["value", T.nat, (fun () -> z); "value", T.nat, (fun () -> z)]',
+         "Object.lit fields do not match the record"),
+        ("wrong-initializer", f'B.Object.lit env ({record}) '
+         '["value", T.text, (fun () -> z)]',
+         "Object.lit value type does not match field value"),
+        ("abstract-constructor", f'let abstract = T.Con (Mo_types.Cons.fresh '
+         f'"Abstract" (T.Abs ([], {record})), []) in '
+         'B.Object.lit env abstract ["value", T.nat, (fun () -> z)]',
+         "Object requires a concrete record type"),
+    ]
+    for name, code, error in cases:
+        package = work / f"managed-{name}"
+        package.mkdir()
+        (package / "invalid.ml").write_text('''
+module P = Codegen.Plugin_codegen
+module C = Mo_values.Compute_plugin
+module T = Mo_types.Type
+module Generator = struct
+  module Make (B : P.Backend) = struct
+    let compile env _ _ =
+      let z = B.compile_unboxed_zero in
+      ignore z;
+      let code = ''' + code + ''' in
+      P.{code; representation = Managed}
+  end
+end
+let () = P.register P.{
+  abi = 1; name = "managed_invalid"; runtime = None; imports = [];
+  bindings = [C.{
+    id = "managed_invalid"; name = "fixtureManagedInvalid";
+    arguments = Fixed (fun _ -> Ok []); type_parameters = [];
+    result_type = (fun _ _ -> Ok T.unit);
+    evaluate = C.pure (fun _ _ _ -> Ok (Mo_values.Value.Tup []));
+  }, (module Generator)];
+}
+''')
+        compile_plugin(package, "invalid.ml")
+        compile_program(source, work / f"managed-{name}.wasm", [package],
+                        error="compute plugin " + error)
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix="motoko-compute-packages-") as work:
         work = Path(work)
@@ -224,12 +290,14 @@ def main():
         check_codegen_only(work, empty)
         check_unresolved_result(work)
         check_result_representation(work)
+        check_managed_mutation(work)
         used = work / "used.mo"
         used.write_text('import Prim "mo:⛔"; '
                         'assert Prim.fixtureEcho("abc") == "abc";\n')
         plain = compile_program(empty, work / "plain.wasm")
         loaded = compile_program(empty, work / "loaded.wasm", [
             PACKAGES / "echo", PACKAGES / "typed", PACKAGES / "callbacks",
+            PACKAGES / "mutation",
         ])
         assert plain == loaded, "unused plugins changed the output module"
 

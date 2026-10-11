@@ -24,6 +24,14 @@ Array construction initializes all slots before invoking callbacks and keeps
 the normal allocation and pointer write barriers, while reusing an element
 cursor under the SDK's no-GC-safepoint contract.
 
+The `mutation` fixture exercises typed mutable array and record construction,
+reads and writes, generic payload sharing, field-cell aliases, recursive nodes,
+width subtyping, operand order, reentry and early returns. An IC fixture retains
+more than 96 MiB across messages so writes occur during an incremental GC cycle,
+with fragmented dead/live allocations, sanity checks and retained old/new
+payloads. Packaging checks deliberately
+invalid generator types and fields fail at compilation with normal diagnostics.
+
 The frontend validates intrinsic specializations, and the IR checker validates
 their transformed metadata. Interpreters use that checked metadata without
 repeating type specialization on every execution; dynamic argument arity and
