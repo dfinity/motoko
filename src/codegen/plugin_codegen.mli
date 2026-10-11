@@ -3,8 +3,10 @@
    The heap operations below share the compiler's forwarding and allocation
    barriers. A generated operation must not introduce a GC safepoint.
    Synchronous Motoko callbacks use the ordinary closure calling convention;
-   collection runs only after synchronous message frames have returned. Keep
-   only vanilla managed references across callbacks, never borrowed addresses. *)
+   collection runs only after synchronous message frames have returned.
+   Generator-owned state across callbacks must use vanilla managed references.
+   Compiler-owned array traversals may retain cursors under this no-safepoint
+   contract. *)
 open Mo_types
 open Wasm_exts.Types
 module G = InstrList

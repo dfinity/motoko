@@ -7,7 +7,7 @@ module V = Mo_values.Value
 let local ins outs = T.Func (T.Local, T.Returns, [], ins, outs)
 
 type operation = Identity | Apply | Apply0 | Apply2 | Split | Visit | Twice
-  | Pair | Triple | Unit | Unpack
+  | Pair | Triple | Unit | Unpack | Tabulate
 
 let schema operation types = match operation, types with
   | (Identity | Unpack), [a] -> Ok ([a], a)
@@ -20,6 +20,7 @@ let schema operation types = match operation, types with
   | Pair, [a; b] -> Ok ([a; b], T.Tup [a; b])
   | Triple, [a; b; c] -> Ok ([a; b; c], T.Tup [a; b; c])
   | Unit, [a] -> Ok ([local [a] []; a], T.unit)
+  | Tabulate, [a] -> Ok ([T.nat; local [T.nat] [a]], T.Array a)
   | _ -> Error "invalid callback fixture type arguments"
 
 module type Operation = sig val operation : operation end
@@ -43,6 +44,12 @@ module Generator (Op : Operation) = struct
         P.{code = G.concat values; representation = Tuple 2}
       | Ok _, values when Op.operation = Triple ->
         P.{code = G.concat values; representation = Tuple 3}
+      | Ok ([_; callback], _), [length; closure]
+        when Op.operation = Tabulate ->
+        managed (B.Arr.tabulate env
+          (G.concat [length; B.BigNum.to_word64 env]) (fun index ->
+            B.Call.local env callback closure
+              [G.concat [index; B.BigNum.from_word64 env]]))
       | Ok (callback :: _, _), closure :: args when Op.operation = Unit ->
         P.{code = G.concat [B.Call.local env callback closure args;
              G.i Wasm_exts.Ast.Drop]; representation = Tuple 0}
@@ -58,7 +65,8 @@ module Generator (Op : Operation) = struct
              B.new_local env "fixture_first_result" in
            G.concat [call; set_result;
              B.Call.local env callback closure [get_result]]
-         | Identity | Apply | Apply0 | Apply2 | Split | Pair | Triple | Unit | Unpack -> call)
+         | Identity | Apply | Apply0 | Apply2 | Split | Pair | Triple | Unit
+         | Unpack | Tabulate -> call)
       | _ -> managed (B.E.trap_with env "invalid callback fixture schema")
   end
 end
@@ -67,6 +75,16 @@ let evaluator operation evaluator types _arguments values k =
   match schema operation types, operation, values with
   | Ok _, (Identity | Unpack), [value] -> k (Ok value)
   | Ok _, (Pair | Triple), values -> k (Ok (V.Tup values))
+  | Ok ([_; callback_type], _), Tabulate, [V.Int length; callback] ->
+    let length = Mo_values.Numerics.Int.to_int length in
+    let values = Array.make length V.Null in
+    let rec fill index =
+      if index = length then k (Ok (V.Array values)) else
+      evaluator.C.call callback_type callback
+        [V.Int (Mo_values.Numerics.Int.of_int index)] (function
+          | Error message -> k (Error message)
+          | Ok value -> values.(index) <- value; fill (index + 1))
+    in fill 0
   | Ok (callback_type :: _, _), _, callback :: args ->
     evaluator.C.call callback_type callback args (function
       | Error message -> k (Error message)
@@ -170,6 +188,8 @@ let () = P.register P.{
       (module Generator (struct let operation = Unit end));
     binding "fixture_unpack" "fixtureUnpack" Unpack 1,
       (module Generator (struct let operation = Unpack end));
+    binding "fixture_tabulate" "fixtureTabulate" Tabulate 1,
+      (module Generator (struct let operation = Tabulate end));
     compare_binding, (module Compare);
     true_binding, (module True);
   ];

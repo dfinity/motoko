@@ -18,6 +18,18 @@ Known tuple results also travel on the stack: immediate pair/triple destructurin
 and unit callbacks allocate no temporary result tuples, while tuples retained in
 arrays or across forced GC receive normal managed storage. Generic opaque
 results retain their ordinary single-value representation.
+Tabulation coverage includes empty arrays, nested callbacks, allocations that
+grow memory during construction, and retaining callback results across GC.
+Array construction initializes all slots before invoking callbacks and keeps
+the normal allocation and pointer write barriers, while reusing an element
+cursor under the SDK's no-GC-safepoint contract.
+
+The frontend validates intrinsic specializations, and the IR checker validates
+their transformed metadata. Interpreters use that checked metadata without
+repeating type specialization on every execution; dynamic argument arity and
+callback calling conventions remain checked. Tuple fields already use constant
+offset loads. Record fields still require hash lookup because width subtyping
+allows actual records to contain additional fields.
 
 From the Motoko repository root, in its Nix development shell:
 

@@ -49,5 +49,7 @@ val specialize : binding -> Type.typ list -> Type.typ list ->
   (specialization, string) result
 val map_specialization : (Type.typ -> Type.typ) -> specialization ->
   specialization
+(* Execute metadata checked by the frontend or IR checker. Dynamic argument
+   arity and callback calling conventions are still checked during evaluation. *)
 val evaluate : Value.context -> string -> specialization ->
   Value.value list -> ((Value.value, string) result -> unit) -> unit

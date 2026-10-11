@@ -176,12 +176,10 @@ let evaluator context = {
 let evaluate context id s values k = match find id with
   | None -> k (Error ("compute plugin is not loaded: " ^ id))
   | Some binding ->
-    match specialize binding s.type_arguments s.argument_types with
-    | Error e -> k (Error e)
-    | Ok checked ->
-      if not (Type.eq checked.result_type s.result_type) ||
-        List.length s.argument_types <> List.length values then
-        k (Error (binding.name ^ " received inconsistent argument metadata"))
-      else
-        binding.evaluate (evaluator context)
-          s.type_arguments s.argument_types values k
+    (* The frontend checks source annotations and Check_ir checks transformed
+       specializations. Only the supplied values vary between executions. *)
+    if List.length s.argument_types <> List.length values then
+      k (Error (binding.name ^ " received inconsistent argument metadata"))
+    else
+      binding.evaluate (evaluator context)
+        s.type_arguments s.argument_types values k

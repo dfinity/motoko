@@ -9717,21 +9717,24 @@ module ComputePlugins = struct
       let tabulate env length element =
         let set_len, get_len = new_local env "plugin_array_length" in
         let set_array, get_array = new_local env "plugin_array" in
+        let set_cursor, get_cursor = new_local env "plugin_array_cursor" in
         length ^^ set_len ^^
         Arr.alloc env Tagged.I get_len ^^ set_array ^^
+        get_array ^^ compile_unboxed_zero ^^ Arr.unsafe_idx env ^^
+        compile_add_const ptr_unskew ^^ set_cursor ^^
         (* An element decoder may return early on malformed input. Make the
            entire allocation valid before invoking it, including during an
            incremental GC, then use the normal pointer write barrier. *)
-        get_array ^^ compile_unboxed_zero ^^ Arr.unsafe_idx env ^^
-        compile_add_const ptr_unskew ^^
+        get_cursor ^^
         compile_const_32 0l ^^
         get_len ^^ compile_mul_const Arr.element_size ^^
         G.i MemoryFill ^^
         get_array ^^ Tagged.allocation_barrier env ^^ G.i Drop ^^
+        (* Like Arr.for_each, element construction cannot reach a GC safepoint,
+           so the cursor remains valid across allocations and local callbacks. *)
         get_len ^^ from_0_to_n env (fun get_index ->
-          get_array ^^ get_index ^^ Arr.unsafe_idx env ^^
-          compile_add_const ptr_unskew ^^
-          element get_index ^^ Tagged.write_with_barrier env) ^^
+          get_cursor ^^ element get_index ^^ Tagged.write_with_barrier env ^^
+          get_cursor ^^ compile_add_const Arr.element_size ^^ set_cursor) ^^
         get_array
     end
     module Tuple = Tuple
