@@ -1,4 +1,4 @@
-//MOC-FLAG --plugin ../../../_build/compute-plugins/candidx
+//MOC-FLAG --plugin ../../../_build/compute-plugin-tests/typed
 import Prim "mo:⛔";
 
-ignore Prim.to_candid_canonical<Nat>(1);
+ignore Prim.fixtureShape<Nat>(1);

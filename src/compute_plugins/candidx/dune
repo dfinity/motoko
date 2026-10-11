@@ -1,4 +1,0 @@
-(library
-  (name compute_plugin_candidx)
-  (libraries codegen mo_values)
-  (modes native))

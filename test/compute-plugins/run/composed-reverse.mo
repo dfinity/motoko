@@ -1,6 +1,5 @@
-//MOC-FLAG --plugin ../../../_build/compute-plugins/sha256 --plugin ../../../_build/compute-plugins/candidx
+//MOC-FLAG --plugin ../../../_build/compute-plugin-tests/typed --plugin ../../../_build/compute-plugin-tests/echo
 import Prim "mo:⛔";
 
-let digest = Prim.sha256("abc");
-assert Prim.to_candid_canonical(digest) ==
-  Prim.to_candid_canonical(Prim.blobToArray(digest));
+assert Prim.fixtureEcho(Prim.fixtureShape(1 : Nat, true)) == "nb";
+assert Prim.fixtureShape(Prim.fixtureEcho("abc")) == "B";

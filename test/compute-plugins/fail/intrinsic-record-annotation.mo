@@ -1,5 +1,5 @@
-//MOC-FLAG --plugin ../../../_build/compute-plugins/candidx
+//MOC-FLAG --plugin ../../../_build/compute-plugin-tests/typed
 import Prim "mo:⛔";
 
-let inferred = { encode = Prim.to_candid_canonical };
-let _ : { encode : () -> Blob } = inferred;
+let inferred = { shape = Prim.fixtureShape };
+let _ : { shape : () -> Blob } = inferred;

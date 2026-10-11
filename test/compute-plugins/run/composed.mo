@@ -1,9 +1,5 @@
-//MOC-FLAG --plugin ../../../_build/compute-plugins/candidx --plugin ../../../_build/compute-plugins/sha256
+//MOC-FLAG --plugin ../../../_build/compute-plugin-tests/echo --plugin ../../../_build/compute-plugin-tests/typed
 import Prim "mo:⛔";
 
-let first = { amount = 255 : Nat; omitted = null : ?Text };
-let second = { amount = 255 : Nat };
-assert Prim.sha256(Prim.to_candid_canonical(first)) ==
-  Prim.sha256(Prim.to_candid_canonical(second));
-assert Prim.sha256(Prim.to_candid_canonical(1 : Nat)) !=
-  Prim.sha256(Prim.to_candid_canonical(2 : Nat));
+assert Prim.fixtureEcho(Prim.fixtureShape(1 : Nat, true)) == "nb";
+assert Prim.fixtureShape(Prim.fixtureEcho("abc")) == "B";

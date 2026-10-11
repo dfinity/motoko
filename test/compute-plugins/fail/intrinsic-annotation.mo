@@ -1,4 +1,4 @@
-//MOC-FLAG --plugin ../../../_build/compute-plugins/candidx
+//MOC-FLAG --plugin ../../../_build/compute-plugin-tests/typed
 import Prim "mo:⛔";
 
-let _ : () -> Blob = Prim.to_candid_canonical;
+let _ : () -> Blob = Prim.fixtureShape;

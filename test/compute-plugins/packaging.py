@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Native package integration checks; run after plugins/build.sh in Nix."""
+"""Native package integration checks; run after this directory's build.sh."""
 
 from pathlib import Path
 import re
@@ -7,10 +7,8 @@ import shutil
 import subprocess
 import tempfile
 
-
-ROOT = Path(__file__).resolve().parents[2]
-PACKAGES = ROOT / "_build/compute-plugins"
-MOC = ROOT / "bin/moc"
+from fixture_tools import (FIXTURES, MOC, PACKAGES, ROOT, build_runtime,
+                           compile_plugin)
 
 
 def compile_program(source, output, packages=(), error=None):
@@ -27,10 +25,10 @@ def compile_program(source, output, packages=(), error=None):
     assert "OOPS" not in result.stderr, result.stderr
 
 
-def plugin_load_error(source, components):
+def plugin_load_error(source, packages):
     command = [str(MOC)]
-    for component in components:
-        command.extend(["--plugin", str(component)])
+    for package in packages:
+        command.extend(["--plugin", str(package)])
     command.extend(["--check", str(source)])
     result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
     assert result.returncode == 1, (result.returncode, result.stderr)
@@ -38,8 +36,8 @@ def plugin_load_error(source, components):
     return result.stderr
 
 
-def unsupported_plugin(source, component, reason):
-    diagnostic = plugin_load_error(source, [component])
+def unsupported_plugin(source, package, reason):
+    diagnostic = plugin_load_error(source, [package])
     assert "unsupported compute plugin" in diagnostic, diagnostic
     assert reason in diagnostic, diagnostic
     assert "Use a plugin built for this compiler" in diagnostic, diagnostic
@@ -49,8 +47,8 @@ def unsupported_plugin(source, component, reason):
 
 
 def check_compatibility(work, source):
-    # A type-only dependency records the wrong Codegen interface checksum
-    # without requiring any fake native symbol or executing an initializer.
+    # Record an incompatible Codegen interface checksum without initializing
+    # any fake native symbol from that interface.
     interface = work / "interface-mismatch"
     interface.mkdir()
     (interface / "codegen.mli").write_text(
@@ -65,8 +63,6 @@ def check_compatibility(work, source):
     unsupported_plugin(source, interface / "plugin.cmxs",
                        "interface mismatch on Codegen")
 
-    # Build against the real compiler interfaces, but request the next SDK ABI.
-    # No binding or Wasm runtime is needed: registration must reject it first.
     abi = work / "abi-mismatch"
     abi.mkdir()
     (abi / "abi_mismatch.ml").write_text(
@@ -76,13 +72,7 @@ def check_compatibility(work, source):
         "  runtime = \"runtime.wasm\"; imports = []; bindings = [];\n"
         "}\n"
     )
-    includes = []
-    for kind in ["byte", "native"]:
-        for directory in sorted((ROOT / "src/_build/default").glob(
-                f"*/.*.objs/{kind}")):
-            includes.extend(["-I", str(directory)])
-    subprocess.run(["ocamlopt", *includes, "-shared", "-o", "plugin.cmxs",
-                    "abi_mismatch.ml"], cwd=abi, check=True)
+    compile_plugin(abi, "abi_mismatch.ml")
     diagnostic = unsupported_plugin(source, abi, "requires compute plugin ABI")
     versions = re.search(r"requires compute plugin ABI (\d+), "
                          r"but this compiler supports ABI (\d+)", diagnostic)
@@ -90,8 +80,8 @@ def check_compatibility(work, source):
     requested, supported = map(int, versions.groups())
     assert requested == supported + 1, diagnostic
 
-    # A plugin's own initialization bug or duplicate registration is not a
-    # toolchain mismatch and must retain its actual error classification.
+    # Initialization errors and duplicate registrations retain their own
+    # classification instead of claiming a toolchain mismatch.
     initializer = work / "initializer-failure"
     initializer.mkdir()
     failure = "compatibility fixture initializer failure"
@@ -103,9 +93,30 @@ def check_compatibility(work, source):
     diagnostic = plugin_load_error(source, [initializer])
     assert failure in diagnostic, diagnostic
     assert "unsupported compute plugin" not in diagnostic, diagnostic
-    diagnostic = plugin_load_error(source, [PACKAGES / "sha256"] * 2)
-    assert "duplicate compute plugin: sha256" in diagnostic, diagnostic
+    diagnostic = plugin_load_error(source, [PACKAGES / "echo"] * 2)
+    assert "duplicate compute plugin: fixture_echo" in diagnostic, diagnostic
     assert "unsupported compute plugin" not in diagnostic, diagnostic
+
+
+def check_registration(work, source):
+    original = (FIXTURES / "echo/fixture_echo.ml").read_text()
+    duplicate = work / "duplicate-binding"
+    duplicate.mkdir()
+    (duplicate / "duplicate_binding.ml").write_text(original.replace(
+        'name = "fixture_echo"', 'name = "fixture_duplicate"'))
+    compile_plugin(duplicate, "duplicate_binding.ml")
+    diagnostic = plugin_load_error(source, [PACKAGES / "echo", duplicate])
+    assert "duplicate compute plugin binding: fixtureEcho" in diagnostic, diagnostic
+    assert "unsupported compute plugin" not in diagnostic, diagnostic
+
+    for field, valid in [("id", "fixture_echo"), ("name", "fixtureEcho")]:
+        invalid = work / f"invalid-{field}"
+        invalid.mkdir()
+        (invalid / "invalid_binding.ml").write_text(original.replace(
+            f'{field} = "{valid}"', f'{field} = "0invalid"'))
+        compile_plugin(invalid, "invalid_binding.ml")
+        diagnostic = plugin_load_error(source, [invalid])
+        assert "invalid compute plugin binding identifier" in diagnostic, diagnostic
 
 
 def main():
@@ -114,41 +125,41 @@ def main():
         empty = work / "unused.mo"
         empty.write_text("assert true;\n")
         check_compatibility(work, empty)
+        check_registration(work, empty)
         used = work / "used.mo"
-        used.write_text('import Prim "mo:⛔"; ignore Prim.sha256("abc");\n')
+        used.write_text('import Prim "mo:⛔"; '
+                        'assert Prim.fixtureEcho("abc") == "abc";\n')
         plain = compile_program(empty, work / "plain.wasm")
         loaded = compile_program(empty, work / "loaded.wasm", [
-            PACKAGES / "candidx", PACKAGES / "sha256",
+            PACKAGES / "echo", PACKAGES / "typed",
         ])
         assert plain == loaded, "unused plugins changed the output module"
 
-        # Typechecking and interpretation can load a compiler component alone.
-        # An unused runtime is never opened; a used missing runtime is an error.
-        package = work / "sha256"
+        # Unused runtime files are never opened. Typechecking and both
+        # interpreters can use a compiler component without its runtime.
+        package = work / "echo"
         package.mkdir()
-        shutil.copyfile(PACKAGES / "sha256/plugin.cmxs", package / "plugin.cmxs")
+        shutil.copyfile(PACKAGES / "echo/plugin.cmxs", package / "plugin.cmxs")
         assert compile_program(empty, work / "missing-unused.wasm", [package]) == plain
         compile_program(used, work / "missing.wasm", [package],
-                        error="compute plugin sha256:")
+                        error="compute plugin fixture_echo:")
         for mode in [["--check"], ["-r"], ["-r", "-iR"]]:
             result = subprocess.run([str(MOC), "--plugin", str(package), *mode,
                                      str(used)], cwd=ROOT, capture_output=True,
                                     text=True)
             assert result.returncode == 0, result.stderr
 
-        # Loading a .cmxs path and a directory have the same runtime location.
-        shutil.copyfile(PACKAGES / "sha256/runtime.wasm", package / "runtime.wasm")
+        # Directory and .cmxs paths resolve the same sibling runtime.
+        shutil.copyfile(PACKAGES / "echo/runtime.wasm", package / "runtime.wasm")
         expected = compile_program(used, work / "directory.wasm", [package])
         actual = compile_program(used, work / "file.wasm", [package / "plugin.cmxs"])
         assert expected == actual
 
-        # Decode and unresolved-export failures must be normal CLI diagnostics.
         (package / "runtime.wasm").write_bytes(b"not a Wasm library")
         compile_program(used, work / "malformed.wasm", [package],
                         error="invalid runtime Wasm")
 
-        # The dylink.0 section contains four memory-info fields, but its
-        # subsection claims only three bytes. This must not raise an assertion.
+        # Four memory-info fields in a subsection claiming only three bytes.
         (package / "runtime.wasm").write_bytes(
             b"\x00asm\x01\x00\x00\x00\x00\x0f\x08dylink.0"
             b"\x01\x03\x00\x00\x00\x00"
@@ -156,7 +167,14 @@ def main():
         compile_program(used, work / "malformed-dylink.wasm", [package],
                         error="invalid runtime Wasm")
 
-        shutil.copyfile(PACKAGES / "candidx/runtime.wasm", package / "runtime.wasm")
+        shutil.copyfile(PACKAGES / "typed/runtime.wasm", package / "runtime.wasm")
+        compile_program(used, work / "wrong-signature.wasm", [package],
+                        error="Type mismatch when linking")
+
+        wrong = work / "wrong-library.wat"
+        wrong.write_text((FIXTURES / "echo/runtime.wat").read_text().replace(
+            '(export "transform")', '(export "other")'))
+        build_runtime(wrong, package / "runtime.wasm")
         compile_program(used, work / "wrong-library.wasm", [package],
                         error="unresolved compute plugin import")
 

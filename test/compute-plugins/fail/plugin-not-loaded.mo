@@ -1,3 +1,3 @@
 import Prim "mo:⛔";
 
-ignore Prim.to_candid_canonical(1 : Nat);
+ignore Prim.fixtureShape(1 : Nat);

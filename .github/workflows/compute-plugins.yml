@@ -30,13 +30,10 @@ jobs:
           name: ic-hs-test
           skipPush: true
 
-      - name: Build RTS, compiler, and matching plugin packages
+      - name: Build RTS, compiler, and test fixtures
         run: |
           make -C rts
-          plugins/build.sh
-
-      - name: Test native kernels
-        run: cargo test --manifest-path plugins/runtime/Cargo.toml --locked
+          test/compute-plugins/build.sh
 
       - name: Test source, IR, Wasm, diagnostics, and GC integration
         run: |
@@ -56,8 +53,8 @@ jobs:
             export OCAMLPATH="$PWD/_build/ocaml-compat${OCAMLPATH:+:$OCAMLPATH}"
           fi
           dune runtest --root src --profile=release linking
-          mkdir -p _build/compute-plugins/linker-tests
-          plugin_fixture=_build/compute-plugins/linker-tests/linked.wasm
+          mkdir -p _build/compute-plugin-tests/linker-tests
+          plugin_fixture=_build/compute-plugin-tests/linker-tests/linked.wasm
           src/_build/default/linking/test_linkModule.exe "$plugin_fixture"
           for plugin_wasm in "$plugin_fixture" "$plugin_fixture.namespaced.wasm"; do
             wasm-validate --enable-memory64 "$plugin_wasm"

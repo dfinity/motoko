@@ -1,7 +1,7 @@
-intrinsic-record-annotation.mo:5.35-5.43: type error [M0096], expression of type
-  {encode : intrinsic candidx_encode}
+intrinsic-record-annotation.mo:5.34-5.42: type error [M0096], expression of type
+  {shape : intrinsic fixture_shape}
 cannot produce expected type
-  {encode : () -> Blob}
-because of incompatible function controls: compute intrinsic candidx_encode
+  {shape : () -> Blob}
+because of incompatible function controls: compute intrinsic fixture_shape
  does not match regular function or one-shot shared function
- in `encode`
+ in `shape`

@@ -6,9 +6,10 @@
 
   * Add experimental native compute compiler plugins via `--plugin`, with
     typed specialization, statically linked Wasm, and interpreter reference
-    implementations. Include CandidX and SHA-256 plugins exposing
-    `Prim.to_candid_canonical` and `Prim.sha256`, compatibility diagnostics,
-    and reproducible PocketIC benchmarks (#6443).
+    implementations and compatibility diagnostics. Plugin implementations
+    are maintained in the separate
+    [motoko_plugins](https://github.com/Neutrinomic/motoko_plugins) repository
+    (#6443).
   * Support isolated exports when linking multiple Wasm runtime libraries
     and decode Wasm64 function tables. Reject incompatible relocation
     targets, out-of-bounds indices and segments, and malformed `dylink.0`
