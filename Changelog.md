@@ -8,11 +8,11 @@
     typed specialization, statically linked Wasm, and interpreter reference
     implementations. Include CandidX and SHA-256 plugins exposing
     `Prim.to_candid_canonical` and `Prim.sha256`, compatibility diagnostics,
-    and reproducible PocketIC benchmarks (#NNNN).
+    and reproducible PocketIC benchmarks (#6443).
   * Support isolated exports when linking multiple Wasm runtime libraries
     and decode Wasm64 function tables. Reject incompatible relocation
     targets, out-of-bounds indices and segments, and malformed `dylink.0`
-    subsection lengths with normal diagnostics (#NNNN).
+    subsection lengths with normal diagnostics (#6443).
 
 ## 2.0.0 (2026-10-06)
 
