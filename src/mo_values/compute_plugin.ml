@@ -1,6 +1,6 @@
 open Mo_types
 
-type arguments = Blob | Shared | Fixed of Type.typ list
+type arguments = Shared | Fixed of Type.typ list
 
 type specialization = {
   type_arguments : Type.typ list;
@@ -32,14 +32,6 @@ let register binding =
     invalid_arg "invalid compute plugin binding identifier";
   if binding.type_parameters < 0 then
     invalid_arg "negative compute plugin type parameter count";
-  (match binding.arguments with
-   | Blob ->
-     if binding.type_parameters <> 0 then
-       invalid_arg "Blob compute bindings cannot have type parameters";
-     (match binding.result_type [] [Type.blob] with
-      | Ok typ when Type.eq typ Type.blob -> ()
-      | _ -> invalid_arg "Blob compute bindings must return Blob")
-   | Shared | Fixed _ -> ());
   if List.exists (fun b -> b.id = binding.id || b.name = binding.name)
       !bindings then
     invalid_arg ("duplicate compute plugin binding: " ^ binding.name);
@@ -48,24 +40,18 @@ let register binding =
 let find id = List.find_opt (fun b -> b.id = id) !bindings
 
 let intrinsic_type id =
-  Type.Func (Type.Local, Type.Intrinsic id, [], [], [Type.blob])
+  Type.Func (Type.Local, Type.Intrinsic id, [], [], [])
 
 let intrinsic typ = match Type.promote typ with
-  | Type.Func (Type.Local, Type.Intrinsic id, [], [], [Type.Prim Type.Blob]) ->
+  | Type.Func (Type.Local, Type.Intrinsic id, [], [], []) ->
     Some id
   | _ -> None
 
 let declarations () =
-  String.concat "\n" (List.map (fun b -> match b.arguments with
-    | Shared | Fixed _ -> Printf.sprintf "let %s = prim %S;" b.name
-        ("compute:" ^ b.id)
-    | Blob -> Printf.sprintf
-        "func %s(x : Blob) : Blob { (prim %S : Blob -> Blob)(x) };"
-        b.name ("compute:" ^ b.id)) !bindings)
+  String.concat "\n" (List.map (fun b ->
+    Printf.sprintf "let %s = prim %S;" b.name ("compute:" ^ b.id)) !bindings)
 
 let check_arguments binding types = match binding.arguments, types with
-  | Blob, [t] when Type.sub t Type.blob -> Ok ()
-  | Blob, _ -> Error (binding.name ^ " expects one Blob argument")
   | Shared, ts when List.for_all Type.shared ts -> Ok ()
   | Shared, _ -> Error (binding.name ^ " requires shared argument types")
   | Fixed expected, ts when List.length ts = List.length expected &&

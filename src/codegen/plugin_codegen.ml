@@ -6,7 +6,7 @@ open Mo_types
 open Wasm_exts.Types
 module G = InstrList
 
-let abi_version = 2
+let abi_version = 1
 
 exception Unsupported of string
 

@@ -30,6 +30,9 @@ assert projected == #ok { value = "projection" };
 func parse(text : Text) : Result<Record> = decode<Record>(text);
 let parseRecord : Text -> Result<Record> = parse;
 assert parseRecord("wrapper") == #ok { value = "wrapper"; count = 7 };
+func apply<A, B>(f : A -> B, value : A) : B = f(value);
+assert apply<Text, Result<Record>>(parseRecord, "generic") ==
+  #ok { value = "generic"; count = 7 };
 
 // A wider expected result does not erase the exact generated result layout.
 let wide : Any = decode<Record>("wide");

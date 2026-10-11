@@ -2178,7 +2178,7 @@ and sequence pp ppf ts =
 
 and pp_typ_nobin vs ppf t =
   match t with
-  | Func (Local, Intrinsic id, [], [], [Prim Blob]) ->
+  | Func (Local, Intrinsic id, [], [], []) ->
     fprintf ppf "@[<2>intrinsic %s@]" id
   | Func (s, c, tbs, ts1, ts2) ->
     let sugar = can_sugar t in

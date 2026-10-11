@@ -3,9 +3,9 @@
  *)
 open Mo_types
 
-(* [Blob] preserves the ordinary first-class Blob -> Blob API. [Shared] and
-   [Fixed] are compiler-specialized intrinsics, including through aliases. *)
-type arguments = Blob | Shared | Fixed of Type.typ list
+(* All bindings are compiler-specialized intrinsics, including through aliases.
+   [Shared] accepts variadic shared values; [Fixed] declares input types. *)
+type arguments = Shared | Fixed of Type.typ list
 
 type specialization = {
   type_arguments : Type.typ list;

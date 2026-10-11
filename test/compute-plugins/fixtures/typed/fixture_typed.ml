@@ -191,7 +191,7 @@ let early_error_binding = Mo_values.Compute_plugin.{
 }
 
 let () = P.register P.{
-  abi = 2;
+  abi = 1;
   name = "fixture_typed";
   runtime = "runtime.wasm";
   (* Deliberately shares the echo runtime's symbol with a different type. *)

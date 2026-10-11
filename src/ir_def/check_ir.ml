@@ -752,10 +752,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | ComputeValuePrim id, [] ->
       Mo_values.Compute_plugin.intrinsic_type id <: t;
       (match Mo_values.Compute_plugin.find id with
-       | Some {Mo_values.Compute_plugin.arguments =
-           (Mo_values.Compute_plugin.Shared |
-             Mo_values.Compute_plugin.Fixed _); _} -> ()
-       | _ -> error env exp.at "unknown typed compute intrinsic %s" id)
+       | Some _ -> ()
+       | None -> error env exp.at "unknown typed compute intrinsic %s" id)
     | ComputePrim (id, s), [e] ->
       typ e <: T.seq s.Mo_values.Compute_plugin.argument_types;
       s.Mo_values.Compute_plugin.result_type <: t;

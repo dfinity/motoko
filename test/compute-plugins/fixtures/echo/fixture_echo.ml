@@ -3,7 +3,7 @@ module G = Codegen.InstrList
 
 module Generator = struct
   module Make (B : P.Backend) = struct
-    let compile env _types =
+    let compile env _specialization =
       let set_input, get_input = B.new_local env "fixture_input" in
       let set_output, get_output = B.new_local env "fixture_output" in
       G.concat [
@@ -22,7 +22,7 @@ end
 let binding = Mo_values.Compute_plugin.{
   id = "fixture_echo";
   name = "fixtureEcho";
-  arguments = Blob;
+  arguments = Fixed [Mo_types.Type.blob];
   type_parameters = 0;
   result_type = (fun _ _ -> Ok Mo_types.Type.blob);
   evaluate = (fun _type_arguments _types -> function
@@ -31,7 +31,7 @@ let binding = Mo_values.Compute_plugin.{
 }
 
 let () = P.register P.{
-  abi = 2;
+  abi = 1;
   name = "fixture_echo";
   runtime = "runtime.wasm";
   imports = ["transform", Wasm_exts.Types.[I64Type; I64Type; I64Type], []];

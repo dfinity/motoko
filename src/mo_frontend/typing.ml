@@ -2465,10 +2465,8 @@ and infer_exp'' env exp : T.typ =
   | PrimE s when Lib.String.chop_prefix "compute:" s <> None ->
     let id = Option.get (Lib.String.chop_prefix "compute:" s) in
     (match Compute_plugin.find id with
-     | Some {Compute_plugin.arguments =
-         (Compute_plugin.Shared | Compute_plugin.Fixed _); _} ->
-       Compute_plugin.intrinsic_type id
-     | _ -> error env exp.at "M0279" "unknown typed compute intrinsic %s" id)
+     | Some _ -> Compute_plugin.intrinsic_type id
+     | None -> error env exp.at "M0279" "unknown typed compute intrinsic %s" id)
   | PrimE _ ->
     error env exp.at "M0054" "cannot infer type of primitive"
   | VarE id ->
@@ -3107,11 +3105,7 @@ and check_exp' env0 t exp : T.typ =
     when Lib.String.chop_prefix "compute:" s <> None ->
     let id = Option.get (Lib.String.chop_prefix "compute:" s) in
     let expected = match Compute_plugin.find id with
-      | Some {Compute_plugin.arguments =
-          (Compute_plugin.Shared | Compute_plugin.Fixed _); _} ->
-        Compute_plugin.intrinsic_type id
-      | Some {Compute_plugin.arguments = Compute_plugin.Blob; _} ->
-        T.Func (T.Local, T.Returns, [], [T.blob], [T.blob])
+      | Some _ -> Compute_plugin.intrinsic_type id
       | None -> error env exp.at "M0279"
           "compute plugin is not loaded: %s" id
     in
@@ -3619,7 +3613,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
           check_exp env t_arg exp2;
           exp2.note.note_typ
         end
-      | Compute_plugin.Blob | Compute_plugin.Shared -> infer_exp env exp2
+      | Compute_plugin.Shared -> infer_exp env exp2
     in
     let argument_types = match exp2.it with
       | TupE _ when not parenthesized -> T.seq_of_tup t_arg

@@ -189,15 +189,6 @@ and exp' at note = function
       { (primE (I.ComputePrim (id, specialization)) [exp !args]) with at } in
     (blockE (ds @ [expD (ignoreE (exp callee))])
       encoded).it
-  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE p;_}, _);_}, _, (_, e))
-    when Lib.String.chop_prefix "compute:" p <> None ->
-    let id = Option.get (Lib.String.chop_prefix "compute:" p) in
-    let specialization = Compute_plugin.{
-      type_arguments = [];
-      argument_types = [(!e).note.S.note_typ];
-      result_type = note.Note.typ;
-    } in
-    I.PrimE (I.ComputePrim (id, specialization), [exp !e])
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, (_, e))
     when Lib.String.chop_prefix "num_conv" p <> None ->
     begin match String.split_on_char '_' p with

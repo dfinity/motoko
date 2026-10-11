@@ -44,16 +44,17 @@ FFI declarations are needed. Only referenced runtimes are linked. Multiple
 packages can be loaded in either order. Ordinary `to_candid` and `from_candid`
 retain their existing behavior.
 
-A fixed Blob-input plugin exports an ordinary first-class function. A typed
-intrinsic instead preserves its identity through inferred aliases and
-specializes calls using actual argument types. Its type cannot be erased to an
-ordinary function annotation. Use an explicitly typed wrapper when passing
-such an encoder as a callback:
+All plugin bindings are compiler-specialized intrinsics, including fixed-input
+functions such as `Prim.sha256`. They preserve their identity through inferred
+aliases and specialize calls using argument types and explicit type parameters.
+Their type cannot be erased to an ordinary function annotation. Use an
+explicitly typed wrapper when passing a plugin computation as a callback:
 
 ```motoko
 func encodeHeight(x : Nat) : { #ok : Blob; #err : Text } {
   Prim.to_candid_canonical(x)
 };
+func hash(bytes : Blob) : Blob = Prim.sha256(bytes);
 ```
 
 Argument lists and tuple values remain distinct:
@@ -110,9 +111,11 @@ wrong host platform; their original reason is retained.
 
 Compatibility is checked using OCaml's native interface/implementation checks
 and the explicit plugin ABI, rather than an exact Motoko release allowlist.
-A semantically incompatible SDK change must advance its ABI version even if
-the OCaml signatures remain unchanged. A successful compatibility check does
-not prove that the plugin implementation is correct.
+The ABI remains 1 while the compiler PR is unmerged. Packages must be rebuilt
+against the matching compiler checkout. After merging, a semantically
+incompatible SDK change must advance its ABI version even if the OCaml
+signatures remain unchanged. A successful compatibility check does not prove
+that the plugin implementation is correct.
 
 Package names, internal function IDs, and plugin Prim names must be distinct;
 duplicates fail during loading. Separate packages may reuse private runtime
@@ -179,14 +182,15 @@ The versioned compiler interface is
    there. Its specialization contains explicit type arguments, input types,
    and the checked result type.
 
-The package's required ABI must be fixed at build time, such as `abi = 2` for
+The package's required ABI must be fixed at build time, such as `abi = 1` for
 the current SDK. Do not copy `Plugin_codegen.abi_version` from the running
 host: a plugin built with opaque or interface-only dependencies can otherwise
 adopt a newer host's ABI without having been rebuilt for its semantics.
 
-ABI 2 supports the ordinary `Blob -> Blob` policy, fixed input type lists, and
-variadic shared inputs. Intrinsics can require explicit concrete type arguments
-and return concrete records, variants, arrays, options, text, and scalars.
+The SDK has two argument policies: `Fixed` declares an input type list, and
+`Shared` accepts variadic shared inputs. Both use the same specialization API.
+Intrinsics can require explicit concrete type arguments and return concrete
+records, variants, arrays, options, text, and scalars.
 `from_json<User>(text)` specializes both validation and construction for `User`;
 its result is `{ #ok : User; #err : JsonError }`. The plugin supplies that
 structural error type. Expected input failures are values, not interpreter
@@ -197,12 +201,6 @@ write barriers. Record fields and variant payloads are evaluated before their
 containers are allocated. Dynamic arrays start with initialized slots, allowing
 early error returns without leaving invalid heap fields. These constructors
 still require the synchronous no-GC-safepoint contract.
-
-ABI 1 packages must be rebuilt and migrated: bindings now declare their result
-type and explicit type parameter count; interpreters return `Value.value`;
-generators receive a specialization record. CandidX callers must handle its
-`#ok`/`#err` result before using the encoded Blob. SHA-256's public API is
-unchanged. Historical benchmarks describe their original ABI 1 artifacts.
 
 [SHA-256](https://github.com/Neutrinomic/motoko_plugins/tree/main/plugins/sha256)
 is a small example; [CandidX](https://github.com/Neutrinomic/motoko_plugins/tree/main/plugins/candidx)
