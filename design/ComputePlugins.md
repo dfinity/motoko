@@ -197,10 +197,14 @@ The versioned compiler interface is
    policy, explicit type parameter modes, result-type function, and an
    interpreter reference implementation.
 3. A generator functor over `Plugin_codegen.Backend`. It receives one getter
-   for each already evaluated vanilla argument and leaves a vanilla result on
-   the Wasm stack. Ordinary sequence calling conventions avoid allocating an
-   argument tuple. Specialization contains explicit type arguments, input
-   types, and the checked result type.
+   for each already evaluated vanilla argument and returns generated code with
+   an explicit result representation. `Managed` leaves one vanilla value;
+   `Tuple n` leaves the fields of a statically known tuple on the Wasm stack.
+   The compiler checks its exact arity (zero or at least two), without promoting
+   opaque type bounds, and packs a tuple only when the surrounding context
+   needs one. Ordinary sequence calling conventions avoid allocating argument
+   tuples. Specialization contains explicit type arguments, input types, and
+   the checked result type.
 
 The package's required ABI must be fixed at build time, such as `abi = 1` for
 the current SDK. Do not copy `Plugin_codegen.abi_version` from the running

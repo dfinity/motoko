@@ -14,6 +14,10 @@ local Motoko callback dispatch. Callback coverage includes sequence arities,
 effect order, ignored results, traps, reentry, mutable/closure payload sharing,
 and opaque async values without suspension inside the plugin. A scalar callback
 loop verifies that plugin argument passing allocates no managed tuples.
+Known tuple results also travel on the stack: immediate pair/triple destructuring
+and unit callbacks allocate no temporary result tuples, while tuples retained in
+arrays or across forced GC receive normal managed storage. Generic opaque
+results retain their ordinary single-value representation.
 
 From the Motoko repository root, in its Nix development shell:
 
@@ -35,8 +39,9 @@ results across forced GC, including recoverable errors during construction and
 values retained across nested callbacks.
 Alias and callback tests cover intrinsic identity and ordinary Motoko wrappers.
 `packaging.py` checks loader compatibility and normal diagnostics for invalid
-packages, unresolved result types, and runtime-less packages with runtime
-imports. Linker-specific validation lives in `src/linking/test_linkModule.ml`.
+packages, unresolved result types, invalid result stack shapes, and runtime-less
+packages with runtime imports. Linker-specific validation lives in
+`src/linking/test_linkModule.ml`.
 
 Production CandidX/SHA-256/JSON implementations, conformance tests, and benchmarks
 live in [motoko_plugins](https://github.com/Neutrinomic/motoko_plugins).

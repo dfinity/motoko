@@ -6,7 +6,7 @@ module Generator = struct
     let compile env _specialization arguments =
       let set_input, get_input = B.new_local env "fixture_input" in
       let set_output, get_output = B.new_local env "fixture_output" in
-      G.concat [G.concat arguments;
+      P.{representation = Managed; code = G.concat [G.concat arguments;
         set_input;
         B.alloc_blob env (G.concat [get_input; B.Blob.len env]);
         set_output;
@@ -15,7 +15,7 @@ module Generator = struct
         get_output; B.Blob.payload_ptr_unskewed env;
         B.call env "fixture_echo" "transform";
         get_output;
-      ]
+      ]}
   end
 end
 

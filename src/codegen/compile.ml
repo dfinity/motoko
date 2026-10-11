@@ -9817,7 +9817,17 @@ module ComputePlugins = struct
     | Some generator ->
       let module Generator = (val generator : Plugin_codegen.Generator) in
       let module Specialized = Generator.Make (Backend) in
-      Specialized.compile env ts arguments
+      let {code; representation} = Specialized.compile env ts arguments in
+      let sr = match representation with
+        | Managed -> SR.Vanilla
+        | Tuple n ->
+          (match Type.normalize ts.Mo_values.Compute_plugin.result_type with
+          | Type.Tup fields when (n = 0 || n >= 2) && List.length fields = n ->
+            StackRep.of_arity n
+          | _ -> fatal "compute plugin %s returned invalid result representation Tuple %d for %s"
+            id n (Type.string_of_typ ts.Mo_values.Compute_plugin.result_type))
+      in
+      sr, code
 
   let link (emodule : Wasm_exts.CustomModule.extended_module) rts =
     let used = List.filter (fun {Plugin_codegen.plugin; _} ->
@@ -12184,10 +12194,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let arguments = List.mapi (fun i _ ->
       new_local env ("compute_argument" ^ string_of_int i))
       ts.Mo_values.Compute_plugin.argument_types in
-    SR.Vanilla,
-    compile_exp_as env ae (StackRep.of_arity (List.length arguments)) e ^^
-    G.concat_map fst (List.rev arguments) ^^
-    ComputePlugins.compile env id ts (List.map snd arguments)
+    let inputs =
+      compile_exp_as env ae (StackRep.of_arity (List.length arguments)) e ^^
+      G.concat_map fst (List.rev arguments) in
+    let sr, code = ComputePlugins.compile env id ts (List.map snd arguments) in
+    sr, inputs ^^ code
 
   | SerializePrim ts, [e] ->
     SR.Vanilla,

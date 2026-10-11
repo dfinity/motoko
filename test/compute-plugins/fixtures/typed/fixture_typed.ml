@@ -24,7 +24,7 @@ let shape types =
 module Generator = struct
   module Make (B : P.Backend) = struct
     let compile env specialization _arguments =
-      match shape specialization.Mo_values.Compute_plugin.argument_types with
+      let code = match shape specialization.Mo_values.Compute_plugin.argument_types with
       | Error message -> B.E.trap_with env message
       | Ok bytes ->
         let set_output, get_output = B.new_local env "fixture_output" in
@@ -42,6 +42,7 @@ module Generator = struct
           ]));
           get_output;
         ]
+      in P.{code; representation = Managed}
   end
 end
 
@@ -94,7 +95,8 @@ module Decode = struct
               B.BoxedWord64.box env T.Nat64]);
           ]
       in
-      G.concat [G.concat arguments; set_input; B.Variant.inject env "ok" value]
+      P.{representation = Managed;
+        code = G.concat [G.concat arguments; set_input; B.Variant.inject env "ok" value]}
   end
 end
 
@@ -138,8 +140,8 @@ module Record = struct
         "nested", (fun () ->
           B.Opt.inject env (T.Opt T.text) (B.Opt.null_lit env));
       ] in
-      G.concat [G.concat arguments; set_input;
-        B.Variant.inject env "ok" (B.Object.lit_raw env fields)]
+      P.{representation = Managed; code = G.concat [G.concat arguments; set_input;
+        B.Variant.inject env "ok" (B.Object.lit_raw env fields)]}
   end
 end
 
@@ -164,7 +166,7 @@ let record_binding = Mo_values.Compute_plugin.{
 module EarlyError = struct
   module Make (B : P.Backend) = struct
     let compile env _specialization arguments =
-      G.concat [G.concat arguments;
+      P.{representation = Managed; code = G.concat [G.concat arguments;
       B.Func.share_code1 B.Func.Always env "fixture_partial_array"
         ("text", Wasm_exts.Types.I64Type) [Wasm_exts.Types.I64Type]
         (fun env get_text ->
@@ -177,7 +179,7 @@ module EarlyError = struct
                   G.i Wasm_exts.Ast.Return;
                 ]) G.nop;
                 get_text;
-              ]))) ]
+              ]))) ]}
   end
 end
 

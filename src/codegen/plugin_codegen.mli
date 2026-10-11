@@ -168,12 +168,19 @@ module type Backend = sig
   end
 end
 
+(* Managed leaves one vanilla value. Tuple n leaves n vanilla fields of a
+   statically known tuple result (n = 0 or n >= 2). The compiler validates this
+   claim against the normalized result type without promoting opaque bounds,
+   and packs a managed tuple only when its surrounding context needs one. *)
+type result_representation = Managed | Tuple of int
+type generated = {code : G.t; representation : result_representation}
+
 module type Generator = sig
   module Make (B : Backend) : sig
     (* Each getter reads one already evaluated vanilla argument. The compiler
        evaluates arguments left-to-right exactly once, using ordinary function
        sequence arities, without allocating an argument tuple. *)
-    val compile : B.env -> Mo_values.Compute_plugin.specialization -> G.t list -> G.t
+    val compile : B.env -> Mo_values.Compute_plugin.specialization -> G.t list -> generated
   end
 end
 

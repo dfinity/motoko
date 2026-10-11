@@ -175,6 +175,45 @@ def check_unresolved_result(work):
     assert "OOPS" not in result.stderr, result.stderr
 
 
+def check_result_representation(work):
+    original = (FIXTURES / "callbacks/fixture_callbacks.ml").read_text()
+    declaration = "let managed code = P.{code; representation = Managed} in"
+    assert original.count(declaration) == 1
+    cases = [
+        ("negative", -1, 'ignore Prim.fixtureIdentity<Nat>(17);'),
+        ("single", 1, 'ignore Prim.fixtureIdentity<Nat>(17);'),
+        ("scalar", 2, 'ignore Prim.fixtureIdentity<Nat>(17);'),
+        ("unit-scalar", 0, 'ignore Prim.fixtureIdentity<Nat>(17);'),
+        ("wrong-arity", 3,
+         'type Pair = (Nat, Nat); '
+         'ignore Prim.fixtureIdentity<Pair>((17, 19));'),
+        ("opaque", 2,
+         'func identity<T>(value : T) : T { Prim.fixtureIdentity<T>(value) }; '
+         'ignore identity<(Nat, Nat)>((17, 19));'),
+        ("opaque-bound", 2,
+         'func identity<T <: (Nat, Nat)>(value : T) : T { '
+         'Prim.fixtureIdentity<T>(value) }; '
+         'ignore identity<(Nat, Nat)>((17, 19));'),
+    ]
+    for name, arity, program in cases:
+        package = work / f"result-{name}"
+        package.mkdir()
+        replacement = (
+            "let managed code = P.{code; "
+            f"representation = Tuple ({arity})" + "} in"
+        )
+        (package / "invalid_representation.ml").write_text(
+            original.replace(declaration, replacement)
+        )
+        compile_plugin(package, "invalid_representation.ml")
+        source = work / f"result-{name}.mo"
+        source.write_text('import Prim "mo:⛔"; ' + program + '\n')
+        compile_program(source, work / f"result-{name}.wasm", [package],
+                        error=("compute plugin fixture_identity returned "
+                               "invalid result representation Tuple "
+                               f"{arity}"))
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix="motoko-compute-packages-") as work:
         work = Path(work)
@@ -184,6 +223,7 @@ def main():
         check_registration(work, empty)
         check_codegen_only(work, empty)
         check_unresolved_result(work)
+        check_result_representation(work)
         used = work / "used.mo"
         used.write_text('import Prim "mo:⛔"; '
                         'assert Prim.fixtureEcho("abc") == "abc";\n')

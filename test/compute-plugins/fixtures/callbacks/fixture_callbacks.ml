@@ -7,15 +7,19 @@ module V = Mo_values.Value
 let local ins outs = T.Func (T.Local, T.Returns, [], ins, outs)
 
 type operation = Identity | Apply | Apply0 | Apply2 | Split | Visit | Twice
+  | Pair | Triple | Unit | Unpack
 
 let schema operation types = match operation, types with
-  | Identity, [a] -> Ok ([a], a)
+  | (Identity | Unpack), [a] -> Ok ([a], a)
   | Apply, [a; b] -> Ok ([local [a] [b]; a], b)
   | Apply0, [a] -> Ok ([local [] [a]], a)
   | Apply2, [a; b; c] -> Ok ([local [a; b] [c]; a; b], c)
   | Split, [a; b; c] -> Ok ([local [a] [b; c]; a], T.Tup [b; c])
   | Visit, [a] -> Ok ([local [a] []; a], a)
   | Twice, [a] -> Ok ([local [a] [a]; a], a)
+  | Pair, [a; b] -> Ok ([a; b], T.Tup [a; b])
+  | Triple, [a; b; c] -> Ok ([a; b; c], T.Tup [a; b; c])
+  | Unit, [a] -> Ok ([local [a] []; a], T.unit)
   | _ -> Error "invalid callback fixture type arguments"
 
 module type Operation = sig val operation : operation end
@@ -23,12 +27,28 @@ module type Operation = sig val operation : operation end
 module Generator (Op : Operation) = struct
   module Make (B : P.Backend) = struct
     let compile env specialization getters =
+      let managed code = P.{code; representation = Managed} in
       match schema Op.operation specialization.C.type_arguments, getters with
-      | Error message, _ -> B.E.trap_with env message
-      | Ok _, [value] when Op.operation = Identity -> value
+      | Error message, _ -> managed (B.E.trap_with env message)
+      | Ok _, [value] when Op.operation = Identity -> managed value
+      | Ok _, [value] when Op.operation = Unpack ->
+        (match T.normalize specialization.C.result_type with
+         | T.Tup elements -> P.{
+             code = G.concat (List.mapi (fun index _ ->
+               G.concat [value; B.Tuple.load_n env (Int64.of_int index)]) elements);
+             representation = Tuple (List.length elements);
+           }
+         | _ -> managed value)
+      | Ok _, values when Op.operation = Pair ->
+        P.{code = G.concat values; representation = Tuple 2}
+      | Ok _, values when Op.operation = Triple ->
+        P.{code = G.concat values; representation = Tuple 3}
+      | Ok (callback :: _, _), closure :: args when Op.operation = Unit ->
+        P.{code = G.concat [B.Call.local env callback closure args;
+             G.i Wasm_exts.Ast.Drop]; representation = Tuple 0}
       | Ok (callback :: _, _), closure :: args ->
         let call = B.Call.local env callback closure args in
-        (match Op.operation with
+        managed (match Op.operation with
          | Visit ->
            (match args with
             | [value] -> G.concat [call; G.i Wasm_exts.Ast.Drop; value]
@@ -38,14 +58,15 @@ module Generator (Op : Operation) = struct
              B.new_local env "fixture_first_result" in
            G.concat [call; set_result;
              B.Call.local env callback closure [get_result]]
-         | Identity | Apply | Apply0 | Apply2 | Split -> call)
-      | _ -> B.E.trap_with env "invalid callback fixture schema"
+         | Identity | Apply | Apply0 | Apply2 | Split | Pair | Triple | Unit | Unpack -> call)
+      | _ -> managed (B.E.trap_with env "invalid callback fixture schema")
   end
 end
 
 let evaluator operation evaluator types _arguments values k =
   match schema operation types, operation, values with
-  | Ok _, Identity, [value] -> k (Ok value)
+  | Ok _, (Identity | Unpack), [value] -> k (Ok value)
+  | Ok _, (Pair | Triple), values -> k (Ok (V.Tup values))
   | Ok (callback_type :: _, _), _, callback :: args ->
     evaluator.C.call callback_type callback args (function
       | Error message -> k (Error message)
@@ -77,12 +98,13 @@ let scalar types = match types with
 module Compare = struct
   module Make (B : P.Backend) = struct
     let compile env specialization getters =
-      match scalar specialization.C.type_arguments, getters with
+      let code = match scalar specialization.C.type_arguments, getters with
       | Error message, _ -> B.E.trap_with env message
       | Ok prim, [left; right] ->
         G.concat [left; right;
           B.Compare.scalar env prim; B.BigNum.from_signed_word64 env]
-      | _ -> B.E.trap_with env "invalid fixtureCompare arguments"
+      | _ -> B.E.trap_with env "invalid fixtureCompare arguments" in
+      P.{code; representation = Managed}
   end
 end
 
@@ -106,7 +128,8 @@ module True = struct
   module Make (B : P.Backend) = struct
     let compile _env _specialization _getters =
       (* RTS boolean bridges allow any nonzero representation of true. *)
-      G.concat [B.compile_const_32 2l; B.Bool.from_rts_int32]
+      P.{code = G.concat [B.compile_const_32 2l; B.Bool.from_rts_int32];
+        representation = Managed}
   end
 end
 
@@ -139,6 +162,14 @@ let () = P.register P.{
       (module Generator (struct let operation = Visit end));
     binding "fixture_twice" "fixtureTwice" Twice 1,
       (module Generator (struct let operation = Twice end));
+    binding "fixture_pair" "fixturePair" Pair 2,
+      (module Generator (struct let operation = Pair end));
+    binding "fixture_triple" "fixtureTriple" Triple 3,
+      (module Generator (struct let operation = Triple end));
+    binding "fixture_unit" "fixtureUnit" Unit 1,
+      (module Generator (struct let operation = Unit end));
+    binding "fixture_unpack" "fixtureUnpack" Unpack 1,
+      (module Generator (struct let operation = Unpack end));
     compare_binding, (module Compare);
     true_binding, (module True);
   ];

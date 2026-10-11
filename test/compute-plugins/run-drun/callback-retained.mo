@@ -14,6 +14,7 @@ actor {
     read : () -> Nat;
   };
   transient var retained : ?Payload = null;
+  transient var retainedTuple : ?(Payload, () -> Nat, ?Nat) = null;
   transient var calls = 0;
   transient var reclaimedBefore = 0;
 
@@ -30,6 +31,15 @@ actor {
         assert Prim.fixtureApply<Payload, Nat>(
           func (same : Payload) : Nat { same.read() }, value
         ) == 2;
+      };
+    };
+    switch retainedTuple {
+      case null Prim.trap("no retained plugin tuple");
+      case (?(value, read, absent)) {
+        assert value.numbers[4095] == 4095;
+        assert value.cell.count == 2;
+        assert read() == 2;
+        assert absent == null;
       };
     };
   };
@@ -54,6 +64,14 @@ actor {
       );
       { same with text = same.text # "!" }
     }, original);
+    switch retained {
+      case null Prim.trap("no tuple payload");
+      case (?value) {
+        retainedTuple := ?Prim.fixtureTriple<Payload, () -> Nat, ?Nat>(
+          value, value.read, null
+        );
+      };
+    };
     // Both versions share the original payload's mutable cell and array.
     assert original.cell.count == 2;
     assert original.text == "callback payload ☃";
