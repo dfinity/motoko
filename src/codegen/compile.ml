@@ -9691,11 +9691,10 @@ module ComputePlugins = struct
           let unbox, signed = match prim with
             | Type.Nat64 -> BoxedWord64.unbox env prim, false
             | Type.Int64 -> BoxedWord64.unbox env prim, true
-            | Type.Int8 | Type.Int16 | Type.Int32 ->
-              TaggedSmallWord.lsb_adjust prim, true
-            | Type.Nat8 | Type.Nat16 | Type.Nat32 ->
-              TaggedSmallWord.lsb_adjust prim, false
-            | Type.Char -> TaggedSmallWord.lsb_adjust_codepoint env, false
+            (* Same-type small scalars have identical low tags and ordered
+               high payloads, so comparisons need no representation shift. *)
+            | Type.Int8 | Type.Int16 | Type.Int32 -> G.nop, true
+            | Type.Nat8 | Type.Nat16 | Type.Nat32 | Type.Char -> G.nop, false
             | Type.Bool -> Bool.from_int64, false
             | _ -> G.nop, false
           in
