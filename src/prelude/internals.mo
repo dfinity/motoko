@@ -461,6 +461,19 @@ func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
   await (prim "call_raw" : (Principal, Text, Blob) -> async Blob)(p, m, a);
 };
 
+// the codes of an `Error`, as laid out by `Type.catchErrorCodes` (type.ml); keep in sync with
+// `ErrorCode` (prim.mo)
+type @ErrorCode = {
+  #system_fatal;
+  #system_transient;
+  #destination_invalid;
+  #canister_reject;
+  #canister_error;
+  #system_unknown;
+  #future : Nat32;
+  #call_error : { err_code : Nat32 };
+};
+
 // helpers for reifying ic0.call_perform failures as errors
 func @call_succeeded() : Bool {
   (prim "call_perform_status" : () -> Nat32)() == 0;
@@ -470,7 +483,7 @@ func @call_error() : Error {
   let status = (prim "call_perform_status" : () -> Nat32)();
   let message = (prim "call_perform_message" : () -> Text)();
   let code = #call_error({ err_code = status });
-  (prim "cast" : ({ #call_error : { err_code : Nat32 } }, Text) -> Error)(code, message);
+  (prim "cast" : (@ErrorCode, Text) -> Error)(code, message);
 };
 
 // default timer mechanism implementation
@@ -640,17 +653,7 @@ func @timer_helper() : async () {
 };
 
 func @isTransient(e : Error) : Bool {
-  type Code = {
-    #system_fatal;
-    #system_transient;
-    #destination_invalid;
-    #canister_reject;
-    #canister_error;
-    #system_unknown;
-    #future : Nat32;
-    #call_error : { err_code : Nat32 }
-  };
-  switch ((prim "cast" : Error -> (Code, Text)) e).0 {
+  switch ((prim "cast" : Error -> (@ErrorCode, Text)) e).0 {
     case #system_transient true;
     case _ false
   }
