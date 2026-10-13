@@ -46,6 +46,7 @@ jobs:
         run: |
           python3 test/compute-plugins/packaging.py
           python3 test/compute-plugins/comparator_codegen.py
+          python3 test/compute-plugins/prepared_types.py
 
       - name: Test linker and execute composed Wasm fixtures
         run: |

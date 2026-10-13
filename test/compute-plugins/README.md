@@ -43,6 +43,14 @@ with fragmented dead/live allocations, sanity checks and retained old/new
 payloads. Packaging checks deliberately
 invalid generator types and fields fail at compilation with normal diagnostics.
 
+The `prepared` fixture declares distinct protected types backed by immutable
+managed Blob bytes. It checks alias and generic passage, preparation/reading,
+callback reentry and allocation, no wrapper allocation on reuse, and retention
+in transient fields and async locals across GC. Negative tests cover forged
+Blob/record values, wrong types, generic bounds, representation access, Candid,
+shared signatures, and stable fields. Registry/owner checks run at compilation;
+there is no runtime prepared-value registry or new GC representation.
+
 The frontend validates intrinsic specializations, and the IR checker validates
 their transformed metadata. Interpreters use that checked metadata without
 repeating type specialization on every execution; dynamic argument arity and
@@ -59,6 +67,7 @@ test-runner -b test/compute-plugins/fail
 test-runner -b test/compute-plugins/trap
 test-runner -b test/compute-plugins/run-drun
 python3 test/compute-plugins/packaging.py
+python3 test/compute-plugins/prepared_types.py
 python3 test/compute-plugins/comparator_codegen.py
 ```
 

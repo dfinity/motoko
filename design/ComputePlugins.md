@@ -248,9 +248,11 @@ Plugins may declare protected types for validated keys and precomputed tables.
 The compiler gives each declared type a distinct nominal identity and exposes
 it through Prim. Ordinary Motoko code can retain it in records, arrays, generic
 collections, closures, or transient actor fields. It cannot manufacture one from
-Blob bytes, inspect its representation, serialize it with Candid, send it in a
-shared call, or put it in stable state. A key prepared by one algorithm or for
-one purpose cannot be supplied where another protected type is required.
+Blob bytes, inspect its representation, or use its prepared type in Candid,
+shared calls, or stable fields. Widening to `Any` is legal but loses the usable
+prepared type; it does not promise physical deletion of the backing bytes. A key
+prepared by one algorithm or for one purpose cannot be supplied where another
+protected type is required.
 Plugin authors must expose factories that validate inputs and build the cache;
 consumers can then omit repeated validation and precomputation.
 
@@ -292,9 +294,9 @@ new native heap, root table, or GC tag is involved. Precomputed public constants
 that do not vary by key can stay in immutable plugin Wasm data segments instead
 of being copied into every prepared value.
 
-Prepared state is transient across upgrades, so persist the original serialized
-key when rebuilding is needed. Normal GC reclamation does not promise secure
-erasure of secret bytes; a prepared secret intentionally retains secret
+Fields retaining the prepared type must be transient across upgrades, so persist
+the original serialized key when rebuilding is needed. Normal GC reclamation does
+not promise secure erasure of secret bytes; a prepared secret intentionally retains secret
 material for as long as the application retains it. Each plugin documents its
 format, validation contract, retained size, and measured preparation/reuse costs.
 

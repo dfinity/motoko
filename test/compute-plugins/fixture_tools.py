@@ -41,7 +41,7 @@ def build_runtime(source, destination):
 
 
 def main():
-    for name in ["echo", "typed", "callbacks", "mutation", "comparators"]:
+    for name in ["echo", "typed", "callbacks", "mutation", "comparators", "prepared"]:
         directory = PACKAGES / name
         directory.mkdir(parents=True, exist_ok=True)
         source = f"fixture_{name}.ml"
