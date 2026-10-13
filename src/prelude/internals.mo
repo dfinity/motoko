@@ -519,7 +519,7 @@ func @nextExpiration(n : ?@Node) : Nat64 = switch n {
 // expiration when it runs: retries a lost helper, at most one extra per delay if it is late.
 func @timer_fallback() {
   let now = (prim "time" : () -> Nat64)();
-  ignore (prim "global_timer_set" : Nat64 -> Nat64)(now + 5_000_000_000)
+  ignore (prim "global_timer_set" : Nat64 -> Nat64)(now + 60_000_000_000)
 };
 
 // Function called by backend to run eligible timed actions.

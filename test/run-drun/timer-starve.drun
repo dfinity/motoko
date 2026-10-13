@@ -7,7 +7,8 @@ install $ID timer-starve/timer-starve.mo ""
 # dispatcher self-call but before that runs: the recurring timer must resume.
 ingress $ID start "DIDL\x00\x00"
 submit $ID burn "DIDL\x00\x00"
-tick 10
+# frozen past the 60 s fallback, which then fires right after the top-up
+tick 65
 query $ID count "DIDL\x00\x00"
 add_cycles $ID 10_000_000_000_000
 tick 10
