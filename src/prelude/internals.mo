@@ -650,9 +650,9 @@ func @isTransient(e : Error) : Bool {
     #future : Nat32;
     #call_error : { err_code : Nat32 }
   };
-  switch ((prim "cast" : Error -> (Code, Text))(e)).0 {
-    case #system_transient { true }
-    case _ { false }
+  switch ((prim "cast" : Error -> (Code, Text)) e).0 {
+    case #system_transient true;
+    case _ false
   }
 };
 
