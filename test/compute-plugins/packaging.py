@@ -69,7 +69,7 @@ def check_compatibility(work, source):
         "module P = Codegen.Plugin_codegen\n"
         "let () = P.register P.{\n"
         "  abi = P.abi_version + 1; name = \"unsupported_abi\";\n"
-        "  runtime = Some \"runtime.wasm\"; imports = []; bindings = [];\n"
+        "  runtime = Some \"runtime.wasm\"; types = []; imports = []; bindings = [];\n"
         "}\n"
     )
     compile_plugin(abi, "abi_mismatch.ml")
@@ -125,7 +125,7 @@ def check_codegen_only(work, source):
     (invalid / "no_runtime.ml").write_text(
         'module P = Codegen.Plugin_codegen\n'
         'let () = P.register P.{\n'
-        '  abi = 1; name = "missing_runtime"; runtime = None;\n'
+        '  abi = 1; name = "missing_runtime"; runtime = None; types = [];\n'
         '  imports = ["missing", [], []]; bindings = [];\n'
         '}\n'
     )
@@ -266,7 +266,7 @@ module Generator = struct
   end
 end
 let () = P.register P.{
-  abi = 1; name = "managed_invalid"; runtime = None; imports = [];
+  abi = 1; name = "managed_invalid"; runtime = None; types = []; imports = [];
   bindings = [C.{
     id = "managed_invalid"; name = "fixtureManagedInvalid";
     arguments = Fixed (fun _ -> Ok []); type_parameters = [];

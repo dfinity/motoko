@@ -69,6 +69,15 @@ module type Backend = sig
     val dispatch : env -> comparator_index:int -> G.t list -> value_type list ->
       (env -> Type.prim option -> G.t list -> G.t) -> G.t
   end
+  module Prepared : sig
+    (** Seal a completed immutable managed Blob, or borrow its representation.
+        These are zero-cost operations. Ownership and the unwrapped value's
+        declared type are checked at generation time, never in emitted Wasm.
+        The plugin must not mutate a published payload or retain its pointer
+        across calls. Use Blob helpers to resolve forwarding on each borrow. *)
+    val wrap : Mo_values.Compute_plugin.Prepared.t -> G.t -> G.t
+    val unwrap : Mo_values.Compute_plugin.Prepared.t -> Type.typ -> G.t -> G.t
+  end
   module Blob : sig
     val len : env -> G.t
     val payload_ptr_unskewed : env -> G.t
@@ -203,6 +212,7 @@ type plugin = {
   abi : int;
   name : string;
   runtime : string option;
+  types : Mo_values.Compute_plugin.Prepared.t list;
   imports : runtime_function list;
   bindings : (Mo_values.Compute_plugin.binding * (module Generator)) list;
 }
@@ -225,6 +235,8 @@ let register plugin =
   in
   if plugin.runtime = None && plugin.imports <> [] then
     invalid_arg ("compute plugin " ^ plugin.name ^ " has imports but no runtime");
+  List.iter (Mo_values.Compute_plugin.Prepared.register ~owner:plugin.name)
+    plugin.types;
   List.iter (fun (binding, _) -> Mo_values.Compute_plugin.register binding)
     plugin.bindings;
   plugins := !plugins @ [{plugin;
@@ -241,5 +253,6 @@ let module_name plugin = "compute." ^ plugin.name
 
 let generator id =
   List.find_map (fun p -> List.find_map (fun (binding, generator) ->
-    if binding.Mo_values.Compute_plugin.id = id then Some generator else None)
+    if binding.Mo_values.Compute_plugin.id = id then
+      Some (p.plugin.name, generator) else None)
     p.plugin.bindings) !plugins

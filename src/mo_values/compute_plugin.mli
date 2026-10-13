@@ -3,6 +3,30 @@
  *)
 open Mo_types
 
+(** Nominal, non-shared and non-stable plugin values backed by immutable
+    managed Blobs. Payloads must contain only initialized pointer-free bytes;
+    no native pointers or native layouts with uninitialized padding. Payload
+    alignment is eight bytes. A plugin owns and validates its byte format. *)
+module Prepared : sig
+  type t
+  val create : owner:string -> name:string -> t
+  val typ : t -> Type.typ
+
+  (** Reference evaluators use the same Blob representation as compiled code.
+      These helpers require a registered descriptor. They do not copy bytes or
+      validate the plugin's already prepared payload again. *)
+  val wrap : t -> string -> Value.value
+  val unwrap : t -> Value.value -> string
+
+  (** Compiler integration: register once, then recognize exact constructor
+      identity. Alias normalization is allowed; abstract bounds are not. *)
+  val register : owner:string -> t -> unit
+  val check_owner : owner:string -> t -> unit
+  val is_con : Type.con -> bool
+  val find : string -> Type.typ option
+  val check_type : t -> Type.typ -> unit
+end
+
 (* All bindings are compiler-specialized intrinsics, including through aliases.
    [Shared] accepts variadic shared values; [Fixed] declares input types. *)
 type type_parameter = Concrete | Opaque

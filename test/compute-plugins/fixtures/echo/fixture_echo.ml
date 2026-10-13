@@ -34,6 +34,7 @@ let () = P.register P.{
   abi = 1;
   name = "fixture_echo";
   runtime = Some "runtime.wasm";
+  types = [];
   imports = ["transform", Wasm_exts.Types.[I64Type; I64Type; I64Type], []];
   bindings = [binding, (module Generator)];
 }

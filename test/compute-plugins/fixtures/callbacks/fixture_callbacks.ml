@@ -184,6 +184,7 @@ let () = P.register P.{
   abi = 1;
   name = "fixture_callbacks";
   runtime = None;
+  types = [];
   imports = [];
   bindings = [
     binding "fixture_identity" "fixtureIdentity" Identity 1,

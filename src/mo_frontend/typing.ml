@@ -977,6 +977,11 @@ and check_typ' env typ : T.typ =
     T.Con (c, ts)
   | PrimT "Any" -> T.Any
   | PrimT "None" -> T.Non
+  | PrimT s when Lib.String.chop_prefix "compute-type:" s <> None ->
+    (match Compute_plugin.Prepared.find
+        (Option.get (Lib.String.chop_prefix "compute-type:" s)) with
+     | Some t -> t
+     | None -> error env typ.at "M0040" "unknown prepared plugin type")
   | PrimT s ->
     (try T.Prim (T.prim s) with Invalid_argument _ ->
       error env typ.at "M0040" "unknown primitive type"

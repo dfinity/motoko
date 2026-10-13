@@ -90,7 +90,8 @@ let binding operation id name = C.{
 }
 
 let () = P.register P.{
-  abi = 1; name = "fixture_comparators"; runtime = None; imports = [];
+  abi = 1; name = "fixture_comparators"; runtime = None;
+  types = []; imports = [];
   bindings = [
     binding Compare "fixture_auto_compare" "fixtureAutoCompare",
       (module Generator (struct let operation = Compare end));

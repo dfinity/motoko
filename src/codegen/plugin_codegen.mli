@@ -78,6 +78,15 @@ module type Backend = sig
     val dispatch : env -> comparator_index:int -> G.t list -> value_type list ->
       (env -> Type.prim option -> G.t list -> G.t) -> G.t
   end
+  module Prepared : sig
+    (** Seal a completed immutable managed Blob, or borrow its representation.
+        These are zero-cost operations. Ownership and the unwrapped value's
+        declared type are checked at generation time, never in emitted Wasm.
+        The plugin must not mutate a published payload or retain its pointer
+        across calls. Use Blob helpers to resolve forwarding on each borrow. *)
+    val wrap : Mo_values.Compute_plugin.Prepared.t -> G.t -> G.t
+    val unwrap : Mo_values.Compute_plugin.Prepared.t -> Type.typ -> G.t -> G.t
+  end
   module Blob : sig
     val len : env -> G.t
     val payload_ptr_unskewed : env -> G.t
@@ -218,6 +227,7 @@ type plugin = {
   abi : int;
   name : string;
   runtime : string option;
+  types : Mo_values.Compute_plugin.Prepared.t list;
   imports : runtime_function list;
   bindings : (Mo_values.Compute_plugin.binding * (module Generator)) list;
 }
@@ -229,4 +239,4 @@ val register : plugin -> unit
 val load : (string -> unit) -> string -> unit
 val installed : unit -> installed list
 val module_name : plugin -> string
-val generator : string -> (module Generator) option
+val generator : string -> (string * (module Generator)) option

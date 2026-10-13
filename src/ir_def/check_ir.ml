@@ -207,7 +207,8 @@ let rec check_typ env typ : unit =
         check_con env c;
         check_typ_bounds env tbs typs no_region
       | T.Abs (tbs, _) ->
-        if not (T.ConSet.mem c env.cons) then
+        if not (T.ConSet.mem c env.cons ||
+                Mo_values.Compute_plugin.Prepared.is_con c) then
           error env no_region "free type constructor %s " (T.string_of_typ typ);
         check_typ_bounds env tbs typs no_region
     end

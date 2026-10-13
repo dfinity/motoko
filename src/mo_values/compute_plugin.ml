@@ -42,11 +42,59 @@ let identifier s =
     | _ -> false) s &&
   (match s.[0] with '0' .. '9' -> false | _ -> true)
 
+module Prepared = struct
+  type t = {owner : string; name : string; con : Type.con}
+  let registered : t list ref = ref []
+
+  let create ~owner ~name =
+    if owner = "" || not (identifier name) then
+      invalid_arg "invalid prepared plugin type identifier";
+    {owner; name; con = Cons.fresh name (Type.Abs ([], Type.Any))}
+
+  let typ t = Type.Con (t.con, [])
+  let id t = t.owner ^ ":" ^ t.name
+  let is_con con = List.exists (fun t -> Cons.eq con t.con) !registered
+  let is_registered t = List.exists (fun t' -> t == t') !registered
+  let check_registered t =
+    if not (is_registered t) then
+      invalid_arg ("unregistered prepared plugin type: " ^ t.name)
+
+  let register ~owner t =
+    if owner <> t.owner then
+      invalid_arg ("prepared plugin type belongs to another plugin: " ^ t.name);
+    if List.exists (fun (t' : t) -> t'.name = t.name) !registered ||
+       List.exists (fun (b : binding) -> b.name = t.name) !bindings then
+      invalid_arg ("duplicate prepared plugin type: " ^ t.name);
+    registered := !registered @ [t]
+
+  let check_owner ~owner t =
+    check_registered t;
+    if owner <> t.owner then
+      invalid_arg ("prepared plugin type belongs to another plugin: " ^ t.name)
+
+  let check_type t actual =
+    check_registered t;
+    if not (Type.sub actual (typ t)) then
+      invalid_arg ("prepared plugin value has the wrong type: " ^ t.name)
+
+  let find name =
+    Option.map typ (List.find_opt (fun t -> id t = name) !registered)
+
+  let declarations () = List.map (fun (t : t) ->
+    Printf.sprintf "type %s = prim %S;" t.name ("compute-type:" ^ id t))
+    !registered
+
+  let has_name name = List.exists (fun (t : t) -> t.name = name) !registered
+  let wrap t bytes = check_registered t; Value.Blob bytes
+  let unwrap t value = check_registered t; Value.as_blob value
+end
+
 let register binding =
   if not (identifier binding.name) || not (identifier binding.id) then
     invalid_arg "invalid compute plugin binding identifier";
-  if List.exists (fun b -> b.id = binding.id || b.name = binding.name)
-      !bindings then
+  if Prepared.has_name binding.name ||
+     List.exists (fun b -> b.id = binding.id || b.name = binding.name)
+       !bindings then
     invalid_arg ("duplicate compute plugin binding: " ^ binding.name);
   bindings := !bindings @ [binding]
 
@@ -61,7 +109,7 @@ let intrinsic typ = match Type.promote typ with
   | _ -> None
 
 let declarations () =
-  String.concat "\n" (List.map (fun b ->
+  String.concat "\n" (Prepared.declarations () @ List.map (fun b ->
     Printf.sprintf "let %s = prim %S;" b.name ("compute:" ^ b.id)) !bindings)
 
 let check_arguments binding type_arguments types =
@@ -113,7 +161,7 @@ let concrete opaque typ =
       | Type.Prim _ | Type.Any | Type.Non -> true
       | Type.Con (con, ts) ->
         (match Cons.kind con with
-         | Type.Abs _ -> false
+         | Type.Abs _ -> ts = [] && Prepared.is_con con
          | Type.Def (bs, body) ->
            List.length bs = List.length ts && go (Type.open_ ts body))
       | Type.Array t | Type.Opt t | Type.Mut t | Type.Weak t

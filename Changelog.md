@@ -13,7 +13,9 @@
     passing. Compiler-proven scalar comparators can select native plugin
     operations through ordinary callback APIs. Codegen-only plugins need no
     runtime module. Typed managed array and record mutation uses the
-    compiler's ordinary GC barriers. Plugin implementations
+    compiler's ordinary GC barriers. Plugins can declare protected prepared
+    types backed by immutable managed bytes, avoiding repeated validation and
+    precomputation while retaining normal GC ownership. Plugin implementations
     are maintained in the separate
     [motoko_plugins](https://github.com/Neutrinomic/motoko_plugins) repository
     (#6443).

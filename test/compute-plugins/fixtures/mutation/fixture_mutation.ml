@@ -189,7 +189,8 @@ let binding name operation parameters = C.{
 }
 
 let () = P.register P.{
-  abi = 1; name = "fixture_mutation"; runtime = None; imports = [];
+  abi = 1; name = "fixture_mutation"; runtime = None;
+  types = []; imports = [];
   bindings = [
     binding "fixtureMutGet" Get 1,
       (module Generator (struct let operation = Get end));

@@ -196,6 +196,7 @@ let () = P.register P.{
   abi = 1;
   name = "fixture_typed";
   runtime = Some "runtime.wasm";
+  types = [];
   (* Deliberately shares the echo runtime's symbol with a different type. *)
   imports = ["transform", Wasm_exts.Types.[I64Type; I64Type], []];
   bindings = [

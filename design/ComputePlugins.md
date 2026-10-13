@@ -210,8 +210,8 @@ and validation reports are kept with the implementations in
 The versioned compiler interface is
 [`Plugin_codegen`](../src/codegen/plugin_codegen.mli). A package registers:
 
-1. A unique package name, ABI version, optional runtime filename, and runtime import
-   signatures.
+1. A unique package name, ABI version, optional runtime filename, runtime import
+   signatures, and a `types` list (empty when no protected types are needed).
 2. Public Prim bindings, each with a unique internal identity, an argument
    policy, explicit type parameter modes, result-type function, and an
    interpreter reference implementation.
@@ -241,6 +241,62 @@ variants, arrays, options, text, scalars, and generic managed values.
 its result is `{ #ok : User; #err : JsonError }`. The plugin supplies that
 structural error type. Expected input failures are values, not interpreter
 exceptions or Wasm traps.
+
+### Prepared values and precomputed tables
+
+Plugins may declare protected types for validated keys and precomputed tables.
+The compiler gives each declared type a distinct nominal identity and exposes
+it through Prim. Ordinary Motoko code can retain it in records, arrays, generic
+collections, closures, or transient actor fields. It cannot manufacture one from
+Blob bytes, inspect its representation, serialize it with Candid, send it in a
+shared call, or put it in stable state. A key prepared by one algorithm or for
+one purpose cannot be supplied where another protected type is required.
+Plugin authors must expose factories that validate inputs and build the cache;
+consumers can then omit repeated validation and precomputation.
+
+The compiler component declares a descriptor and includes it in registration:
+
+```ocaml
+module C = Mo_values.Compute_plugin
+let key = C.Prepared.create ~owner:"example" ~name:"ExamplePreparedKey"
+(* Include [key] in the plugin's [types] list. Use [C.Prepared.typ key] in
+   argument schemas and result types. The plugin name must be "example". *)
+```
+
+A public Motoko module can export `type PreparedKey = Prim.ExamplePreparedKey`.
+The descriptor is different from an `Opaque` generic parameter: generic opaque
+values are caller-supplied payloads; a protected type is minted only by its
+owning plugin's validated factory. The underlying abstract bound is `Any`, not
+`Blob`, and only registered constructor identities receive this treatment.
+Aliases and compiler IR transformations preserve that identity.
+
+The representation is an ordinary immutable managed Blob. A generator uses
+`Backend.Prepared.wrap descriptor blob_code` after completing its payload and
+`Backend.Prepared.unwrap descriptor argument_type value_code` before reading
+it with Blob helpers. Both emit the supplied code unchanged. Ownership and
+argument type are checked during compilation, including in deferred generators;
+there is no per-call tag, handle lookup, copy, or wrapper allocation. Reference
+interpreters use `Compute_plugin.Prepared.wrap` and `unwrap`, with the same
+immutable Blob representation; private byte formats may differ if observable
+typed behavior agrees. The ordinary compiler/OCaml compatibility checks
+require rebuilding plugin compiler components after SDK changes.
+
+Payloads must consist entirely of initialized pointer-free bytes. Use an
+explicit byte format or audited fixed-width limbs; do not copy native structs
+with padding, pointers, or allocator ownership. Payload alignment is eight
+bytes. Every borrow resolves normal GC forwarding, lasts only for the existing
+synchronous borrowing interval, and must not survive a callback or call return.
+Once published, a prepared payload must never be mutated. The ordinary GC owns
+its lifetime and reclaims it after its last managed reference is dropped; no
+new native heap, root table, or GC tag is involved. Precomputed public constants
+that do not vary by key can stay in immutable plugin Wasm data segments instead
+of being copied into every prepared value.
+
+Prepared state is transient across upgrades, so persist the original serialized
+key when rebuilding is needed. Normal GC reclamation does not promise secure
+erasure of secret bytes; a prepared secret intentionally retains secret
+material for as long as the application retains it. Each plugin documents its
+format, validation contract, retained size, and measured preparation/reuse costs.
 
 Managed algorithms can also mutate ordinary Motoko arrays and record fields.
 `Arr.tabulate_mut` creates `[var T]`; `Arr.set` requires that mutable array type
@@ -307,6 +363,7 @@ repository. From the Motoko root inside `nix develop`:
 make -C rts
 test/compute-plugins/build.sh
 python3 test/compute-plugins/packaging.py
+python3 test/compute-plugins/prepared_types.py
 ```
 
 The [compute-plugin workflow](../.github/workflows/compute-plugins.yml) also runs

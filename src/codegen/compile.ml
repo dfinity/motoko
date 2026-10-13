@@ -9652,7 +9652,8 @@ module ComputePlugins = struct
       (fun env -> G.i (LocalGet (nr 0l)) ^^ G.i (LocalGet (nr 1l)) ^^
         IC.trap_ptr_len env)
 
-  module Backend : Plugin_codegen.Backend with type env = E.t = struct
+  module Backend (Owner : sig val name : string end) :
+    Plugin_codegen.Backend with type env = E.t = struct
     type env = E.t
     let compile_unboxed_const = compile_unboxed_const
     let compile_const_32 = compile_const_32
@@ -9766,6 +9767,20 @@ module ComputePlugins = struct
             (get_a ^^ get_b ^^ compile_comparison I64Op.Eq ^^
              E.if1 I64Type compile_unboxed_zero compile_unboxed_one)
         | _ -> invalid_arg "unsupported compute plugin scalar ordering"
+    end
+    module Prepared = struct
+      let check f =
+        try f () with Invalid_argument message -> fatal "%s" message
+      let wrap descriptor code =
+        check (fun () -> Mo_values.Compute_plugin.Prepared.check_owner
+          ~owner:Owner.name descriptor);
+        code
+      let unwrap descriptor typ code =
+        check (fun () ->
+          Mo_values.Compute_plugin.Prepared.check_owner
+            ~owner:Owner.name descriptor;
+          Mo_values.Compute_plugin.Prepared.check_type descriptor typ);
+        code
     end
     module Blob = Blob
     module Arr = struct
@@ -9944,9 +9959,10 @@ module ComputePlugins = struct
   let compile env id ts arguments =
     match Plugin_codegen.generator id with
     | None -> fatal "compute plugin generator is unavailable: %s" id
-    | Some generator ->
+    | Some (owner, generator) ->
       let module Generator = (val generator : Plugin_codegen.Generator) in
-      let module Specialized = Generator.Make (Backend) in
+      let module Specialized =
+        Generator.Make (Backend (struct let name = owner end)) in
       let {code; representation} = Specialized.compile env ts arguments in
       let sr = match representation with
         | Managed -> SR.Vanilla
