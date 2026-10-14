@@ -1,4 +1,16 @@
 install $ID await-trapped/await-trapped.mo ""
+submit $ID first "DIDL\x00\x00"
+tick 40
+submit $ID middle "DIDL\x00\x00"
+tick 40
+submit $ID last "DIDL\x00\x00"
+tick 40
+submit $ID firstShort "DIDL\x00\x00"
+tick 40
+submit $ID middleShort "DIDL\x00\x00"
+tick 40
+submit $ID lastShort "DIDL\x00\x00"
+tick 40
 submit $ID early "DIDL\x00\x00"
 tick 40
 query $ID check "DIDL\x00\x00"
