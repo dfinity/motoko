@@ -7310,7 +7310,7 @@ module Serialization = struct
 
   Persistence descriptors start with "EOP1". Descriptors stored by older compilers start with "DIDL"
   and encode each pair above alike, so the RTS accepts either reading of those.
-  This relies on each code meaning a subset of what it meant in those descriptors, unless the code is new.
+  This relies on each encoding meaning a subset of what it meant in those descriptors, unless the encoding is new.
   *)
 
   (* TODO: use record *)
