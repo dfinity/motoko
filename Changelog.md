@@ -16,7 +16,10 @@
     accept these upgrades, after which the new code misread the old heap. The
     first upgrade from an older `moc` still accepts them, as the stable type
     that release stored doesn't tell them apart; `moc --stable-compatible`
-    rejects them either way (#6452).
+    rejects them either way. Once upgraded, a canister whose stable type
+    contains `[var T]`, `Char`, or `()` (including tags without payload, such
+    as `#on`) fails to downgrade to an older `moc` with
+    `Memory-incompatible program upgrade` (#6452).
 
 ## 2.0.0 (2026-10-06)
 

@@ -7295,7 +7295,6 @@ module Serialization = struct
   let idl_weak     = -131l (* UNUSED FOR NOW, might need eventually *)
   let idl_var_vec  = -133l
 
-
   (*
   Note [persistence type descriptor]
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -7304,8 +7303,8 @@ module Serialization = struct
   descriptor to decide whether an upgrade can keep the heap (`memory_compatible` in rts/motoko-rts/src/idl.rs).
   Hence, unlike in Candid mode:
 
-   * `[var t]` is `idl_var_vec t`, while a `var [t]` field is `alias (vec t)`.
-     The former field holds the array, the latter a `MutBox` that holds the array.
+   * `[var t]` is `idl_var_vec t`, while a `var [t]` field is `alias (vec t)`,
+     as such a field holds a `MutBox` rather than the array.
    * `Char` has its own code, as its scalar is shifted differently from `Nat32`.
    * `()` is the empty `idl_tuple`, as its scalar differs from the `Null` pointer.
 
@@ -8974,7 +8973,7 @@ or
    for all other occurrences of v, where offset is the relative position of the
    above occurrences from this reference.
 
-We map Motoko types to this as follows:
+We map Motoko types to this as follows (persistence descriptors differ, see Note [persistence type descriptor]):
 
   e([var t]) = alias e([t]) = alias vec e(t)
   e({var field : t}) = record { field : alias e(t) }
