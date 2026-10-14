@@ -8,6 +8,18 @@ npm ci
 npm test
 ```
 
+If npm reports that the PocketIC postinstall script was blocked, explicitly
+approve that package and rerun its install script:
+
+```sh
+npm install-scripts approve @dfinity/pic
+npm rebuild @dfinity/pic
+npm test
+```
+
+This script downloads the platform-specific PocketIC binary. Approval is
+scoped to that dependency; there is no need to enable all install scripts.
+
 The dependency install downloads PocketIC for macOS/Linux and the current
 architecture. The runner downloads and verifies the official moc 2.0.0 JS
 compiler, substitutes exactly its embedded `@new_async` implementation with

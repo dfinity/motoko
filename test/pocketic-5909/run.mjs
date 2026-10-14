@@ -23,8 +23,19 @@ const compiler = readFileSync(originalPath);
 assert.equal(createHash('sha256').update(compiler).digest('hex'),
   'd20a6eb998543f6c8ca5fa93448d7ff7e360106e28337e339d09522764cab572',
   'Unexpected compiler download; remove .cache/moc-2.0.0.cjs and retry');
-const original = execFileSync('git', ['show', '2.0.0:src/prelude/internals.mo'],
-  { cwd: repo, encoding: 'utf8' });
+// Forks need not contain upstream release tags or release-branch commits.
+// Fetch only the original source file, pinned to the release commit.
+const releaseCommit = '1bd3011186ed6ee3d12c12735acb9ffd1e6f475b';
+const originalPreludePath = resolve(cache, 'internals-2.0.0.mo');
+if (!existsSync(originalPreludePath)) {
+  execFileSync('curl', ['-fL', '--retry', '2', '--max-time', '180', '-o', originalPreludePath,
+    `https://raw.githubusercontent.com/caffeinelabs/motoko/${releaseCommit}/src/prelude/internals.mo`],
+  { stdio: 'inherit' });
+}
+const original = readFileSync(originalPreludePath, 'utf8');
+assert.equal(createHash('sha256').update(original).digest('hex'),
+  '69401d3d2c95913f55a29ea570215d484fc6a21fea135858eb2a8c6204d5ca47',
+  'Unexpected Prelude download; remove .cache/internals-2.0.0.mo and retry');
 const patched = readFileSync(resolve(repo, 'src/prelude/internals.mo'), 'utf8');
 function section(source) {
   const start = source.indexOf('func @new_async');
