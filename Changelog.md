@@ -13,7 +13,7 @@
   * bugfix: the compiler no longer crashes with "Ill-typed intermediate code
     after Async Lowering" when an `async` or `async*` value is widened, for
     example from `async (Nat, Nat)` to `async Any`, or from `async* None` to
-    `async* ()` as in `await* async* throw e` (#PRNUM).
+    `async* ()` as in `await* async* throw e` (#6451).
 
 ## 2.0.0 (2026-10-06)
 
