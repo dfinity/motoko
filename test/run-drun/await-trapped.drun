@@ -1,0 +1,15 @@
+install $ID await-trapped/await-trapped.mo ""
+submit $ID early "DIDL\x00\x00"
+tick 40
+query $ID check "DIDL\x00\x00"
+submit $ID late "DIDL\x00\x00"
+tick 40
+query $ID check "DIDL\x00\x00"
+submit $ID earlyShort "DIDL\x00\x00"
+tick 40
+query $ID check "DIDL\x00\x00"
+submit $ID lateShort "DIDL\x00\x00"
+tick 40
+query $ID check "DIDL\x00\x00"
+ingress $ID settled "DIDL\x00\x00"
+ingress $ID unawaited "DIDL\x00\x00"
