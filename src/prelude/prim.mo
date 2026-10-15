@@ -607,8 +607,8 @@ func blobToArrayMut(b : Blob) : [var Nat8] = (prim "blobToArrayMut" : (Blob) -> 
 func arrayToBlob(a : [Nat8]) : Blob = (prim "arrayToBlob" : [Nat8] -> Blob) a;
 func arrayMutToBlob(a : [var Nat8]) : Blob = (prim "arrayMutToBlob" : [var Nat8] -> Blob) a;
 
-// Error codes, as laid out by `Type.catchErrorCodes` (type.ml); keep in sync with
-// `@ErrorCode` (internals.mo), which cannot be aliased here without showing up in signatures
+// Error codes, as laid out by `Type.catchErrorCodes` (type.ml). Equal to `@ErrorCode`
+// (internals.mo), which cannot be aliased here without showing up in signatures
 type ErrorCode = {
   #system_fatal;
   #system_transient;
@@ -619,6 +619,9 @@ type ErrorCode = {
   #future : Nat32;
   #call_error : { err_code : Nat32 };
 };
+
+// each must flow into the other, so the two stay equal; `_` keeps it out of the module
+let _ = func(e : ErrorCode, f : @ErrorCode) : (e : ErrorCode, f : @ErrorCode) = (f, e);
 
 // creation and inspection of abstract error
 func error(message : Text) : Error {

@@ -461,8 +461,8 @@ func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
   await (prim "call_raw" : (Principal, Text, Blob) -> async Blob)(p, m, a);
 };
 
-// the codes of an `Error`, as laid out by `Type.catchErrorCodes` (type.ml); keep in sync with
-// `ErrorCode` (prim.mo)
+// the codes of an `Error`, as laid out by `Type.catchErrorCodes` (type.ml); prim.mo checks
+// that its `ErrorCode` is equal
 type @ErrorCode = {
   #system_fatal;
   #system_transient;
