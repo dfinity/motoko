@@ -519,8 +519,8 @@ func @retry(id : Nat, job : () -> async ()) {
     case null ?{ id; job; next = null };
     case (?r) ?{ r with next = append(r.next) }
   };
-  @retries := append(@retries);
-  ignore (prim "global_timer_set" : Nat64 -> Nat64)(1)
+  @retries := append @retries;
+  ignore (prim "global_timer_set" : Nat64 -> Nat64) 1
 };
 
 func @prune(n : ?@Node) : ?@Node = switch n {
