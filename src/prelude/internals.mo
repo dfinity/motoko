@@ -567,7 +567,7 @@ func @timer_helper() : async () {
 
   func gatherRetries() = switch @retries {
     case (?r) if (gathered < thunks.size()) {
-      thunks[gathered] := ?(r.job);
+      thunks[gathered] := ?r.job;
       ids[gathered] := r.id;
       gathered += 1;
       @retries := r.next;
@@ -584,7 +584,7 @@ func @timer_helper() : async () {
       if (pivot <= now and gathered < thunks.size()) {
         if (pivot > 0) {
           // not expunged yet
-          thunks[gathered] := ?(n.job);
+          thunks[gathered] := ?n.job;
           ids[gathered] := n.id;
           switch (n.delay) {
             case (null or ?0) n.expire[0] := 0;
