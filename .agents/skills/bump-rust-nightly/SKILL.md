@@ -17,9 +17,10 @@ the Motoko RTS.
 ## Step-by-Step
 
 ### 1. Reset the bump branch to master
-The branch is `<you>/bump-nightly-rustc`, prefixed with your GitHub handle
-(e.g. `gabor/`), which is not necessarily `$USER`. Find it with
-`git branch -a --list '*bump-nightly-rustc'`.
+The branch is `<you>/bump-nightly-rustc`, with your usual branch prefix (e.g.
+`gabor/`). Don't derive it from `$USER`: on machines whose home directory
+follows company naming policy, the login (e.g. `gabor.greif`) differs from the
+prefix. Find the branch with `git branch -a --list '*bump-nightly-rustc'`.
 
 The previous bump normally landed on `master` via **squash-merge**, so the
 branch's old commits are orphaned: present locally, never ancestors of
