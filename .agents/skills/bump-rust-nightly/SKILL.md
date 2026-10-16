@@ -71,9 +71,10 @@ bump that exact pin in `rts/motoko-rts/Cargo.toml` and re-run `cargo update foo`
 nix build .#rts
 ```
 `nix build` hides the compiler output; to check a newer nightly for new
-warnings, read the build log:
+warnings (e.g. newly deprecated APIs), read the build log. It is colored, so
+strip the ANSI codes first, or `^warning` never matches:
 ```sh
-nix log "$(nix path-info --derivation .#rts)" | grep -c '^warning'
+nix log "$(nix path-info --derivation .#rts)" | sed 's/\x1b\[[0-9;]*m//g' | grep '^warning'
 ```
 Watch for compiler errors — common ones encountered and their fixes:
 
