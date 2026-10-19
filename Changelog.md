@@ -8,6 +8,10 @@
     trapped now runs the awaiting computation's `finally` clauses instead
     of suspending forever. This includes Candid decoding failures before
     a waiter was registered (fixes #5909).
+  * Added `Prim.subnetSelfNodeCount() : Nat32` and
+    `Prim.costHttpRequestV2(params : Blob) : Nat`, exposing
+    `ic0.subnet_self_node_count` and `ic0.cost_http_request_v2` for
+    pay-as-you-go HTTPS outcall pricing (#6461).
 
   * bugfix: timers no longer stop for good when a canister runs short of
     cycles. If the self-call that dispatches expired timers was rejected
