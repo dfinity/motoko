@@ -11610,20 +11610,20 @@ and compile_prim_invocation (env : E.t) ae p es at =
     G.concat_map (compile_exp_vanilla env ae) es
   | ProjPrim n, [e1] ->
     SR.Vanilla,
-    (* Try to get the tuple unboxed, to avoid allocating it on the heap.
-       Unlike for a switch scrutinee, do not force it: a boxed tuple (e.g. a
-       variable) is cheaper to project with a single load than to unbox. *)
+    (* Ask for the tuple unboxed, so that e.g. `f().0` does not allocate it.
+       Only take it if it comes that way: a tuple that is boxed anyway (e.g.
+       a variable) is cheaper to project with a single load. *)
     let arity = match Type.promote e1.note.Note.typ with
-      | Type.Tup ts when List.length ts <> 1 -> List.length ts
-      | _ -> 1 in
-    let tup_hint = if arity = 1 then SR.Vanilla else SR.UnboxedTuple arity in
-    begin match compile_exp_with_hint env ae (Some tup_hint) e1 with
-    | SR.UnboxedTuple k, code1 when k = arity ->
+      | Type.Tup ts -> List.length ts
+      | _ -> 1 (* e.g. None *) in
+    begin match compile_exp_with_hint env ae (Some (StackRep.of_arity arity)) e1 with
+    | SR.UnboxedTuple k, code1 ->
+      (* The components are on the stack, the last one on top *)
       let (set_x, get_x) = new_local env "proj" in
       code1 ^^
-      G.table (k - 1 - n) (fun _ -> G.i Drop) ^^
+      G.table (k - 1 - n) (fun _ -> G.i Drop) ^^ (* those after n *)
       set_x ^^
-      G.table n (fun _ -> G.i Drop) ^^
+      G.table n (fun _ -> G.i Drop) ^^ (* those before n *)
       get_x
     | sr, code1 ->
       code1 ^^ StackRep.adjust env sr SR.Vanilla ^^ (* offset to tuple (an array) *)
@@ -12925,18 +12925,16 @@ and single_case e (cs : Ir.case list) =
 
 and known_tag_pat p = TagP ("", p)
 
-(* If the scrutinee is a tuple of arity n <> 1 and no case binds it as a
-   whole (every pattern is a tuple pattern, or irrefutable and non-binding),
-   return Some n: the tuple can then be matched component-wise without
-   being allocated *)
+(* A switch on a tuple need not allocate the tuple when every case is a
+   tuple pattern or a wildcard, i.e. no case binds the tuple as a whole.
+   Then return its arity. *)
 and tuple_switch_arity e (cs : Ir.case list) =
   match Type.promote e.note.Note.typ with
-  | Type.Tup ts when List.length ts <> 1 ->
-    let n = List.length ts in
-    let ok (c : case) = match c.it.pat.it with
-      | TupP ps -> List.length ps = n
+  | Type.Tup ts ->
+    let is_tuple_or_wild (c : case) = match c.it.pat.it with
+      | TupP _ -> true
       | _ -> Ir_utils.is_irrefutable_nonbinding c.it.pat in
-    if List.for_all ok cs then Some n else None
+    if List.for_all is_tuple_or_wild cs then Some (List.length ts) else None
   | _ -> None
 
 and simplify_cases e (cs : Ir.case list) =
@@ -13039,23 +13037,25 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
 
   | SwitchE (e, cs) ->
     let cs = simplify_cases e cs in
-    (* A tuple scrutinee that no case binds as a whole is taken apart into
-       locals instead of being allocated, as for a let with a tuple pattern *)
-    let scrut_code, fill_case = match tuple_switch_arity e cs with
+    (* The scrutinee is kept in locals, as every case needs to look at it.
+       A tuple that no case binds as a whole gets one local per component and
+       is never allocated (as in `let (x, y) = e`); anything else gets a
+       single local. fill_case matches a case's pattern against the locals. *)
+    let scrut_code, fill_case =
+      match tuple_switch_arity e cs with
       | Some n ->
         let locals = Lib.List.table n (fun _ -> new_local env "switch_in") in
-        compile_exp_as env ae (SR.UnboxedTuple n) e ^^
-        G.concat_map fst (List.rev locals),
-        (fun ae1 pat -> match pat.it with
+        let set_locals = G.concat_map fst (List.rev locals) in (* last is on top *)
+        let fill_case ae1 pat = match pat.it with
           | TupP ps ->
-            List.fold_right2 (fun (_, get_i) p code ->
-              CannotFail get_i ^^^ fill_pat env ae1 p ^^^ code
-            ) locals ps (CannotFail G.nop)
-          | _ -> CannotFail G.nop (* irrefutable, non-binding *))
+            List.map2 (fun (_, get_i) p -> CannotFail get_i ^^^ fill_pat env ae1 p) locals ps
+            |> List.fold_left (^^^) (CannotFail G.nop)
+          | _ -> CannotFail G.nop (* wildcard *) in
+        compile_exp_as env ae (SR.UnboxedTuple n) e ^^ set_locals, fill_case
       | None ->
         let (set_i, get_i) = new_local env "switch_in" in
-        compile_exp_vanilla env ae e ^^ set_i,
-        (fun ae1 pat -> CannotFail get_i ^^^ fill_pat env ae1 pat)
+        let fill_case ae1 pat = CannotFail get_i ^^^ fill_pat env ae1 pat in
+        compile_exp_vanilla env ae e ^^ set_i, fill_case
     in
 
     (* compile subexpressions and collect the provided stack reps *)

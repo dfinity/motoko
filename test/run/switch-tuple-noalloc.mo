@@ -34,9 +34,9 @@ func proj_last(x : Nat) : Nat = pair(x).1;
 
 func proj_middle(x : Nat) : Nat = triple(x).1;
 
-// Controls: these still allocate (the whole tuple is bound, the pattern is
-// not a plain tuple pattern, or the inner tuple of a nested one is boxed),
-// but must keep working
+// Controls: these still allocate, since a case binds the whole tuple, uses
+// an or-pattern, or the scrutinee contains a nested tuple. They must still
+// work.
 func switch_whole(a : Nat, b : Nat) : (Nat, Nat) {
   switch (a, b) {
     case (0, _) { (0, 0) };
