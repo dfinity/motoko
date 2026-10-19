@@ -4,6 +4,11 @@
 
 * motoko (`moc`)
 
+  * Added `Prim.subnetSelfNodeCount() : Nat32` and
+    `Prim.costHttpRequestV2(params : Blob) : Nat`, exposing
+    `ic0.subnet_self_node_count` and `ic0.cost_http_request_v2` for
+    pay-as-you-go HTTPS outcall pricing (#6461).
+
   * bugfix: timers no longer stop for good when a canister runs short of
     cycles. If the self-call that dispatches expired timers was rejected
     before it ran (for example, `IC0207` out of cycles), no timer fired again,
@@ -20,6 +25,11 @@
     contains `[var T]`, `Char`, or `()` (including tags without payload, such
     as `#on`) fails to downgrade to an older `moc` with
     `Memory-incompatible program upgrade` (#6452).
+
+  * bugfix: the compiler no longer crashes with "Ill-typed intermediate code
+    after Async Lowering" when an `async` or `async*` value is widened, for
+    example from `async (Nat, Nat)` to `async Any`, or from `async* None` to
+    `async* ()` as in `await* async* throw e` (#6451).
 
 ## 2.0.0 (2026-10-06)
 
