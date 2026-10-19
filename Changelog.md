@@ -15,6 +15,11 @@
     even after a top-up. A one-shot timer whose job was rejected that way is
     now retried instead of dropped (#6440).
 
+  * bugfix: the compiler no longer crashes with "Ill-typed intermediate code
+    after Async Lowering" when an `async` or `async*` value is widened, for
+    example from `async (Nat, Nat)` to `async Any`, or from `async* None` to
+    `async* ()` as in `await* async* throw e` (#6451).
+
   * bugfix: fixed an out-of-bounds access in the upgrade compatibility check
     for a shared function stored in a mutable (aliased) position, such as a
     stable `var` of `[var (shared R -> ())]`. Its parameters are checked under
