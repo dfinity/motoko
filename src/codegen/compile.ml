@@ -10563,6 +10563,14 @@ open PatCode
 (* All the code above is independent of the IR *)
 open Ir
 
+(* A switch scrutinee: either in a local (read by the getter), or a tuple
+   whose components were taken apart, so it was never allocated, or not
+   kept at all, as no pattern looks at it *)
+type scrut_tree =
+  | ScrutLocal of G.t
+  | ScrutTuple of scrut_tree list
+  | ScrutUnused
+
 module AllocHow = struct
   (*
   When compiling a (recursive) block, we need to do a dependency analysis, to
@@ -12923,9 +12931,9 @@ and single_case e (cs : Ir.case list) =
 
 and known_tag_pat p = TagP ("", p)
 
-(* If the case patterns only look at the components of a tuple scrutinee of
+(* If the patterns only look at the components of a tuple scrutinee of
    arity n <> 1 (and never bind the tuple as a whole), return Some n *)
-and tuple_switch_arity (cs : Ir.case list) =
+and tuple_switch_arity (pats : pat list) =
   let rec find_tup p = match p.it with
     | TupP ps -> Some (List.length ps)
     | AltP (p1, p2) | AndP (p1, p2) ->
@@ -12935,9 +12943,44 @@ and tuple_switch_arity (cs : Ir.case list) =
     | TupP ps -> List.length ps = n
     | AltP (p1, p2) | AndP (p1, p2) -> ok n p1 && ok n p2
     | _ -> Ir_utils.is_irrefutable_nonbinding p in
-  match List.find_map (fun (c : case) -> find_tup c.it.pat) cs with
-  | Some n when n <> 1 && List.for_all (fun (c : case) -> ok n c.it.pat) cs -> Some n
+  match List.find_map find_tup pats with
+  | Some n when n <> 1 && List.for_all (ok n) pats -> Some n
   | _ -> None
+
+(* The patterns matching component i of a tuple, for patterns accepted by
+   tuple_switch_arity (irrefutable non-binding ones do not look at it) *)
+and tuple_component_pats i (pats : pat list) =
+  let rec go p = match p.it with
+    | TupP ps -> [List.nth ps i]
+    | AltP (p1, p2) | AndP (p1, p2) -> go p1 @ go p2
+    | _ -> [] in
+  List.concat_map go pats
+
+(* Compile a switch scrutinee for the given patterns. Tuples whose components
+   are all that the patterns look at are taken apart into locals instead of
+   being allocated: tuple expressions component-wise (so nested tuples work),
+   other expressions if they produce an unboxed tuple.
+   Returns the code that evaluates the scrutinee and fills the locals. *)
+and compile_scrut env ae e (pats : pat list) : G.t * scrut_tree =
+  let boxed code =
+    let (set_i, get_i) = new_local env "switch_in" in
+    code ^^ set_i, ScrutLocal get_i in
+  match tuple_switch_arity pats, e.it with
+  | _ when List.for_all Ir_utils.is_irrefutable_nonbinding pats ->
+    compile_exp_ignore env ae e, ScrutUnused
+  | None, _ -> boxed (compile_exp_vanilla env ae e)
+  | Some n, PrimE (TupPrim, es) when List.length es = n ->
+    let codes, trees = List.split (List.mapi (fun i e_i ->
+      compile_scrut env ae e_i (tuple_component_pats i pats)) es) in
+    G.concat codes, ScrutTuple trees
+  | Some n, _ ->
+    begin match compile_exp_with_hint env ae (Some (SR.UnboxedTuple n)) e with
+    | SR.UnboxedTuple m, code when m = n ->
+      let locals = Lib.List.table n (fun i -> new_local env (Printf.sprintf "switch_in%d" i)) in
+      code ^^ G.concat_map fst (List.rev locals),
+      ScrutTuple (List.map (fun (_, get_i) -> ScrutLocal get_i) locals)
+    | sr, code -> boxed (code ^^ StackRep.adjust env sr SR.Vanilla)
+    end
 
 and simplify_cases e (cs : Ir.case list) =
   match cs, e.note.Note.typ with
@@ -13038,32 +13081,17 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     )
 
   | SwitchE (e, cs) ->
-    (* If no case needs the scrutinee tuple as a whole, try to get it unboxed,
-       so that it is not allocated on the heap *)
-    let unboxed_n, code1 = match tuple_switch_arity cs with
-      | Some n ->
-        begin match compile_exp_with_hint env ae (Some (SR.UnboxedTuple n)) e with
-        | SR.UnboxedTuple m, code when m = n -> Some n, code
-        | sr, code -> None, code ^^ StackRep.adjust env sr SR.Vanilla
-        end
-      | None -> None, compile_exp_vanilla env ae e in
-    let scrut_code, fill_scrut = match unboxed_n with
-      | None ->
-        let (set_i, get_i) = new_local env "switch_in" in
-        code1 ^^ set_i,
-        (fun ae1 pat -> CannotFail get_i ^^^ fill_pat env ae1 pat)
-      | Some n ->
-        let locals = Lib.List.table n (fun i -> new_local env (Printf.sprintf "switch_in%d" i)) in
-        code1 ^^ G.concat_map fst (List.rev locals),
-        (fun ae1 pat -> fill_pat_n env ae1 (List.map snd locals) pat) in
+    let cs = simplify_cases e cs in
+    let scrut_code, scrut =
+      compile_scrut env ae e (List.map (fun (c : case) -> c.it.pat) cs) in
 
     (* compile subexpressions and collect the provided stack reps *)
     let codes = List.map (fun {it={pat; exp=e}; _} ->
       let ae1 = alloc_pat_local env ae pat in
-      let pat_code = fill_scrut ae1 pat in
+      let pat_code = fill_pat_scrut env ae1 scrut pat in
       let (sr, rhs_code) = compile_exp_with_hint env ae1 sr_hint e in
       (sr, pat_code ^^^ CannotFail rhs_code)
-      ) (simplify_cases e cs) in
+      ) cs in
 
     (* Use the expected stackrep, if given, else infer from the branches *)
     let final_sr = match sr_hint with
@@ -13359,23 +13387,21 @@ and fill_pat env ae pat : patternCode =
       (CannotFail get_i ^^^ code1) ^^^
       (CannotFail get_i ^^^ code2)
 
-(* Like fill_pat, but the components of the tuple scrutinee are in locals
-   (read by the getters) instead of on the stack as a heap tuple.
-   Only for patterns accepted by tuple_switch_arity. *)
-and fill_pat_n env ae getters pat : patternCode =
+(* Like fill_pat, but for a scrutinee from compile_scrut *)
+and fill_pat_scrut env ae scrut pat : patternCode =
   PatCode.with_region pat.at @@
-  match pat.it with
+  match scrut, pat.it with
   | _ when Ir_utils.is_irrefutable_nonbinding pat -> CannotFail G.nop
-  | TupP ps ->
-    List.fold_right2 (fun get_k p code ->
-      if Ir_utils.is_irrefutable_nonbinding p then code
-      else CannotFail get_k ^^^ fill_pat env ae p ^^^ code
-    ) getters ps (CannotFail G.nop)
-  | AltP (p1, p2) ->
-    orElse (fill_pat_n env ae getters p1) (fill_pat_n env ae getters p2)
-  | AndP (p1, p2) ->
-    fill_pat_n env ae getters p1 ^^^ fill_pat_n env ae getters p2
-  | _ -> assert false (* excluded by tuple_switch_arity *)
+  | ScrutLocal get_i, _ -> CannotFail get_i ^^^ fill_pat env ae pat
+  | ScrutTuple scruts, TupP ps ->
+    List.fold_right2 (fun scrut p code ->
+      fill_pat_scrut env ae scrut p ^^^ code
+    ) scruts ps (CannotFail G.nop)
+  | ScrutTuple _, AltP (p1, p2) ->
+    orElse (fill_pat_scrut env ae scrut p1) (fill_pat_scrut env ae scrut p2)
+  | ScrutTuple _, AndP (p1, p2) ->
+    fill_pat_scrut env ae scrut p1 ^^^ fill_pat_scrut env ae scrut p2
+  | (ScrutTuple _ | ScrutUnused), _ -> assert false (* excluded by compile_scrut *)
 
 and alloc_pat_local env ae pat =
   let d = Freevars.pat pat in

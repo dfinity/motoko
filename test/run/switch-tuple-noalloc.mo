@@ -37,6 +37,20 @@ func switch_nested(a : Nat, b : Nat, c : Nat) : Nat {
   }
 };
 
+func switch_nested_call(a : Nat, b : Nat) : Nat {
+  switch (a, pair(b)) {
+    case (0, (y, z)) { y + z };
+    case (x, (_, z)) { x + z };
+  }
+};
+
+func switch_unused(a : Nat, b : Nat) : Nat {
+  switch (a, pair(b)) {
+    case (0, _) { 1 };
+    case (x, _) { x };
+  }
+};
+
 func switch_triple_wild(x : Nat) : Nat {
   switch (triple(x)) {
     case (_, y, _) { y };
@@ -83,6 +97,10 @@ no_alloc("switch_or 2", func x = switch_or(x, 1), 7, 42);
 no_alloc("switch_nested 0", func x = switch_nested(0, x, 2), 3, 5);
 no_alloc("switch_nested 1", func x = switch_nested(x, 0, 2), 3, 3);
 no_alloc("switch_nested 2", func x = switch_nested(x, 1, 2), 3, 4);
+no_alloc("switch_nested_call 0", func x = switch_nested_call(0, x), 3, 7);
+no_alloc("switch_nested_call 1", func x = switch_nested_call(x, 1), 3, 5);
+no_alloc("switch_unused 0", func x = switch_unused(0, x), 3, 1);
+no_alloc("switch_unused 1", func x = switch_unused(x, 1), 3, 3);
 no_alloc("switch_triple_wild", switch_triple_wild, 3, 4);
 no_alloc("proj_first", proj_first, 3, 3);
 no_alloc("proj_last", proj_last, 3, 4);
@@ -98,6 +116,13 @@ func t(s : Text, n : Nat) : Nat { log #= s; n };
 
 switch (t("a", 1), t("b", 2), t("c", 3)) {
   case (1, 2, 3) { log #= "!" };
+  case _ { assert false };
+};
+assert (log == "abc!");
+
+log := "";
+switch (t("a", 1), (t("b", 2), t("c", 3))) {
+  case (_, (2, _)) { log #= "!" };
   case _ { assert false };
 };
 assert (log == "abc!");
