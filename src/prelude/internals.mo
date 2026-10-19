@@ -411,10 +411,9 @@ func @install_actor_helper(
       canister : actor {};
     };
   },
-  enhanced_orthogonal_persistence : Bool,
   wasm_module : Blob,
   arg : Blob,
-) : async* Principal = async* {
+) : async* Principal {
   let (mode, canister_id) = switch install_arg {
     case (#new settings) {
       let available = (prim "cyclesAvailable" : () -> Nat)();
@@ -431,13 +430,8 @@ func @install_actor_helper(
       (#reinstall, (prim "principalOfActor" : (actor {}) -> Principal) actor1);
     };
     case (#upgrade actor2) {
-      let wasm_memory_persistence = if enhanced_orthogonal_persistence {
-        ?(#keep);
-      } else {
-        null;
-      };
       let upgradeOptions = {
-        wasm_memory_persistence;
+        wasm_memory_persistence = ?(#keep);
       };
       ((#upgrade(?upgradeOptions)), (prim "principalOfActor" : (actor {}) -> Principal) actor2);
     };
@@ -450,29 +444,6 @@ func @install_actor_helper(
   };
   await @ic00.install_code {
     mode;
-    canister_id;
-    wasm_module;
-    arg;
-    sender_canister_version = ?(prim "canister_version" : () -> Nat64)();
-  };
-  return canister_id;
-};
-
-// It would be desirable if create_actor_helper can be defined
-// without paying the extra self-remote-call-cost
-// TODO: This helper is now only used by Prim.createActor and could be removed, except
-// that Prim.createActor was mentioned on the forum and might be in use. (#3420)
-func @create_actor_helper(wasm_module : Blob, arg : Blob) : async Principal = async {
-  let available = (prim "cyclesAvailable" : () -> Nat)();
-  let accepted = (prim "cyclesAccept" : Nat -> Nat)(available);
-  let sender_canister_version = ?(prim "canister_version" : () -> Nat64)();
-  @cycles += accepted;
-  let { canister_id } = await @ic00.create_canister {
-    settings = null;
-    sender_canister_version;
-  };
-  await @ic00.install_code {
-    mode = #install;
     canister_id;
     wasm_module;
     arg;
@@ -507,9 +478,10 @@ func @call_error() : Error {
 // corollary: if expire == 0 then the pre is completely expired
 //
 // Note: Below the `expire` field is an encoding of an aliased mutable field with
-//       a single-element mutable array. It eliminates `--experimental-field-aliasing`
-//       while compiling this file at the cost of slightly higher syntactic noise
-//       as well as increased allocation and runtime cost accessing the data. Oh well.
+//       a single-element mutable array. It gives the timer mechanism a shared
+//       mutable cell without relying on var-field aliasing, at the cost of
+//       slightly higher syntactic noise as well as increased allocation and
+//       runtime cost accessing the data. Oh well.
 //
 type @Node = {
   expire : [var Nat64];
@@ -543,6 +515,13 @@ func @nextExpiration(n : ?@Node) : Nat64 = switch n {
   };
 };
 
+// Called by the default timer handler before it sends `@timer_helper`, which replaces this
+// expiration when it runs: retries a lost helper, at most one extra per delay if it is late.
+func @timer_fallback() {
+  let now = (prim "time" : () -> Nat64)();
+  ignore (prim "global_timer_set" : Nat64 -> Nat64)(now + 60_000_000_000)
+};
+
 // Function called by backend to run eligible timed actions.
 // DO NOT RENAME without modifying compilation.
 func @timer_helper() : async () {
@@ -554,6 +533,7 @@ func @timer_helper() : async () {
 
   var gathered = 0;
   let thunks = Array_init<?(() -> async ())>(10, null); // we want max 10
+  let recurring = Array_init<Bool>(10, false);
 
   func gatherExpired(n : ?@Node) = switch n {
     case null ();
@@ -567,6 +547,7 @@ func @timer_helper() : async () {
           switch (n.delay) {
             case (null or ?0) n.expire[0] := 0;
             case (?delay) {
+              recurring[gathered] := true;
               // re-add the node, skipping past expirations
               let expire = pivot + delay * (1 + (now - pivot) / delay);
               n.expire[0] := 0;
@@ -601,11 +582,10 @@ func @timer_helper() : async () {
   if (exp == 0) @timers := null;
 
   var failed : Nat64 = 0;
+  // may run after an `await` below, i.e. on a changed tree: prune and rearm each time
   func reinsert(job : () -> async ()) {
-    if (failed == 0) {
-      @timers := @prune @timers;
-      ignore (prim "global_timer_set" : Nat64 -> Nat64) 1;
-    };
+    @timers := @prune(@timers);
+    ignore (prim "global_timer_set" : Nat64 -> Nat64)(1);
     failed += 1;
     @timers := ?(
       switch @timers {
@@ -631,12 +611,49 @@ func @timer_helper() : async () {
     );
   };
 
-  for (o in thunks.values()) {
-    switch o {
-      case (?thunk) try ignore thunk() catch _ reinsert thunk;
-      case _ return;
+  let jobs = Array_init<?(async ())>(gathered, null);
+  var i = 0;
+  while i < gathered {
+    switch thunks[i] {
+      case ?thunk { try { jobs[i] := ?thunk() } catch _ { reinsert(thunk) } }
+      case null {}
     };
+    i += 1
   };
+
+  // a self-call rejected as transient (e.g. out of cycles) never ran its job: retry it,
+  // unless recurring, which skips the missed run as it skips past expirations
+  // `await?`: a plain await of a finished job yields via its own self-call, whose
+  // transient rejection would rerun a job that already ran
+  i := 0;
+  while i < gathered {
+    switch (jobs[i], thunks[i]) {
+      case (?job, ?thunk) {
+        try { await? job } catch e {
+          if not recurring[i] and @isTransient(e) { reinsert(thunk) }
+        }
+      }
+      case _ {}
+    };
+    i += 1
+  }
+};
+
+func @isTransient(e : Error) : Bool {
+  type Code = {
+    #system_fatal;
+    #system_transient;
+    #destination_invalid;
+    #canister_reject;
+    #canister_error;
+    #system_unknown;
+    #future : Nat32;
+    #call_error : { err_code : Nat32 }
+  };
+  switch ((prim "cast" : Error -> (Code, Text)) e).0 {
+    case #system_transient true;
+    case _ false
+  }
 };
 
 var @lastTimerId = 0;
