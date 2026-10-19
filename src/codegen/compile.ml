@@ -12935,8 +12935,8 @@ and tuple_switch_arity (cs : Ir.case list) =
     | TupP ps -> List.length ps = n
     | AltP (p1, p2) | AndP (p1, p2) -> ok n p1 && ok n p2
     | _ -> Ir_utils.is_irrefutable_nonbinding p in
-  match List.find_map (fun {it={pat; _}; _} -> find_tup pat) cs with
-  | Some n when n <> 1 && List.for_all (fun {it={pat; _}; _} -> ok n pat) cs -> Some n
+  match List.find_map (fun (c : case) -> find_tup c.it.pat) cs with
+  | Some n when n <> 1 && List.for_all (fun (c : case) -> ok n c.it.pat) cs -> Some n
   | _ -> None
 
 and simplify_cases e (cs : Ir.case list) =
