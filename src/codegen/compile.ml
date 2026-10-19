@@ -11610,8 +11610,23 @@ and compile_prim_invocation (env : E.t) ae p es at =
     G.concat_map (compile_exp_vanilla env ae) es
   | ProjPrim n, [e1] ->
     SR.Vanilla,
-    compile_exp_vanilla env ae e1 ^^ (* offset to tuple (an array) *)
-    Tuple.load_n env (Int64.of_int n)
+    (* Try to get the tuple unboxed, to avoid allocating it on the heap *)
+    let arity = match Type.promote e1.note.Note.typ with
+      | Type.Tup ts when List.length ts <> 1 -> List.length ts
+      | _ -> 1 in
+    let tup_hint = if arity = 1 then SR.Vanilla else SR.UnboxedTuple arity in
+    begin match compile_exp_with_hint env ae (Some tup_hint) e1 with
+    | SR.UnboxedTuple k, code1 when k = arity && k <> 1 ->
+      let (set_x, get_x) = new_local env "proj" in
+      code1 ^^
+      G.table (k - 1 - n) (fun _ -> G.i Drop) ^^
+      set_x ^^
+      G.table n (fun _ -> G.i Drop) ^^
+      get_x
+    | sr, code1 ->
+      code1 ^^ StackRep.adjust env sr SR.Vanilla ^^ (* offset to tuple (an array) *)
+      Tuple.load_n env (Int64.of_int n)
+    end
 
   | OptPrim, [e] ->
     SR.Vanilla,
@@ -12908,6 +12923,22 @@ and single_case e (cs : Ir.case list) =
 
 and known_tag_pat p = TagP ("", p)
 
+(* If the case patterns only look at the components of a tuple scrutinee of
+   arity n <> 1 (and never bind the tuple as a whole), return Some n *)
+and tuple_switch_arity (cs : Ir.case list) =
+  let rec find_tup p = match p.it with
+    | TupP ps -> Some (List.length ps)
+    | AltP (p1, p2) | AndP (p1, p2) ->
+      (match find_tup p1 with None -> find_tup p2 | r -> r)
+    | _ -> None in
+  let rec ok n p = match p.it with
+    | TupP ps -> List.length ps = n
+    | AltP (p1, p2) | AndP (p1, p2) -> ok n p1 && ok n p2
+    | _ -> Ir_utils.is_irrefutable_nonbinding p in
+  match List.find_map (fun {it={pat; _}; _} -> find_tup pat) cs with
+  | Some n when n <> 1 && List.for_all (fun {it={pat; _}; _} -> ok n pat) cs -> Some n
+  | _ -> None
+
 and simplify_cases e (cs : Ir.case list) =
   match cs, e.note.Note.typ with
   (* for a 2-cased variant type, the second comparison can be omitted when the first pattern
@@ -13007,14 +13038,31 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     )
 
   | SwitchE (e, cs) ->
-    let code1 = compile_exp_vanilla env ae e in
-    let (set_i, get_i) = new_local env "switch_in" in
+    (* If no case needs the scrutinee tuple as a whole, try to get it unboxed,
+       so that it is not allocated on the heap *)
+    let unboxed_n, code1 = match tuple_switch_arity cs with
+      | Some n ->
+        begin match compile_exp_with_hint env ae (Some (SR.UnboxedTuple n)) e with
+        | SR.UnboxedTuple m, code when m = n -> Some n, code
+        | sr, code -> None, code ^^ StackRep.adjust env sr SR.Vanilla
+        end
+      | None -> None, compile_exp_vanilla env ae e in
+    let scrut_code, fill_scrut = match unboxed_n with
+      | None ->
+        let (set_i, get_i) = new_local env "switch_in" in
+        code1 ^^ set_i,
+        (fun ae1 pat -> CannotFail get_i ^^^ fill_pat env ae1 pat)
+      | Some n ->
+        let locals = Lib.List.table n (fun i -> new_local env (Printf.sprintf "switch_in%d" i)) in
+        code1 ^^ G.concat_map fst (List.rev locals),
+        (fun ae1 pat -> fill_pat_n env ae1 (List.map snd locals) pat) in
 
     (* compile subexpressions and collect the provided stack reps *)
     let codes = List.map (fun {it={pat; exp=e}; _} ->
-      let (ae1, pat_code) = compile_pat_local env ae pat in
+      let ae1 = alloc_pat_local env ae pat in
+      let pat_code = fill_scrut ae1 pat in
       let (sr, rhs_code) = compile_exp_with_hint env ae1 sr_hint e in
-      (sr, CannotFail get_i ^^^ pat_code ^^^ CannotFail rhs_code)
+      (sr, pat_code ^^^ CannotFail rhs_code)
       ) (simplify_cases e cs) in
 
     (* Use the expected stackrep, if given, else infer from the branches *)
@@ -13025,7 +13073,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
 
     final_sr,
     (* Run scrut *)
-    code1 ^^ set_i ^^
+    scrut_code ^^
     (* Run rest in block to exit from *)
     MultiVal.block_ env (StackRep.to_block_type env final_sr) (fun branch_code ->
        orsPatternFailure env (List.map (fun (sr, c) ->
@@ -13310,6 +13358,24 @@ and fill_pat env ae pat : patternCode =
       CannotFail set_i ^^^
       (CannotFail get_i ^^^ code1) ^^^
       (CannotFail get_i ^^^ code2)
+
+(* Like fill_pat, but the components of the tuple scrutinee are in locals
+   (read by the getters) instead of on the stack as a heap tuple.
+   Only for patterns accepted by tuple_switch_arity. *)
+and fill_pat_n env ae getters pat : patternCode =
+  PatCode.with_region pat.at @@
+  match pat.it with
+  | _ when Ir_utils.is_irrefutable_nonbinding pat -> CannotFail G.nop
+  | TupP ps ->
+    List.fold_right2 (fun get_k p code ->
+      if Ir_utils.is_irrefutable_nonbinding p then code
+      else CannotFail get_k ^^^ fill_pat env ae p ^^^ code
+    ) getters ps (CannotFail G.nop)
+  | AltP (p1, p2) ->
+    orElse (fill_pat_n env ae getters p1) (fill_pat_n env ae getters p2)
+  | AndP (p1, p2) ->
+    fill_pat_n env ae getters p1 ^^^ fill_pat_n env ae getters p2
+  | _ -> assert false (* excluded by tuple_switch_arity *)
 
 and alloc_pat_local env ae pat =
   let d = Freevars.pat pat in
