@@ -625,22 +625,49 @@ impl TypeVariance {
     }
 }
 
+/// Which of `memory_compatible`'s current `(t1, t2)` indexes the old type table and which the new.
+/// They start as `(old, new)` and are swapped by every function-parameter descent (see the
+/// `IDL_CON_func` arm). Tracking this lets the cache be addressed by `(old_index, new_index)`
+/// regardless of variance; see `recurring_memory_check`.
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub(crate) enum TableOrder {
+    /// `t1` is the old-table index, `t2` the new-table index.
+    OldNew,
+    /// `t1` is the new-table index, `t2` the old-table index.
+    Swapped,
+}
+
+impl TableOrder {
+    fn flip(self) -> TableOrder {
+        match self {
+            TableOrder::OldNew => TableOrder::Swapped,
+            TableOrder::Swapped => TableOrder::OldNew,
+        }
+    }
+
+    /// Reorders the current `(t1, t2)` into `(old_index, new_index)`.
+    fn old_new(self, t1: usize, t2: usize) -> (usize, usize) {
+        match self {
+            TableOrder::OldNew => (t1, t2),
+            TableOrder::Swapped => (t2, t1),
+        }
+    }
+}
+
 // The cache cell for a pair of types is always addressed as `(old_index, new_index)`, where
-// `old_index` indexes the old type table (`size1`) and `new_index` the new one (`size2`).
-// Function parameters are checked with the type tables swapped (see the `IDL_CON_func` arm), so
-// the current `(t1, t2)` are `(new_index, old_index)` whenever an odd number of swaps has
-// happened. `swapped` tracks that parity, so the cache access can be normalized back to
-// `(old_index, new_index)` regardless of variance. `variance` on its own is not enough: for
-// `Invariance` it does not flip on a swap, so using it to pick the indices transposes the cell,
-// which can mark an unrelated pair visited (unsound acceptance) or index out of bounds.
+// `old_index` indexes the old type table (`size1`) and `new_index` the new one (`size2`). The
+// `order` normalizes the current `(t1, t2)` back to that regardless of variance, which is needed
+// because variance alone does not track the swap: for `Invariance` it does not flip on a function
+// parameter, so using it to pick the indices would transpose the cell, which can mark an unrelated
+// pair visited (unsound acceptance) or index out of bounds.
 unsafe fn recurring_memory_check(
     cache: &BitRel,
     variance: TypeVariance,
-    swapped: bool,
+    order: TableOrder,
     t1: usize,
     t2: usize,
 ) -> bool {
-    let (old, new) = if swapped { (t2, t1) } else { (t1, t2) };
+    let (old, new) = order.old_new(t1, t2);
     match variance {
         TypeVariance::Covariance => cache.visited(true, old, new),
         TypeVariance::Contravariance => cache.visited(false, new, old),
@@ -651,11 +678,11 @@ unsafe fn recurring_memory_check(
 unsafe fn remember_memory_check(
     cache: &BitRel,
     variance: TypeVariance,
-    swapped: bool,
+    order: TableOrder,
     t1: usize,
     t2: usize,
 ) {
-    let (old, new) = if swapped { (t2, t1) } else { (t1, t2) };
+    let (old, new) = order.old_new(t1, t2);
     match variance {
         TypeVariance::Covariance => cache.visit(true, old, new),
         TypeVariance::Contravariance => cache.visit(false, new, old),
@@ -677,13 +704,13 @@ unsafe fn remember_memory_check(
 /// * Same arity for tuple types.
 /// * Records and tuples are distinct.
 ///
-/// `swapped` records whether `typtbl1`/`typtbl2` (and `t1`/`t2`) are currently the old/new tables
-/// or have been swapped by an odd number of function-parameter descents. It only steers the cache,
-/// so that every cache access is normalized to `(old_index, new_index)`; see `recurring_memory_check`.
+/// `order` records whether `typtbl1`/`typtbl2` (and `t1`/`t2`) are currently the old/new tables or
+/// have been swapped by an odd number of function-parameter descents. It only steers the cache, so
+/// that every cache access is normalized to `(old_index, new_index)`; see `recurring_memory_check`.
 pub(crate) unsafe fn memory_compatible(
     rel: &BitRel,
     variance: TypeVariance,
-    swapped: bool,
+    order: TableOrder,
     typtbl1: *mut *mut u8,
     typtbl2: *mut *mut u8,
     end1: *mut u8,
@@ -698,10 +725,10 @@ pub(crate) unsafe fn memory_compatible(
     if !main_actor && t1 >= 0 && t2 >= 0 {
         let t1 = t1 as usize;
         let t2 = t2 as usize;
-        if recurring_memory_check(rel, variance, swapped, t1, t2) {
+        if recurring_memory_check(rel, variance, order, t1, t2) {
             return true;
         };
-        remember_memory_check(rel, variance, swapped, t1, t2);
+        remember_memory_check(rel, variance, order, t1, t2);
     };
 
     /* primitives reflexive */
@@ -752,7 +779,7 @@ pub(crate) unsafe fn memory_compatible(
             memory_compatible(
                 rel,
                 TypeVariance::Invariance,
-                swapped,
+                order,
                 typtbl1,
                 typtbl2,
                 end1,
@@ -770,14 +797,14 @@ pub(crate) unsafe fn memory_compatible(
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);
             memory_compatible(
-                rel, variance, swapped, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                rel, variance, order, typtbl1, typtbl2, end1, end2, t11, t21, false,
             )
         }
         (IDL_CON_opt, IDL_CON_opt) => {
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);
             memory_compatible(
-                rel, variance, swapped, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                rel, variance, order, typtbl1, typtbl2, end1, end2, t11, t21, false,
             )
         }
         (IDL_PRIM_null, IDL_CON_opt) => true,
@@ -786,7 +813,7 @@ pub(crate) unsafe fn memory_compatible(
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);
             memory_compatible(
-                rel, variance, swapped, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                rel, variance, order, typtbl1, typtbl2, end1, end2, t11, t21, false,
             )
         }
         (IDL_CON_func, IDL_CON_func) => {
@@ -799,12 +826,12 @@ pub(crate) unsafe fn memory_compatible(
             for _ in 0..in1 {
                 let t11 = sleb128_decode(&mut tb1);
                 let t21 = sleb128_decode(&mut tb2);
-                // NB: invert variance and swap args! The table swap flips `swapped`, so the cache
+                // NB: invert variance and swap args! The table swap flips `order`, so the cache
                 // stays indexed by (old, new); see `recurring_memory_check`.
                 if !memory_compatible(
                     rel,
                     variance.invert(),
-                    !swapped,
+                    order.flip(),
                     typtbl2,
                     typtbl1,
                     end2,
@@ -826,7 +853,7 @@ pub(crate) unsafe fn memory_compatible(
                 let t21 = sleb128_decode(&mut tb2);
                 let t11 = sleb128_decode(&mut tb1);
                 if !memory_compatible(
-                    rel, variance, swapped, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                    rel, variance, order, typtbl1, typtbl2, end1, end2, t11, t21, false,
                 ) {
                     return false;
                 }
@@ -874,7 +901,7 @@ pub(crate) unsafe fn memory_compatible(
                     return false;
                 }
                 if !memory_compatible(
-                    rel, variance, swapped, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                    rel, variance, order, typtbl1, typtbl2, end1, end2, t11, t21, false,
                 ) {
                     return false;
                 }
@@ -902,7 +929,7 @@ pub(crate) unsafe fn memory_compatible(
                     return false; // new field
                 };
                 if !memory_compatible(
-                    rel, variance, swapped, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                    rel, variance, order, typtbl1, typtbl2, end1, end2, t11, t21, false,
                 ) {
                     return false;
                 }
@@ -940,7 +967,7 @@ pub(crate) unsafe fn memory_compatible(
                     };
                 }
                 if !memory_compatible(
-                    rel, variance, swapped, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                    rel, variance, order, typtbl1, typtbl2, end1, end2, t11, t21, false,
                 ) {
                     return false;
                 }
@@ -970,7 +997,7 @@ pub(crate) unsafe fn memory_compatible(
                     return false;
                 }
                 if !memory_compatible(
-                    rel, variance, swapped, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                    rel, variance, order, typtbl1, typtbl2, end1, end2, t11, t21, false,
                 ) {
                     return false;
                 }
@@ -1006,7 +1033,7 @@ pub(crate) unsafe fn memory_compatible(
                     return false;
                 };
                 if !memory_compatible(
-                    rel, variance, swapped, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                    rel, variance, order, typtbl1, typtbl2, end1, end2, t11, t21, false,
                 ) {
                     return false;
                 }
