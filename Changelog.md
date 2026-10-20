@@ -15,6 +15,10 @@
     even after a top-up. A one-shot timer whose job was rejected that way is
     now retried instead of dropped (#6440).
 
+  * Boxed `Nat64`, `Int64` and `Float` values now allocate 3 words (24 bytes)
+    on the heap instead of 4, matching their RTS layout. The fourth word was
+    never used (#6448).
+
 ## 2.0.0 (2026-10-06)
 
 * Upgrading from `moc` 1.x? The [moc v1 → v2 migration guide](doc/md/moc-v2-migration.md)
