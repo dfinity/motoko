@@ -22,6 +22,17 @@ class range(x : Nat32, y : Nat32) {
 for (i in range(0, 200)) { checkShiftLeft(1, i) };
 for (i in range(0, 200)) { checkShiftLeft(42, i) };
 
+// compact bases whose shifted value crosses the compact range (2 ** 61)
+checkShiftLeft(0xffffffff, 32);
+for (k in range(0, 40)) {
+    let b = 2 ** nat32ToNat k;
+    for (i in range(0, 70)) {
+        checkShiftLeft(b - 1, i);
+        checkShiftLeft(b, i);
+        checkShiftLeft(b + 1, i)
+    }
+};
+
 func checkShiftRight(base : Nat, amount : Nat32) =
          assert base / 2 ** nat32ToNat amount == shiftRight(base, amount);
 

@@ -20,6 +20,11 @@
     example from `async (Nat, Nat)` to `async Any`, or from `async* None` to
     `async* ()` as in `await* async* throw e` (#6451).
 
+  * bugfix: `Prim.shiftLeft` (`Nat.bitshiftLeft`) no longer returns a corrupt
+    value in compiled code when a small `Nat` is shifted to `2 ** 61` or
+    beyond, for example `shiftLeft(0xffffffff, 32)`. The interpreter was not
+    affected (#6465).
+
 ## 2.0.0 (2026-10-06)
 
 * Upgrading from `moc` 1.x? The [moc v1 → v2 migration guide](doc/md/moc-v2-migration.md)

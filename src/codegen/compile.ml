@@ -3269,8 +3269,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   (*
     Note [left shifting compact Nat]
-    For compact Nats with a number fitting in 32 bits (in scalar value representation) and a shift amount of
-    less or equal 32, we perform a fast shift. Otherwise, the bignum shift via RTS is applied.
+    For a compact Nat whose shifted value still fits the compact representation, we perform a fast shift.
+    A compact Nat holds `sbits_of Type.Int` (61) magnitude bits, so the result fits iff
+    `bitlen(n) + amount <= 61`, i.e. `clz64(n) >= amount + (64 - 61)`.
+    Otherwise, the bignum shift via RTS is applied.
    *)
   let compile_lsh env =
     Func.share_code2 Func.Always env "B_lsh" (("n", I64Type), ("amount", I64Type)) [I64Type]
@@ -3282,11 +3284,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       begin
         (* see Note [left shifting compact Nat] *)
         get_n ^^ BitTagged.untag __LINE__ env Type.Int ^^ set_n ^^
-        get_n ^^
-        compile_bitand_const 0xFFFF_FFFF_0000_0000L ^^
-        compile_eq_const 0L ^^
-        get_amount ^^ compile_rel_const I64Op.LeU 32L ^^
-        G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) ^^
+        get_n ^^ G.i (Unary (Wasm_exts.Values.I64 I64Op.Clz)) ^^
+        get_amount ^^ compile_add_const Int64.(sub 64L (of_int (BitTagged.sbits_of Type.Int))) ^^
+        compile_comparison I64Op.GeU ^^
         E.if1 I64Type
         begin
           get_n ^^
