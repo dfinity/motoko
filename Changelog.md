@@ -2,6 +2,26 @@
 
 ## Next
 
+* motoko (`moc`)
+
+  * Added `Prim.subnetSelfNodeCount() : Nat32` and
+    `Prim.costHttpRequestV2(params : Blob) : Nat`, exposing
+    `ic0.subnet_self_node_count` and `ic0.cost_http_request_v2` for
+    pay-as-you-go HTTPS outcall pricing (#6461).
+
+  * bugfix: timers no longer stop for good when a canister runs short of
+    cycles. If the self-call that dispatches expired timers was rejected
+    before it ran (for example, `IC0207` out of cycles), no timer fired again,
+    even after a top-up. A one-shot timer whose job was rejected that way is
+    now retried instead of dropped (#6440).
+
+  * bugfix: the compiler no longer crashes with "Ill-typed intermediate code
+    after Async Lowering" when an `async` or `async*` value is widened, for
+    example from `async (Nat, Nat)` to `async Any`, or from `async* None` to
+    `async* ()` as in `await* async* throw e` (#6451).
+
+## 2.0.0 (2026-10-06)
+
 * Upgrading from `moc` 1.x? The [moc v1 → v2 migration guide](doc/md/moc-v2-migration.md)
   lists every breaking change below with the message you will see and its fix (#6417).
 
@@ -74,6 +94,11 @@
       share no field, or `x == y` on type parameters. Comparisons at a common
       type that still has content stay warning M0062 (#6415).
 
+    * Breaking change: a file in the `--enhanced-migration` directory that
+      does not export a public `migration` function is error M0278 instead of
+      warning M0251. The file was skipped, so the build succeeded and the
+      migration never ran (#6429).
+
     * Breaking change: an imported library must be a `module { ... }` or a
       named actor class. A bare sequence of declarations is error M0142
       instead of a deprecation warning; wrap it in `module { ... }` and mark
@@ -133,6 +158,23 @@
 
   * **Type checking**
 
+    * feat: a function passed where an `async` function type is expected is
+      asynchronous without annotations. For `run : (Nat -> async Nat) ->
+      async Nat`, `run(func(n) { n + 1 })` takes both `n : Nat` and the
+      `async Nat` return type from `run`, as non-async functions already
+      did. This covers `async*` and generic calls such as
+      `forEach(xs, func(x) { await process(x) })` (#6428).
+
+    * Breaking change: `func f() : T = e` and `func f() : T { e }` mean the
+      same. A body is implicitly `async` exactly when the return type is
+      `async`, and a one-way `shared` function's body is implicitly
+      `ignore async`, so `= async { ... }` and `= ignore (async ...)` are
+      redundant and rejected with M0277, whose fix-it drops the `async`. A
+      parenthetical on the body, `= (with cycles = n) async { ... }`, goes at
+      the call site, `(with cycles = n) f()`, and a local function can no
+      longer return a future of its enclosing function (`= fut`). M0078,
+      M0079 and M0213 are retired (#6428).
+
     * Breaking change: `{ base with ... }` copies the base's `var` fields.
       The result is the equivalent field-for-field record literal, so
       mutating the copy does not mutate the base. This was error M0179, or
@@ -170,6 +212,22 @@
     * bugfix: contextual dot resolves functions returning `async` in an async
       context, e.g. `await x.asyncFunc()` (#6085).
 
+    * Breaking change: a pattern is checked against the type of the value it
+      matches, not a larger type. A variant tag the type lacks is error M0116,
+      with a suggestion for a misspelled tag (`case (#suspnded)` on
+      `{#active; #suspended}`); a signed literal against `Nat` is error M0050
+      (`case (-1)`), as `let n : Nat = -1` already is; an option pattern
+      against `Null` is error M0115. Before, only the coverage check flagged
+      these, and nothing did in `let ... else`. To match at a larger type,
+      annotate the matched value: `switch (n : Int)`. A pattern that fits the
+      type but is unreachable, such as a duplicate case, stays warning M0146
+      (#6429).
+
+    * bugfix: in `let ... else`, an alternative that is never matched, such as
+      the second `1` in `let (1 or 1) = n else { ... }`, is warning M0146, as
+      in a `switch`. In any pattern, an unreached pattern nested inside
+      another one is no longer reported a second time (#6429).
+
   * **Command line and tooling**
 
     * Breaking change: `moc --check a.mo b.mo` checks each file on its own.
@@ -202,12 +260,54 @@
       binaries continue. The `motoko-base-library.tar.gz` artifact is also
       dropped; `motoko-core.tar.gz` is unaffected (#6355).
 
+    * feat: M0217 (redundant `persistent`) and M0269 (deprecated `.vals()`)
+      ship machine-applicable edits, so `mops check --fix` removes the
+      `persistent` and rewrites `.vals()` to `.values()` (#6439).
+
   * **Bug fixes**
+
+    * bugfix: a type pattern field such as `let { type T } = m` in the body of
+      `let o = object { ... }` or `module M { ... }` no longer crashes the
+      compiler with an internal assertion. A well-typed binding is accepted,
+      and a scrutinee that is not an object reports M0113 as it does
+      elsewhere (#6431).
+
+    * bugfix: an upgrade that drops a stable variable without a migration
+      function is rejected even when it also adds a stable variable.
+      Depending on how the names hashed, as when renaming `balances` to
+      `users`, the runtime check accepted it and the dropped variable's
+      value was lost (#6432).
+
+    * bugfix: numeric field ids in imported Candid (`.did`) files no longer
+      crash `moc`. Hex ids such as `0x7f` parse, and an id that does not fit
+      in 32 bits is a syntax error (#6421).
+
+    * bugfix: clearer diagnostics. Calling a local `async` or `async*`
+      function from a `query` (M0188) or `composite query` (M0187) says so
+      instead of claiming a `shared` function was called, and the M0185
+      warning on importing a Candid service constructor explains that its
+      initialization arguments are ignored; `moc --explain M0185` has the
+      details (#6425).
+
+    * bugfix: the interpreter (`moc -r`) traps where compiled code does. An
+      out-of-bounds `Blob` index or an index of 2^62 or more no longer
+      crashes with an internal error, `Array_init` and `Array_tabulate` trap
+      on a length of 2^48 or more, and `Nat`/`Int` `**` traps on an exponent
+      of 2^32 or more (#6422).
+
+    * bugfix: checking time with `--error-recovery`, which `moc.js` always
+      enables, no longer grows cubically with the number of syntax errors. A
+      file with 400 syntax errors takes 0.05 s instead of 7 s (#6424).
 
     * bugfix: a `switch` on a two-legged variant that repeats a tag, such as
       `case (#admin t)` followed by `case (#admin u)`, no longer compiles the
       second case without its tag test. Passing the other leg bound that
       leg's payload at the first case's type instead of trapping (#6427).
+
+    * bugfix: a class method returning `async*` with an `= e` body, such as
+      `public func next() : async* Nat = v`, no longer fails with M0137 when
+      the class is used at a record type: the method binds its own async
+      scope, like a block body always did (#6428).
 
     * bugfix: generated Candid never reuses a user-written type name. A
       suffixed name `moc` picks for a generic instantiation or a same-named
