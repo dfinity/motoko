@@ -12,7 +12,7 @@
   * bugfix: an `await` or `await?` of a future whose reply callback already
     trapped now runs the awaiting computation's `finally` clauses instead
     of suspending forever. This includes Candid decoding failures before
-    a waiter was registered (fixes #5909).
+    a waiter was registered (#5909, #6469).
 
   * bugfix: timers no longer stop for good when a canister runs short of
     cycles. If the self-call that dispatches expired timers was rejected
