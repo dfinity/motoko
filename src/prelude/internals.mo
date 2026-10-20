@@ -338,7 +338,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @CleanCont) {
     if trapped {
       // Use the usual scheduling path: await commits before cleanup, while
       // await? can bail out immediately. Neither resumes k nor rejects via r.
-      return #schedule(b);
+      return #schedule b;
     };
     switch result {
       case null {
