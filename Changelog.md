@@ -1,5 +1,13 @@
 # Motoko compiler changelog
 
+## Next
+
+* motoko (`moc`)
+
+  * Boxed `Nat64`, `Int64` and `Float` values now allocate 3 words (24 bytes)
+    on the heap instead of 4, matching their RTS layout. The fourth word was
+    never used (#6475).
+
 ## 2.1.0 (2026-10-21)
 
 * motoko (`moc`)
