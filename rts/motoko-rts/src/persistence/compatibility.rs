@@ -6,7 +6,7 @@ use crate::{
     barriers::write_with_barrier,
     bitrel::BitRel,
     constants::WORD_SIZE,
-    idl::TypeVariance,
+    idl::{DescriptorFormat, TypeVariance},
     memory::{Memory, alloc_blob},
     types::{TAG_BLOB_B, Value, Words},
 };
@@ -109,13 +109,16 @@ impl TypeDescriptor {
         type_table
     }
 
-    /// Descriptors stored by older compilers start with `DIDL` and encode some distinct types alike,
-    /// see Note [persistence type descriptor] in `compile.ml`.
-    pub unsafe fn is_legacy(&self) -> bool {
+    pub(crate) unsafe fn format(&self) -> DescriptorFormat {
         const LEGACY_MAGIC: &[u8] = b"DIDL";
         let data = self.candid_data.as_blob();
-        data.len().as_usize() >= LEGACY_MAGIC.len()
+        if data.len().as_usize() >= LEGACY_MAGIC.len()
             && core::slice::from_raw_parts(data.payload_const(), LEGACY_MAGIC.len()) == LEGACY_MAGIC
+        {
+            DescriptorFormat::Legacy
+        } else {
+            DescriptorFormat::Eop1
+        }
     }
 
     pub unsafe fn candid_length(&self) -> usize {
@@ -175,7 +178,7 @@ pub unsafe fn memory_compatible<M: Memory>(
 
     crate::idl::memory_compatible(
         &cache,
-        old_type.is_legacy(),
+        old_type.format(),
         TypeVariance::Covariance,
         old_type_table,
         new_type_table,

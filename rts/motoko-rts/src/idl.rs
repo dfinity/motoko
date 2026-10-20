@@ -612,6 +612,16 @@ unsafe fn is_null_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bo
     return t == IDL_CON_opt;
 }
 
+/// Encoding of a stored persistence type descriptor, see Note [persistence type descriptor] in `compile.ml`.
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub(crate) enum DescriptorFormat {
+    /// Starts with `DIDL`, as stored by older compilers.
+    /// Encodes `[var T]` like `var [T]`, `Char` like `Nat32`, and `()` like `Null`.
+    Legacy,
+    /// Starts with `EOP1` and encodes each of those types distinctly.
+    Eop1,
+}
+
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub(crate) enum TypeVariance {
     Covariance,
@@ -679,12 +689,11 @@ unsafe fn type_argument(typtbl: *mut *mut u8, end: *mut u8, t: i32, con: i32) ->
 /// * Records cannot introduce additional optional fields.
 /// * Same arity for tuple types.
 /// * Records and tuples are distinct.
-/// * `[var T]` and `var [T]`, `Char` and `Nat32`, and `()` and `Null` are distinct, unless `legacy`.
-///
-/// `legacy` tells that the old type was stored by a compiler that encoded some distinct types alike.
+/// * `[var T]` and `var [T]`, `Char` and `Nat32`, and `()` and `Null` are distinct,
+///   unless the old type is in the `DescriptorFormat::Legacy` format.
 pub(crate) unsafe fn memory_compatible(
     rel: &BitRel,
-    legacy: bool,
+    old_format: DescriptorFormat,
     variance: TypeVariance,
     typtbl1: *mut *mut u8,
     typtbl2: *mut *mut u8,
@@ -753,7 +762,7 @@ pub(crate) unsafe fn memory_compatible(
             // invariance
             memory_compatible(
                 rel,
-                legacy,
+                old_format,
                 TypeVariance::Invariance,
                 typtbl1,
                 typtbl2,
@@ -764,17 +773,17 @@ pub(crate) unsafe fn memory_compatible(
                 false,
             )
         }
-        // Legacy descriptors encode `[var T]` like `var [T]`, `Char` like `Nat32`, and `()` like `Null`.
+        // A legacy old descriptor encodes `[var T]` like `var [T]`, `Char` like `Nat32`, and `()` like `Null`.
         // Accept either reading so that existing canisters keep upgrading.
         // Only the new descriptor holds the distinct encodings, so the ambiguous side of each arm is the old one.
         // Function parameters swap the sides, but cannot be mutable.
-        (IDL_CON_alias, IDL_EXT_var_vec) if legacy => {
+        (IDL_CON_alias, IDL_EXT_var_vec) if old_format == DescriptorFormat::Legacy => {
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);
             match type_argument(typtbl1, end1, t11, IDL_CON_vec) {
                 Some(t12) => memory_compatible(
                     rel,
-                    legacy,
+                    old_format,
                     TypeVariance::Invariance,
                     typtbl1,
                     typtbl2,
@@ -787,9 +796,17 @@ pub(crate) unsafe fn memory_compatible(
                 None => false,
             }
         }
-        (IDL_PRIM_nat32, IDL_EXT_char) | (IDL_EXT_char, IDL_PRIM_nat32) if legacy => true,
-        (IDL_PRIM_null, IDL_EXT_tuple) if legacy => leb128_decode(&mut tb2) == 0,
-        (IDL_EXT_tuple, IDL_PRIM_null) if legacy => leb128_decode(&mut tb1) == 0,
+        (IDL_PRIM_nat32, IDL_EXT_char) | (IDL_EXT_char, IDL_PRIM_nat32)
+            if old_format == DescriptorFormat::Legacy =>
+        {
+            true
+        }
+        (IDL_PRIM_null, IDL_EXT_tuple) if old_format == DescriptorFormat::Legacy => {
+            leb128_decode(&mut tb2) == 0
+        }
+        (IDL_EXT_tuple, IDL_PRIM_null) if old_format == DescriptorFormat::Legacy => {
+            leb128_decode(&mut tb1) == 0
+        }
         (IDL_PRIM_reserved, IDL_PRIM_reserved) | (IDL_PRIM_empty, IDL_PRIM_empty) => true,
         (_, IDL_PRIM_reserved) => false, // information lost
         (IDL_PRIM_empty, _) | (IDL_PRIM_nat, IDL_PRIM_int) => variance != TypeVariance::Invariance,
@@ -798,14 +815,14 @@ pub(crate) unsafe fn memory_compatible(
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);
             memory_compatible(
-                rel, legacy, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                rel, old_format, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
             )
         }
         (IDL_CON_opt, IDL_CON_opt) => {
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);
             memory_compatible(
-                rel, legacy, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                rel, old_format, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
             )
         }
         (IDL_PRIM_null, IDL_CON_opt) => true,
@@ -814,7 +831,7 @@ pub(crate) unsafe fn memory_compatible(
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);
             memory_compatible(
-                rel, legacy, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                rel, old_format, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
             )
         }
         (IDL_CON_func, IDL_CON_func) => {
@@ -830,7 +847,7 @@ pub(crate) unsafe fn memory_compatible(
                 // NB: invert p and args!
                 if !memory_compatible(
                     rel,
-                    legacy,
+                    old_format,
                     variance.invert(),
                     typtbl2,
                     typtbl1,
@@ -853,7 +870,7 @@ pub(crate) unsafe fn memory_compatible(
                 let t21 = sleb128_decode(&mut tb2);
                 let t11 = sleb128_decode(&mut tb1);
                 if !memory_compatible(
-                    rel, legacy, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                    rel, old_format, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
                 ) {
                     return false;
                 }
@@ -901,7 +918,7 @@ pub(crate) unsafe fn memory_compatible(
                     return false;
                 }
                 if !memory_compatible(
-                    rel, legacy, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                    rel, old_format, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
                 ) {
                     return false;
                 }
@@ -929,7 +946,7 @@ pub(crate) unsafe fn memory_compatible(
                     return false; // new field
                 };
                 if !memory_compatible(
-                    rel, legacy, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                    rel, old_format, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
                 ) {
                     return false;
                 }
@@ -967,7 +984,7 @@ pub(crate) unsafe fn memory_compatible(
                     };
                 }
                 if !memory_compatible(
-                    rel, legacy, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                    rel, old_format, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
                 ) {
                     return false;
                 }
@@ -997,7 +1014,7 @@ pub(crate) unsafe fn memory_compatible(
                     return false;
                 }
                 if !memory_compatible(
-                    rel, legacy, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                    rel, old_format, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
                 ) {
                     return false;
                 }
@@ -1033,7 +1050,7 @@ pub(crate) unsafe fn memory_compatible(
                     return false;
                 };
                 if !memory_compatible(
-                    rel, legacy, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                    rel, old_format, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
                 ) {
                     return false;
                 }

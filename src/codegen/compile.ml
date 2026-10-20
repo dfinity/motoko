@@ -7250,7 +7250,7 @@ module Serialization = struct
     | Candid
     | Persistence
 
-  (* Persistence keeps types with distinct heap layouts apart, see Note [persistence type descriptor] *)
+  (* Persistence tells `Char` from `Nat32` and `()` from `Null`, as their runtime values differ, see Note [persistence type descriptor] *)
   let to_idl_prim mode = let open Type in function
     | Prim Null -> Some 1l
     | Tup [] ->
@@ -7305,14 +7305,23 @@ module Serialization = struct
   Note [persistence type descriptor]
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-  Distinct heap layouts need distinct persistence descriptors, as the RTS compares the old and new
-  descriptor to decide whether an upgrade can keep the heap (`memory_compatible` in rts/motoko-rts/src/idl.rs).
-  Hence, unlike in Candid mode:
+  Types whose values are represented differently in memory need different persistence descriptors.
+  On upgrade, the RTS compares the stored and the new descriptor (`memory_compatible` in rts/motoko-rts/src/idl.rs)
+  and lets the new program read the old values in place, so a shared encoding makes it misread them.
+  Candid mode can share encodings, as its values are decoded into fresh objects. Hence, unlike there:
 
-   * `[var t]` is `idl_var_vec t`, while a `var [t]` field is `alias (vec t)`,
-     as such a field holds a `MutBox` rather than the array.
-   * `Char` has its own code, as its scalar is shifted differently from `Nat32`.
-   * `()` is the empty `idl_tuple`, as its scalar differs from the `Null` pointer.
+   * `[var t]` is `idl_var_vec t`, while a `var [t]` field is `alias (vec t)`.
+     A `[var t]` field points to the array, a `var [t]` field to a `MutBox` that points to the array.
+   * `Char` has its own code: its 21-bit code point is shifted left by 43 bits, a `Nat32` by 32, and their tags differ.
+   * `()` is the empty `idl_tuple`: its value is the `unit_tag` scalar, while `null` is the `null_vanilla_pointer`.
+
+  For example, the type `{var f : [Nat]; g : [var Nat]}` yields these type table entries,
+  with codes before their LEB128 encoding and fields sorted by hash:
+
+    0: record {f : 1; g : 3}   -20 2 <hash f> 1 <hash g> 3
+    1: alias 2                   1 2                           var [Nat]
+    2: vec nat                 -19 -3                          [Nat]
+    3: var_vec nat            -133 -3                          [var Nat]
 
   Persistence descriptors start with "EOP1". Descriptors stored by older compilers start with "DIDL"
   and encode each pair above alike, so the RTS accepts either reading of those.
