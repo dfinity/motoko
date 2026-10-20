@@ -23,7 +23,7 @@
   * bugfix: `Prim.shiftLeft` (`Nat.bitshiftLeft`) no longer returns a corrupt
     value in compiled code when a small `Nat` is shifted to `2 ** 61` or
     beyond, for example `shiftLeft(0xffffffff, 32)`. The interpreter was not
-    affected (#6465).
+    affected (#6468).
 
 ## 2.0.0 (2026-10-06)
 
