@@ -15,6 +15,11 @@
     even after a top-up. A one-shot timer whose job was rejected that way is
     now retried instead of dropped (#6440).
 
+  * bugfix: the compiler no longer crashes with "Ill-typed intermediate code
+    after Async Lowering" when an `async` or `async*` value is widened, for
+    example from `async (Nat, Nat)` to `async Any`, or from `async* None` to
+    `async* ()` as in `await* async* throw e` (#6451).
+
   * Boxed `Nat64`, `Int64` and `Float` values now allocate 3 words (24 bytes)
     on the heap instead of 4, matching their RTS layout. The fourth word was
     never used (#6448).
