@@ -6,7 +6,7 @@ use crate::{
     barriers::write_with_barrier,
     bitrel::BitRel,
     constants::WORD_SIZE,
-    idl::{DescriptorFormat, TypeVariance},
+    idl::{DescriptorFormat, TableOrder, TypeVariance},
     memory::{Memory, alloc_blob},
     types::{TAG_BLOB_B, Value, Words},
 };
@@ -180,6 +180,7 @@ pub unsafe fn memory_compatible<M: Memory>(
         &cache,
         old_type.format(),
         TypeVariance::Covariance,
+        TableOrder::OldNew,
         old_type_table,
         new_type_table,
         old_table_end,
