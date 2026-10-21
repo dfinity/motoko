@@ -33,6 +33,12 @@
     accept an incompatible upgrade once the two versions had different
     type-table sizes (#6463).
 
+  * M0276 no longer reports a comparison whose operands both already have the
+    single-valued type, such as `status == #active` with
+    `status : { #active }`: the type was declared that way on purpose. It
+    still reports operands of different types compared at `Any` or `{}`, and
+    its message now names both operand types (#6470).
+
 ## 2.0.0 (2026-10-06)
 
 * Upgrading from `moc` 1.x? The [moc v1 → v2 migration guide](doc/md/moc-v2-migration.md)
