@@ -4,6 +4,12 @@
 
 * motoko (`moc`)
 
+  * bugfix: `Prim.shiftRight` by 2^31 or more returns 0 instead of a wrong
+    value, and `Prim.shiftLeft` of a nonzero value traps with "left shift
+    result too large" when the result would have 2^31 or more bits, instead
+    of returning a wrong value. The interpreter agrees and no longer hangs
+    on large shift amounts (#6423).
+
   * Added `Prim.subnetSelfNodeCount() : Nat32` and
     `Prim.costHttpRequestV2(params : Blob) : Nat`, exposing
     `ic0.subnet_self_node_count` and `ic0.cost_http_request_v2` for
