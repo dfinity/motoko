@@ -1,10 +1,10 @@
 # Motoko compiler changelog
 
-## Next
+## 2.1.0 (2026-10-21)
 
 * motoko (`moc`)
 
-  * Added `Prim.subnetSelfNodeCount() : Nat32` and
+  * feat: added `Prim.subnetSelfNodeCount() : Nat32` and
     `Prim.costHttpRequestV2(params : Blob) : Nat`, exposing
     `ic0.subnet_self_node_count` and `ic0.cost_http_request_v2` for
     pay-as-you-go HTTPS outcall pricing (#6461).
@@ -37,7 +37,8 @@
     single-valued type, such as `status == #active` with
     `status : { #active }`: the type was declared that way on purpose. It
     still reports operands of different types compared at `Any` or `{}`, and
-    its message now names both operand types (#6470).
+    a literal compared with an `Any` value, as in `x == 10`. Its message now
+    names the operand types (#6470).
 
 ## 2.0.0 (2026-10-06)
 
