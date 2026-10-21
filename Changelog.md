@@ -20,6 +20,14 @@
     example from `async (Nat, Nat)` to `async Any`, or from `async* None` to
     `async* ()` as in `await* async* throw e` (#6451).
 
+  * bugfix: fixed an out-of-bounds access in the upgrade compatibility check
+    for a shared function stored in a mutable (aliased) position, such as a
+    stable `var` of `[var (shared R -> ())]`. Its parameters are checked under
+    type invariance, and the memoization cache indexed the old and new type
+    tables transposed, which could read past the end of the cache or wrongly
+    accept an incompatible upgrade once the two versions had different
+    type-table sizes (#6463).
+
 ## 2.0.0 (2026-10-06)
 
 * Upgrading from `moc` 1.x? The [moc v1 → v2 migration guide](doc/md/moc-v2-migration.md)
