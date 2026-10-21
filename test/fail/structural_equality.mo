@@ -20,3 +20,8 @@ func isEmpty(config : { name : Text }) : Bool = config == {};
 func anyEq(x : Any, y : Nat) : Bool = x == y;
 func anyEqGeneric<A>(x : A, y : Any) : Bool = x == y;
 func keyEq(k : { kind : { #key }; id : Nat }, j : { kind : { #key } }) : Bool = k == j;
+
+// a literal-like operand takes the other operand's `Any` type
+func anyLit(x : Any) : Bool = x == 10;
+func anyTag(x : Any) : Bool = x == #foo;
+func litAny(x : Any) : Bool = 10 != x;

@@ -117,3 +117,21 @@ which has a single value
     ┌─ structural_equality.mo:22:81
  22 │  func keyEq(k : { kind : { #key }; id : Nat }, j : { kind : { #key } }) : Bool = k == j;
     │                                                                                  ^^^^^^ 
+error[M0276]: this comparison always has the same result, because both operands are compared at type
+  Any
+which has a single value
+    ┌─ structural_equality.mo:25:31
+ 25 │  func anyLit(x : Any) : Bool = x == 10;
+    │                                ^^^^^^^ 
+error[M0276]: this comparison always has the same result, because both operands are compared at type
+  Any
+which has a single value
+    ┌─ structural_equality.mo:26:31
+ 26 │  func anyTag(x : Any) : Bool = x == #foo;
+    │                                ^^^^^^^^^ 
+error[M0276]: this comparison always has the same result, because both operands are compared at type
+  Any
+which has a single value
+    ┌─ structural_equality.mo:27:31
+ 27 │  func litAny(x : Any) : Bool = 10 != x;
+    │                                ^^^^^^^ 

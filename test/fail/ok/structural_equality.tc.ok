@@ -78,3 +78,12 @@ with type
 at their common supertype
   {kind : {#key}}
 which has a single value
+structural_equality.mo:25.31-25.38: type error [M0276], this comparison always has the same result, because both operands are compared at type
+  Any
+which has a single value
+structural_equality.mo:26.31-26.40: type error [M0276], this comparison always has the same result, because both operands are compared at type
+  Any
+which has a single value
+structural_equality.mo:27.31-27.38: type error [M0276], this comparison always has the same result, because both operands are compared at type
+  Any
+which has a single value
