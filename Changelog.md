@@ -2,6 +2,40 @@
 
 ## Next
 
+* motoko (`moc`)
+
+  * bugfix: `Prim.shiftRight` by 2^31 or more returns 0 instead of a wrong
+    value, and `Prim.shiftLeft` of a nonzero value traps with "left shift
+    result too large" when the result would have 2^31 or more bits, instead
+    of returning a wrong value. The interpreter agrees and no longer hangs
+    on large shift amounts (#6423).
+
+  * Added `Prim.subnetSelfNodeCount() : Nat32` and
+    `Prim.costHttpRequestV2(params : Blob) : Nat`, exposing
+    `ic0.subnet_self_node_count` and `ic0.cost_http_request_v2` for
+    pay-as-you-go HTTPS outcall pricing (#6461).
+
+  * bugfix: timers no longer stop for good when a canister runs short of
+    cycles. If the self-call that dispatches expired timers was rejected
+    before it ran (for example, `IC0207` out of cycles), no timer fired again,
+    even after a top-up. A one-shot timer whose job was rejected that way is
+    now retried instead of dropped (#6440).
+
+  * bugfix: the compiler no longer crashes with "Ill-typed intermediate code
+    after Async Lowering" when an `async` or `async*` value is widened, for
+    example from `async (Nat, Nat)` to `async Any`, or from `async* None` to
+    `async* ()` as in `await* async* throw e` (#6451).
+
+  * bugfix: fixed an out-of-bounds access in the upgrade compatibility check
+    for a shared function stored in a mutable (aliased) position, such as a
+    stable `var` of `[var (shared R -> ())]`. Its parameters are checked under
+    type invariance, and the memoization cache indexed the old and new type
+    tables transposed, which could read past the end of the cache or wrongly
+    accept an incompatible upgrade once the two versions had different
+    type-table sizes (#6463).
+
+## 2.0.0 (2026-10-06)
+
 * Upgrading from `moc` 1.x? The [moc v1 → v2 migration guide](doc/md/moc-v2-migration.md)
   lists every breaking change below with the message you will see and its fix (#6417).
 
@@ -138,6 +172,23 @@
 
   * **Type checking**
 
+    * feat: a function passed where an `async` function type is expected is
+      asynchronous without annotations. For `run : (Nat -> async Nat) ->
+      async Nat`, `run(func(n) { n + 1 })` takes both `n : Nat` and the
+      `async Nat` return type from `run`, as non-async functions already
+      did. This covers `async*` and generic calls such as
+      `forEach(xs, func(x) { await process(x) })` (#6428).
+
+    * Breaking change: `func f() : T = e` and `func f() : T { e }` mean the
+      same. A body is implicitly `async` exactly when the return type is
+      `async`, and a one-way `shared` function's body is implicitly
+      `ignore async`, so `= async { ... }` and `= ignore (async ...)` are
+      redundant and rejected with M0277, whose fix-it drops the `async`. A
+      parenthetical on the body, `= (with cycles = n) async { ... }`, goes at
+      the call site, `(with cycles = n) f()`, and a local function can no
+      longer return a future of its enclosing function (`= fut`). M0078,
+      M0079 and M0213 are retired (#6428).
+
     * Breaking change: `{ base with ... }` copies the base's `var` fields.
       The result is the equivalent field-for-field record literal, so
       mutating the copy does not mutate the base. This was error M0179, or
@@ -223,13 +274,17 @@
       binaries continue. The `motoko-base-library.tar.gz` artifact is also
       dropped; `motoko-core.tar.gz` is unaffected (#6355).
 
+    * feat: M0217 (redundant `persistent`) and M0269 (deprecated `.vals()`)
+      ship machine-applicable edits, so `mops check --fix` removes the
+      `persistent` and rewrites `.vals()` to `.values()` (#6439).
+
   * **Bug fixes**
 
-    * bugfix: `Prim.shiftRight` by 2^31 or more returns 0 instead of a wrong
-      value, and `Prim.shiftLeft` of a nonzero value traps with "left shift
-      result too large" when the result would have 2^31 or more bits, instead
-      of returning a wrong value. The interpreter agrees and no longer hangs
-      on large shift amounts (#6423).
+    * bugfix: a type pattern field such as `let { type T } = m` in the body of
+      `let o = object { ... }` or `module M { ... }` no longer crashes the
+      compiler with an internal assertion. A well-typed binding is accepted,
+      and a scrutinee that is not an object reports M0113 as it does
+      elsewhere (#6431).
 
     * bugfix: an upgrade that drops a stable variable without a migration
       function is rejected even when it also adds a stable variable.
@@ -262,6 +317,11 @@
       `case (#admin t)` followed by `case (#admin u)`, no longer compiles the
       second case without its tag test. Passing the other leg bound that
       leg's payload at the first case's type instead of trapping (#6427).
+
+    * bugfix: a class method returning `async*` with an `= e` body, such as
+      `public func next() : async* Nat = v`, no longer fails with M0137 when
+      the class is used at a record type: the method binds its own async
+      scope, like a block body always did (#6428).
 
     * bugfix: generated Candid never reuses a user-written type name. A
       suffixed name `moc` picks for a generic instantiation or a same-named
