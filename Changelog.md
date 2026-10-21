@@ -32,7 +32,7 @@
     single-valued type, such as `status == #active` with
     `status : { #active }`: the type was declared that way on purpose. It
     still reports operands of different types compared at `Any` or `{}`, and
-    its message now names both operand types (#NNNN).
+    its message now names both operand types (#6470).
 
 ## 2.0.0 (2026-10-06)
 
