@@ -1103,7 +1103,7 @@ dec_pub :
 
 (* What follows `public`: in an actor body (pub_ac) an optional codec
    parenthetical and a dec_pub; elsewhere (pub_lo) any dec. The parenthetical
-   is parsed but not yet used. *)
+   carries the method's `encoder` / `decoder` (see `check_vis_parenthetical`). *)
 %inline pub_ac :
   | eo=par_attr s=stab d=dec_pub { (eo, s, d) }
 
@@ -1122,11 +1122,11 @@ dec_field(pub) :
   | SYSTEM s=stab dd=dec
     { {dec = dd; vis = System @@ at $loc($1); stab = s} @@ at $sloc }
   | PUBLIC t=pub
-    { let (_codec, s, dd) = t in
+    { let (codec, s, dd) = t in
       let at_pub = at $loc($1) in
       let trivia = Trivia.find_trivia !triv_table at_pub in
       let depr = Trivia.deprecated_of_trivia_info trivia in
-      {dec = dd; vis = Public depr @@ at_pub; stab = s} @@ at $sloc }
+      {dec = dd; vis = Public (depr, codec) @@ at_pub; stab = s} @@ at $sloc }
 
 stab :
   | (* empty *) { None }

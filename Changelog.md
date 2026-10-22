@@ -4,6 +4,11 @@
 
 * motoko (`moc`)
 
+  * `public (with encoder = e; decoder = d) func m(…) : async T` replaces
+    Candid on the wire for that actor method: `encoder : T -> Blob` produces
+    the reply, and `decoder : Blob -> args` reads the arguments from the raw
+    message data. Either can be given alone; both must be effect-free (#6467).
+
   * Added `Prim.subnetSelfNodeCount() : Nat32` and
     `Prim.costHttpRequestV2(params : Blob) : Nat`, exposing
     `ic0.subnet_self_node_count` and `ic0.cost_http_request_v2` for
