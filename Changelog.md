@@ -9,6 +9,14 @@
     below 2^32 and amounts up to 32 that silently wrapped larger results,
     e.g. `shiftLeft(2 ** 30, 32)` gave `0`; the interpreter was right (#6447).
 
+  * bugfix: in a generic call that expects an `async` or `async*` function,
+    a function argument with typed or no parameters, such as
+    `func() { await f() }`, is asynchronous, as one with untyped parameters
+    already was. Its body's type solves the call's type parameters, so
+    `retry(func() { await* fetch() })` infers `retry`'s result type. Before,
+    the call checked it as a plain function and reported a misplaced `await`
+    (M0038) or a type mismatch (M0096) (#6478).
+
 ## 2.1.0 (2026-10-21)
 
 * motoko (`moc`)
