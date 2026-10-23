@@ -1033,7 +1033,7 @@ The `<system>` type parameters of shared and asynchronous functions need not be 
 
 A type `T` is well-formed only if recursively its constituent types are well-formed, and:
 
--   If `T` is `async U` or `async* U` then `U` is shared, and
+-   If `T` is `async U` then `U` is shared, and
 
 -   If `T` is `shared <query>? U -> V`:
     - `U` is shared and,
@@ -1047,6 +1047,8 @@ A type `T` is well-formed only if recursively its constituent types are well-for
     -   `Ti <: Ui[ T0/X0, …​, Tn/Xn ]`, for each `0 <= i <= n`.
 
 -   If `T` is `actor { …​ }` then all fields in `…​` are immutable and have `shared` function type.
+
+A future's result must be shared because even a local `async` expression returns its result through a message, whereas a computation `async* U` runs in the context that awaits it, so `U` can be any type.
 
 ### Subtyping
 
@@ -2810,8 +2812,6 @@ The async expression `async* <block-or-exp>` has type `async* T` provided:
 
 -   `<block-or-exp>` has type `T`.
 
--   `T` is shared.
-
 Any control-flow label in scope for `async* <block-or-exp>` is not in scope for `<block-or-exp>`. However, `<block-or-exp>` may declare and use its own, local, labels.
 
 The implicit return type in `<block-or-exp>` is `T`. That is, the return expression, `<exp0>`, implicit or explicit, to any enclosed `return <exp0>?` expression, must have type `T`.
@@ -2844,8 +2844,6 @@ In comparison, calling a local function that returns a proper `async` type requi
 The `await*` expression `await* <exp>` has type `T` provided:
 
 -   `<exp>` has type `async* T`.
-
--   `T` is shared.
 
 -   the `await*` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
 

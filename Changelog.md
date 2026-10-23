@@ -1,5 +1,14 @@
 # Motoko compiler changelog
 
+## Next
+
+* motoko (`moc`)
+
+  * feat: `async*` computations can now have non-shared result types,
+    including type parameters, so generic helpers such as
+    `retry<T>(call : () -> async* T) : async* T` compile. Futures
+    (`async T`) and shared functions still require shared types (#6477).
+
 ## 2.1.0 (2026-10-21)
 
 * motoko (`moc`)
