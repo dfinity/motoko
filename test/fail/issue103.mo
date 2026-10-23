@@ -46,9 +46,9 @@ do {
 
 // A computation is not shared
 do {
-  func invalid8(f : shared (async* Nat) -> ()) {}
+  func invalid8(f : shared (async* [var Nat]) -> ()) {}
 };
 
 do {
-  func invalid9(c : async* Nat) : Blob { to_candid (c) }
+  func invalid9(c : async* [var Nat]) : Blob { to_candid (c) }
 }

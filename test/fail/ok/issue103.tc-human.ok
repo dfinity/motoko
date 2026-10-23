@@ -58,16 +58,16 @@ is or contains non-shared type
  44 │    func invalid7(f : shared () -> async [var Nat]) {}
     │                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 
 error[M0031]: shared function has non-shared parameter type
-  async*<$> Nat
+  async*<$> [var Nat]
 type
-  async*<$> Nat
+  async*<$> [var Nat]
 is or contains non-shared type
-  async*<$> Nat
+  async*<$> [var Nat]
     ┌─ issue103.mo:49:28
- 49 │    func invalid8(f : shared (async* Nat) -> ()) {}
-    │                             ^^^^^^^^^^^^ 
+ 49 │    func invalid8(f : shared (async* [var Nat]) -> ()) {}
+    │                             ^^^^^^^^^^^^^^^^^^ 
 error[M0173]: to_candid argument must have shared type, but instead has non-shared type
-  async*<$> Nat
-    ┌─ issue103.mo:53:42
- 53 │    func invalid9(c : async* Nat) : Blob { to_candid (c) }
-    │                                           ^^^^^^^^^^^^^ 
+  async*<$> [var Nat]
+    ┌─ issue103.mo:53:48
+ 53 │    func invalid9(c : async* [var Nat]) : Blob { to_candid (c) }
+    │                                                 ^^^^^^^^^^^^^ 
