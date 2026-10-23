@@ -97,7 +97,17 @@ actor a {
     let (r, s) = await* twice<[var Nat]>(func() { arr });
     r[0] := 7;
     assert s[0] == 7 and arr[0] == 7;
-    let ((), ()) = await* twice<()>(func() { ignore await double(0) })
+    let ((), ()) = await* twice<()>(func() { ignore await double(0) });
+
+    // each await* reruns the computation, so each result is a fresh array
+    let fresh = async* { [var 0] };
+    let arr3 = await* fresh;
+    let arr4 = await* fresh;
+    arr3[0] := 1;
+    assert arr4[0] == 0;
+    let c3 = await* async* { counter() };
+    c3.inc();
+    assert c3.count == 1
   }
 
 };
