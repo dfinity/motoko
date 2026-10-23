@@ -1,5 +1,14 @@
 # Motoko compiler changelog
 
+## Next
+
+* motoko (`moc`)
+
+  * bugfix: a late `await` of a future whose reply callback trapped now
+    terminates the awaiting computation even if the message that runs its
+    `finally` clauses can't be sent (for example, out of cycles) or is
+    rejected. Previously the `catch` ran and execution continued (#6471).
+
 ## 2.1.0 (2026-10-21)
 
 * motoko (`moc`)
