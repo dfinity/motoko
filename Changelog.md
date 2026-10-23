@@ -20,6 +20,17 @@
     even after a top-up. A one-shot timer whose job was rejected that way is
     now retried instead of dropped (#6440).
 
+  * bugfix: the upgrade check of enhanced orthogonal persistence now rejects
+    changing a record field between `var f : [T]` and `f : [var T]`, `Char`
+    to or from `Nat32`, and `()` to or from `Null` (or to `?T`). It used to
+    accept these upgrades, after which the new code misread the old heap. The
+    first upgrade from an older `moc` still accepts them, as the stable type
+    that release stored doesn't tell them apart; `moc --stable-compatible`
+    rejects them either way. Once upgraded, a canister whose stable type
+    contains `[var T]`, `Char`, or `()` (including tags without payload, such
+    as `#on`) fails to downgrade to an older `moc` with
+    `Memory-incompatible program upgrade` (#6452).
+
   * bugfix: the compiler no longer crashes with "Ill-typed intermediate code
     after Async Lowering" when an `async` or `async*` value is widened, for
     example from `async (Nat, Nat)` to `async Any`, or from `async* None` to
