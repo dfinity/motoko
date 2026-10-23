@@ -1,5 +1,14 @@
 # Motoko compiler changelog
 
+## Next
+
+* motoko (`moc`)
+
+  * bugfix: `Prim.shiftLeft` on `Nat` (`Nat.bitshiftLeft`) returns the right
+    result when it exceeds 2^61. Compiled code took a fast path for operands
+    below 2^32 and amounts up to 32 that silently wrapped larger results,
+    e.g. `shiftLeft(2 ** 30, 32)` gave `0`; the interpreter was right (#6447).
+
 ## 2.1.0 (2026-10-21)
 
 * motoko (`moc`)
